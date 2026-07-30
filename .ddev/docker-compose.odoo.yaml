@@ -1,18 +1,19 @@
-version: '3.6'
 services:
-  web:
+  odoo:
     image: odoo:17.0
-    container_name: ddev-${DDEV_SITENAME}-web
+    container_name: ddev-${DDEV_SITENAME}-odoo
     restart: unless-stopped
     ports:
       - "8069:8069"
     environment:
       - HOST=db
-      - USER=postgres
-      - PASSWORD=postgres
+      - USER=db
+      - PASSWORD=db
     volumes:
       - ../extra-addons:/mnt/extra-addons
       - ../config/odoo.conf:/etc/odoo/odoo.conf
     depends_on:
       - db
-
+    labels:
+      com.ddev.site-name: ${DDEV_SITENAME}
+      com.ddev.approot: ${DDEV_APPROOT}
