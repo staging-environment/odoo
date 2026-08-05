@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="pos_gas_station.PumpGridWidget" owl="1">
+        <div class="pos-gas-station-panel">
+            <div class="gas-header">
+                <div class="gas-title">
+                    <i class="fa fa-gas-pump mr-2"/> CONTROL DE PISTA Y SURTIDORES
+                </div>
+                <div class="gas-actions">
+                    <button class="btn btn-sm btn-success mr-1">
+                        <i class="fa fa-check-circle"/> Autorizar Surtidor
+                    </button>
+                    <button class="btn btn-sm btn-danger">
+                        <i class="fa fa-stop-circle"/> Parada de Emergencia
+                    </button>
+                </div>
+            </div>
+            <div class="pump-grid">
+                <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
+                    <div t-attf-class="pump-card status-#{pump.status}" t-on-click="() => this.onPumpClick(pump)">
+                        <div class="pump-badge">VÍA <t t-esc="pump.id"/></div>
+                        <div class="pump-name"><t t-esc="pump.name"/></div>
+                        <div class="pump-fuel"><t t-esc="pump.fuel"/></div>
+                        <div class="pump-amount">
+                            <t t-if="pump.amount > 0">
+                                <t t-esc="pump.amount.toFixed(2)"/> €
+                            </t>
+                            <t t-else="">--- €</t>
+                        </div>
+                        <div class="pump-liters">
+                            <t t-if="pump.liters > 0">
+                                <t t-esc="pump.liters.toFixed(1)"/> L
+                            </t>
+                            <t t-else="">0.0 L</t>
+                        </div>
+                        <div class="pump-status-label"><t t-esc="pump.statusText"/></div>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="pos_gas_station.ProductScreen" t-inherit="point_of_sale.ProductScreen" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('product-screen')]" position="before">
+            <PumpGridWidget />
+        </xpath>
+    </t>
+</templates>
