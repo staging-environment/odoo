@@ -39,18 +39,37 @@ Antes de ejecutar cualquiera de los scripts en el PC de la gasolinera:
 
 ---
 
-## ⚡ 2. Protocolo de Ejecución Secuencial en PowerShell (Orden 1 a 4)
+## ⚡ 2. Protocolo de Ejecución Secuencial en PowerShell (Orden 1 a 5)
 
 | Orden | Archivo en `docs/` | Propósito | Comando Exacto en PowerShell |
 | :---: | :--- | :--- | :--- |
 | **ORDEN 1** | **`install_prerequisites.ps1`** | Instala Python 3.12, PySerial y Requests en 1 clic. | `powershell -ExecutionPolicy Bypass -File .\install_prerequisites.ps1` |
 | **ORDEN 2** | *(Acción Física)* | Empalme de Hilo 1 $\rightarrow$ `A+` e Hilo 2 $\rightarrow$ `B-`. | *(Atornillar bornes y enchufar USB)* |
 | **ORDEN 3** | **`test_rs485.py`** | Prueba en directo con Auto-Detección de puerto COM. | `python test_rs485.py` |
-| **ORDEN 4** | **`start_daemon.ps1`** | Arranca `agente_odoo_elcuervo.py` en segundo plano. | `powershell -ExecutionPolicy Bypass -File .\start_daemon.ps1` |
+| **ORDEN 4** | **`start_daemon.ps1`** | Arranca `agente_odoo_elcuervo.py` en segundo plano ahora. | `powershell -ExecutionPolicy Bypass -File .\start_daemon.ps1` |
+| **ORDEN 5** | **`setup_task_scheduler.ps1`** | Registra el autostart 24/7 frente a reinicios del PC. | `powershell -ExecutionPolicy Bypass -File .\setup_task_scheduler.ps1` |
 
 ---
 
-## ⏱️ 3. Cronograma de Señales de Surtidores en Consola
+## ⚙️ 3. Configuración del Programador de Tareas de Windows (Sobrevivir a Reinicios)
+
+Para asegurar que si el PC de caja se reinicia por un corte de luz el servicio vuelva a arrancar automáticamente sin intervención manual:
+
+### Opción A: 1 Clic desde PowerShell (Recomendado)
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup_task_scheduler.ps1
+```
+
+### Opción B: Interfaz Gráfica (`taskschd.msc`)
+1. Abrir `taskschd.msc` via **Win + R**.
+2. **Crear tarea...** ➔ Nombre: `AgenteOdooElCuervo`.
+3. **Pestaña General:** Marcar *Ejecutar tanto si el usuario inició sesión como si no* y *Con los privilegios más altos*.
+4. **Desencadenadores:** Nuevo ➔ *Al iniciar el sistema* o *Al iniciar sesión*.
+5. **Acciones:** Nueva ➔ Programa: `pythonw.exe` | Argumentos: `C:\Utrecar\agente_odoo_elcuervo.py` | Iniciar en: `C:\Utrecar\`.
+
+---
+
+## ⏱️ 4. Cronograma de Señales de Surtidores en Consola
 
 1. **Reposo (Idle):** Polling constante de Aseproda cada 0.5s-1s (`02 30 31 41 43...`).
 2. **Descolgar Manguera:** Aviso inmediato de manguera levantada (`02 30 31 53 54...`).
@@ -59,7 +78,7 @@ Antes de ejecutar cualquiera de los scripts en el PC de la gasolinera:
 
 ---
 
-## 🌐 4. Sincronización Automática con Odoo Cloud (`https://odoo.utrecar.com`)
+## 🌐 5. Sincronización Automática con Odoo Cloud (`https://odoo.utrecar.com`)
 
 El script `agente_odoo_elcuervo.py` utiliza la API XML-RPC nativa de Odoo con las credenciales de la estación:
 - **URL:** `https://odoo.utrecar.com`
