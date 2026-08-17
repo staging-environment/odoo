@@ -55,17 +55,23 @@ export class UtrecarMainScreen extends Component {
     }
 
     get filteredStoreProducts() {
-        const all = Object.values(this.pos.db.product_by_id || {});
-        // Excluir productos genéricos si se desea o filtrar por búsqueda
-        const q = this.state.storeSearch.toLowerCase().trim();
-        if (!q) {
-            return all.slice(0, 30);
+        let all = [];
+        if (this.pos.db && this.pos.db.product_by_id) {
+            all = Object.values(this.pos.db.product_by_id);
+        } else if (this.pos.models && this.pos.models["product.product"]) {
+            all = this.pos.models["product.product"].getAll();
         }
-        return all.filter(p => 
-            p.display_name.toLowerCase().includes(q) || 
-            (p.default_code && p.default_code.toLowerCase().includes(q)) ||
-            (p.barcode && p.barcode.includes(q))
-        ).slice(0, 30);
+
+        const q = (this.state.storeSearch || "").toLowerCase().trim();
+        if (!q) {
+            return all.slice(0, 40);
+        }
+        return all.filter(p => {
+            const name = (p.display_name || p.name || "").toLowerCase();
+            const code = (p.default_code || "").toLowerCase();
+            const barcode = (p.barcode || "").toLowerCase();
+            return name.includes(q) || code.includes(q) || barcode.includes(q);
+        }).slice(0, 40);
     }
 
     async fetchPumpsStatus() {
