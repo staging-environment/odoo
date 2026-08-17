@@ -160,15 +160,21 @@
                                 </div>
 
                                 <div class="box-action-slot">
-                                    <t t-if="pump.status === 'ready' || pump.amount > 0">
+                                    <t t-if="pump.status === 'ready' || (pump.status !== 'dispensing' &amp;&amp; pump.amount > 0)">
                                         <button class="btn-box-load" t-on-click.stop="() => this.onPumpClick(pump)">
                                             <i class="fa fa-arrow-circle-up mr-1"/> PASAR A TICKET
                                         </button>
                                     </t>
-                                    <t t-elif="pump.status === 'dispensing'">
+                                    <t t-elif="pump.status === 'dispensing' || pump.statusText === 'AUTORIZADO'">
                                         <div class="badge-dispensing">
-                                            <i class="fa fa-spinner fa-spin mr-1"/> MANGUERA ACTIVA
+                                            <i class="fa fa-spinner fa-spin mr-1"/> EN PROCESO
                                         </div>
+                                        <button class="btn btn-sm btn-outline-danger mt-1 w-100" 
+                                                style="font-size: 9.5px; padding: 2px 0; font-weight: 800; border-radius: 4px;" 
+                                                t-on-click.stop="() => this.cancelPumpAuthorization(pump)"
+                                                title="Cancelar autorización y bloquear surtidor">
+                                            <i class="fa fa-ban mr-1"/> Cancelar
+                                        </button>
                                     </t>
                                     <t t-else="">
                                         <div class="badge-idle">
@@ -240,9 +246,17 @@
                         <button class="btn-keypad-action btn-c-clear" t-on-click="() => this.clearPreset()">
                             <i class="fa fa-times mr-1"/> C (BORRAR)
                         </button>
-                        <button class="btn-keypad-action btn-authorize-call" t-on-click="() => this.authorizePreset()">
-                            <i class="fa fa-check-circle mr-1"/> AUTORIZAR <t t-if="state.selectedPumpId">CALLE <t t-esc="state.selectedPumpId"/></t>
-                        </button>
+                        
+                        <t t-if="isSelectedPumpActive">
+                            <button class="btn-keypad-action" style="background:#f59e0b; color:#fff; cursor: not-allowed;" title="Esta calle ya se encuentra en proceso de suministro">
+                                <i class="fa fa-spinner fa-spin mr-1"/> EN PROCESO
+                            </button>
+                        </t>
+                        <t t-else="">
+                            <button class="btn-keypad-action btn-authorize-call" t-on-click="() => this.authorizePreset()">
+                                <i class="fa fa-check-circle mr-1"/> AUTORIZAR <t t-if="state.selectedPumpId">CALLE <t t-esc="state.selectedPumpId"/></t>
+                            </button>
+                        </t>
                     </div>
 
                 </div>

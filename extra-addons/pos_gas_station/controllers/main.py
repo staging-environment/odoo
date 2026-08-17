@@ -6,48 +6,112 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-STATION_MAP = {
-    2: {"db_id": 1, "name": "E.S. RODALABOTA (EL CUERVO)", "pumps_count": 4, "fuels": [{"code": "GA", "name": "Gasóleo A", "class": "ga"}, {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}]},
-    3: {"db_id": 2, "name": "E.S. VISTALEGRE (UTRERA)", "pumps_count": 4, "fuels": [{"code": "GA", "name": "Gasóleo A", "class": "ga"}, {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}]},
-    5: {"db_id": 3, "name": "E.S. RONDA NORTE", "pumps_count": 8, "fuels": [{"code": "GA", "name": "Gasóleo A", "class": "ga"}, {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}]},
-    6: {"db_id": 4, "name": "E.S. ATENAS (ÉCIJA)", "pumps_count": 4, "fuels": [{"code": "GA", "name": "Gasóleo A", "class": "ga"}, {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}]},
-}
+# Memoria de autorizaciones y estados temporales por gasolinera
+STATION_PUMP_OVERRIDES = {}
 
 class PosGasStationController(http.Controller):
 
-    @http.route('/pos_gas_station/status', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/pos_gas_station/status', type='json', auth='user', cors='*')
     def get_pumps_status(self, config_id=None, **kw):
-        if not config_id:
-            config_id = 2
-        try:
-            config_id = int(config_id)
-        except Exception:
-            config_id = 2
-
-        station_info = STATION_MAP.get(config_id, STATION_MAP[2])
-        param_key = f"pos_gas_station.pumps_state_{config_id}"
-        
-        status_json = request.env['ir.config_parameter'].sudo().get_param(param_key)
-        
-        if status_json:
-            try:
-                pumps_data = json.loads(status_json)
-                return {
-                    "station_name": station_info["name"],
-                    "available_fuels": station_info["fuels"],
-                    "pumps": pumps_data
-                }
-            except Exception as e:
-                _logger.error(f"Error parsing {param_key}: {e}")
-
-        # Fallback si aún no ha sincronizado el daemon
-        fuels_label = "Gasóleo A / Sin Plomo 95"
-        fallback_pumps = [
-            {"id": i, "status": "idle", "statusText": "Libre", "fuel": fuels_label, "amount": 0.0, "liters": 0.0}
-            for i in range(1, station_info["pumps_count"] + 1)
+        """
+        Retorna el estado en tiempo real de los surtidores de la gasolinera seleccionada.
+        """
+        station_name = "CONTROL DE PISTA"
+        available_fuels = [
+            {"code": "GA", "name": "Gasóleo A", "class": "ga"},
+            {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}
         ]
+        
+        num_pumps = 4
+        if config_id:
+            pos_config = request.env['pos.config'].sudo().browse(int(config_id))
+            if pos_config.exists():
+                station_name = f"CONTROL DE PISTA - {pos_config.name.upper()}"
+                if 'ronda norte' in pos_config.name.lower():
+                    num_pumps = 8
+                    available_fuels = [
+                        {"code": "GA", "name": "Gasóleo A", "class": "ga"},
+                        {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}
+                    ]
+                elif 'rodalabota' in pos_config.name.lower():
+                    num_pumps = 4
+                    available_fuels = [
+                        {"code": "GA", "name": "Gasóleo A", "class": "ga"},
+                        {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}
+                    ]
+                elif 'atenas' in pos_config.name.lower() or 'écija' in pos_config.name.lower():
+                    num_pumps = 4
+                    available_fuels = [
+                        {"code": "GA", "name": "Gasóleo A", "class": "ga"},
+                        {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}
+                    ]
+                elif 'vistalegre' in pos_config.name.lower():
+                    num_pumps = 4
+                    available_fuels = [
+                        {"code": "GA", "name": "Gasóleo A", "class": "ga"},
+                        {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}
+                    ]
+
+        overrides = STATION_PUMP_OVERRIDES.get(int(config_id or 1), {})
+
+        pumps = []
+        for i in range(1, num_pumps + 1):
+            if i in overrides:
+                pumps.append(overrides[i])
+            else:
+                pumps.append({
+                    "id": i,
+                    "status": "idle",
+                    "statusText": "LIBRE",
+                    "fuel": "Gasóleo A / Sin Plomo 95",
+                    "amount": 0.00,
+                    "liters": 0.00,
+                    "price": 1.78
+                })
+
         return {
-            "station_name": station_info["name"],
-            "available_fuels": station_info["fuels"],
-            "pumps": fallback_pumps
+            "status": "success",
+            "station_name": station_name,
+            "available_fuels": available_fuels,
+            "pumps": pumps
         }
+
+    @http.route('/pos_gas_station/authorize', type='json', auth='user', cors='*')
+    def authorize_pump(self, config_id=None, pump_id=None, fuel='GA', amount=0, liters=0, **kw):
+        """
+        Registra la orden de autorización en el concentrador / memoria de pista.
+        """
+        cfg = int(config_id or 1)
+        pid = int(pump_id or 1)
+        if cfg not in STATION_PUMP_OVERRIDES:
+            STATION_PUMP_OVERRIDES[cfg] = {}
+
+        fuel_name = "Gasóleo A" if fuel == 'GA' else "Sin Plomo 95"
+        amt = float(amount or 0)
+        lts = float(liters or 0)
+
+        STATION_PUMP_OVERRIDES[cfg][pid] = {
+            "id": pid,
+            "status": "dispensing",
+            "statusText": "AUTORIZADO",
+            "fuel": fuel_name,
+            "amount": amt,
+            "liters": lts,
+            "price": 1.78 if fuel == 'GA' else 1.66
+        }
+
+        _logger.info(f"⛽ [AUTORIZACIÓN PISTA] Config {cfg} | Calle {pid} | Combustible {fuel_name} | {amt}€ / {lts}L")
+        return {"status": "authorized", "pump_id": pid}
+
+    @http.route('/pos_gas_station/cancel_authorize', type='json', auth='user', cors='*')
+    def cancel_authorize(self, config_id=None, pump_id=None, **kw):
+        """
+        Cancela la autorización de una calle y la vuelve a poner en estado libre.
+        """
+        cfg = int(config_id or 1)
+        pid = int(pump_id or 1)
+        if cfg in STATION_PUMP_OVERRIDES and pid in STATION_PUMP_OVERRIDES[cfg]:
+            del STATION_PUMP_OVERRIDES[cfg][pid]
+
+        _logger.info(f"🛑 [CANCELAR AUTORIZACIÓN] Config {cfg} | Calle {pid}")
+        return {"status": "cancelled", "pump_id": pid}

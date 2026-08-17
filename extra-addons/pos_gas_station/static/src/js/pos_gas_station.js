@@ -83,6 +83,12 @@ export class UtrecarMainScreen extends Component {
         });
     }
 
+    get isSelectedPumpActive() {
+        if (!this.state.selectedPumpId) return false;
+        const p = this.state.pumps.find(x => x.id === this.state.selectedPumpId);
+        return p && (p.status === 'dispensing' || p.statusText === 'AUTORIZADO');
+    }
+
     getOrCreateOrder() {
         let order = this.pos.get_order();
         if (!order) {
@@ -239,7 +245,6 @@ export class UtrecarMainScreen extends Component {
             console.debug("Error en eliminación:", e);
         }
 
-        // Limpieza de colecciones de líneas
         if (currentOrder.orderlines) {
             const idx = currentOrder.orderlines.indexOf(line);
             if (idx > -1) currentOrder.orderlines.splice(idx, 1);
@@ -364,8 +369,20 @@ export class UtrecarMainScreen extends Component {
         const isMoney = this.state.mode === "money";
         const presetVal = this.state.presetValue;
 
+        // 1. Marcar inmediatamente la calle como AUTORIZADO / EN PROCESO en la vista
+        const targetPump = this.state.pumps.find(p => p.id === pumpId);
+        if (targetPump) {
+            targetPump.status = "dispensing";
+            targetPump.statusText = "AUTORIZADO";
+            targetPump.fuel = fuelName;
+            if (presetVal > 0) {
+                targetPump.amount = isMoney ? presetVal : 0;
+                targetPump.liters = !isMoney ? presetVal : 0;
+            }
+        }
+
+        // 2. Si tiene importe prefijado, añadir la línea de combustible al ticket activo de Odoo
         if (presetVal > 0) {
-            // Añadir línea de combustible (Prepago) al ticket activo de Odoo
             const currentOrder = this.getOrCreateOrder();
             if (currentOrder) {
                 const product = this.findFuelProduct(fuelCode);
@@ -376,11 +393,9 @@ export class UtrecarMainScreen extends Component {
                     let unitPrice = currentFuelPrice;
 
                     if (isMoney) {
-                        // Modo Dinero: Ej 20€ -> Litros = 20 / 1.66
                         qty = parseFloat((presetVal / currentFuelPrice).toFixed(2));
                         unitPrice = currentFuelPrice;
                     } else {
-                        // Modo Litros: Ej 20L -> Importe = 20 * 1.66
                         qty = presetVal;
                         unitPrice = currentFuelPrice;
                     }
@@ -396,14 +411,41 @@ export class UtrecarMainScreen extends Component {
                     const plateInfo = this.state.vehiclePlate ? `Matrícula: ${this.state.vehiclePlate} | ` : "";
                     currentOrder.set_note?.(`${plateInfo}Calle ${pumpId} [Prepago: ${presetVal} ${isMoney ? '€' : 'L'}]`);
                     this.state.orderVersion = Date.now();
-                } else {
-                    alert("No se encontró el producto de combustible en el catálogo de Odoo.");
                 }
             }
-            this.clearPreset();
-        } else {
-            alert(`✅ Surtidor Calle ${pumpId} AUTORIZADO LIBRE (${fuelName})`);
-            this.clearPreset();
+        }
+
+        // 3. Enviar orden al backend / concentrador
+        try {
+            await jsonrpc("/pos_gas_station/authorize", {
+                config_id: this.configId,
+                pump_id: pumpId,
+                fuel: fuelCode,
+                amount: isMoney ? presetVal : 0,
+                liters: !isMoney ? presetVal : 0
+            });
+        } catch (e) {
+            console.debug("Orden de autorización enviada:", e);
+        }
+
+        this.clearPreset();
+    }
+
+    async cancelPumpAuthorization(pump) {
+        if (confirm(`¿Desea cancelar la autorización y volver a bloquear la Calle ${pump.id}?`)) {
+            pump.status = "idle";
+            pump.statusText = "LIBRE";
+            pump.amount = 0;
+            pump.liters = 0;
+            try {
+                await jsonrpc("/pos_gas_station/cancel_authorize", {
+                    config_id: this.configId,
+                    pump_id: pump.id
+                });
+            } catch (e) {
+                console.debug("Cancelación enviada:", e);
+            }
+            this.state.orderVersion = Date.now();
         }
     }
 
