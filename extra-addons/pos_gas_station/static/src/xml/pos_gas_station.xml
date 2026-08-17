@@ -63,7 +63,7 @@
                                 <tr class="empty-ticket-row">
                                     <td colspan="6" class="text-center py-4 text-muted">
                                         <i class="fa fa-shopping-cart fa-2x mb-2 d-block opacity-50"/>
-                                        Ticket vacío. Seleccione una <strong>Calle</strong>, use los <strong>Billetes</strong> o pulse <strong>TIENDA / PARRILLA</strong>.
+                                        Ticket vacío. Pulse <strong>PASAR A TICKET</strong> en una calle con repostaje o añada productos desde <strong>TIENDA</strong>.
                                     </td>
                                 </tr>
                             </t>
@@ -83,13 +83,13 @@
                     </table>
                 </div>
 
-                <!-- BARRA INFERIOR DE TICKET (TOTALES Y ACCIONES DE LÍNEA) -->
+                <!-- BARRA INFERIOR DE TICKET (TOTAL COMBINADO Y BOTÓN DE COBRO) -->
                 <div class="utrecar-ticket-footer">
                     <div class="ticket-tools">
                         <button class="btn-tool btn-add-product" t-on-click="() => this.openStoreModal()" title="Añadir producto de tienda">
                             <i class="fa fa-plus-circle mr-1 text-primary"/> <strong>Añadir Artículo</strong>
                         </button>
-                        <button class="btn-tool btn-delete-line" t-on-click="() => this.deleteSelectedLine()" title="Eliminar línea">
+                        <button class="btn-tool btn-delete-line" t-on-click="() => this.deleteSelectedLine()" title="Eliminar línea seleccionada">
                             <i class="fa fa-trash-alt mr-1"/> Borrar Artículo
                         </button>
                         <button class="btn-tool btn-clear-all" t-on-click="() => this.clearCurrentOrder()" title="Cancelar venta">
@@ -98,10 +98,10 @@
                     </div>
                     
                     <div class="ticket-totals-box">
-                        <span class="total-label">TOTAL TICKET:</span>
+                        <span class="total-label">TOTAL A COBRAR:</span>
                         <span class="total-amount"><t t-esc="currentTotalAmount.toFixed(2)"/> €</span>
                         <button class="btn-pay-now" t-on-click="() => this.goToPayment()">
-                            <i class="fa fa-credit-card mr-2"/> COBRAR (F12)
+                            <i class="fa fa-credit-card mr-2"/> COBRAR (<t t-esc="currentTotalAmount.toFixed(2)"/> €)
                         </button>
                     </div>
                 </div>
@@ -146,7 +146,7 @@
                                 </div>
 
                                 <div class="box-action-slot">
-                                    <t t-if="pump.status === 'ready'">
+                                    <t t-if="pump.status === 'ready' || pump.amount > 0">
                                         <button class="btn-box-load" t-on-click.stop="() => this.onPumpClick(pump)">
                                             <i class="fa fa-arrow-circle-up mr-1"/> PASAR A TICKET
                                         </button>

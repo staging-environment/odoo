@@ -20,6 +20,7 @@ export class UtrecarMainScreen extends Component {
             vehiclePlate: "",
             selectedPumpId: null,
             selectedLineId: null,
+            orderVersion: 0,
             mode: "money", // 'money' o 'liters'
             presetValue: 0,
             selectedFuel: "GA",
@@ -61,7 +62,17 @@ export class UtrecarMainScreen extends Component {
             this.fetchPumpsStatus();
             this.pollInterval = setInterval(() => {
                 this.fetchPumpsStatus();
-            }, 1500);
+                // Actualizar versión reactiva de la cesta
+                const ord = this.pos.get_order();
+                if (ord) {
+                    const linesCount = ord.get_orderlines?.()?.length || ord.orderlines?.length || 0;
+                    const totalAmt = ord.get_total_with_tax?.() || 0;
+                    const v = linesCount * 1000 + totalAmt;
+                    if (this.state.orderVersion !== v) {
+                        this.state.orderVersion = v;
+                    }
+                }
+            }, 800);
             window.addEventListener("keydown", this.onGlobalKeyDown);
         });
 
@@ -89,6 +100,7 @@ export class UtrecarMainScreen extends Component {
                 if (this.state.vehiclePlate) {
                     currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
                 }
+                this.state.orderVersion = Date.now();
                 if (this.state.isStoreModalOpen) {
                     this.closeStoreModal();
                 }
@@ -99,11 +111,13 @@ export class UtrecarMainScreen extends Component {
     }
 
     get currentOrderLines() {
+        const dummy = this.state.orderVersion;
         const order = this.pos.get_order();
         return order ? (order.get_orderlines?.() || order.orderlines || []) : [];
     }
 
     get currentTotalAmount() {
+        const dummy = this.state.orderVersion;
         const order = this.pos.get_order();
         return order ? (order.get_total_with_tax?.() || 0.00) : 0.00;
     }
@@ -190,6 +204,7 @@ export class UtrecarMainScreen extends Component {
                     const idx = currentOrder.orderlines.indexOf(line);
                     if (idx > -1) currentOrder.orderlines.splice(idx, 1);
                 }
+                this.state.orderVersion = Date.now();
             }
         }
     }
@@ -209,6 +224,7 @@ export class UtrecarMainScreen extends Component {
             });
             this.state.vehiclePlate = "";
             currentOrder.set_note?.("");
+            this.state.orderVersion = Date.now();
         }
     }
 
@@ -243,6 +259,7 @@ export class UtrecarMainScreen extends Component {
             if (this.state.vehiclePlate) {
                 currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
             }
+            this.state.orderVersion = Date.now();
         }
         this.closeStoreModal();
     }
@@ -257,7 +274,6 @@ export class UtrecarMainScreen extends Component {
     }
 
     addPreset(val) {
-        // Sumar acumulativamente los billetes o litros seleccionados
         this.state.presetValue = (this.state.presetValue || 0) + val;
     }
 
@@ -307,13 +323,16 @@ export class UtrecarMainScreen extends Component {
             } else {
                 const allProducts = Object.values(this.pos.db.product_by_id || {});
                 const fuelSearch = pump.fuel.toLowerCase().split('/')[0].trim();
-                product = allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch)) || allProducts[0];
+                product = allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch) && p.default_code?.startsWith("100")) ||
+                          allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch)) ||
+                          allProducts[0];
             }
 
             if (product) {
+                const unitPrice = pump.price || (pump.amount / pump.liters);
                 await currentOrder.add_product(product, {
                     quantity: pump.liters,
-                    price: pump.price || (pump.amount / pump.liters),
+                    price: unitPrice,
                     extras: {
                         price_manually_set: true
                     }
@@ -321,6 +340,7 @@ export class UtrecarMainScreen extends Component {
                 if (this.state.vehiclePlate) {
                     currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
                 }
+                this.state.orderVersion = Date.now();
             }
         }
     }
