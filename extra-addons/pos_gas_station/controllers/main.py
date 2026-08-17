@@ -7,7 +7,7 @@ import logging
 _logger = logging.getLogger(__name__)
 
 class PosGasStationController(http.Controller):
-    @http.route('/pos_gas_station/status', type='json', auth='user', cors='*')
+    @http.route('/pos_gas_station/status', type='json', auth='public', cors='*')
     def get_pumps_status(self, **kwargs):
         config_id = kwargs.get('config_id')
         if not config_id and hasattr(request, 'params'):
