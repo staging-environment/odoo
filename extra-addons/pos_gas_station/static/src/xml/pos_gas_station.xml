@@ -1,42 +1,142 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
+    <!-- WIDGET PRINCIPAL DE PISTA Y PREFIJADO UTRECAR -->
     <t t-name="pos_gas_station.PumpGridWidget" owl="1">
-        <div class="pos-gas-station-panel">
-            <div class="gas-header">
-                <div class="gas-title">
-                    <i class="fa fa-gas-pump mr-2"/> <t t-esc="state.stationName"/>
+        <div class="utrecar-pos-container">
+            
+            <!-- BARRA SUPERIOR DE CONTROL: MATRÍCULA Y ACCIONES RÁPIDAS -->
+            <div class="utrecar-top-bar">
+                <div class="utrecar-station-info">
+                    <i class="fa fa-gas-pump mr-2 text-primary"/>
+                    <span class="station-title"><t t-esc="state.stationName"/></span>
+                    <span class="live-pill"><i class="fa fa-circle text-success mr-1"/> EN DIRECTO</span>
                 </div>
-                <div class="gas-actions">
-                    <span class="badge badge-success px-2 py-1 mr-2"><i class="fa fa-circle text-light mr-1"/> En Directo (1s)</span>
-                    <button class="btn btn-sm btn-success mr-1">
-                        <i class="fa fa-check-circle"/> Autorizar Pista
+
+                <div class="utrecar-plate-container">
+                    <div class="euro-plate-badge">
+                        <span class="plate-eu">🇪🇸 E</span>
+                        <input type="text" 
+                               class="plate-input" 
+                               placeholder="MATRÍCULA..." 
+                               t-att-value="state.vehiclePlate"
+                               t-on-input="(ev) => this.onPlateChange(ev)" />
+                    </div>
+                </div>
+
+                <div class="utrecar-shift-actions">
+                    <button class="btn btn-security-deposit" t-on-click="() => this.onSecurityDepositClick()">
+                        <i class="fa fa-shield-alt mr-1"/> Ingreso de Seguridad
                     </button>
-                    <button class="btn btn-sm btn-danger">
-                        <i class="fa fa-stop-circle"/> Parada de Emergencia
+                    <button class="btn btn-emergency-stop" t-on-click="() => this.onEmergencyStopClick()">
+                        <i class="fa fa-stop-circle mr-1"/> Parada Emergencia
                     </button>
                 </div>
             </div>
-            <div class="pump-grid">
-                <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
-                    <div t-attf-class="pump-card status-#{pump.status}" t-on-click="() => this.onPumpClick(pump)">
-                        <div class="pump-badge">VÍA <t t-esc="pump.id"/></div>
-                        <div class="pump-name"><t t-esc="pump.name"/></div>
-                        <div class="pump-fuel"><t t-esc="pump.fuel"/></div>
-                        <div class="pump-amount">
-                            <t t-if="pump.amount > 0">
-                                <t t-esc="pump.amount.toFixed(2)"/> €
-                            </t>
-                            <t t-else="">--- €</t>
-                        </div>
-                        <div class="pump-liters">
-                            <t t-if="pump.liters > 0">
-                                <t t-esc="pump.liters.toFixed(2)"/> L
-                            </t>
-                            <t t-else="">0.00 L</t>
-                        </div>
-                        <div class="pump-status-label"><t t-esc="pump.statusText"/></div>
+
+            <!-- ZONA CENTRAL DIVIDIDA: MAPA DE SURTIDORES (IZQ) + TECLADO DE PREFIJADO (DER) -->
+            <div class="utrecar-forecourt-layout">
+                
+                <!-- MAPA DE SURTIDORES DE PISTA -->
+                <div class="pumps-section">
+                    <div class="pumps-grid">
+                        <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
+                            <div t-attf-class="utrecar-pump-card status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}" 
+                                 t-on-click="() => this.onPumpSelect(pump)">
+                                <div class="pump-top-tag">
+                                    <span class="pump-num">CALLE <t t-esc="pump.id"/></span>
+                                    <span class="pump-state-badge"><t t-esc="pump.statusText"/></span>
+                                </div>
+                                <div class="pump-fuel-type"><t t-esc="pump.fuel"/></div>
+                                
+                                <div class="pump-display">
+                                    <div class="display-amount">
+                                        <t t-if="pump.amount > 0">
+                                            <t t-esc="pump.amount.toFixed(2)"/> €
+                                        </t>
+                                        <t t-else="">--- €</t>
+                                    </div>
+                                    <div class="display-liters">
+                                        <t t-if="pump.liters > 0">
+                                            <t t-esc="pump.liters.toFixed(2)"/> L
+                                        </t>
+                                        <t t-else="">0.00 L</t>
+                                    </div>
+                                </div>
+
+                                <div class="pump-footer-action">
+                                    <t t-if="pump.status === 'ready'">
+                                        <button class="btn btn-sm btn-charge" t-on-click.stop="() => this.onPumpClick(pump)">
+                                            <i class="fa fa-shopping-cart mr-1"/> Pasar a Ticket
+                                        </button>
+                                    </t>
+                                    <t t-elif="pump.status === 'dispensing'">
+                                        <span class="text-dispensing"><i class="fa fa-spinner fa-spin mr-1"/> Suministrando</span>
+                                    </t>
+                                    <t t-else="">
+                                        <span class="text-idle">Disponible</span>
+                                    </t>
+                                </div>
+                            </div>
+                        </t>
                     </div>
-                </t>
+                </div>
+
+                <!-- PAD RÁPIDO DE BILLETES / LITROS Y COMBUSTIBLES (INSPIRADO EN VIRTUSTPV) -->
+                <div class="quick-preset-section">
+                    <div class="preset-header">
+                        <div class="preset-display">
+                            <span class="display-label"><t t-esc="state.mode === 'money' ? 'IMPORTE' : 'LITROS'"/>:</span>
+                            <span class="display-val"><t t-esc="state.presetValue > 0 ? (state.presetValue + (state.mode === 'money' ? ' €' : ' L')) : '0.00'"/></span>
+                        </div>
+                        <button t-attf-class="btn-toggle-mode #{state.mode === 'liters' ? 'active-drop' : ''}" 
+                                t-on-click="() => this.toggleMode()" 
+                                title="Alternar entre Euros y Litros">
+                            💧 <t t-esc="state.mode === 'money' ? 'A Litros' : 'A Euros'"/>
+                        </button>
+                    </div>
+
+                    <!-- BOTONERA DE BILLETES / LITROS -->
+                    <div class="preset-buttons-grid">
+                        <t t-if="state.mode === 'money'">
+                            <button class="btn-preset btn-money m-1" t-on-click="() => this.addPreset(1)">1 €</button>
+                            <button class="btn-preset btn-money m-5" t-on-click="() => this.addPreset(5)">5 €</button>
+                            <button class="btn-preset btn-money m-10" t-on-click="() => this.addPreset(10)">10 €</button>
+                            <button class="btn-preset btn-money m-20" t-on-click="() => this.addPreset(20)">20 €</button>
+                            <button class="btn-preset btn-money m-50" t-on-click="() => this.addPreset(50)">50 €</button>
+                            <button class="btn-preset btn-money m-100" t-on-click="() => this.addPreset(100)">100 €</button>
+                        </t>
+                        <t t-else="">
+                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(5)">5 L</button>
+                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(10)">10 L</button>
+                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(20)">20 L</button>
+                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(30)">30 L</button>
+                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(40)">40 L</button>
+                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(50)">50 L</button>
+                        </t>
+                    </div>
+
+                    <!-- BOTONERA DE COMBUSTIBLES RÁPIDOS -->
+                    <div class="fuel-buttons-row">
+                        <button t-attf-class="btn-fuel ga #{state.selectedFuel === 'GA' ? 'selected' : ''}" 
+                                t-on-click="() => this.selectFuel('GA')">GA (Gasóleo A)</button>
+                        <button t-attf-class="btn-fuel sp95 #{state.selectedFuel === '95' ? 'selected' : ''}" 
+                                t-on-click="() => this.selectFuel('95')">95 (Sin Plomo)</button>
+                        <button t-attf-class="btn-fuel gb #{state.selectedFuel === 'GB' ? 'selected' : ''}" 
+                                t-on-click="() => this.selectFuel('GB')">GB (Gasóleo B)</button>
+                        <button t-attf-class="btn-fuel gplus #{state.selectedFuel === 'G+' ? 'selected' : ''}" 
+                                t-on-click="() => this.selectFuel('G+')">G+ (Plus)</button>
+                    </div>
+
+                    <!-- BOTONES DE ACCIÓN DE PREFIJADO -->
+                    <div class="preset-action-row">
+                        <button class="btn-preset-action btn-clear" t-on-click="() => this.clearPreset()">
+                            <i class="fa fa-eraser mr-1"/> C (Borrar)
+                        </button>
+                        <button class="btn-preset-action btn-authorize" t-on-click="() => this.authorizePreset()">
+                            <i class="fa fa-check-circle mr-1"/> Autorizar Calle <t t-esc="state.selectedPumpId ? state.selectedPumpId : ''"/>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </t>
