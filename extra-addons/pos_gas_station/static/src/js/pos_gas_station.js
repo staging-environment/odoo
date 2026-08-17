@@ -33,19 +33,71 @@ export class UtrecarMainScreen extends Component {
         });
 
         this.pollInterval = null;
+        this.barcodeBuffer = "";
+        this.barcodeTimeout = null;
+
+        // Escucha global de pistola de código de barras (teclado rápido)
+        this.onGlobalKeyDown = (ev) => {
+            // Si el foco está en un input de texto ordinario (excepto búsqueda), ignorar
+            if (ev.target && ev.target.classList.contains("euro-plate-text")) {
+                return;
+            }
+
+            if (ev.key === "Enter") {
+                if (this.barcodeBuffer.length >= 3) {
+                    this.handleBarcodeScan(this.barcodeBuffer.trim());
+                    this.barcodeBuffer = "";
+                    ev.preventDefault();
+                }
+            } else if (ev.key && ev.key.length === 1) {
+                this.barcodeBuffer += ev.key;
+                if (this.barcodeTimeout) clearTimeout(this.barcodeTimeout);
+                this.barcodeTimeout = setTimeout(() => {
+                    this.barcodeBuffer = "";
+                }, 250); // Las pistolas lectoras envían todos los caracteres en <100ms
+            }
+        };
 
         onMounted(() => {
             this.fetchPumpsStatus();
             this.pollInterval = setInterval(() => {
                 this.fetchPumpsStatus();
             }, 1500);
+            window.addEventListener("keydown", this.onGlobalKeyDown);
         });
 
         onWillUnmount(() => {
             if (this.pollInterval) {
                 clearInterval(this.pollInterval);
             }
+            window.removeEventListener("keydown", this.onGlobalKeyDown);
         });
+    }
+
+    async handleBarcodeScan(code) {
+        if (!code) return;
+        const allProducts = Object.values(this.pos.db?.product_by_id || {});
+        
+        // Buscar por código de barras exacto, referencia interna o código
+        const found = allProducts.find(p => 
+            (p.barcode && p.barcode.toLowerCase() === code.toLowerCase()) ||
+            (p.default_code && p.default_code.toLowerCase() === code.toLowerCase())
+        );
+
+        if (found) {
+            const currentOrder = this.pos.get_order();
+            if (currentOrder) {
+                await currentOrder.add_product(found, { quantity: 1 });
+                if (this.state.vehiclePlate) {
+                    currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
+                }
+                if (this.state.isStoreModalOpen) {
+                    this.closeStoreModal();
+                }
+            }
+        } else {
+            console.warn("Código de barras no encontrado en el catálogo de Odoo:", code);
+        }
     }
 
     get currentOrderLines() {
