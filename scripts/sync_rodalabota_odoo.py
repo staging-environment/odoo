@@ -139,7 +139,7 @@ def get_live_pumps_state(conn, product_map):
             p_state = {
                 'id': calle,
                 'name': f"Calle {calle}",
-                'fuel': "Gasóleo A",
+                'fuel': "Gasóleo A / Sin Plomo 95",
                 'amount': 0.0,
                 'liters': 0.0,
                 'status': 'idle',
@@ -170,23 +170,26 @@ def get_live_pumps_state(conn, product_map):
                     p_state['statusText'] = 'AUTORIZADO'
                     p_state['amount'] = pref_amount if pref_amount > 0 else amount
                     p_state['liters'] = pref_liters if pref_liters > 0 else round(pref_amount / price, 2) if price > 0 else 0.0
+                    p_state['fuel'] = fuel_name
                 elif estado == 'En expedicion':
                     p_state['status'] = 'dispensing'
                     p_state['statusText'] = 'SUMINISTRANDO'
                     p_state['amount'] = amount if amount > 0 else pref_amount
                     p_state['liters'] = liters if liters > 0 else (pref_amount / price if price > 0 else 0.0)
+                    p_state['fuel'] = fuel_name
                 elif is_recent and (amount > 0 or pref_amount > 0):
                     p_state['status'] = 'ready'
                     p_state['statusText'] = 'PENDIENTE DE COBRO'
                     p_state['amount'] = amount if amount > 0 else pref_amount
                     p_state['liters'] = liters if liters > 0 else (pref_amount / price if price > 0 else 0.0)
+                    p_state['fuel'] = fuel_name
                 else:
                     p_state['status'] = 'idle'
                     p_state['statusText'] = 'LIBRE'
                     p_state['amount'] = 0.0
                     p_state['liters'] = 0.0
+                    p_state['fuel'] = "Gasóleo A / Sin Plomo 95"
                     
-                p_state['fuel'] = fuel_name
                 p_state['product_id'] = product_map.get(prod_code, product_map.get('default'))
                 p_state['price'] = price
                 
