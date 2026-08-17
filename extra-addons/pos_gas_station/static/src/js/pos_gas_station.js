@@ -84,6 +84,37 @@ export class UtrecarMainScreen extends Component {
         });
     }
 
+    getOrCreateOrder() {
+        let order = this.pos.get_order();
+        if (!order) {
+            if (typeof this.pos.add_new_order === "function") {
+                order = this.pos.add_new_order();
+            } else if (this.pos.models && this.pos.models["pos.order"]) {
+                order = this.pos.models["pos.order"].create();
+            }
+        }
+        return order;
+    }
+
+    findFuelProduct(fuelCode) {
+        const allProducts = Object.values(this.pos.db?.product_by_id || {});
+        const code = (fuelCode || "GA").toUpperCase();
+        
+        let prod = null;
+        if (code === "GA" || code === "DIESEL" || code === "1") {
+            prod = allProducts.find(p => p.default_code === "1" || p.default_code === "GA" || (p.display_name && p.display_name.toLowerCase().includes("gasoleo a")) || (p.display_name && p.display_name.toLowerCase().includes("gasoleo")));
+        } else if (code === "95" || code === "SP95" || code === "2") {
+            prod = allProducts.find(p => p.default_code === "2" || p.default_code === "SP95" || p.default_code === "95" || (p.display_name && p.display_name.toLowerCase().includes("plomo 95")) || (p.display_name && p.display_name.toLowerCase().includes("plomo")));
+        } else if (code === "GB" || code === "3") {
+            prod = allProducts.find(p => p.default_code === "3" || p.default_code === "GB" || (p.display_name && p.display_name.toLowerCase().includes("gasoleo b")));
+        }
+
+        if (!prod && allProducts.length > 0) {
+            prod = allProducts.find(p => p.display_name && (p.display_name.toLowerCase().includes("gas") || p.display_name.toLowerCase().includes("plomo"))) || allProducts[0];
+        }
+        return prod;
+    }
+
     async handleBarcodeScan(code) {
         if (!code) return;
         const allProducts = Object.values(this.pos.db?.product_by_id || {});
@@ -94,7 +125,7 @@ export class UtrecarMainScreen extends Component {
         );
 
         if (found) {
-            const currentOrder = this.pos.get_order();
+            const currentOrder = this.getOrCreateOrder();
             if (currentOrder) {
                 await currentOrder.add_product(found, { quantity: 1 });
                 if (this.state.vehiclePlate) {
@@ -169,7 +200,7 @@ export class UtrecarMainScreen extends Component {
     onPlateChange(ev) {
         const plate = ev.target.value.toUpperCase();
         this.state.vehiclePlate = plate;
-        const currentOrder = this.pos.get_order();
+        const currentOrder = this.getOrCreateOrder();
         if (currentOrder) {
             currentOrder.set_note?.(plate ? `Matrícula: ${plate}` : "");
         }
@@ -177,7 +208,7 @@ export class UtrecarMainScreen extends Component {
 
     selectOrderLine(line) {
         this.state.selectedLineId = line.id;
-        const currentOrder = this.pos.get_order();
+        const currentOrder = this.getOrCreateOrder();
         if (currentOrder) {
             if (typeof currentOrder.select_orderline === "function") {
                 currentOrder.select_orderline(line);
@@ -251,7 +282,7 @@ export class UtrecarMainScreen extends Component {
     }
 
     async addStoreProductToOrder(product) {
-        const currentOrder = this.pos.get_order();
+        const currentOrder = this.getOrCreateOrder();
         if (currentOrder) {
             await currentOrder.add_product(product, {
                 quantity: 1,
@@ -287,61 +318,54 @@ export class UtrecarMainScreen extends Component {
     }
 
     async authorizePreset() {
-        if (!this.state.selectedPumpId) {
-            alert("Por favor, seleccione primero la Calle / Surtidor a autorizar.");
-            return;
-        }
-        
-        const pumpId = this.state.selectedPumpId;
-        const currentFuelObj = this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || this.state.availableFuels[0] || { name: "Gasóleo A" };
+        const pumpId = this.state.selectedPumpId || 1;
+        const currentFuelObj = this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || this.state.availableFuels[0] || { code: "GA", name: "Gasóleo A" };
         const fuelName = currentFuelObj.name;
+        const fuelCode = currentFuelObj.code;
         const isMoney = this.state.mode === "money";
         const presetVal = this.state.presetValue;
 
-        if (presetVal <= 0) {
-            alert(`Por favor, indique un importe o litros con los billetes para autorizar la Calle ${pumpId}.`);
-            return;
-        }
+        if (presetVal > 0) {
+            // Añadir línea de combustible (Prepago) al ticket activo de Odoo
+            const currentOrder = this.getOrCreateOrder();
+            if (currentOrder) {
+                const product = this.findFuelProduct(fuelCode);
 
-        // Añadir línea de combustible (Prepago) al ticket activo de Odoo
-        const currentOrder = this.pos.get_order();
-        if (currentOrder) {
-            const allProducts = Object.values(this.pos.db?.product_by_id || {});
-            const fuelSearch = fuelName.toLowerCase().split('/')[0].trim();
-            const product = allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch) && p.default_code?.startsWith("100")) ||
-                            allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch)) ||
-                            allProducts[0];
+                if (product) {
+                    const currentFuelPrice = product.lst_price > 0 ? product.lst_price : (fuelCode === 'GA' ? 1.78 : 1.66);
+                    let qty = 1;
+                    let unitPrice = currentFuelPrice;
 
-            if (product) {
-                const currentFuelPrice = product.lst_price > 0 ? product.lst_price : 1.550;
-                let qty = 1;
-                let unitPrice = currentFuelPrice;
-
-                if (isMoney) {
-                    // Modo Dinero: Ej 20€ -> Litros = 20 / 1.55
-                    qty = parseFloat((presetVal / currentFuelPrice).toFixed(2));
-                    unitPrice = currentFuelPrice;
-                } else {
-                    // Modo Litros: Ej 20L -> Importe = 20 * 1.55
-                    qty = presetVal;
-                    unitPrice = currentFuelPrice;
-                }
-
-                await currentOrder.add_product(product, {
-                    quantity: qty,
-                    price: unitPrice,
-                    extras: {
-                        price_manually_set: true
+                    if (isMoney) {
+                        // Modo Dinero: Ej 20€ -> Litros = 20 / 1.66
+                        qty = parseFloat((presetVal / currentFuelPrice).toFixed(2));
+                        unitPrice = currentFuelPrice;
+                    } else {
+                        // Modo Litros: Ej 20L -> Importe = 20 * 1.66
+                        qty = presetVal;
+                        unitPrice = currentFuelPrice;
                     }
-                });
 
-                const plateInfo = this.state.vehiclePlate ? `Matrícula: ${this.state.vehiclePlate} | ` : "";
-                currentOrder.set_note?.(`${plateInfo}Calle ${pumpId} [Prepago: ${presetVal} ${isMoney ? '€' : 'L'}]`);
-                this.state.orderVersion = Date.now();
+                    await currentOrder.add_product(product, {
+                        quantity: qty,
+                        price: unitPrice,
+                        extras: {
+                            price_manually_set: true
+                        }
+                    });
+
+                    const plateInfo = this.state.vehiclePlate ? `Matrícula: ${this.state.vehiclePlate} | ` : "";
+                    currentOrder.set_note?.(`${plateInfo}Calle ${pumpId} [Prepago: ${presetVal} ${isMoney ? '€' : 'L'}]`);
+                    this.state.orderVersion = Date.now();
+                } else {
+                    alert("No se encontró el producto de combustible en el catálogo de Odoo.");
+                }
             }
+            this.clearPreset();
+        } else {
+            alert(`✅ Surtidor Calle ${pumpId} AUTORIZADO LIBRE (${fuelName})`);
+            this.clearPreset();
         }
-
-        this.clearPreset();
     }
 
     onSecurityDepositClick() {
@@ -360,18 +384,16 @@ export class UtrecarMainScreen extends Component {
     async onPumpClick(pump) {
         // Si el surtidor tiene suministro realizado (Postpago)
         if (pump.amount > 0 && pump.liters > 0) {
-            const currentOrder = this.pos.get_order();
+            const currentOrder = this.getOrCreateOrder();
             if (!currentOrder) return;
 
             let product = null;
             if (pump.product_id && this.pos.db.product_by_id[pump.product_id]) {
                 product = this.pos.db.product_by_id[pump.product_id];
             } else {
-                const allProducts = Object.values(this.pos.db.product_by_id || {});
-                const fuelSearch = pump.fuel.toLowerCase().split('/')[0].trim();
-                product = allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch) && p.default_code?.startsWith("100")) ||
-                          allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch)) ||
-                          allProducts[0];
+                const fuelSearch = pump.fuel.toLowerCase();
+                const fuelCode = fuelSearch.includes("plomo") || fuelSearch.includes("95") ? "95" : "GA";
+                product = this.findFuelProduct(fuelCode);
             }
 
             if (product) {
