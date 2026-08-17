@@ -6,8 +6,8 @@ import { patch } from "@web/core/utils/patch";
 import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { jsonrpc } from "@web/core/network/rpc_service";
 
-export class PumpGridWidget extends Component {
-    static template = "pos_gas_station.PumpGridWidget";
+export class UtrecarMainScreen extends Component {
+    static template = "pos_gas_station.UtrecarMainScreen";
 
     setup() {
         this.pos = usePos();
@@ -19,6 +19,7 @@ export class PumpGridWidget extends Component {
             stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
             vehiclePlate: "",
             selectedPumpId: null,
+            selectedLineId: null,
             mode: "money", // 'money' o 'liters'
             presetValue: 0,
             selectedFuel: "GA",
@@ -39,6 +40,16 @@ export class PumpGridWidget extends Component {
                 clearInterval(this.pollInterval);
             }
         });
+    }
+
+    get currentOrderLines() {
+        const order = this.pos.get_order();
+        return order ? order.get_orderlines() : [];
+    }
+
+    get currentTotalAmount() {
+        const order = this.pos.get_order();
+        return order ? order.get_total_with_tax() : 0.00;
     }
 
     async fetchPumpsStatus() {
@@ -66,6 +77,43 @@ export class PumpGridWidget extends Component {
         if (currentOrder) {
             currentOrder.set_note(plate ? `Matrícula: ${plate}` : "");
         }
+    }
+
+    selectOrderLine(line) {
+        this.state.selectedLineId = line.id;
+        const currentOrder = this.pos.get_order();
+        if (currentOrder) {
+            currentOrder.select_orderline(line);
+        }
+    }
+
+    deleteSelectedLine() {
+        const currentOrder = this.pos.get_order();
+        if (currentOrder) {
+            const line = currentOrder.get_selected_orderline();
+            if (line) {
+                currentOrder.remove_orderline(line);
+            }
+        }
+    }
+
+    clearCurrentOrder() {
+        const currentOrder = this.pos.get_order();
+        if (currentOrder && confirm("¿Está seguro de que desea cancelar y vaciar el ticket actual?")) {
+            const lines = [...currentOrder.get_orderlines()];
+            lines.forEach(l => currentOrder.remove_orderline(l));
+            this.state.vehiclePlate = "";
+            currentOrder.set_note("");
+        }
+    }
+
+    goToPayment() {
+        const currentOrder = this.pos.get_order();
+        if (!currentOrder || currentOrder.get_orderlines().length === 0) {
+            alert("No hay artículos en el ticket para cobrar.");
+            return;
+        }
+        this.pos.showScreen("PaymentScreen");
     }
 
     onPumpSelect(pump) {
@@ -108,10 +156,9 @@ export class PumpGridWidget extends Component {
     }
 
     onSecurityDepositClick() {
-        // Ingreso de seguridad / Retirada de efectivo (Cash out)
-        const amount = prompt("🔒 INGRESO DE SEGURIDAD\nIntroduzca el importe en efectivo a retirar de la caja para depósito de seguridad (Ej: 500):");
+        const amount = prompt("🔒 INGRESO DE SEGURIDAD\nIntroduzca el importe en efectivo a retirar de la caja (Ej: 500):");
         if (amount && !isNaN(parseFloat(amount))) {
-            alert(`✅ Registrado Ingreso de Seguridad de ${parseFloat(amount).toFixed(2)} €.\nImprimiendo resguardo de depósito de seguridad.`);
+            alert(`✅ Registrado Ingreso de Seguridad de ${parseFloat(amount).toFixed(2)} €.\nImprimiendo comprobante de depósito.`);
         }
     }
 
@@ -159,5 +206,5 @@ patch(ProductScreen.prototype, {
 
 ProductScreen.components = {
     ...ProductScreen.components,
-    PumpGridWidget,
+    UtrecarMainScreen,
 };

@@ -1,61 +1,137 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-    <!-- WIDGET PRINCIPAL DE PISTA Y PREFIJADO UTRECAR -->
-    <t t-name="pos_gas_station.PumpGridWidget" owl="1">
-        <div class="utrecar-pos-container">
+    
+    <!-- PANTALLA COMPLETA PRINCIPAL UTRECAR TPV (SUSTITUYE LA PANTALLA POR DEFECTO DE ODOO) -->
+    <t t-name="pos_gas_station.UtrecarMainScreen" owl="1">
+        <div class="utrecar-fullscreen-tpv">
             
-            <!-- BARRA SUPERIOR DE CONTROL: MATRÍCULA Y ACCIONES RÁPIDAS -->
-            <div class="utrecar-top-bar">
-                <div class="utrecar-station-info">
-                    <i class="fa fa-gas-pump mr-2 text-primary"/>
-                    <span class="station-title"><t t-esc="state.stationName"/></span>
-                    <span class="live-pill"><i class="fa fa-circle text-success mr-1"/> EN DIRECTO</span>
-                </div>
+            <!-- ============================================================ -->
+            <!-- ZONA 1 (SUPERIOR): CABECERA, MATRÍCULA Y TABLA DE ARTÍCULOS  -->
+            <!-- ============================================================ -->
+            <div class="utrecar-top-section">
+                
+                <!-- BARRA SUPERIOR DE ACCIONES -->
+                <div class="utrecar-header-bar">
+                    <div class="header-left">
+                        <span class="station-brand-badge">
+                            <i class="fa fa-gas-pump mr-1"/> <t t-esc="state.stationName"/>
+                        </span>
+                        <span class="live-indicator"><i class="fa fa-circle mr-1"/> EN DIRECTO (1s)</span>
+                    </div>
 
-                <div class="utrecar-plate-container">
-                    <div class="euro-plate-badge">
-                        <span class="plate-eu">🇪🇸 E</span>
-                        <input type="text" 
-                               class="plate-input" 
-                               placeholder="MATRÍCULA..." 
-                               t-att-value="state.vehiclePlate"
-                               t-on-input="(ev) => this.onPlateChange(ev)" />
+                    <!-- MATRÍCULA EUROPEA CENTRAL -->
+                    <div class="header-center">
+                        <div class="euro-plate-wrapper">
+                            <span class="eu-flag">🇪🇸 E</span>
+                            <input type="text" 
+                                   class="euro-plate-text" 
+                                   placeholder="MATRÍCULA..." 
+                                   t-att-value="state.vehiclePlate"
+                                   t-on-input="(ev) => this.onPlateChange(ev)" />
+                        </div>
+                    </div>
+
+                    <!-- BOTONES DE TURNO Y COBRO -->
+                    <div class="header-right">
+                        <button class="btn-top-action btn-security" t-on-click="() => this.onSecurityDepositClick()">
+                            <i class="fa fa-shield-alt mr-1"/> Ingreso Seguridad
+                        </button>
+                        <button class="btn-top-action btn-emergency" t-on-click="() => this.onEmergencyStopClick()">
+                            <i class="fa fa-stop-circle mr-1"/> Parada Emergencia
+                        </button>
                     </div>
                 </div>
 
-                <div class="utrecar-shift-actions">
-                    <button class="btn btn-security-deposit" t-on-click="() => this.onSecurityDepositClick()">
-                        <i class="fa fa-shield-alt mr-1"/> Ingreso de Seguridad
-                    </button>
-                    <button class="btn btn-emergency-stop" t-on-click="() => this.onEmergencyStopClick()">
-                        <i class="fa fa-stop-circle mr-1"/> Parada Emergencia
-                    </button>
+                <!-- TABLA DE ARTÍCULOS / TICKET EN CURSO -->
+                <div class="utrecar-ticket-table-container">
+                    <table class="utrecar-ticket-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 12%;">CÓDIGO</th>
+                                <th style="width: 40%;">ARTÍCULO / COMBUSTIBLE</th>
+                                <th style="width: 12%; text-align: right;">CANTIDAD</th>
+                                <th style="width: 12%; text-align: right;">PRECIO</th>
+                                <th style="width: 10%; text-align: right;">DESC %</th>
+                                <th style="width: 14%; text-align: right;">IMPORTE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-if="currentOrderLines.length === 0">
+                                <tr class="empty-ticket-row">
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="fa fa-shopping-cart fa-2x mb-2 d-block opacity-50"/>
+                                        Seleccione una <strong>Calle</strong> finalizada o use los <strong>Billetes</strong> para prefijar.
+                                    </td>
+                                </tr>
+                            </t>
+                            <t t-else="">
+                                <t t-foreach="currentOrderLines" t-as="line" t-key="line.id">
+                                    <tr t-att-class="line.selected ? 'selected-line' : ''" t-on-click="() => this.selectOrderLine(line)">
+                                        <td><t t-esc="line.product.default_code || 'COMB'"/></td>
+                                        <td class="font-weight-bold"><t t-esc="line.product.display_name"/></td>
+                                        <td class="text-right"><t t-esc="line.get_quantity_str()"/> <t t-esc="line.product.uom_id ? line.product.uom_id[1] : 'L'"/></td>
+                                        <td class="text-right"><t t-esc="line.get_unit_price().toFixed(3)"/> €</td>
+                                        <td class="text-right"><t t-esc="line.get_discount_str()"/> %</td>
+                                        <td class="text-right font-weight-bold text-success"><t t-esc="line.get_display_price().toFixed(2)"/> €</td>
+                                    </tr>
+                                </t>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- BARRA INFERIOR DE TICKET (TOTALES Y ACCIONES DE LÍNEA) -->
+                <div class="utrecar-ticket-footer">
+                    <div class="ticket-tools">
+                        <button class="btn-tool btn-delete-line" t-on-click="() => this.deleteSelectedLine()" title="Eliminar línea">
+                            <i class="fa fa-trash-alt mr-1"/> Borrar Artículo
+                        </button>
+                        <button class="btn-tool btn-clear-all" t-on-click="() => this.clearCurrentOrder()" title="Cancelar venta">
+                            <i class="fa fa-times-circle mr-1"/> Cancelar Ticket
+                        </button>
+                    </div>
+                    
+                    <div class="ticket-totals-box">
+                        <span class="total-label">TOTAL TICKET:</span>
+                        <span class="total-amount"><t t-esc="currentTotalAmount.toFixed(2)"/> €</span>
+                        <button class="btn-pay-now" t-on-click="() => this.goToPayment()">
+                            <i class="fa fa-credit-card mr-2"/> COBRAR (F12)
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- ZONA CENTRAL DIVIDIDA: MAPA DE SURTIDORES (IZQ) + TECLADO DE PREFIJADO (DER) -->
-            <div class="utrecar-forecourt-layout">
+            <!-- ============================================================ -->
+            <!-- ZONA 2 (INFERIOR): MAPA DE SURTIDORES + TECLADO DE BILLETES  -->
+            <!-- ============================================================ -->
+            <div class="utrecar-bottom-section">
                 
-                <!-- MAPA DE SURTIDORES DE PISTA -->
-                <div class="pumps-section">
-                    <div class="pumps-grid">
+                <!-- PARTE INFERIOR IZQUIERDA: MAPA DE SURTIDORES (CALLAS 1 A 8) -->
+                <div class="utrecar-pumps-card-panel">
+                    <div class="panel-section-title">
+                        <i class="fa fa-tachometer-alt mr-2 text-info"/> ESTADO EN PISTA DE SURTIDORES
+                    </div>
+                    
+                    <div class="pumps-auto-grid">
                         <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
-                            <div t-attf-class="utrecar-pump-card status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}" 
+                            <div t-attf-class="pump-station-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-active-selection' : ''}"
                                  t-on-click="() => this.onPumpSelect(pump)">
-                                <div class="pump-top-tag">
-                                    <span class="pump-num">CALLE <t t-esc="pump.id"/></span>
-                                    <span class="pump-state-badge"><t t-esc="pump.statusText"/></span>
-                                </div>
-                                <div class="pump-fuel-type"><t t-esc="pump.fuel"/></div>
                                 
-                                <div class="pump-display">
-                                    <div class="display-amount">
+                                <div class="box-head">
+                                    <span class="box-calle">CALLE <t t-esc="pump.id"/></span>
+                                    <span class="box-badge"><t t-esc="pump.statusText"/></span>
+                                </div>
+
+                                <div class="box-fuel-label"><t t-esc="pump.fuel"/></div>
+
+                                <div class="box-lcd-counter">
+                                    <div class="lcd-euros">
                                         <t t-if="pump.amount > 0">
                                             <t t-esc="pump.amount.toFixed(2)"/> €
                                         </t>
-                                        <t t-else="">--- €</t>
+                                        <t t-else="">0.00 €</t>
                                     </div>
-                                    <div class="display-liters">
+                                    <div class="lcd-liters">
                                         <t t-if="pump.liters > 0">
                                             <t t-esc="pump.liters.toFixed(2)"/> L
                                         </t>
@@ -63,17 +139,19 @@
                                     </div>
                                 </div>
 
-                                <div class="pump-footer-action">
+                                <div class="box-action-slot">
                                     <t t-if="pump.status === 'ready'">
-                                        <button class="btn btn-sm btn-charge" t-on-click.stop="() => this.onPumpClick(pump)">
-                                            <i class="fa fa-shopping-cart mr-1"/> Pasar a Ticket
+                                        <button class="btn-box-load" t-on-click.stop="() => this.onPumpClick(pump)">
+                                            <i class="fa fa-arrow-circle-up mr-1"/> PASAR A TICKET
                                         </button>
                                     </t>
                                     <t t-elif="pump.status === 'dispensing'">
-                                        <span class="text-dispensing"><i class="fa fa-spinner fa-spin mr-1"/> Suministrando</span>
+                                        <div class="badge-dispensing">
+                                            <i class="fa fa-spinner fa-spin mr-1"/> MANGUERA ACTIVA
+                                        </div>
                                     </t>
                                     <t t-else="">
-                                        <span class="text-idle">Disponible</span>
+                                        <div class="badge-idle">SURTIDOR LIBRE</div>
                                     </t>
                                 </div>
                             </div>
@@ -81,69 +159,104 @@
                     </div>
                 </div>
 
-                <!-- PAD RÁPIDO DE BILLETES / LITROS Y COMBUSTIBLES (INSPIRADO EN VIRTUSTPV) -->
-                <div class="quick-preset-section">
-                    <div class="preset-header">
-                        <div class="preset-display">
-                            <span class="display-label"><t t-esc="state.mode === 'money' ? 'IMPORTE' : 'LITROS'"/>:</span>
-                            <span class="display-val"><t t-esc="state.presetValue > 0 ? (state.presetValue + (state.mode === 'money' ? ' €' : ' L')) : '0.00'"/></span>
+                <!-- PARTE INFERIOR DERECHA: PAD RÁPIDO CON BILLETES GRÁFICOS Y COMBUSTIBLES -->
+                <div class="utrecar-keypad-panel">
+                    
+                    <!-- DISPLAY DIGITAL -->
+                    <div class="keypad-lcd-display">
+                        <div class="lcd-info">
+                            <span class="lcd-sub"><t t-esc="state.mode === 'money' ? 'PREFIJADO IMPORTE' : 'PREFIJADO LITROS'"/></span>
+                            <span class="lcd-main"><t t-esc="state.presetValue > 0 ? state.presetValue : '0'"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/></span>
                         </div>
-                        <button t-attf-class="btn-toggle-mode #{state.mode === 'liters' ? 'active-drop' : ''}" 
-                                t-on-click="() => this.toggleMode()" 
-                                title="Alternar entre Euros y Litros">
-                            💧 <t t-esc="state.mode === 'money' ? 'A Litros' : 'A Euros'"/>
+                        <button t-attf-class="btn-toggle-drop #{state.mode === 'liters' ? 'is-liters' : ''}" 
+                                t-on-click="() => this.toggleMode()"
+                                title="Cambiar a litros o dinero">
+                            <span class="drop-icon">💧</span>
+                            <span class="drop-text"><t t-esc="state.mode === 'money' ? 'A LITROS' : 'A EUROS'"/></span>
                         </button>
                     </div>
 
-                    <!-- BOTONERA DE BILLETES / LITROS -->
-                    <div class="preset-buttons-grid">
+                    <!-- BOTONERA DE BILLETES Y MONEDAS REALISTAS CON EFECTOS -->
+                    <div class="keypad-bills-grid">
                         <t t-if="state.mode === 'money'">
-                            <button class="btn-preset btn-money m-1" t-on-click="() => this.addPreset(1)">1 €</button>
-                            <button class="btn-preset btn-money m-5" t-on-click="() => this.addPreset(5)">5 €</button>
-                            <button class="btn-preset btn-money m-10" t-on-click="() => this.addPreset(10)">10 €</button>
-                            <button class="btn-preset btn-money m-20" t-on-click="() => this.addPreset(20)">20 €</button>
-                            <button class="btn-preset btn-money m-50" t-on-click="() => this.addPreset(50)">50 €</button>
-                            <button class="btn-preset btn-money m-100" t-on-click="() => this.addPreset(100)">100 €</button>
+                            <button class="bill-btn bill-1e" t-on-click="() => this.addPreset(1)">
+                                <div class="coin-graphics">1 €</div>
+                                <span class="bill-label">MONEDA</span>
+                            </button>
+                            <button class="bill-btn bill-5e" t-on-click="() => this.addPreset(5)">
+                                <div class="bill-graphics">5 €</div>
+                                <span class="bill-label">CINCO</span>
+                            </button>
+                            <button class="bill-btn bill-10e" t-on-click="() => this.addPreset(10)">
+                                <div class="bill-graphics">10 €</div>
+                                <span class="bill-label">DIEZ</span>
+                            </button>
+                            <button class="bill-btn bill-20e" t-on-click="() => this.addPreset(20)">
+                                <div class="bill-graphics">20 €</div>
+                                <span class="bill-label">VEINTE</span>
+                            </button>
+                            <button class="bill-btn bill-50e" t-on-click="() => this.addPreset(50)">
+                                <div class="bill-graphics">50 €</div>
+                                <span class="bill-label">CINCUENTA</span>
+                            </button>
+                            <button class="bill-btn bill-100e" t-on-click="() => this.addPreset(100)">
+                                <div class="bill-graphics">100 €</div>
+                                <span class="bill-label">CIEN</span>
+                            </button>
                         </t>
                         <t t-else="">
-                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(5)">5 L</button>
-                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(10)">10 L</button>
-                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(20)">20 L</button>
-                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(30)">30 L</button>
-                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(40)">40 L</button>
-                            <button class="btn-preset btn-liters" t-on-click="() => this.addPreset(50)">50 L</button>
+                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(5)">5 L</button>
+                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(10)">10 L</button>
+                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(20)">20 L</button>
+                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(30)">30 L</button>
+                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(40)">40 L</button>
+                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(50)">50 L</button>
                         </t>
                     </div>
 
-                    <!-- BOTONERA DE COMBUSTIBLES RÁPIDOS -->
-                    <div class="fuel-buttons-row">
-                        <button t-attf-class="btn-fuel ga #{state.selectedFuel === 'GA' ? 'selected' : ''}" 
-                                t-on-click="() => this.selectFuel('GA')">GA (Gasóleo A)</button>
-                        <button t-attf-class="btn-fuel sp95 #{state.selectedFuel === '95' ? 'selected' : ''}" 
-                                t-on-click="() => this.selectFuel('95')">95 (Sin Plomo)</button>
-                        <button t-attf-class="btn-fuel gb #{state.selectedFuel === 'GB' ? 'selected' : ''}" 
-                                t-on-click="() => this.selectFuel('GB')">GB (Gasóleo B)</button>
-                        <button t-attf-class="btn-fuel gplus #{state.selectedFuel === 'G+' ? 'selected' : ''}" 
-                                t-on-click="() => this.selectFuel('G+')">G+ (Plus)</button>
+                    <!-- SELECTOR DE COMBUSTIBLE RÁPIDO (GA, 95, GB, G+) -->
+                    <div class="keypad-fuel-grid">
+                        <button t-attf-class="fuel-tab ga #{state.selectedFuel === 'GA' ? 'active-fuel' : ''}" 
+                                t-on-click="() => this.selectFuel('GA')">
+                            <strong>GA</strong> Gasóleo A
+                        </button>
+                        <button t-attf-class="fuel-tab sp95 #{state.selectedFuel === '95' ? 'active-fuel' : ''}" 
+                                t-on-click="() => this.selectFuel('95')">
+                            <strong>95</strong> Gasolina
+                        </button>
+                        <button t-attf-class="fuel-tab gb #{state.selectedFuel === 'GB' ? 'active-fuel' : ''}" 
+                                t-on-click="() => this.selectFuel('GB')">
+                            <strong>GB</strong> B (Agrícola)
+                        </button>
+                        <button t-attf-class="fuel-tab gplus #{state.selectedFuel === 'G+' ? 'active-fuel' : ''}" 
+                                t-on-click="() => this.selectFuel('G+')">
+                            <strong>G+</strong> Plus
+                        </button>
                     </div>
 
-                    <!-- BOTONES DE ACCIÓN DE PREFIJADO -->
-                    <div class="preset-action-row">
-                        <button class="btn-preset-action btn-clear" t-on-click="() => this.clearPreset()">
-                            <i class="fa fa-eraser mr-1"/> C (Borrar)
+                    <!-- BOTONES DE ACCIÓN (BORRAR / AUTORIZAR) -->
+                    <div class="keypad-action-grid">
+                        <button class="btn-keypad-action btn-c-clear" t-on-click="() => this.clearPreset()">
+                            <i class="fa fa-times mr-1"/> C (BORRAR)
                         </button>
-                        <button class="btn-preset-action btn-authorize" t-on-click="() => this.authorizePreset()">
-                            <i class="fa fa-check-circle mr-1"/> Autorizar Calle <t t-esc="state.selectedPumpId ? state.selectedPumpId : ''"/>
+                        <button class="btn-keypad-action btn-authorize-call" t-on-click="() => this.authorizePreset()">
+                            <i class="fa fa-check-circle mr-1"/> AUTORIZAR <t t-if="state.selectedPumpId">CALLE <t t-esc="state.selectedPumpId"/></t>
                         </button>
                     </div>
+
                 </div>
+
             </div>
+
         </div>
     </t>
 
+    <!-- SUSTITUCIÓN COMPLETA DE LA PLANTILLA PRODUCTSCREEN DE ODOO -->
     <t t-name="pos_gas_station.ProductScreen" t-inherit="point_of_sale.ProductScreen" t-inherit-mode="extension" owl="1">
-        <xpath expr="//div[hasclass('product-screen')]" position="before">
-            <PumpGridWidget />
+        <xpath expr="//div[hasclass('product-screen')]" position="replace">
+            <div class="product-screen screen d-flex flex-column h-100 p-0 m-0">
+                <UtrecarMainScreen />
+            </div>
         </xpath>
     </t>
 </templates>

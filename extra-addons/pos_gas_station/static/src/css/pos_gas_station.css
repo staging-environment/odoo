@@ -1,294 +1,382 @@
 /* ============================================================
-   PANEL DE CONTROL DE PISTA UTRECAR (INSPIRADO EN VIRTUSTPV / UAAP)
+   INTERFAZ COMPLETA TPV UTRECAR (ESTILO VIRTUSTPV / 100% PANTALLA)
    ============================================================ */
 
-.utrecar-pos-container {
-    background: #0b1329;
-    color: #f8fafc;
-    padding: 8px 12px;
-    border-bottom: 2px solid #1e293b;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+/* ELIMINAR ESPACIOS Y PANELES POR DEFECTO DE ODOO */
+.pos .pos-content {
+    background: #090e1a !important;
 }
 
-/* --- BARRA SUPERIOR: MATRÍCULA Y ACCIONES --- */
-.utrecar-top-bar {
+.product-screen {
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+}
+
+.product-screen .leftpane,
+.product-screen .rightpane,
+.product-screen .products-widget,
+.product-screen .order-container,
+.product-screen .pads {
+    display: none !important;
+}
+
+/* CONTENEDOR PRINCIPAL PANTALLA COMPLETA */
+.utrecar-fullscreen-tpv {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background: #090e1a;
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 6px 10px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* ============================================================
+   ZONA 1: SUPERIOR (TICKET, MATRÍCULA Y ACCIONES)
+   ============================================================ */
+.utrecar-top-section {
+    display: flex;
+    flex-direction: column;
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    flex: 0 0 42%; /* 42% del alto de pantalla */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.utrecar-header-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
-    gap: 12px;
+    margin-bottom: 6px;
 }
 
-.utrecar-station-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #93c5fd;
-}
-
-.live-pill {
-    background: rgba(16, 185, 129, 0.2);
-    border: 1px solid #10b981;
-    color: #6ee7b7;
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-weight: 700;
+.station-brand-badge {
+    font-size: 15px;
+    font-weight: 800;
+    color: #38bdf8;
     letter-spacing: 0.5px;
 }
 
-/* CAJA DE MATRÍCULA ESTILO EUROPEO */
-.utrecar-plate-container {
-    flex: 1;
-    max-width: 320px;
-    display: flex;
-    justify-content: center;
+.live-indicator {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid #10b981;
+    color: #34d399;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
 }
 
-.euro-plate-badge {
+/* MATRÍCULA EUROPEA */
+.euro-plate-wrapper {
     display: flex;
     align-items: center;
     background: #ffffff;
-    border: 2px solid #1e293b;
+    border: 2px solid #020617;
     border-radius: 6px;
     overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    width: 100%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    min-width: 260px;
 }
 
-.plate-eu {
+.eu-flag {
     background: #003399;
-    color: #ffd700;
+    color: #facc15;
     font-size: 11px;
     font-weight: 900;
     padding: 4px 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-right: 1px solid #002266;
     letter-spacing: 1px;
 }
 
-.plate-input {
-    flex: 1;
+.euro-plate-text {
     border: none;
     outline: none;
-    font-family: 'Consolas', 'Courier New', monospace, sans-serif;
-    font-size: 17px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 19px;
     font-weight: 900;
-    letter-spacing: 2.5px;
+    letter-spacing: 3px;
     text-transform: uppercase;
     color: #0f172a;
-    padding: 4px 8px;
+    padding: 2px 8px;
     text-align: center;
-    background: #ffffff;
+    width: 100%;
 }
 
-.plate-input::placeholder {
-    color: #94a3b8;
-    font-weight: 600;
-    letter-spacing: 1px;
-    font-size: 13px;
-}
-
-.utrecar-shift-actions {
+.header-right {
     display: flex;
-    gap: 8px;
+    gap: 6px;
 }
 
-.btn-security-deposit {
+.btn-top-action {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.btn-security {
     background: #1e3a8a;
     color: #dbeafe;
     border: 1px solid #3b82f6;
-    font-weight: 700;
-    font-size: 11px;
-    padding: 5px 10px;
-    border-radius: 6px;
-    transition: all 0.15s ease;
 }
-.btn-security-deposit:hover {
-    background: #2563eb;
-    color: #ffffff;
-}
+.btn-security:hover { background: #2563eb; color: #fff; }
 
-.btn-emergency-stop {
+.btn-emergency {
     background: #881337;
     color: #ffe4e6;
     border: 1px solid #f43f5e;
-    font-weight: 700;
-    font-size: 11px;
-    padding: 5px 10px;
+}
+.btn-emergency:hover { background: #e11d48; color: #fff; }
+
+/* TABLA DE ARTÍCULOS EN CURSO */
+.utrecar-ticket-table-container {
+    flex: 1;
+    overflow-y: auto;
+    background: #090e1a;
+    border: 1px solid #1e293b;
     border-radius: 6px;
+}
+
+.utrecar-ticket-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.utrecar-ticket-table thead {
+    background: #1e293b;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 800;
+    position: sticky;
+    top: 0;
+}
+
+.utrecar-ticket-table th {
+    padding: 6px 10px;
+    border-bottom: 2px solid #334155;
+}
+
+.utrecar-ticket-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.selected-line {
+    background: rgba(56, 189, 248, 0.15) !important;
+    border-left: 3px solid #38bdf8;
+}
+
+/* FOOTER DEL TICKET CON TOTALES Y COBRO */
+.utrecar-ticket-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 6px;
+    margin-top: 4px;
+}
+
+.ticket-tools {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-tool {
+    background: #1e293b;
+    color: #cbd5e1;
+    border: 1px solid #334155;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.btn-delete-line:hover { background: #7f1d1d; color: #fecaca; border-color: #ef4444; }
+.btn-clear-all:hover { background: #475569; }
+
+.ticket-totals-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.total-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #94a3b8;
+}
+
+.total-amount {
+    font-family: 'Consolas', monospace;
+    font-size: 24px;
+    font-weight: 900;
+    color: #10b981;
+    background: #020617;
+    padding: 2px 12px;
+    border-radius: 6px;
+    border: 1px solid #1e293b;
+}
+
+.btn-pay-now {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    color: #ffffff;
+    border: none;
+    font-size: 16px;
+    font-weight: 900;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    letter-spacing: 0.5px;
     transition: all 0.15s ease;
 }
-.btn-emergency-stop:hover {
-    background: #e11d48;
-    color: #ffffff;
+.btn-pay-now:hover {
+    transform: scale(1.03);
+    background: #10b981;
 }
 
-/* --- ZONA CENTRAL: SURTIDORES + PREFIJADO --- */
-.utrecar-forecourt-layout {
+/* ============================================================
+   ZONA 2: INFERIOR (SURTIDORES + TECLADO DE BILLETES)
+   ============================================================ */
+.utrecar-bottom-section {
     display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 12px;
-    align-items: stretch;
+    grid-template-columns: 1fr 380px; /* 380px para el teclado de billetes */
+    gap: 8px;
+    flex: 1; /* Ocupa el 58% restante del alto */
+    min-height: 0;
 }
 
-/* GRID DE SURTIDORES */
-.pumps-section {
+/* PANEL IZQUIERDO: SURTIDORES */
+.utrecar-pumps-card-panel {
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 8px;
     padding: 8px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    overflow: hidden;
 }
 
-.pumps-grid {
+.panel-section-title {
+    font-size: 12px;
+    font-weight: 800;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.pumps-auto-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 8px;
+    flex: 1;
+    align-content: stretch;
 }
 
-.utrecar-pump-card {
+.pump-station-box {
     background: #1e293b;
     border: 2px solid #334155;
     border-radius: 8px;
     padding: 6px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.15s ease;
-    user-select: none;
-    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 110px;
+    user-select: none;
+    transition: all 0.15s ease;
 }
-
-.utrecar-pump-card:hover {
+.pump-station-box:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+}
+.pump-station-box.is-active-selection {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4);
 }
 
-.utrecar-pump-card.is-selected {
-    border-color: #60a5fa !important;
-    box-shadow: 0 0 0 2px #3b82f6, 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-
-.pump-top-tag {
+.box-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 11px;
-    font-weight: 800;
-    margin-bottom: 2px;
 }
+.box-calle { font-size: 13px; font-weight: 900; color: #ffffff; }
+.box-badge { font-size: 8.5px; font-weight: 800; padding: 1px 5px; border-radius: 4px; text-transform: uppercase; }
 
-.pump-num {
-    color: #f8fafc;
-}
-
-.pump-state-badge {
-    font-size: 8px;
-    font-weight: 800;
-    padding: 1px 4px;
-    border-radius: 3px;
-    text-transform: uppercase;
-}
-
-.pump-fuel-type {
-    font-size: 9.5px;
+.box-fuel-label {
+    font-size: 10px;
     font-weight: 600;
     color: #cbd5e1;
+    margin: 2px 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.pump-display {
-    margin: 4px 0;
+.box-lcd-counter {
+    background: #020617;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 5px;
+    padding: 4px 0;
+    margin: 3px 0;
 }
+.lcd-euros { font-family: 'Consolas', monospace; font-size: 17px; font-weight: 900; }
+.lcd-liters { font-size: 11px; font-weight: 700; color: #94a3b8; }
 
-.display-amount {
-    font-size: 16px;
-    font-weight: 900;
-    letter-spacing: 0.5px;
-}
-
-.display-liters {
-    font-size: 11px;
-    font-weight: 600;
-    color: #94a3b8;
-}
-
-.pump-footer-action {
-    font-size: 10px;
-    font-weight: 700;
-    margin-top: 2px;
-}
-
-.btn-charge {
+.btn-box-load {
     background: #f59e0b;
     color: #78350f;
-    font-weight: 800;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
     border: none;
+    font-weight: 900;
+    font-size: 11px;
+    padding: 4px 0;
+    border-radius: 4px;
     width: 100%;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
 }
-.btn-charge:hover {
-    background: #d97706;
-    color: #ffffff;
-}
+.btn-box-load:hover { background: #d97706; color: #ffffff; }
 
-/* ESTADOS DE SURTIDOR */
-.status-idle {
-    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-    border-color: #475569;
-}
-.status-idle .pump-state-badge {
-    background: #475569;
-    color: #f8fafc;
-}
+.badge-dispensing { color: #34d399; font-size: 10px; font-weight: 800; }
+.badge-idle { color: #64748b; font-size: 10px; font-weight: 700; }
 
-.status-dispensing {
-    background: linear-gradient(180deg, #064e3b 0%, #022c22 100%);
-    border-color: #10b981;
-}
-.status-dispensing .pump-state-badge {
-    background: #059669;
-    color: #ecfdf5;
-}
-.status-dispensing .display-amount {
-    color: #34d399;
-}
-.text-dispensing {
-    color: #34d399;
-}
+/* ESTADOS DE FONDO EN SURTIDOR */
+.status-idle { background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); }
+.status-idle .box-badge { background: #475569; color: #f8fafc; }
+.status-idle .lcd-euros { color: #94a3b8; }
 
-.status-ready {
-    background: linear-gradient(180deg, #78350f 0%, #451a03 100%);
-    border-color: #f59e0b;
-    animation: pulseReady 1.5s infinite;
-}
-.status-ready .pump-state-badge {
-    background: #d97706;
-    color: #fffbeb;
-}
-.status-ready .display-amount {
-    color: #fbbf24;
-}
+.status-dispensing { background: linear-gradient(180deg, #064e3b 0%, #022c22 100%); border-color: #10b981; }
+.status-dispensing .box-badge { background: #059669; color: #ecfdf5; }
+.status-dispensing .lcd-euros { color: #34d399; }
 
-@keyframes pulseReady {
+.status-ready { background: linear-gradient(180deg, #78350f 0%, #451a03 100%); border-color: #f59e0b; animation: glowReady 1.5s infinite; }
+.status-ready .box-badge { background: #d97706; color: #fffbeb; }
+.status-ready .lcd-euros { color: #fbbf24; }
+
+@keyframes glowReady {
     0% { border-color: #f59e0b; }
     50% { border-color: #ef4444; }
     100% { border-color: #f59e0b; }
 }
 
-/* --- PAD RÁPIDO DE PREFIJADO (BILLETES / LITROS / COMBUSTIBLE) --- */
-.quick-preset-section {
+/* ============================================================
+   PANEL DERECHO: TECLADO DE BILLETES TÁCTILES Y COMBUSTIBLE
+   ============================================================ */
+.utrecar-keypad-panel {
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 8px;
@@ -296,132 +384,183 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-.preset-header {
+.keypad-lcd-display {
     display: flex;
     justify-content: space-between;
     align-items: center;
     background: #020617;
-    padding: 4px 8px;
+    border: 2px solid #1e293b;
     border-radius: 6px;
-    border: 1px solid #1e293b;
+    padding: 6px 10px;
 }
 
-.preset-display {
-    font-family: 'Consolas', monospace;
-    font-size: 14px;
-    font-weight: 900;
-    color: #38bdf8;
-}
+.lcd-info { display: flex; flex-direction: column; }
+.lcd-sub { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; }
+.lcd-main { font-family: 'Consolas', monospace; font-size: 20px; font-weight: 900; color: #38bdf8; }
 
-.btn-toggle-mode {
+.btn-toggle-drop {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     background: #1e293b;
     color: #f8fafc;
     border: 1px solid #475569;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
     cursor: pointer;
+    font-size: 10px;
+    font-weight: 800;
 }
-.btn-toggle-mode.active-drop {
+.btn-toggle-drop.is-liters {
     background: #0284c7;
     border-color: #38bdf8;
-    color: #ffffff;
+    color: #fff;
 }
 
-/* CUADRÍCULA DE BILLETES */
-.preset-buttons-grid {
+/* BOTONERA DE BILLETES REALISTAS */
+.keypad-bills-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
+    gap: 6px;
+    margin: 4px 0;
 }
 
-.btn-preset {
-    font-size: 13px;
-    font-weight: 900;
-    padding: 6px 2px;
+.bill-btn {
     border-radius: 6px;
     border: none;
     cursor: pointer;
-    transition: transform 0.1s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    transition: transform 0.1s ease, filter 0.1s ease;
 }
-.btn-preset:active {
-    transform: scale(0.95);
+.bill-btn:hover { filter: brightness(1.1); }
+.bill-btn:active { transform: scale(0.95); }
+
+.bill-graphics {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
 }
 
-/* COLORES ESTILO BILLETES EURO */
-.m-1 { background: #cbd5e1; color: #1e293b; border: 1px solid #94a3b8; }
-.m-5 { background: #93c5fd; color: #1e3a8a; border: 1px solid #60a5fa; }
-.m-10 { background: #fca5a5; color: #7f1d1d; border: 1px solid #f87171; }
-.m-20 { background: #67e8f9; color: #164e63; border: 1px solid #22d3ee; }
-.m-50 { background: #fdba74; color: #7c2d12; border: 1px solid #fb923c; }
-.m-100 { background: #86efac; color: #14532d; border: 1px solid #4ade80; }
+.bill-label {
+    font-size: 8px;
+    font-weight: 800;
+    opacity: 0.85;
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+}
 
-.btn-liters {
-    background: #0369a1;
+/* DISEÑO DE CADA BILLETE DE EURO */
+.bill-1e {
+    background: radial-gradient(circle, #e2e8f0 40%, #cbd5e1 41%, #fef08a 45%, #eab308 100%);
+    color: #0f172a;
+    border: 2px solid #ca8a04;
+}
+.bill-1e .coin-graphics { font-family: 'Arial Black', sans-serif; font-size: 16px; font-weight: 900; }
+
+.bill-5e {
+    background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%);
+    color: #1e3a8a;
+    border: 1px solid #3b82f6;
+}
+
+.bill-10e {
+    background: linear-gradient(135deg, #fca5a5 0%, #f87171 100%);
+    color: #7f1d1d;
+    border: 1px solid #ef4444;
+}
+
+.bill-20e {
+    background: linear-gradient(135deg, #67e8f9 0%, #06b6d4 100%);
+    color: #164e63;
+    border: 1px solid #0891b2;
+}
+
+.bill-50e {
+    background: linear-gradient(135deg, #fdba74 0%, #f97316 100%);
+    color: #7c2d12;
+    border: 1px solid #ea580c;
+}
+
+.bill-100e {
+    background: linear-gradient(135deg, #86efac 0%, #22c55e 100%);
+    color: #14532d;
+    border: 1px solid #16a34a;
+}
+
+.liter-btn {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
     color: #ffffff;
+    font-size: 15px;
+    font-weight: 900;
     border: 1px solid #38bdf8;
 }
 
 /* FILA DE COMBUSTIBLES */
-.fuel-buttons-row {
+.keypad-fuel-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 3px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+    margin: 4px 0;
 }
 
-.btn-fuel {
-    font-size: 9.5px;
-    font-weight: 800;
-    padding: 5px 2px;
-    border-radius: 4px;
+.fuel-tab {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 6px 4px;
+    border-radius: 6px;
     border: 1px solid transparent;
     cursor: pointer;
     color: #ffffff;
+    text-align: center;
 }
+.fuel-tab strong { font-size: 12px; display: inline-block; margin-right: 2px; }
 
-.btn-fuel.ga { background: #334155; border-color: #64748b; }
-.btn-fuel.sp95 { background: #15803d; border-color: #22c55e; }
-.btn-fuel.gb { background: #b45309; border-color: #f59e0b; }
-.btn-fuel.gplus { background: #4338ca; border-color: #818cf8; }
+.fuel-tab.ga { background: #334155; border-color: #64748b; }
+.fuel-tab.sp95 { background: #15803d; border-color: #22c55e; }
+.fuel-tab.gb { background: #b45309; border-color: #f59e0b; }
+.fuel-tab.gplus { background: #4338ca; border-color: #818cf8; }
 
-.btn-fuel.selected {
+.fuel-tab.active-fuel {
     outline: 2px solid #ffffff;
-    box-shadow: 0 0 8px rgba(255,255,255,0.6);
+    box-shadow: 0 0 10px rgba(255,255,255,0.7);
 }
 
-/* ACCIONES BORRAR / AUTORIZAR */
-.preset-action-row {
+/* ACCIONES DE BORRADO Y AUTORIZACIÓN */
+.keypad-action-grid {
     display: grid;
     grid-template-columns: 1fr 1.6fr;
-    gap: 4px;
+    gap: 6px;
+    margin-top: 4px;
 }
 
-.btn-preset-action {
-    font-size: 11px;
-    font-weight: 800;
-    padding: 6px 4px;
+.btn-keypad-action {
+    font-size: 12px;
+    font-weight: 900;
+    padding: 10px 6px;
     border-radius: 6px;
     border: none;
     cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
-.btn-clear {
+.btn-c-clear {
     background: #475569;
     color: #f8fafc;
 }
-.btn-clear:hover {
-    background: #64748b;
-}
+.btn-c-clear:hover { background: #64748b; }
 
-.btn-authorize {
-    background: #059669;
+.btn-authorize-call {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
     color: #ffffff;
-    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.4);
 }
-.btn-authorize:hover {
-    background: #10b981;
-}
+.btn-authorize-call:hover { background: #10b981; }
