@@ -50,12 +50,12 @@ export class UtrecarMainScreen extends Component {
 
     get currentOrderLines() {
         const order = this.pos.get_order();
-        return order ? order.get_orderlines() : [];
+        return order ? (order.get_orderlines?.() || order.orderlines || []) : [];
     }
 
     get currentTotalAmount() {
         const order = this.pos.get_order();
-        return order ? order.get_total_with_tax() : 0.00;
+        return order ? (order.get_total_with_tax?.() || 0.00) : 0.00;
     }
 
     get filteredStoreProducts() {
@@ -107,7 +107,7 @@ export class UtrecarMainScreen extends Component {
         this.state.vehiclePlate = plate;
         const currentOrder = this.pos.get_order();
         if (currentOrder) {
-            currentOrder.set_note(plate ? `Matrícula: ${plate}` : "");
+            currentOrder.set_note?.(plate ? `Matrícula: ${plate}` : "");
         }
     }
 
@@ -115,16 +115,31 @@ export class UtrecarMainScreen extends Component {
         this.state.selectedLineId = line.id;
         const currentOrder = this.pos.get_order();
         if (currentOrder) {
-            currentOrder.select_orderline(line);
+            if (typeof currentOrder.select_orderline === "function") {
+                currentOrder.select_orderline(line);
+            } else if (typeof currentOrder.selectOrderline === "function") {
+                currentOrder.selectOrderline(line);
+            } else {
+                currentOrder.selected_orderline = line;
+            }
         }
     }
 
     deleteSelectedLine() {
         const currentOrder = this.pos.get_order();
         if (currentOrder) {
-            const line = currentOrder.get_selected_orderline();
+            const line = currentOrder.get_selected_orderline?.() || currentOrder.selected_orderline || (this.currentOrderLines.length > 0 ? this.currentOrderLines[this.currentOrderLines.length - 1] : null);
             if (line) {
-                currentOrder.remove_orderline(line);
+                if (typeof currentOrder.removeOrderline === "function") {
+                    currentOrder.removeOrderline(line);
+                } else if (typeof currentOrder.remove_orderline === "function") {
+                    currentOrder.remove_orderline(line);
+                } else if (typeof line.delete === "function") {
+                    line.delete();
+                } else if (currentOrder.orderlines) {
+                    const idx = currentOrder.orderlines.indexOf(line);
+                    if (idx > -1) currentOrder.orderlines.splice(idx, 1);
+                }
             }
         }
     }
@@ -132,16 +147,24 @@ export class UtrecarMainScreen extends Component {
     clearCurrentOrder() {
         const currentOrder = this.pos.get_order();
         if (currentOrder && confirm("¿Está seguro de que desea cancelar y vaciar el ticket actual?")) {
-            const lines = [...currentOrder.get_orderlines()];
-            lines.forEach(l => currentOrder.remove_orderline(l));
+            const lines = [...(currentOrder.get_orderlines?.() || currentOrder.orderlines || [])];
+            lines.forEach(l => {
+                if (typeof currentOrder.removeOrderline === "function") {
+                    currentOrder.removeOrderline(l);
+                } else if (typeof currentOrder.remove_orderline === "function") {
+                    currentOrder.remove_orderline(l);
+                } else if (typeof l.delete === "function") {
+                    l.delete();
+                }
+            });
             this.state.vehiclePlate = "";
-            currentOrder.set_note("");
+            currentOrder.set_note?.("");
         }
     }
 
     goToPayment() {
         const currentOrder = this.pos.get_order();
-        if (!currentOrder || currentOrder.get_orderlines().length === 0) {
+        if (!currentOrder || this.currentOrderLines.length === 0) {
             alert("No hay artículos en el ticket para cobrar.");
             return;
         }
@@ -168,7 +191,7 @@ export class UtrecarMainScreen extends Component {
                 quantity: 1,
             });
             if (this.state.vehiclePlate) {
-                currentOrder.set_note(`Matrícula: ${this.state.vehiclePlate}`);
+                currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
             }
         }
         this.closeStoreModal();
@@ -244,7 +267,7 @@ export class UtrecarMainScreen extends Component {
                     }
                 });
                 if (this.state.vehiclePlate) {
-                    currentOrder.set_note(`Matrícula: ${this.state.vehiclePlate}`);
+                    currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
                 }
             }
         }
