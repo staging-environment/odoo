@@ -62,7 +62,6 @@ export class UtrecarMainScreen extends Component {
             this.fetchPumpsStatus();
             this.pollInterval = setInterval(() => {
                 this.fetchPumpsStatus();
-                // Actualizar versión reactiva de la cesta
                 const ord = this.pos.get_order();
                 if (ord) {
                     const linesCount = ord.get_orderlines?.()?.length || ord.orderlines?.length || 0;
@@ -220,39 +219,73 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
+    deleteSpecificLine(line) {
+        const currentOrder = this.pos.get_order();
+        if (!currentOrder || !line) return;
+
+        // 1. Odoo 17 set_quantity("remove")
+        if (typeof line.set_quantity === "function") {
+            line.set_quantity("remove");
+        }
+        
+        // 2. removeOrderline o remove_orderline
+        if (typeof currentOrder.removeOrderline === "function") {
+            currentOrder.removeOrderline(line);
+        } else if (typeof currentOrder.remove_orderline === "function") {
+            currentOrder.remove_orderline(line);
+        } else if (typeof line.delete === "function") {
+            line.delete();
+        }
+
+        // 3. Fallback directo sobre colecciones internas
+        if (currentOrder.orderlines) {
+            const idx = currentOrder.orderlines.indexOf(line);
+            if (idx > -1) currentOrder.orderlines.splice(idx, 1);
+        }
+        if (currentOrder.lines && Array.isArray(currentOrder.lines)) {
+            const idx = currentOrder.lines.indexOf(line);
+            if (idx > -1) currentOrder.lines.splice(idx, 1);
+        }
+
+        if (this.state.selectedLineId === line.id) {
+            this.state.selectedLineId = null;
+        }
+        this.state.orderVersion = Date.now();
+    }
+
     deleteSelectedLine() {
         const currentOrder = this.pos.get_order();
-        if (currentOrder) {
-            const line = currentOrder.get_selected_orderline?.() || currentOrder.selected_orderline || (this.currentOrderLines.length > 0 ? this.currentOrderLines[this.currentOrderLines.length - 1] : null);
-            if (line) {
-                if (typeof currentOrder.removeOrderline === "function") {
-                    currentOrder.removeOrderline(line);
-                } else if (typeof currentOrder.remove_orderline === "function") {
-                    currentOrder.remove_orderline(line);
-                } else if (typeof line.delete === "function") {
-                    line.delete();
-                } else if (currentOrder.orderlines) {
-                    const idx = currentOrder.orderlines.indexOf(line);
-                    if (idx > -1) currentOrder.orderlines.splice(idx, 1);
-                }
-                this.state.orderVersion = Date.now();
-            }
+        if (!currentOrder) return;
+
+        const lines = this.currentOrderLines;
+        if (lines.length === 0) return;
+
+        let targetLine = null;
+        if (this.state.selectedLineId) {
+            targetLine = lines.find(l => l.id === this.state.selectedLineId);
+        }
+        if (!targetLine) {
+            targetLine = currentOrder.get_selected_orderline?.() || currentOrder.selected_orderline || lines[lines.length - 1];
+        }
+
+        if (targetLine) {
+            this.deleteSpecificLine(targetLine);
         }
     }
 
     clearCurrentOrder() {
         const currentOrder = this.pos.get_order();
-        if (currentOrder && confirm("¿Está seguro de que desea cancelar y vaciar el ticket actual?")) {
+        if (!currentOrder) return;
+
+        if (confirm("¿Está seguro de que desea cancelar y vaciar el ticket actual?")) {
             const lines = [...(currentOrder.get_orderlines?.() || currentOrder.orderlines || [])];
             lines.forEach(l => {
-                if (typeof currentOrder.removeOrderline === "function") {
-                    currentOrder.removeOrderline(l);
-                } else if (typeof currentOrder.remove_orderline === "function") {
-                    currentOrder.remove_orderline(l);
-                } else if (typeof l.delete === "function") {
-                    l.delete();
-                }
+                this.deleteSpecificLine(l);
             });
+            if (currentOrder.orderlines) currentOrder.orderlines.length = 0;
+            if (currentOrder.lines && Array.isArray(currentOrder.lines)) currentOrder.lines.length = 0;
+
+            this.state.selectedLineId = null;
             this.state.vehiclePlate = "";
             currentOrder.set_note?.("");
             this.state.orderVersion = Date.now();
