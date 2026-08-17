@@ -223,18 +223,23 @@ export class UtrecarMainScreen extends Component {
         const currentOrder = this.pos.get_order();
         if (!currentOrder || !line) return;
 
-        if (typeof line.set_quantity === "function") {
-            line.set_quantity("remove");
-        }
-        
-        if (typeof currentOrder.removeOrderline === "function") {
-            currentOrder.removeOrderline(line);
-        } else if (typeof currentOrder.remove_orderline === "function") {
-            currentOrder.remove_orderline(line);
-        } else if (typeof line.delete === "function") {
-            line.delete();
+        try {
+            if (typeof currentOrder._unlink_order_line === "function") {
+                currentOrder._unlink_order_line(line);
+            } else if (typeof currentOrder.removeOrderline === "function") {
+                currentOrder.removeOrderline(line);
+            } else if (typeof currentOrder.remove_orderline === "function") {
+                currentOrder.remove_orderline(line);
+            } else if (typeof line.set_quantity === "function") {
+                line.set_quantity(0);
+            } else if (typeof line.delete === "function") {
+                line.delete();
+            }
+        } catch (e) {
+            console.debug("Error en eliminación:", e);
         }
 
+        // Limpieza de colecciones de líneas
         if (currentOrder.orderlines) {
             const idx = currentOrder.orderlines.indexOf(line);
             if (idx > -1) currentOrder.orderlines.splice(idx, 1);
