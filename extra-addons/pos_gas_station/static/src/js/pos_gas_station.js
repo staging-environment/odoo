@@ -23,6 +23,8 @@ export class UtrecarMainScreen extends Component {
             mode: "money", // 'money' o 'liters'
             presetValue: 0,
             selectedFuel: "GA",
+            isStoreModalOpen: false,
+            storeSearch: "",
             pumps: []
         });
 
@@ -50,6 +52,20 @@ export class UtrecarMainScreen extends Component {
     get currentTotalAmount() {
         const order = this.pos.get_order();
         return order ? order.get_total_with_tax() : 0.00;
+    }
+
+    get filteredStoreProducts() {
+        const all = Object.values(this.pos.db.product_by_id || {});
+        // Excluir productos genéricos si se desea o filtrar por búsqueda
+        const q = this.state.storeSearch.toLowerCase().trim();
+        if (!q) {
+            return all.slice(0, 30);
+        }
+        return all.filter(p => 
+            p.display_name.toLowerCase().includes(q) || 
+            (p.default_code && p.default_code.toLowerCase().includes(q)) ||
+            (p.barcode && p.barcode.includes(q))
+        ).slice(0, 30);
     }
 
     async fetchPumpsStatus() {
@@ -114,6 +130,32 @@ export class UtrecarMainScreen extends Component {
             return;
         }
         this.pos.showScreen("PaymentScreen");
+    }
+
+    openStoreModal() {
+        this.state.storeSearch = "";
+        this.state.isStoreModalOpen = true;
+    }
+
+    closeStoreModal() {
+        this.state.isStoreModalOpen = false;
+    }
+
+    onStoreSearchInput(ev) {
+        this.state.storeSearch = ev.target.value;
+    }
+
+    async addStoreProductToOrder(product) {
+        const currentOrder = this.pos.get_order();
+        if (currentOrder) {
+            await currentOrder.add_product(product, {
+                quantity: 1,
+            });
+            if (this.state.vehiclePlate) {
+                currentOrder.set_note(`Matrícula: ${this.state.vehiclePlate}`);
+            }
+        }
+        this.closeStoreModal();
     }
 
     onPumpSelect(pump) {

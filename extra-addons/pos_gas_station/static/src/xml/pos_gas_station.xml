@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
     
-    <!-- PANTALLA COMPLETA PRINCIPAL UTRECAR TPV (SUSTITUYE LA PANTALLA POR DEFECTO DE ODOO) -->
+    <!-- PANTALLA COMPLETA PRINCIPAL UTRECAR TPV -->
     <t t-name="pos_gas_station.UtrecarMainScreen" owl="1">
         <div class="utrecar-fullscreen-tpv">
             
@@ -31,8 +31,11 @@
                         </div>
                     </div>
 
-                    <!-- BOTONES DE TURNO Y COBRO -->
+                    <!-- BOTONES DE TURNO Y SEGURIDAD -->
                     <div class="header-right">
+                        <button class="btn-top-action btn-store-toggle" t-on-click="() => this.openStoreModal()">
+                            <i class="fa fa-shopping-bag mr-1"/> <strong>TIENDA / PARRILLA</strong>
+                        </button>
                         <button class="btn-top-action btn-security" t-on-click="() => this.onSecurityDepositClick()">
                             <i class="fa fa-shield-alt mr-1"/> Ingreso Seguridad
                         </button>
@@ -60,7 +63,7 @@
                                 <tr class="empty-ticket-row">
                                     <td colspan="6" class="text-center py-4 text-muted">
                                         <i class="fa fa-shopping-cart fa-2x mb-2 d-block opacity-50"/>
-                                        Seleccione una <strong>Calle</strong> finalizada o use los <strong>Billetes</strong> para prefijar.
+                                        Ticket vacío. Seleccione una <strong>Calle</strong>, use los <strong>Billetes</strong> o pulse <strong>TIENDA / PARRILLA</strong>.
                                     </td>
                                 </tr>
                             </t>
@@ -69,7 +72,7 @@
                                     <tr t-att-class="line.selected ? 'selected-line' : ''" t-on-click="() => this.selectOrderLine(line)">
                                         <td><t t-esc="line.product.default_code || 'COMB'"/></td>
                                         <td class="font-weight-bold"><t t-esc="line.product.display_name"/></td>
-                                        <td class="text-right"><t t-esc="line.get_quantity_str()"/> <t t-esc="line.product.uom_id ? line.product.uom_id[1] : 'L'"/></td>
+                                        <td class="text-right"><t t-esc="line.get_quantity_str()"/> <t t-esc="line.product.uom_id ? line.product.uom_id[1] : 'Ud'"/></td>
                                         <td class="text-right"><t t-esc="line.get_unit_price().toFixed(3)"/> €</td>
                                         <td class="text-right"><t t-esc="line.get_discount_str()"/> %</td>
                                         <td class="text-right font-weight-bold text-success"><t t-esc="line.get_display_price().toFixed(2)"/> €</td>
@@ -83,6 +86,9 @@
                 <!-- BARRA INFERIOR DE TICKET (TOTALES Y ACCIONES DE LÍNEA) -->
                 <div class="utrecar-ticket-footer">
                     <div class="ticket-tools">
+                        <button class="btn-tool btn-add-product" t-on-click="() => this.openStoreModal()" title="Añadir producto de tienda">
+                            <i class="fa fa-plus-circle mr-1 text-primary"/> <strong>Añadir Artículo</strong>
+                        </button>
                         <button class="btn-tool btn-delete-line" t-on-click="() => this.deleteSelectedLine()" title="Eliminar línea">
                             <i class="fa fa-trash-alt mr-1"/> Borrar Artículo
                         </button>
@@ -248,10 +254,62 @@
 
             </div>
 
+            <!-- ============================================================ -->
+            <!-- MODAL / PARRILLA DE PRODUCTOS DE TIENDA DE LA GASOLINERA     -->
+            <!-- ============================================================ -->
+            <t t-if="state.isStoreModalOpen">
+                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeStoreModal()">
+                    <div class="utrecar-store-modal" t-on-click.stop="">
+                        
+                        <div class="store-modal-header">
+                            <div class="modal-title">
+                                <i class="fa fa-store mr-2 text-primary"/> CATÁLOGO DE TIENDA Y ARTÍCULOS DE PISTA
+                            </div>
+                            <div class="modal-search-box">
+                                <i class="fa fa-search search-icon"/>
+                                <input type="text" 
+                                       class="store-search-input" 
+                                       placeholder="Buscar producto o escanear código..." 
+                                       t-att-value="state.storeSearch"
+                                       t-on-input="(ev) => this.onStoreSearchInput(ev)" />
+                            </div>
+                            <button class="btn-close-modal" t-on-click="() => this.closeStoreModal()">
+                                <i class="fa fa-times"/>
+                            </button>
+                        </div>
+
+                        <!-- CUADRÍCULA TÁCTIL DE PRODUCTOS DE TIENDA -->
+                        <div class="store-products-grid">
+                            <t t-if="filteredStoreProducts.length === 0">
+                                <div class="text-center py-5 w-100 text-muted">
+                                    <i class="fa fa-box-open fa-3x mb-3 opacity-50"/>
+                                    <p>No se encontraron productos coincidentes.</p>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <t t-foreach="filteredStoreProducts" t-as="product" t-key="product.id">
+                                    <div class="store-product-card" t-on-click="() => this.addStoreProductToOrder(product)">
+                                        <div class="product-card-body">
+                                            <div class="product-code"><t t-esc="product.default_code || 'ART'"/></div>
+                                            <div class="product-name"><t t-esc="product.display_name"/></div>
+                                            <div class="product-price"><t t-esc="product.lst_price.toFixed(2)"/> €</div>
+                                        </div>
+                                        <div class="product-card-footer">
+                                            <i class="fa fa-plus-circle mr-1"/> Añadir
+                                        </div>
+                                    </div>
+                                </t>
+                            </t>
+                        </div>
+
+                    </div>
+                </div>
+            </t>
+
         </div>
     </t>
 
-    <!-- SUSTITUCIÓN COMPLETA DE LA PLANTILLA PRODUCTSCREEN DE ODOO -->
+    <!-- SUSTITUCIÓN COMPLETA DE PRODUCTSCREEN -->
     <t t-name="pos_gas_station.ProductScreen" t-inherit="point_of_sale.ProductScreen" t-inherit-mode="extension" owl="1">
         <xpath expr="//div[hasclass('product-screen')]" position="replace">
             <div class="product-screen screen d-flex flex-column h-100 p-0 m-0">
