@@ -36,9 +36,8 @@ export class UtrecarMainScreen extends Component {
         this.barcodeBuffer = "";
         this.barcodeTimeout = null;
 
-        // Escucha global de pistola de código de barras (teclado rápido)
+        // Escucha global de pistola de código de barras
         this.onGlobalKeyDown = (ev) => {
-            // Si el foco está en un input de texto ordinario (excepto búsqueda), ignorar
             if (ev.target && ev.target.classList.contains("euro-plate-text")) {
                 return;
             }
@@ -54,7 +53,7 @@ export class UtrecarMainScreen extends Component {
                 if (this.barcodeTimeout) clearTimeout(this.barcodeTimeout);
                 this.barcodeTimeout = setTimeout(() => {
                     this.barcodeBuffer = "";
-                }, 250); // Las pistolas lectoras envían todos los caracteres en <100ms
+                }, 250);
             }
         };
 
@@ -78,7 +77,6 @@ export class UtrecarMainScreen extends Component {
         if (!code) return;
         const allProducts = Object.values(this.pos.db?.product_by_id || {});
         
-        // Buscar por código de barras exacto, referencia interna o código
         const found = allProducts.find(p => 
             (p.barcode && p.barcode.toLowerCase() === code.toLowerCase()) ||
             (p.default_code && p.default_code.toLowerCase() === code.toLowerCase())
@@ -96,7 +94,7 @@ export class UtrecarMainScreen extends Component {
                 }
             }
         } else {
-            console.warn("Código de barras no encontrado en el catálogo de Odoo:", code);
+            console.warn("Código de barras no encontrado en catálogo:", code);
         }
     }
 
@@ -255,10 +253,12 @@ export class UtrecarMainScreen extends Component {
 
     toggleMode() {
         this.state.mode = this.state.mode === "money" ? "liters" : "money";
+        this.state.presetValue = 0;
     }
 
     addPreset(val) {
-        this.state.presetValue = val;
+        // Sumar acumulativamente los billetes o litros seleccionados
+        this.state.presetValue = (this.state.presetValue || 0) + val;
     }
 
     selectFuel(fuel) {
