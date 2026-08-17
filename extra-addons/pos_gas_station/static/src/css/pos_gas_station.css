@@ -48,7 +48,7 @@
     border-radius: 8px;
     padding: 6px 10px;
     margin-bottom: 6px;
-    flex: 0 0 42%; /* 42% del alto de pantalla */
+    flex: 0 0 42%;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
@@ -266,7 +266,7 @@
    ============================================================ */
 .utrecar-bottom-section {
     display: grid;
-    grid-template-columns: 1fr 380px; /* 380px para el teclado de billetes */
+    grid-template-columns: 1fr 380px;
     gap: 8px;
     flex: 1;
     min-height: 0;
@@ -433,7 +433,7 @@
     color: #fff;
 }
 
-/* BOTONERA DE BILLETES REALISTAS */
+/* BOTONERA DE BILLETES CON FOTO REAL */
 .keypad-bills-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -443,77 +443,65 @@
 
 .bill-btn {
     border-radius: 6px;
-    border: none;
+    border: 2px solid #334155;
     cursor: pointer;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 8px 4px;
+    height: 54px;
     position: relative;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    transition: transform 0.1s ease, filter 0.1s ease;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+    transition: transform 0.1s ease, filter 0.15s ease, border-color 0.15s ease;
+    background-color: #1e293b;
 }
-.bill-btn:hover { filter: brightness(1.1); }
+.bill-btn:hover { 
+    filter: brightness(1.15); 
+    transform: translateY(-2px);
+    border-color: #60a5fa;
+}
 .bill-btn:active { transform: scale(0.95); }
 
-.bill-graphics {
-    font-family: 'Arial Black', sans-serif;
-    font-size: 16px;
-    font-weight: 900;
-    letter-spacing: -0.5px;
+/* FONDOS FOTOGRÁFICOS DE CADA BILLETE Y MONEDA */
+.bill-photo {
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
-.bill-label {
-    font-size: 8px;
-    font-weight: 800;
-    opacity: 0.85;
-    letter-spacing: 0.5px;
-    margin-top: 1px;
-}
-
-/* DISEÑO DE CADA BILLETE DE EURO */
 .bill-1e {
-    background: radial-gradient(circle, #e2e8f0 40%, #cbd5e1 41%, #fef08a 45%, #eab308 100%);
-    color: #0f172a;
-    border: 2px solid #ca8a04;
+    background-image: url('/pos_gas_station/static/src/img/bill_img_1.png');
+    border-color: #ca8a04;
 }
-.bill-1e .coin-graphics { font-family: 'Arial Black', sans-serif; font-size: 16px; font-weight: 900; }
 
 .bill-5e {
-    background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%);
-    color: #1e3a8a;
-    border: 1px solid #3b82f6;
+    background-image: url('/pos_gas_station/static/src/img/bill_img_5.png');
+    border-color: #3b82f6;
 }
 
 .bill-10e {
-    background: linear-gradient(135deg, #fca5a5 0%, #f87171 100%);
-    color: #7f1d1d;
-    border: 1px solid #ef4444;
+    background-image: url('/pos_gas_station/static/src/img/bill_img_10.png');
+    border-color: #ef4444;
 }
 
 .bill-20e {
-    background: linear-gradient(135deg, #67e8f9 0%, #06b6d4 100%);
-    color: #164e63;
-    border: 1px solid #0891b2;
+    background-image: url('/pos_gas_station/static/src/img/bill_img_20.png');
+    border-color: #06b6d4;
 }
 
 .bill-50e {
-    background: linear-gradient(135deg, #fdba74 0%, #f97316 100%);
-    color: #7c2d12;
-    border: 1px solid #ea580c;
+    background-image: url('/pos_gas_station/static/src/img/bill_img_50.png');
+    border-color: #f97316;
 }
 
 .bill-100e {
-    background: linear-gradient(135deg, #86efac 0%, #22c55e 100%);
-    color: #14532d;
-    border: 1px solid #16a34a;
+    background-image: url('/pos_gas_station/static/src/img/bill_img_100.png');
+    border-color: #22c55e;
 }
 
 .liter-btn {
     background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
     color: #ffffff;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 900;
     border: 1px solid #38bdf8;
 }

@@ -165,7 +165,7 @@
                     </div>
                 </div>
 
-                <!-- PARTE INFERIOR DERECHA: PAD RÁPIDO CON BILLETES GRÁFICOS Y COMBUSTIBLES -->
+                <!-- PARTE INFERIOR DERECHA: PAD RÁPIDO CON FOTOS REALES DE BILLETES Y COMBUSTIBLES -->
                 <div class="utrecar-keypad-panel">
                     
                     <!-- DISPLAY DIGITAL -->
@@ -182,33 +182,15 @@
                         </button>
                     </div>
 
-                    <!-- BOTONERA DE BILLETES Y MONEDAS REALISTAS CON EFECTOS -->
+                    <!-- BOTONERA DE BILLETES Y MONEDAS CON IMÁGENES FOTOGRÁFICAS -->
                     <div class="keypad-bills-grid">
                         <t t-if="state.mode === 'money'">
-                            <button class="bill-btn bill-1e" t-on-click="() => this.addPreset(1)">
-                                <div class="coin-graphics">1 €</div>
-                                <span class="bill-label">MONEDA</span>
-                            </button>
-                            <button class="bill-btn bill-5e" t-on-click="() => this.addPreset(5)">
-                                <div class="bill-graphics">5 €</div>
-                                <span class="bill-label">CINCO</span>
-                            </button>
-                            <button class="bill-btn bill-10e" t-on-click="() => this.addPreset(10)">
-                                <div class="bill-graphics">10 €</div>
-                                <span class="bill-label">DIEZ</span>
-                            </button>
-                            <button class="bill-btn bill-20e" t-on-click="() => this.addPreset(20)">
-                                <div class="bill-graphics">20 €</div>
-                                <span class="bill-label">VEINTE</span>
-                            </button>
-                            <button class="bill-btn bill-50e" t-on-click="() => this.addPreset(50)">
-                                <div class="bill-graphics">50 €</div>
-                                <span class="bill-label">CINCUENTA</span>
-                            </button>
-                            <button class="bill-btn bill-100e" t-on-click="() => this.addPreset(100)">
-                                <div class="bill-graphics">100 €</div>
-                                <span class="bill-label">CIEN</span>
-                            </button>
+                            <button class="bill-btn bill-photo bill-1e" t-on-click="() => this.addPreset(1)" title="1 Euro"></button>
+                            <button class="bill-btn bill-photo bill-5e" t-on-click="() => this.addPreset(5)" title="5 Euros"></button>
+                            <button class="bill-btn bill-photo bill-10e" t-on-click="() => this.addPreset(10)" title="10 Euros"></button>
+                            <button class="bill-btn bill-photo bill-20e" t-on-click="() => this.addPreset(20)" title="20 Euros"></button>
+                            <button class="bill-btn bill-photo bill-50e" t-on-click="() => this.addPreset(50)" title="50 Euros"></button>
+                            <button class="bill-btn bill-photo bill-100e" t-on-click="() => this.addPreset(100)" title="100 Euros"></button>
                         </t>
                         <t t-else="">
                             <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(5)">5 L</button>
@@ -269,7 +251,7 @@
                                 <i class="fa fa-search search-icon"/>
                                 <input type="text" 
                                        class="store-search-input" 
-                                       placeholder="Buscar producto o escanear código..." 
+                                       placeholder="Buscar producto (ej: agua, coca, hielo, butano...)" 
                                        t-att-value="state.storeSearch"
                                        t-on-input="(ev) => this.onStoreSearchInput(ev)" />
                             </div>
