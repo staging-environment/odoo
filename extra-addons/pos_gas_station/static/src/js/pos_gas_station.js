@@ -11,12 +11,14 @@ export class PumpGridWidget extends Component {
 
     setup() {
         this.pos = usePos();
+        this.configId = this.pos.config.id;
         this.state = useState({
+            stationName: this.pos.config.name || "CONTROL DE PISTA",
             pumps: [
-                { id: 1, name: "Calle 1", fuel: "Gasóleo A", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 },
-                { id: 2, name: "Calle 2", fuel: "Gasóleo A", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 },
-                { id: 3, name: "Calle 3", fuel: "Sin Plomo 95", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 52, price: 1.655 },
-                { id: 4, name: "Calle 4", fuel: "Gasóleo A", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 }
+                { id: 1, name: "Calle 1", fuel: "Gasóleo A / Sin Plomo 95", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 },
+                { id: 2, name: "Calle 2", fuel: "Gasóleo A / Sin Plomo 95", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 },
+                { id: 3, name: "Calle 3", fuel: "Gasóleo A / Sin Plomo 95", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 },
+                { id: 4, name: "Calle 4", fuel: "Gasóleo A / Sin Plomo 95", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 }
             ]
         });
 
@@ -38,9 +40,16 @@ export class PumpGridWidget extends Component {
 
     async fetchPumpsStatus() {
         try {
-            const data = await jsonrpc("/pos_gas_station/status", {});
-            if (data && data.pumps && Array.isArray(data.pumps) && data.pumps.length > 0) {
-                this.state.pumps = data.pumps;
+            const data = await jsonrpc("/pos_gas_station/status", {
+                config_id: this.configId
+            });
+            if (data) {
+                if (data.station_name) {
+                    this.state.stationName = data.station_name;
+                }
+                if (data.pumps && Array.isArray(data.pumps) && data.pumps.length > 0) {
+                    this.state.pumps = data.pumps;
+                }
             }
         } catch (err) {
             console.debug("Error al consultar estado de surtidores:", err);
@@ -52,13 +61,12 @@ export class PumpGridWidget extends Component {
             const currentOrder = this.pos.get_order();
             if (!currentOrder) return;
 
-            // Buscar el producto en la BD del POS por ID o por nombre
             let product = null;
             if (pump.product_id && this.pos.db.product_by_id[pump.product_id]) {
                 product = this.pos.db.product_by_id[pump.product_id];
             } else {
                 const allProducts = Object.values(this.pos.db.product_by_id || {});
-                product = allProducts.find(p => p.display_name.toLowerCase().includes(pump.fuel.toLowerCase())) || allProducts[0];
+                product = allProducts.find(p => p.display_name.toLowerCase().includes(pump.fuel.toLowerCase().split('/')[0].trim())) || allProducts[0];
             }
 
             if (product) {
