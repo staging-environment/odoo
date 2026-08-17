@@ -1,1 +1,2 @@
-# POS Gas Station Module
+# -*- coding: utf-8 -*-
+from . import controllers

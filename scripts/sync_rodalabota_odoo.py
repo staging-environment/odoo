@@ -4,7 +4,7 @@ import json
 import logging
 import pymysql
 import xmlrpc.client
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logging.basicConfig(
     level=logging.INFO,
@@ -119,6 +119,77 @@ def save_last_synced_id(last_id):
     with open(STATE_FILE, "w") as f:
         json.dump({"last_detalle_id": last_id, "updated_at": datetime.now().isoformat()}, f)
 
+def get_live_pumps_state(conn, product_map):
+    pumps = []
+    fuel_names = {"1": "Gasóleo A", "2": "Sin Plomo 95", "3": "Gasóleo B"}
+    
+    with conn.cursor() as cursor:
+        for calle in [1, 2, 3, 4]:
+            cursor.execute("""
+                SELECT id, CodigoDeMaquinaExpendedora, NumeroDeContador, CodigoDeProducto, 
+                       CantidadExpedida, Precio, ImporteExpedido, FechaYHoraDeExpedicion, Estado
+                FROM expediciones
+                WHERE CodigoDeEstacion = %s AND CodigoDeMaquinaExpendedora = %s
+                ORDER BY id DESC
+                LIMIT 1
+            """, (STATION_CODE, calle))
+            row = cursor.fetchone()
+            
+            p_state = {
+                'id': calle,
+                'name': f"Calle {calle}",
+                'fuel': "Gasóleo A",
+                'amount': 0.0,
+                'liters': 0.0,
+                'status': 'idle',
+                'statusText': 'LIBRE',
+                'product_id': product_map.get('1', product_map.get('default')),
+                'price': 1.769
+            }
+            
+            if row:
+                prod_code = str(row['CodigoDeProducto'])
+                fuel_name = fuel_names.get(prod_code, "Gasóleo A")
+                amount = float(row['ImporteExpedido'] or 0.0)
+                liters = float(row['CantidadExpedida'] or 0.0)
+                price = float(row['Precio'] or (amount / liters if liters > 0 else 1.769))
+                exp_date = row['FechaYHoraDeExpedicion']
+                estado = row['Estado']
+                
+                # Si fue en los ultimos 3 minutos
+                is_recent = False
+                if exp_date:
+                    delta = datetime.now() - exp_date
+                    if abs(delta.total_seconds()) < 180:
+                        is_recent = True
+                
+                if estado == 'En expedicion':
+                    p_state['status'] = 'dispensing'
+                    p_state['statusText'] = 'SUMINISTRANDO'
+                    p_state['amount'] = amount
+                    p_state['liters'] = liters
+                elif is_recent and amount > 0:
+                    p_state['status'] = 'ready'
+                    p_state['statusText'] = 'PENDIENTE DE COBRO'
+                    p_state['amount'] = amount
+                    p_state['liters'] = liters
+                elif estado == 'Prefijado':
+                    p_state['status'] = 'dispensing'
+                    p_state['statusText'] = 'AUTORIZADO'
+                else:
+                    p_state['status'] = 'idle'
+                    p_state['statusText'] = 'LIBRE'
+                    p_state['amount'] = 0.0
+                    p_state['liters'] = 0.0
+                    
+                p_state['fuel'] = fuel_name
+                p_state['product_id'] = product_map.get(prod_code, product_map.get('default'))
+                p_state['price'] = price
+                
+            pumps.append(p_state)
+            
+    return {'pumps': pumps}
+
 def sync_loop():
     logging.info("🚀 Iniciando servicio de sincronización Aseproda (Rodalabota) ➔ Odoo Cloud...")
     
@@ -160,12 +231,29 @@ def sync_loop():
         except Exception as e:
             logging.error(f"Error al inicializar ID: {e}")
 
+    last_pumps_state_json = ""
+
     while True:
         try:
             conn = pymysql.connect(
                 host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASS, database=DB_NAME,
                 cursorclass=pymysql.cursors.DictCursor
             )
+            
+            # 1. ACTUALIZAR ESTADO EN VIVO DE LAS 4 PISTAS EN ODOO
+            try:
+                live_state = get_live_pumps_state(conn, product_map)
+                state_json = json.dumps(live_state)
+                if state_json != last_pumps_state_json:
+                    models.execute_kw(
+                        ODOO_DB, uid, ODOO_PASS, 'ir.config_parameter', 'set_param',
+                        ['pos_gas_station.pumps_state', state_json]
+                    )
+                    last_pumps_state_json = state_json
+            except Exception as live_err:
+                logging.debug(f"Error al actualizar estado en vivo de surtidores: {live_err}")
+                
+            # 2. CAPTURAR VENTAS COMPLETADAS
             with conn.cursor() as cursor:
                 query = """
                     SELECT d.Id as DetalleId, d.Serie, d.Numero, d.CodigoDeProducto, d.Cantidad, 
@@ -192,10 +280,7 @@ def sync_loop():
                     matricula = row['Matricula'] or ""
                     
                     odoo_prod_id = product_map.get(prod_code, product_map.get('default'))
-                    
                     session_id = ensure_pos_session(uid, models)
-                    
-                    # Formato requerido por regex Odoo 17 POS UI: >= 14 caracteres con digitos y guiones
                     pos_ref = f"00002-{session_id:04d}-{det_id:08d}"
                     
                     order_data = {

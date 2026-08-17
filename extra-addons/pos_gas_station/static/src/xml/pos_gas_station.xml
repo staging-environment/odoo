@@ -4,11 +4,12 @@
         <div class="pos-gas-station-panel">
             <div class="gas-header">
                 <div class="gas-title">
-                    <i class="fa fa-gas-pump mr-2"/> CONTROL DE PISTA Y SURTIDORES
+                    <i class="fa fa-gas-pump mr-2"/> CONTROL DE PISTA - E.S. RODALABOTA
                 </div>
                 <div class="gas-actions">
+                    <span class="badge badge-success px-2 py-1 mr-2"><i class="fa fa-circle text-light mr-1"/> En Directo (1s)</span>
                     <button class="btn btn-sm btn-success mr-1">
-                        <i class="fa fa-check-circle"/> Autorizar Surtidor
+                        <i class="fa fa-check-circle"/> Autorizar Pista
                     </button>
                     <button class="btn btn-sm btn-danger">
                         <i class="fa fa-stop-circle"/> Parada de Emergencia
@@ -29,9 +30,9 @@
                         </div>
                         <div class="pump-liters">
                             <t t-if="pump.liters > 0">
-                                <t t-esc="pump.liters.toFixed(1)"/> L
+                                <t t-esc="pump.liters.toFixed(2)"/> L
                             </t>
-                            <t t-else="">0.0 L</t>
+                            <t t-else="">0.00 L</t>
                         </div>
                         <div class="pump-status-label"><t t-esc="pump.statusText"/></div>
                     </div>
