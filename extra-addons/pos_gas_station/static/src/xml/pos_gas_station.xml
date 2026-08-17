@@ -31,10 +31,13 @@
                         </div>
                     </div>
 
-                    <!-- BOTONES DE TURNO Y SEGURIDAD -->
+                    <!-- BOTONES DE TURNO, DEVOLUCIONES Y SEGURIDAD -->
                     <div class="header-right">
                         <button class="btn-top-action btn-store-toggle" t-on-click="() => this.openStoreModal()">
                             <i class="fa fa-shopping-bag mr-1"/> <strong>TIENDA / PARRILLA</strong>
+                        </button>
+                        <button class="btn-top-action btn-refund" t-on-click="() => this.openRefundScreen()" title="Consultar tickets anteriores o realizar un abono/devolución">
+                            <i class="fa fa-undo mr-1"/> <strong>Devolución / Historial</strong>
                         </button>
                         <button class="btn-top-action btn-security" t-on-click="() => this.onSecurityDepositClick()">
                             <i class="fa fa-shield-alt mr-1"/> Ingreso Seguridad

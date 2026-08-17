@@ -223,12 +223,10 @@ export class UtrecarMainScreen extends Component {
         const currentOrder = this.pos.get_order();
         if (!currentOrder || !line) return;
 
-        // 1. Odoo 17 set_quantity("remove")
         if (typeof line.set_quantity === "function") {
             line.set_quantity("remove");
         }
         
-        // 2. removeOrderline o remove_orderline
         if (typeof currentOrder.removeOrderline === "function") {
             currentOrder.removeOrderline(line);
         } else if (typeof currentOrder.remove_orderline === "function") {
@@ -237,7 +235,6 @@ export class UtrecarMainScreen extends Component {
             line.delete();
         }
 
-        // 3. Fallback directo sobre colecciones internas
         if (currentOrder.orderlines) {
             const idx = currentOrder.orderlines.indexOf(line);
             if (idx > -1) currentOrder.orderlines.splice(idx, 1);
@@ -290,6 +287,10 @@ export class UtrecarMainScreen extends Component {
             currentOrder.set_note?.("");
             this.state.orderVersion = Date.now();
         }
+    }
+
+    openRefundScreen() {
+        this.pos.showScreen("TicketScreen");
     }
 
     goToPayment() {
