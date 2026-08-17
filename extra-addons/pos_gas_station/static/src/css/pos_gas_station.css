@@ -7,6 +7,33 @@
     background: #eef2f6 !important;
 }
 
+.pos .pos-topheader {
+    background: #ffffff !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+    height: 48px !important;
+    padding: 0 12px !important;
+}
+
+/* SUSTITUIR LOGO ODOO POR EL LOGO DE UTRECAR */
+.pos-branding,
+.pos-branding img,
+.pos-topheader .pos-branding,
+.pos-topheader img.pos-logo,
+.pos-topheader .navbar-brand,
+.pos-topheader .o_menu_brand {
+    content: url('/pos_gas_station/static/src/img/utrecar_brand_logo.svg') !important;
+    height: 36px !important;
+    max-height: 36px !important;
+    width: auto !important;
+    object-fit: contain !important;
+    display: inline-block !important;
+}
+
+.pos .pos-topheader * {
+    color: #1e293b !important;
+}
+
 .product-screen {
     width: 100% !important;
     height: 100% !important;

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="utrecarBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0052d4" />
+      <stop offset="50%" stop-color="#0035ad" />
+      <stop offset="100%" stop-color="#001c58" />
+    </linearGradient>
+    <filter id="logoShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Steering Wheel / Road Oval Icon -->
+  <g transform="translate(10, 10)">
+    <!-- Outer Blue Ellipse -->
+    <ellipse cx="60" cy="50" rx="55" ry="38" fill="url(#utrecarBlue)" filter="url(#logoShadow)"/>
+    
+    <!-- Inner White Cutout (Road / Steering Spoke) -->
+    <path d="M 52,14 C 55,25 55,55 35,70 L 85,70 C 65,55 65,25 68,14 Z" fill="#ffffff"/>
+    
+    <!-- Bottom Oval Road Arc -->
+    <ellipse cx="60" cy="62" rx="42" ry="12" fill="none" stroke="#ffffff" stroke-width="3"/>
+  </g>
+
+  <!-- UTRECAR Brand Typography -->
+  <text x="145" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial Black, sans-serif" font-size="44" font-weight="900" fill="#0035ad" letter-spacing="1">UTRECAR</text>
+  <text x="147" y="88" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="800" fill="#64748b" letter-spacing="3.5">ESTACIONES DE SERVICIO</text>
+</svg>
