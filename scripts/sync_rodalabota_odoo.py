@@ -156,7 +156,6 @@ def get_live_pumps_state(conn, product_map):
                 exp_date = row['FechaYHoraDeExpedicion']
                 estado = row['Estado']
                 
-                # Si fue en los ultimos 3 minutos
                 is_recent = False
                 if exp_date:
                     delta = datetime.now() - exp_date
@@ -313,6 +312,8 @@ def sync_loop():
                     
                     try:
                         order_id = models.execute_kw(ODOO_DB, uid, ODOO_PASS, 'pos.order', 'create', [order_data])
+                        # Asegurar estado paid y pos_reference de 19 digitos
+                        models.execute_kw(ODOO_DB, uid, ODOO_PASS, 'pos.order', 'write', [[order_id], {'state': 'paid', 'pos_reference': pos_ref}])
                         logging.info(f"✅ VENTA EN ODOO -> Ticket {serie}-{numero} | {litros:.2f}L | {total_eur:.2f}€ | Odoo ID: {order_id} | Ref: {pos_ref}")
                     except Exception as odoo_err:
                         logging.error(f"❌ Error al crear pedido en Odoo para Ticket {serie}-{numero}: {odoo_err}")
