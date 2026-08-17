@@ -83,10 +83,10 @@ export class UtrecarMainScreen extends Component {
         });
     }
 
-    get isSelectedPumpActive() {
+    get isSelectedPumpOccupied() {
         if (!this.state.selectedPumpId) return false;
         const p = this.state.pumps.find(x => x.id === this.state.selectedPumpId);
-        return p && (p.status === 'dispensing' || p.statusText === 'AUTORIZADO');
+        return p && (p.status === 'dispensing' || p.status === 'ready' || p.amount > 0 || p.statusText === 'AUTORIZADO');
     }
 
     getOrCreateOrder() {
@@ -363,6 +363,14 @@ export class UtrecarMainScreen extends Component {
 
     async authorizePreset() {
         const pumpId = this.state.selectedPumpId || 1;
+        const targetPump = this.state.pumps.find(p => p.id === pumpId);
+
+        // BLOQUEO ESTRICTO: No permitir apertura si la pista ya está ocupada por otro cliente
+        if (targetPump && (targetPump.status === "dispensing" || targetPump.status === "ready" || targetPump.amount > 0 || targetPump.statusText === "AUTORIZADO")) {
+            alert(`⚠️ La Calle ${pumpId} ya está ocupada por otro cliente (${targetPump.statusText}).\nDebe cobrarse o liberarse antes de una nueva autorización.`);
+            return;
+        }
+
         const currentFuelObj = this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || this.state.availableFuels[0] || { code: "GA", name: "Gasóleo A" };
         const fuelName = currentFuelObj.name;
         const fuelCode = currentFuelObj.code;
@@ -370,7 +378,6 @@ export class UtrecarMainScreen extends Component {
         const presetVal = this.state.presetValue;
 
         // 1. Marcar inmediatamente la calle como AUTORIZADO / EN PROCESO en la vista
-        const targetPump = this.state.pumps.find(p => p.id === pumpId);
         if (targetPump) {
             targetPump.status = "dispensing";
             targetPump.statusText = "AUTORIZADO";
@@ -381,7 +388,7 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
-        // 2. Si tiene importe prefijado, añadir la línea de combustible al ticket activo de Odoo
+        // 2. Si tiene importe prefijado (Prepago), añadir al ticket activo
         if (presetVal > 0) {
             const currentOrder = this.getOrCreateOrder();
             if (currentOrder) {
@@ -489,10 +496,25 @@ export class UtrecarMainScreen extends Component {
                 if (this.state.vehiclePlate) {
                     currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
                 }
+
+                // Liberar surtidor una vez pasado al ticket
+                pump.status = "idle";
+                pump.statusText = "LIBRE";
+                pump.amount = 0;
+                pump.liters = 0;
+                try {
+                    await jsonrpc("/pos_gas_station/clear_pump", {
+                        config_id: this.configId,
+                        pump_id: pump.id
+                    });
+                } catch (e) {
+                    console.debug("Liberación de bomba enviada:", e);
+                }
+
                 this.state.orderVersion = Date.now();
             }
         } else {
-            // Si está libre, seleccionarlo para prepago
+            // Si está libre, seleccionarlo para autorizar
             this.state.selectedPumpId = pump.id;
         }
     }

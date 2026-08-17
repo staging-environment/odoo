@@ -86,6 +86,11 @@ class PosGasStationController(http.Controller):
         if cfg not in STATION_PUMP_OVERRIDES:
             STATION_PUMP_OVERRIDES[cfg] = {}
 
+        # Validar si ya está ocupada
+        current = STATION_PUMP_OVERRIDES[cfg].get(pid)
+        if current and current.get('status') in ['dispensing', 'ready']:
+            return {"status": "error", "message": f"La Calle {pid} ya está ocupada."}
+
         fuel_name = "Gasóleo A" if fuel == 'GA' else "Sin Plomo 95"
         amt = float(amount or 0)
         lts = float(liters or 0)
@@ -115,3 +120,14 @@ class PosGasStationController(http.Controller):
 
         _logger.info(f"🛑 [CANCELAR AUTORIZACIÓN] Config {cfg} | Calle {pid}")
         return {"status": "cancelled", "pump_id": pid}
+
+    @http.route('/pos_gas_station/clear_pump', type='json', auth='user', cors='*')
+    def clear_pump(self, config_id=None, pump_id=None, **kw):
+        """
+        Pasa el surtidor a estado libre una vez volcado al ticket.
+        """
+        cfg = int(config_id or 1)
+        pid = int(pump_id or 1)
+        if cfg in STATION_PUMP_OVERRIDES and pid in STATION_PUMP_OVERRIDES[cfg]:
+            del STATION_PUMP_OVERRIDES[cfg][pid]
+        return {"status": "cleared", "pump_id": pid}
