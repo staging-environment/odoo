@@ -19,11 +19,14 @@ USER_LOGIN = "jarodriguezbonilla@gmail.com"
 USER_PASS = "Utrecar2026!"
 
 def auto_detect_port():
+    available = [p.device for p in serial.tools.list_ports.comports()]
+    if "COM10" in available:
+        return "COM10"
     for p in serial.tools.list_ports.comports():
         desc = p.description.lower()
-        if "ftdi" in desc or "usb serial port" in desc or "0403:6001" in p.hwid.lower():
+        if "vspe" in desc or "virtual" in desc or "ftdi" in desc or "usb serial port" in desc:
             return p.device
-    return "COM3"
+    return "COM10"
 
 def connect_to_odoo():
     try:
@@ -43,7 +46,7 @@ def start_agent():
     
     try:
         ser = serial.Serial(port, baudrate=9600, timeout=1)
-        logging.info(f"Escuchando pista en puerto {port} y sincronizando con Odoo Cloud...")
+        logging.info(f"✅ Conectado al puerto {port}. Escuchando pista Aseproda y sincronizando con Odoo Cloud...")
         
         while True:
             if ser.in_waiting > 0:

@@ -3,32 +3,31 @@ import serial.tools.list_ports
 import time
 
 def auto_detect_port():
-    ports = list(serial.tools.list_ports.comports())
-    for p in ports:
+    available = [p.device for p in serial.tools.list_ports.comports()]
+    if "COM10" in available:
+        return "COM10", "Puerto Virtual VSPE Splitter"
+    for p in serial.tools.list_ports.comports():
         desc = p.description.lower()
-        if "ftdi" in desc or "usb serial port" in desc or "dsd" in desc or "0403:6001" in p.hwid.lower():
+        if "vspe" in desc or "virtual" in desc or "ftdi" in desc or "usb serial port" in desc or "dsd" in desc:
             return p.device, p.description
-    usb_ports = [p for p in ports if p.device != "COM1"]
+    usb_ports = [p for p in serial.tools.list_ports.comports() if p.device != "COM1"]
     if usb_ports:
         return usb_ports[0].device, usb_ports[0].description
-    return None, None
+    return "COM10", "Puerto Virtual por Defecto"
 
 print("=" * 60)
-print("   UTRECAR ERP - PRUEBA DE CAPTURA RS485 (EL CUERVO)")
+print("   UTRECAR ERP - PRUEBA DE CAPTURA RS485 / VSPE (EL CUERVO)")
 print("=" * 60)
 
 detected_port, port_desc = auto_detect_port()
-if detected_port:
-    print(f"\n✅ Puerto DSD TECH Auto-Detectado: {detected_port} ({port_desc})")
-    port_name = detected_port
-else:
-    port_name = input("\nNo se autodetectó. Introduce puerto (ej. COM3): ").strip() or "COM3"
+print(f"\nPuerto Detectado: {detected_port} ({port_desc})")
+port_name = input(f"Introduce puerto o pulsa ENTER para usar [{detected_port}]: ").strip() or detected_port
 
 baud_rate = 9600
 
 try:
     ser = serial.Serial(port_name, baudrate=baud_rate, timeout=1)
-    print(f"✅ Conectado a {port_name} a {baud_rate} baudios. Escuchando pista...\n")
+    print(f"\n✅ Conectado a {port_name} a {baud_rate} baudios. Escuchando pista en vivo...\n")
     
     count = 0
     while True:
@@ -41,4 +40,4 @@ try:
 except KeyboardInterrupt:
     print("\nPrueba finalizada por el usuario.")
 except Exception as e:
-    print(f"\n❌ Error: {e}")
+    print(f"\n❌ Error al abrir {port_name}: {e}")

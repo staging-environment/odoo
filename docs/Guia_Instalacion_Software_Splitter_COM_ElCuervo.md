@@ -1,86 +1,109 @@
 # UTRECAR ERP — Integración Aseproda & Odoo Cloud (E.S. Rodalabota - El Cuervo)
-## 🔌 Guía Técnica: Divisor Virtual de Puerto COM (100% Software)
+## 🔌 Manual Técnico de Despliegue: Splitter COM y Ejecución de Scripts (1 Solo Cable)
 
 ---
 
-### 📌 Objetivo de esta Solución
-Eliminar la necesidad de añadir resistencias o modificar el cableado físico de pista. La caja negra de Aseproda ya está conectada por cable USB al TPV principal. Utilizando un **Splitter Virtual de Puerto COM (VSPE)**, el software de Aseproda y nuestro agente de Odoo leen simultáneamente los mismos datos de los surtidores sin cortes de servicio ni bloqueos del bus RS-485.
+### 📌 Resumen Operativo (Sin Modificar Cableado)
+La caja negra de Aseproda permanece conectada por su único cable USB al TPV principal. Mediante el **Splitter Virtual VSPE**, clonamos su puerto serie físico en el puerto virtual **COM10**. A continuación, ejecutamos la secuencia de scripts de la carpeta `scripts/` (u orden 1 a 5) para que el TPV de caja y Odoo Cloud convivan al 100% de forma simultánea.
 
 ---
 
-### 1. ¿Por qué ocurre el bloqueo y cómo lo soluciona el Splitter?
-* **Causa del bloqueo:** Al conectar un segundo conversor USB-RS485 en paralelo con la caja de Aseproda, se colocan dos resistencias de terminación de 120 Ω y dos redes de polarización activa en la misma línea física. Esto genera una **sobrecarga de impedancia que desploma el voltaje del bus**, impidiendo que el TPV reciba respuesta de los surtidores.
-* **Solución por software:** La caja negra ya digitaliza las señales de pista y las envía al TPV principal por su propio cable USB. Con un **emulador virtual de puertos COM**, clonamos ese flujo de datos para que dos programas lo abran simultáneamente sin conflictos de Windows.
+### 🗺️ 1. Tabla Maestra de Scripts y Secuencia de Ejecución (Orden 1 a 5)
+
+| Orden | Archivo Script | Propósito | Comando Exacto en PowerShell |
+| :---: | :--- | :--- | :--- |
+| **PASO 1** | **`install_prerequisites.ps1`** | Instala Python 3.12, pip, pyserial y requests en 1 solo clic. | `powershell -ExecutionPolicy Bypass -File .\install_prerequisites.ps1` |
+| **PASO 2** | *(Software VSPE)* | Crea el Splitter Virtual que une el COM real de Aseproda con **COM10**. | *(Crear Splitter en interfaz VSPE y guardar `vspe_config.vspe`)* |
+| **PASO 3** | **`test_rs485.py`** | Prueba interactiva en vivo para comprobar que entran tramas por **COM10**. | `python test_rs485.py` |
+| **PASO 4** | **`start_daemon.ps1`** | Inicia `agente_odoo_elcuervo.py` en segundo plano invisible ahora mismo. | `powershell -ExecutionPolicy Bypass -File .\start_daemon.ps1` |
+| **PASO 5** | **`setup_task_scheduler.ps1`** | Registra la Tarea Programada de Windows para persistencia 24/7 tras reinicios. | `powershell -ExecutionPolicy Bypass -File .\setup_task_scheduler.ps1` |
+
+---
+
+### 🏗️ 2. Esquema de Arquitectura por Software (1 Solo Cable)
 
 ```
-[Surtidores Pista] ==(RS-485)==> [Caja Negra Aseproda] ==(USB)==> [COM3 Físico en TPV]
-                                                                        │
-                                                                        ▼
-                                                            [VSPE / Splitter Virtual]
-                                                                  ┌─────┴─────┐
-                                                                  ▼           ▼
-                                                           [Virtual COM10] [Virtual COM10]
-                                                                  │           │
-                                                                  ▼           ▼
-                                                           [TPV Aseproda] [Agente Odoo Cloud]
+[Surtidores Pista] ==(Cable 2 Hilos RS-485)==> [Caja Negra Aseproda] ==(1 Cable USB)==> [COM3 Físico en TPV]
+                                                                                               │
+                                                                                               ▼
+                                                                                   [VSPE / Splitter Virtual]
+                                                                                         ┌─────┴─────┐
+                                                                                         ▼           ▼
+                                                                                [Virtual COM10] [Virtual COM10]
+                                                                                       │           │
+                                                                                       ▼           ▼
+                                                                                [TPV Aseproda] [Agente Odoo Cloud]
+                                                                                (Cobra/Tickets) (Sube a Odoo Web)
 ```
 
 ---
 
-### 2. Paso 1: Identificar el puerto COM real de la Caja Aseproda
-1. Pulsa **Win + X** en el TPV principal y selecciona **Administrador de Dispositivos** (o pulsa *Win + R* y escribe `devmgmt.msc`).
-2. Despliega la categoría **Puertos (COM y LPT)**.
-3. **Comprobación:** Desconecta el cable USB de la caja negra durante 2 segundos y reconéctalo. Observa qué puerto desaparece y reaparece (ejemplo: `COM3` o `COM1`). Anota ese puerto.
-4. Clic derecho sobre el puerto ➔ *Propiedades* ➔ *Configuración de puerto*. Verifica velocidad (estándar: **9600 baudios**, 8 bits, Sin paridad, 1 bit parada).
+### 🚀 3. Detalle de Ejecución Fase por Fase
+
+#### FASE 1: Instalación de Prerrequisitos en Windows
+Abre una consola de **PowerShell como Administrador** en el TPV principal y ejecuta:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install_prerequisites.ps1
+```
+*Efecto:* Descarga e instala automáticamente Python 3.12 y las librerías `pyserial` y `requests`.
 
 ---
 
-### 3. Paso 2: Descargar e Instalar VSPE (Virtual Serial Ports Emulator)
-* **Descarga:** Descargar el instalador desde la web oficial de Eterlogic:
-  **http://www.eterlogic.com/Products.VSPE.html** (Descargar versión de 32 o 64 bits según el Windows del TPV).
-* **Instalación:** Ejecutar `SetupVSPE.exe` como Administrador y completar el asistente (*Next ➔ Accept ➔ Install*).
-* **Controladores:** Si Windows solicita confirmación para instalar controladores de dispositivos virtuales serie, marcar **Confiar e Instalar**.
+#### FASE 2: Configuración de VSPE (Splitter COM3 ➔ COM10)
+1. **Identificar puerto COM real:** Pulsa `Win + X` ➔ *Administrador de Dispositivos* ➔ *Puertos (COM y LPT)*. Desconecta y reconecta el USB de la caja Aseproda para ver qué puerto reaparece (ejemplo: `COM3`).
+2. **Crear Splitter en VSPE:**
+   - Abre **VSPE** como Administrador ➔ Menú **Device ➔ Create...** ➔ Selecciona **Splitter** ➔ *Next*.
+   - **Virtual serial port:** Elige `COM10`.
+   - **Data source serial port:** Elige el COM real (`COM3`).
+   - Parámetros: `9600`, `8`, `None`, `1` ➔ Pulsa **Finish**.
+3. **Guardar Configuración:** Menú **File ➔ Save layout as...** ➔ Guardar en `C:\Utrecar\vspe_config.vspe`.
 
 ---
 
-### 4. Paso 3: Configurar el Dispositivo tipo Splitter en VSPE
-1. Abre **VSPE** (icono en escritorio o menú Inicio) ejecutándolo como Administrador.
-2. Haz clic en el menú **Device ➔ Create...** (o pulsa el icono de nuevo dispositivo).
-3. En el desplegable *Device type*, selecciona **Splitter** y pulsa **Next**.
-4. **Configuración de parámetros:**
-   * **Virtual serial port:** Selecciona un puerto virtual libre (ejemplo: `COM10`).
-   * **Data source serial port:** Selecciona el puerto real de la caja Aseproda (ejemplo: `COM3`).
-   * **Baud rate:** `9600` | **Data bits:** `8` | **Parity:** `None` | **Stop bits:** `1`
-   * Pulsa **Finish**.
-5. En la lista de dispositivos de VSPE, verificarás que el estado indica **INITIALIZED (OK)** con icono verde.
-6. Guarda la configuración: Menú **File ➔ Save layout as...** y guárdalo en `C:\Utrecar\vspe_config.vspe`.
+#### FASE 3: Verificación de Datos en Vivo con `test_rs485.py`
+Ejecuta en PowerShell el monitor interactivo:
+```powershell
+python test_rs485.py
+```
+* El script detectará automáticamente el puerto virtual `COM10`. Pulsa Enter.
+* Al descolgar o colgar una manguera en pista, verás en pantalla los paquetes en hexadecimal:
+  `[0001] RECIBIDOS 14 BYTES ➔ HEX: 02 30 31 41 43 30 30 30 30 30 30 34 45 44 ...`
+* Comprueba que el programa de caja de Aseproda sigue cobrando y emitiendo tickets con total normalidad.
 
 ---
 
-### 5. Paso 4: Conectar TPV Aseproda y Agente Odoo a COM10
-| Aplicación | Puerto | Función en la Estación |
-| :--- | :---: | :--- |
-| **TPV Aseproda** (Programa de Caja) | `COM10` | Sigue operando normalmente. Gestiona cobros, ticketera y órdenes de surtidor sin alteraciones. |
-| **Agente Odoo** (`agente_odoo_elcuervo.py`) | `COM10` | Lee las tramas de pista en tiempo real y sube automáticamente los manguerazos a **https://odoo.utrecar.com**. |
+#### FASE 4: Arranque del Agente de Sincronización Odoo Cloud
+Para poner el agente a funcionar en segundo plano continuo sin ventanas abiertas:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start_daemon.ps1
+```
+* El script copia automáticamente `agente_odoo_elcuervo.py` a `C:\Utrecar\` y lo ejecuta con `pythonw.exe` (modo invisible).
+* **Comprobación de Logs:** Abre el archivo `C:\Utrecar\agente.log` con el Bloc de Notas. Verás:
+  ```text
+  INFO: Conectado a Odoo Cloud (https://odoo.utrecar.com). UID: 2
+  INFO: Conectado al puerto COM10. Escuchando pista Aseproda y sincronizando con Odoo Cloud...
+  ```
 
 ---
 
-### 6. Paso 5: Autoinicio 24/7 frente a Reinicios del TPV
-1. **Arranque VSPE:**
-   * Pulsa **Win + R**, escribe `shell:startup` y pulsa Enter.
-   * En esa carpeta, crea un acceso directo a VSPE con el siguiente destino:
+#### FASE 5: Configurar Persistencia 24/7 (Sobrevivir a Reinicios)
+1. **Autostart de VSPE:**
+   - Pulsa `Win + R` ➔ escribe `shell:startup` ➔ crea un acceso directo con destino:
      `"C:\Program Files\Eterlogic.com\VSPE\VSPEmulator.exe" -minimize -hide_splash "C:\Utrecar\vspe_config.vspe"`
-     *(Arranca en silencio minimizado en la bandeja del sistema y activa el puerto virtual automáticamente)*.
-2. **Arranque Agente Odoo:**
-   * Ejecuta en PowerShell el instalador de tarea programada ya preparado:
-     `powershell -ExecutionPolicy Bypass -File .\setup_task_scheduler.ps1`
+2. **Autostart del Agente Odoo:**
+   - Ejecuta en PowerShell como Administrador:
+     ```powershell
+     powershell -ExecutionPolicy Bypass -File .\setup_task_scheduler.ps1
+     ```
 
 ---
 
-### 7. Checklist de Comprobación en Vivo
-- [x] **Paso 1:** Desconectar USB azul externo (dejar cableado físico tal como está).
-- [x] **Paso 2:** Identificar puerto COM de caja negra en Administrador de Dispositivos.
-- [x] **Paso 3:** Instalar VSPE y crear Splitter (Origen: COM real ➔ Virtual: COM10).
-- [x] **Paso 4:** Ejecutar `python test_rs485.py` apuntando a COM10 y verificar lectura.
-- [x] **Paso 5:** Verificar que TPV Aseproda cobra y descuelga mangueras en pista.
-- [x] **Paso 6:** Configurar acceso directo en `shell:startup` para VSPE.
+### 🌐 4. Parámetros de Producción Odoo Cloud
+- **URL Servidor:** `https://odoo.utrecar.com`
+- **Base de Datos:** `odoo`
+- **Usuario Administrador:** `jarodriguezbonilla@gmail.com`
+- **Contraseña:** `Utrecar2026!`
+- **Punto de Venta:** `E.S. Rodalabota (El Cuervo)` (ID: `2`)
+- **Módulo:** `pos_gas_station`
+- **Puerto de Escucha:** `COM10` (Puerto Virtual Splitter)
+- **Ruta de Logs Locales:** `C:\Utrecar\agente.log`
