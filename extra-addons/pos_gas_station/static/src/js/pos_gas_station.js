@@ -11,15 +11,14 @@ export class PumpGridWidget extends Component {
 
     setup() {
         this.pos = usePos();
-        this.configId = this.pos.config.id;
+        
+        // Obtener config_id de forma robusta desde la URL o el objeto pos
+        const urlParams = new URLSearchParams(window.location.search);
+        this.configId = parseInt(urlParams.get("config_id")) || (this.pos.config ? this.pos.config.id : 2);
+        
         this.state = useState({
-            stationName: this.pos.config.name || "CONTROL DE PISTA",
-            pumps: [
-                { id: 1, name: "Calle 1", fuel: "Gasóleo A / Sin Plomo 95", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 },
-                { id: 2, name: "Calle 2", fuel: "Gasóleo A / Sin Plomo 95", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 },
-                { id: 3, name: "Calle 3", fuel: "Gasóleo A / Sin Plomo 95", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 },
-                { id: 4, name: "Calle 4", fuel: "Gasóleo A / Sin Plomo 95", amount: 0.00, liters: 0.0, status: "idle", statusText: "LIBRE", product_id: 51, price: 1.769 }
-            ]
+            stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
+            pumps: []
         });
 
         this.pollInterval = null;
@@ -47,7 +46,7 @@ export class PumpGridWidget extends Component {
                 if (data.station_name) {
                     this.state.stationName = data.station_name;
                 }
-                if (data.pumps && Array.isArray(data.pumps) && data.pumps.length > 0) {
+                if (data.pumps && Array.isArray(data.pumps)) {
                     this.state.pumps = data.pumps;
                 }
             }
@@ -66,7 +65,8 @@ export class PumpGridWidget extends Component {
                 product = this.pos.db.product_by_id[pump.product_id];
             } else {
                 const allProducts = Object.values(this.pos.db.product_by_id || {});
-                product = allProducts.find(p => p.display_name.toLowerCase().includes(pump.fuel.toLowerCase().split('/')[0].trim())) || allProducts[0];
+                const fuelSearch = pump.fuel.toLowerCase().split('/')[0].trim();
+                product = allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch)) || allProducts[0];
             }
 
             if (product) {
