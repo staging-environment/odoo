@@ -127,7 +127,8 @@ def get_live_pumps_state(conn, product_map):
         for calle in [1, 2, 3, 4]:
             cursor.execute("""
                 SELECT id, CodigoDeMaquinaExpendedora, NumeroDeContador, CodigoDeProducto, 
-                       CantidadExpedida, Precio, ImporteExpedido, FechaYHoraDeExpedicion, Estado
+                       CantidadExpedida, Precio, ImporteExpedido, CantidadPrefijada, ImportePrefijado,
+                       FechaYHoraDeExpedicion, FechaYHoraDePrefijado, Estado
                 FROM expediciones
                 WHERE CodigoDeEstacion = %s AND CodigoDeMaquinaExpendedora = %s
                 ORDER BY id DESC
@@ -152,8 +153,10 @@ def get_live_pumps_state(conn, product_map):
                 fuel_name = fuel_names.get(prod_code, "Gasóleo A")
                 amount = float(row['ImporteExpedido'] or 0.0)
                 liters = float(row['CantidadExpedida'] or 0.0)
+                pref_amount = float(row['ImportePrefijado'] or 0.0)
+                pref_liters = float(row['CantidadPrefijada'] or 0.0)
                 price = float(row['Precio'] or (amount / liters if liters > 0 else 1.769))
-                exp_date = row['FechaYHoraDeExpedicion']
+                exp_date = row['FechaYHoraDeExpedicion'] or row['FechaYHoraDePrefijado']
                 estado = row['Estado']
                 
                 is_recent = False
@@ -162,19 +165,21 @@ def get_live_pumps_state(conn, product_map):
                     if abs(delta.total_seconds()) < 180:
                         is_recent = True
                 
-                if estado == 'En expedicion':
-                    p_state['status'] = 'dispensing'
-                    p_state['statusText'] = 'SUMINISTRANDO'
-                    p_state['amount'] = amount
-                    p_state['liters'] = liters
-                elif is_recent and amount > 0:
-                    p_state['status'] = 'ready'
-                    p_state['statusText'] = 'PENDIENTE DE COBRO'
-                    p_state['amount'] = amount
-                    p_state['liters'] = liters
-                elif estado == 'Prefijado':
+                if estado == 'Prefijado' and is_recent:
                     p_state['status'] = 'dispensing'
                     p_state['statusText'] = 'AUTORIZADO'
+                    p_state['amount'] = pref_amount if pref_amount > 0 else amount
+                    p_state['liters'] = pref_liters if pref_liters > 0 else round(pref_amount / price, 2) if price > 0 else 0.0
+                elif estado == 'En expedicion':
+                    p_state['status'] = 'dispensing'
+                    p_state['statusText'] = 'SUMINISTRANDO'
+                    p_state['amount'] = amount if amount > 0 else pref_amount
+                    p_state['liters'] = liters if liters > 0 else (pref_amount / price if price > 0 else 0.0)
+                elif is_recent and (amount > 0 or pref_amount > 0):
+                    p_state['status'] = 'ready'
+                    p_state['statusText'] = 'PENDIENTE DE COBRO'
+                    p_state['amount'] = amount if amount > 0 else pref_amount
+                    p_state['liters'] = liters if liters > 0 else (pref_amount / price if price > 0 else 0.0)
                 else:
                     p_state['status'] = 'idle'
                     p_state['statusText'] = 'LIBRE'
@@ -312,7 +317,6 @@ def sync_loop():
                     
                     try:
                         order_id = models.execute_kw(ODOO_DB, uid, ODOO_PASS, 'pos.order', 'create', [order_data])
-                        # Asegurar estado paid y pos_reference de 19 digitos
                         models.execute_kw(ODOO_DB, uid, ODOO_PASS, 'pos.order', 'write', [[order_id], {'state': 'paid', 'pos_reference': pos_ref}])
                         logging.info(f"✅ VENTA EN ODOO -> Ticket {serie}-{numero} | {litros:.2f}L | {total_eur:.2f}€ | Odoo ID: {order_id} | Ref: {pos_ref}")
                     except Exception as odoo_err:
