@@ -165,7 +165,7 @@
                     </div>
                 </div>
 
-                <!-- PARTE INFERIOR DERECHA: PAD RÁPIDO CON FOTOS REALES DE BILLETES Y COMBUSTIBLES -->
+                <!-- PARTE INFERIOR DERECHA: PAD RÁPIDO CON BILLETES SVG VECTORIALES NÍTITOS -->
                 <div class="utrecar-keypad-panel">
                     
                     <!-- DISPLAY DIGITAL -->
@@ -182,15 +182,15 @@
                         </button>
                     </div>
 
-                    <!-- BOTONERA DE BILLETES Y MONEDAS CON IMÁGENES FOTOGRÁFICAS -->
+                    <!-- BOTONERA DE BILLETES Y MONEDAS CON VECTORES SVG PERFECTOS -->
                     <div class="keypad-bills-grid">
                         <t t-if="state.mode === 'money'">
-                            <button class="bill-btn bill-photo bill-1e" t-on-click="() => this.addPreset(1)" title="1 Euro"></button>
-                            <button class="bill-btn bill-photo bill-5e" t-on-click="() => this.addPreset(5)" title="5 Euros"></button>
-                            <button class="bill-btn bill-photo bill-10e" t-on-click="() => this.addPreset(10)" title="10 Euros"></button>
-                            <button class="bill-btn bill-photo bill-20e" t-on-click="() => this.addPreset(20)" title="20 Euros"></button>
-                            <button class="bill-btn bill-photo bill-50e" t-on-click="() => this.addPreset(50)" title="50 Euros"></button>
-                            <button class="bill-btn bill-photo bill-100e" t-on-click="() => this.addPreset(100)" title="100 Euros"></button>
+                            <button class="bill-btn bill-svg bill-1e" t-on-click="() => this.addPreset(1)" title="1 Euro"></button>
+                            <button class="bill-btn bill-svg bill-5e" t-on-click="() => this.addPreset(5)" title="5 Euros"></button>
+                            <button class="bill-btn bill-svg bill-10e" t-on-click="() => this.addPreset(10)" title="10 Euros"></button>
+                            <button class="bill-btn bill-svg bill-20e" t-on-click="() => this.addPreset(20)" title="20 Euros"></button>
+                            <button class="bill-btn bill-svg bill-50e" t-on-click="() => this.addPreset(50)" title="50 Euros"></button>
+                            <button class="bill-btn bill-svg bill-100e" t-on-click="() => this.addPreset(100)" title="100 Euros"></button>
                         </t>
                         <t t-else="">
                             <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(5)">5 L</button>
@@ -202,24 +202,14 @@
                         </t>
                     </div>
 
-                    <!-- SELECTOR DE COMBUSTIBLE RÁPIDO (GA, 95, GB, G+) -->
+                    <!-- SELECTOR DE COMBUSTIBLE DINÁMICO SEGÚN LA GASOLINERA -->
                     <div class="keypad-fuel-grid">
-                        <button t-attf-class="fuel-tab ga #{state.selectedFuel === 'GA' ? 'active-fuel' : ''}" 
-                                t-on-click="() => this.selectFuel('GA')">
-                            <strong>GA</strong> Gasóleo A
-                        </button>
-                        <button t-attf-class="fuel-tab sp95 #{state.selectedFuel === '95' ? 'active-fuel' : ''}" 
-                                t-on-click="() => this.selectFuel('95')">
-                            <strong>95</strong> Gasolina
-                        </button>
-                        <button t-attf-class="fuel-tab gb #{state.selectedFuel === 'GB' ? 'active-fuel' : ''}" 
-                                t-on-click="() => this.selectFuel('GB')">
-                            <strong>GB</strong> B (Agrícola)
-                        </button>
-                        <button t-attf-class="fuel-tab gplus #{state.selectedFuel === 'G+' ? 'active-fuel' : ''}" 
-                                t-on-click="() => this.selectFuel('G+')">
-                            <strong>G+</strong> Plus
-                        </button>
+                        <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
+                            <button t-attf-class="fuel-tab #{fuel.class} #{state.selectedFuel === fuel.code ? 'active-fuel' : ''}" 
+                                    t-on-click="() => this.selectFuel(fuel.code)">
+                                <strong><t t-esc="fuel.code"/></strong> <t t-esc="fuel.name"/>
+                            </button>
+                        </t>
                     </div>
 
                     <!-- BOTONES DE ACCIÓN (BORRAR / AUTORIZAR) -->

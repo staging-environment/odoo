@@ -387,7 +387,7 @@
 }
 
 /* ============================================================
-   PANEL DERECHO: TECLADO DE BILLETES TÁCTILES Y COMBUSTIBLE
+   PANEL DERECHO: TECLADO DE BILLETES VECTORIALES NÍTITOS
    ============================================================ */
 .utrecar-keypad-panel {
     background: #0f172a;
@@ -433,7 +433,7 @@
     color: #fff;
 }
 
-/* BOTONERA DE BILLETES CON FOTO REAL */
+/* BOTONERA DE BILLETES CON VECTORES SVG NÍTITOS Y PROPORCIONADOS */
 .keypad-bills-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -442,61 +442,39 @@
 }
 
 .bill-btn {
-    border-radius: 6px;
+    border-radius: 8px;
     border: 2px solid #334155;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 54px;
+    height: 56px;
     position: relative;
     box-shadow: 0 3px 8px rgba(0,0,0,0.4);
     transition: transform 0.1s ease, filter 0.15s ease, border-color 0.15s ease;
     background-color: #1e293b;
+    overflow: hidden;
 }
 .bill-btn:hover { 
-    filter: brightness(1.15); 
+    filter: brightness(1.12); 
     transform: translateY(-2px);
-    border-color: #60a5fa;
+    border-color: #38bdf8;
 }
-.bill-btn:active { transform: scale(0.95); }
+.bill-btn:active { transform: scale(0.96); }
 
-/* FONDOS FOTOGRÁFICOS DE CADA BILLETE Y MONEDA */
-.bill-photo {
-    background-size: 100% 100%;
+/* FONDOS VECTORIALES SVG PERFECTOS */
+.bill-svg {
+    background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
 }
 
-.bill-1e {
-    background-image: url('/pos_gas_station/static/src/img/bill_img_1.png');
-    border-color: #ca8a04;
-}
-
-.bill-5e {
-    background-image: url('/pos_gas_station/static/src/img/bill_img_5.png');
-    border-color: #3b82f6;
-}
-
-.bill-10e {
-    background-image: url('/pos_gas_station/static/src/img/bill_img_10.png');
-    border-color: #ef4444;
-}
-
-.bill-20e {
-    background-image: url('/pos_gas_station/static/src/img/bill_img_20.png');
-    border-color: #06b6d4;
-}
-
-.bill-50e {
-    background-image: url('/pos_gas_station/static/src/img/bill_img_50.png');
-    border-color: #f97316;
-}
-
-.bill-100e {
-    background-image: url('/pos_gas_station/static/src/img/bill_img_100.png');
-    border-color: #22c55e;
-}
+.bill-1e { background-image: url('/pos_gas_station/static/src/img/bill_1.svg'); border-color: #ca8a04; }
+.bill-5e { background-image: url('/pos_gas_station/static/src/img/bill_5.svg'); border-color: #3b82f6; }
+.bill-10e { background-image: url('/pos_gas_station/static/src/img/bill_10.svg'); border-color: #ef4444; }
+.bill-20e { background-image: url('/pos_gas_station/static/src/img/bill_20.svg'); border-color: #06b6d4; }
+.bill-50e { background-image: url('/pos_gas_station/static/src/img/bill_50.svg'); border-color: #f97316; }
+.bill-100e { background-image: url('/pos_gas_station/static/src/img/bill_100.svg'); border-color: #22c55e; }
 
 .liter-btn {
     background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
@@ -506,34 +484,38 @@
     border: 1px solid #38bdf8;
 }
 
-/* FILA DE COMBUSTIBLES */
+/* FILA DE COMBUSTIBLES DINÁMICA */
 .keypad-fuel-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 4px;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 6px;
     margin: 4px 0;
 }
 
 .fuel-tab {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    padding: 6px 4px;
+    padding: 8px 6px;
     border-radius: 6px;
     border: 1px solid transparent;
     cursor: pointer;
     color: #ffffff;
     text-align: center;
+    transition: all 0.15s ease;
 }
-.fuel-tab strong { font-size: 12px; display: inline-block; margin-right: 2px; }
+.fuel-tab strong { font-size: 13px; display: inline-block; margin-right: 4px; }
 
 .fuel-tab.ga { background: #334155; border-color: #64748b; }
 .fuel-tab.sp95 { background: #15803d; border-color: #22c55e; }
 .fuel-tab.gb { background: #b45309; border-color: #f59e0b; }
 .fuel-tab.gplus { background: #4338ca; border-color: #818cf8; }
 
+.fuel-tab:hover { filter: brightness(1.15); }
+
 .fuel-tab.active-fuel {
     outline: 2px solid #ffffff;
-    box-shadow: 0 0 10px rgba(255,255,255,0.7);
+    box-shadow: 0 0 12px rgba(255,255,255,0.8);
+    transform: scale(1.02);
 }
 
 /* ACCIONES DE BORRADO Y AUTORIZACIÓN */

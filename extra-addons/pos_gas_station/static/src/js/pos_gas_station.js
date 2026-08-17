@@ -23,6 +23,10 @@ export class UtrecarMainScreen extends Component {
             mode: "money", // 'money' o 'liters'
             presetValue: 0,
             selectedFuel: "GA",
+            availableFuels: [
+                { code: "GA", name: "Gasóleo A", class: "ga" },
+                { code: "95", name: "Sin Plomo 95", class: "sp95" }
+            ],
             isStoreModalOpen: false,
             storeSearch: "",
             pumps: []
@@ -82,6 +86,12 @@ export class UtrecarMainScreen extends Component {
             if (data) {
                 if (data.station_name) {
                     this.state.stationName = data.station_name;
+                }
+                if (data.available_fuels && Array.isArray(data.available_fuels)) {
+                    this.state.availableFuels = data.available_fuels;
+                    if (!this.state.availableFuels.some(f => f.code === this.state.selectedFuel)) {
+                        this.state.selectedFuel = this.state.availableFuels[0].code;
+                    }
                 }
                 if (data.pumps && Array.isArray(data.pumps)) {
                     this.state.pumps = data.pumps;
@@ -190,13 +200,8 @@ export class UtrecarMainScreen extends Component {
             alert("Por favor, seleccione primero la Calle / Surtidor a autorizar.");
             return;
         }
-        const fuelNames = {
-            "GA": "Gasóleo A",
-            "95": "Sin Plomo 95",
-            "GB": "Gasóleo B",
-            "G+": "Gasóleo Plus"
-        };
-        const fuelName = fuelNames[this.state.selectedFuel] || "Gasóleo A";
+        const currentFuelObj = this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || { name: "Gasóleo A" };
+        const fuelName = currentFuelObj.name;
         const valText = this.state.presetValue > 0 ? `${this.state.presetValue} ${this.state.mode === 'money' ? '€' : 'L'}` : "Libre";
         
         alert(`✅ Surtidor Calle ${this.state.selectedPumpId} AUTORIZADO\nCombustible: ${fuelName}\nPrefijado: ${valText}`);
