@@ -8,14 +8,26 @@
 }
 
 .pos .pos-topheader {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
     background: #ffffff !important;
     border-bottom: 2px solid #cbd5e1 !important;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
-    height: 48px !important;
-    padding: 0 12px !important;
+    height: 52px !important;
+    padding: 0 16px 0 8px !important;
 }
 
-/* SUSTITUIR LOGO ODOO POR EL LOGO DE UTRECAR */
+.pos .pos-topheader .pos-branding {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    flex: 0 0 auto !important;
+}
+
+/* SUSTITUIR LOGO ODOO POR EL LOGO DE UTRECAR GRANDE A LA IZQUIERDA */
 .pos-branding,
 .pos-branding img,
 .pos-topheader .pos-branding,
@@ -23,11 +35,13 @@
 .pos-topheader .navbar-brand,
 .pos-topheader .o_menu_brand {
     content: url('/pos_gas_station/static/src/img/utrecar_brand_logo.svg') !important;
-    height: 36px !important;
-    max-height: 36px !important;
+    height: 44px !important;
+    max-height: 44px !important;
     width: auto !important;
     object-fit: contain !important;
-    display: inline-block !important;
+    display: block !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
 }
 
 .pos .pos-topheader * {
