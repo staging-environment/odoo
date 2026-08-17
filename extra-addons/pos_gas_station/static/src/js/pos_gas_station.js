@@ -291,11 +291,56 @@ export class UtrecarMainScreen extends Component {
             alert("Por favor, seleccione primero la Calle / Surtidor a autorizar.");
             return;
         }
-        const currentFuelObj = this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || { name: "Gasóleo A" };
-        const fuelName = currentFuelObj.name;
-        const valText = this.state.presetValue > 0 ? `${this.state.presetValue} ${this.state.mode === 'money' ? '€' : 'L'}` : "Libre";
         
-        alert(`✅ Surtidor Calle ${this.state.selectedPumpId} AUTORIZADO\nCombustible: ${fuelName}\nPrefijado: ${valText}`);
+        const pumpId = this.state.selectedPumpId;
+        const currentFuelObj = this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || this.state.availableFuels[0] || { name: "Gasóleo A" };
+        const fuelName = currentFuelObj.name;
+        const isMoney = this.state.mode === "money";
+        const presetVal = this.state.presetValue;
+
+        if (presetVal <= 0) {
+            alert(`Por favor, indique un importe o litros con los billetes para autorizar la Calle ${pumpId}.`);
+            return;
+        }
+
+        // Añadir línea de combustible (Prepago) al ticket activo de Odoo
+        const currentOrder = this.pos.get_order();
+        if (currentOrder) {
+            const allProducts = Object.values(this.pos.db?.product_by_id || {});
+            const fuelSearch = fuelName.toLowerCase().split('/')[0].trim();
+            const product = allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch) && p.default_code?.startsWith("100")) ||
+                            allProducts.find(p => p.display_name.toLowerCase().includes(fuelSearch)) ||
+                            allProducts[0];
+
+            if (product) {
+                const currentFuelPrice = product.lst_price > 0 ? product.lst_price : 1.550;
+                let qty = 1;
+                let unitPrice = currentFuelPrice;
+
+                if (isMoney) {
+                    // Modo Dinero: Ej 20€ -> Litros = 20 / 1.55
+                    qty = parseFloat((presetVal / currentFuelPrice).toFixed(2));
+                    unitPrice = currentFuelPrice;
+                } else {
+                    // Modo Litros: Ej 20L -> Importe = 20 * 1.55
+                    qty = presetVal;
+                    unitPrice = currentFuelPrice;
+                }
+
+                await currentOrder.add_product(product, {
+                    quantity: qty,
+                    price: unitPrice,
+                    extras: {
+                        price_manually_set: true
+                    }
+                });
+
+                const plateInfo = this.state.vehiclePlate ? `Matrícula: ${this.state.vehiclePlate} | ` : "";
+                currentOrder.set_note?.(`${plateInfo}Calle ${pumpId} [Prepago: ${presetVal} ${isMoney ? '€' : 'L'}]`);
+                this.state.orderVersion = Date.now();
+            }
+        }
+
         this.clearPreset();
     }
 
@@ -313,6 +358,7 @@ export class UtrecarMainScreen extends Component {
     }
 
     async onPumpClick(pump) {
+        // Si el surtidor tiene suministro realizado (Postpago)
         if (pump.amount > 0 && pump.liters > 0) {
             const currentOrder = this.pos.get_order();
             if (!currentOrder) return;
@@ -342,6 +388,9 @@ export class UtrecarMainScreen extends Component {
                 }
                 this.state.orderVersion = Date.now();
             }
+        } else {
+            // Si está libre, seleccionarlo para prepago
+            this.state.selectedPumpId = pump.id;
         }
     }
 }

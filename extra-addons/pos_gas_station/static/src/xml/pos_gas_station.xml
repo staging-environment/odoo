@@ -63,7 +63,7 @@
                                 <tr class="empty-ticket-row">
                                     <td colspan="6" class="text-center py-4 text-muted">
                                         <i class="fa fa-shopping-cart fa-2x mb-2 d-block opacity-50"/>
-                                        Ticket vacío. Pulse <strong>PASAR A TICKET</strong> en una calle con repostaje o añada productos desde <strong>TIENDA</strong>.
+                                        Ticket vacío. Seleccione una <strong>Calle libre</strong> + importe para Prepago, o pulse <strong>PASAR A TICKET</strong> para Postpago.
                                     </td>
                                 </tr>
                             </t>
@@ -157,7 +157,16 @@
                                         </div>
                                     </t>
                                     <t t-else="">
-                                        <div class="badge-idle">SURTIDOR LIBRE</div>
+                                        <div class="badge-idle">
+                                            <t t-if="state.selectedPumpId === pump.id &amp;&amp; state.presetValue > 0">
+                                                <button class="btn-box-load" style="background:#2563eb; color:#fff;" t-on-click.stop="() => this.authorizePreset()">
+                                                    <i class="fa fa-plus mr-1"/> PREPAGO A TICKET
+                                                </button>
+                                            </t>
+                                            <t t-else="">
+                                                SURTIDOR LIBRE
+                                            </t>
+                                        </div>
                                     </t>
                                 </div>
                             </div>
