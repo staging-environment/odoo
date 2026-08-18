@@ -764,3 +764,228 @@
     background: #2563eb;
     color: #ffffff;
 }
+
+/* ============================================================
+   BANNERS Y CHIPS VISUALES DE COMBUSTIBLE EN SURTIDORES (ALTA VISIBILIDAD)
+   ============================================================ */
+.box-fuel-wrapper {
+    margin: 4px 0;
+    min-height: 48px;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.fuel-chip {
+    width: 100%;
+    border-radius: 7px;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+    user-select: none;
+    box-sizing: border-box;
+}
+
+.fuel-chip-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+}
+
+.fuel-icon-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    font-size: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.fuel-category-pill {
+    font-size: 9.5px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.fuel-code-pill {
+    font-size: 10px;
+    font-weight: 900;
+    padding: 1px 5px;
+    border-radius: 4px;
+    letter-spacing: 0.3px;
+}
+
+.fuel-name-display {
+    font-size: 11px;
+    font-weight: 800;
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    line-height: 1.15;
+}
+
+/* 🟢 1. GASOLINA / SIN PLOMO 95 (VERDE INTENSO DE ALTA VISIBILIDAD) */
+.fuel-badge-gasolina {
+    background: linear-gradient(135deg, #15803d 0%, #16a34a 100%);
+    color: #ffffff;
+    border: 2px solid #16a34a;
+    box-shadow: 0 3px 8px rgba(22, 163, 74, 0.35);
+}
+.fuel-badge-gasolina .fuel-icon-circle {
+    background: #ffffff;
+    color: #15803d;
+}
+.fuel-badge-gasolina .fuel-category-pill {
+    background: #ffffff;
+    color: #15803d;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.fuel-badge-gasolina .fuel-code-pill {
+    background: #0f172a;
+    color: #4ade80;
+}
+.fuel-badge-gasolina .fuel-name-display {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* ⬛ 2. DIÉSEL / GASÓLEO A (NEGRO PIZARRA CON ACENTOS AMARILLO/ORO) */
+.fuel-badge-diesel {
+    background: linear-gradient(135deg, #090d16 0%, #1e293b 100%);
+    color: #ffffff;
+    border: 2px solid #334155;
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.45);
+}
+.fuel-badge-diesel .fuel-icon-circle {
+    background: #f59e0b;
+    color: #0f172a;
+}
+.fuel-badge-diesel .fuel-category-pill {
+    background: #f59e0b;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.fuel-badge-diesel .fuel-code-pill {
+    background: #334155;
+    color: #fbbf24;
+}
+.fuel-badge-diesel .fuel-name-display {
+    color: #f8fafc;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 🚜 3. GASÓLEO B / AGRÍCOLA (ÁMBAR / ROJIZO) */
+.fuel-badge-gasoleob {
+    background: linear-gradient(135deg, #7c2d12 0%, #c2410c 100%);
+    color: #ffffff;
+    border: 2px solid #ea580c;
+    box-shadow: 0 3px 8px rgba(194, 65, 12, 0.4);
+}
+.fuel-badge-gasoleob .fuel-icon-circle {
+    background: #ffffff;
+    color: #c2410c;
+}
+.fuel-badge-gasoleob .fuel-category-pill {
+    background: #ffffff;
+    color: #c2410c;
+}
+.fuel-badge-gasoleob .fuel-code-pill {
+    background: #431407;
+    color: #fdba74;
+}
+
+/* ⭐ 4. GASÓLEO PLUS (ÍNDIGO / AZUL PROFUNDO) */
+.fuel-badge-gplus {
+    background: linear-gradient(135deg, #312e81 0%, #4f46e5 100%);
+    color: #ffffff;
+    border: 2px solid #6366f1;
+    box-shadow: 0 3px 8px rgba(79, 70, 229, 0.4);
+}
+.fuel-badge-gplus .fuel-icon-circle {
+    background: #fbbf24;
+    color: #1e1b4b;
+}
+.fuel-badge-gplus .fuel-category-pill {
+    background: #fbbf24;
+    color: #1e1b4b;
+}
+.fuel-badge-gplus .fuel-code-pill {
+    background: #1e1b4b;
+    color: #a5b4fc;
+}
+
+/* ⚪ 5. SURTIDOR LIBRE / DISPONIBLE */
+.fuel-chip-idle {
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+    color: #64748b;
+    padding: 3px 4px;
+}
+.idle-tag {
+    font-size: 8.5px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.idle-tag.tag-diesel {
+    background: #334155;
+    color: #ffffff;
+}
+.idle-tag.tag-gasolina {
+    background: #16a34a;
+    color: #ffffff;
+}
+.idle-icon {
+    font-size: 11px;
+    margin-right: 2px;
+}
+
+/* BORDES Y REALCES EN TARJETA DE SURTIDOR */
+.pump-station-box.is-fuel-gasolina {
+    border-top: 5px solid #16a34a !important;
+}
+.pump-station-box.is-fuel-gasolina.status-dispensing {
+    background: #f0fdf4 !important;
+    border-color: #16a34a !important;
+}
+.pump-station-box.is-fuel-gasolina.status-ready {
+    border-color: #16a34a !important;
+    animation: glowGasolina 1.5s infinite;
+}
+
+.pump-station-box.is-fuel-diesel {
+    border-top: 5px solid #0f172a !important;
+}
+.pump-station-box.is-fuel-diesel.status-dispensing {
+    background: #f8fafc !important;
+    border-color: #334155 !important;
+}
+.pump-station-box.is-fuel-diesel.status-ready {
+    border-color: #f59e0b !important;
+    animation: glowDiesel 1.5s infinite;
+}
+
+@keyframes glowGasolina {
+    0% { border-color: #16a34a; box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2); }
+    50% { border-color: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
+    100% { border-color: #16a34a; box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2); }
+}
+
+@keyframes glowDiesel {
+    0% { border-color: #f59e0b; box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2); }
+    50% { border-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+    100% { border-color: #f59e0b; box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2); }
+}

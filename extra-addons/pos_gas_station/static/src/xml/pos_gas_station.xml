@@ -134,7 +134,8 @@
                     
                     <div class="pumps-auto-grid">
                         <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
-                            <div t-attf-class="pump-station-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-active-selection' : ''}"
+                            <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
+                            <div t-attf-class="pump-station-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-active-selection' : ''} #{getPumpFuelClass(pump)}"
                                  t-on-click="() => this.onPumpSelect(pump)">
                                 
                                 <div class="box-head">
@@ -142,7 +143,35 @@
                                     <span class="box-badge"><t t-esc="pump.statusText"/></span>
                                 </div>
 
-                                <div class="box-fuel-label"><t t-esc="pump.fuel"/></div>
+                                <!-- BANNER VISUAL ULTRA CLARO DE COMBUSTIBLE (DIESEL / GASOLINA) -->
+                                <div class="box-fuel-wrapper">
+                                    <t t-if="fuelInfo.isActive">
+                                        <div t-attf-class="fuel-chip #{fuelInfo.badgeClass}">
+                                            <div class="fuel-chip-top">
+                                                <span class="fuel-icon-circle">
+                                                    <i t-attf-class="fa #{fuelInfo.icon}"/>
+                                                </span>
+                                                <span class="fuel-category-pill"><t t-esc="fuelInfo.category"/></span>
+                                                <span class="fuel-code-pill"><t t-esc="fuelInfo.shortCode"/></span>
+                                            </div>
+                                            <div class="fuel-name-display" t-att-title="fuelInfo.name">
+                                                <t t-esc="fuelInfo.name"/>
+                                            </div>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="fuel-chip fuel-chip-idle">
+                                            <div class="fuel-chip-top">
+                                                <span class="idle-icon"><i class="fa fa-gas-pump text-muted"/></span>
+                                                <span class="idle-tag tag-diesel">GA</span>
+                                                <span class="idle-tag tag-gasolina">95</span>
+                                            </div>
+                                            <div class="fuel-name-display text-muted">
+                                                <t t-esc="pump.fuel || 'Gasóleo A / Sin Plomo 95'"/>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
 
                                 <div class="box-lcd-counter">
                                     <div class="lcd-euros">
