@@ -6,8 +6,74 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-# Memoria de autorizaciones y estados temporales por gasolinera
-STATION_PUMP_OVERRIDES = {}
+# Memoria de autorizaciones y estados temporales por gasolinera (con datos de actividad iniciales)
+STATION_PUMP_OVERRIDES = {
+    5: {
+        1: {
+            "id": 1,
+            "status": "ready",
+            "statusText": "PENDIENTE DE COBRO",
+            "fuel": "Sin Plomo 95",
+            "amount": 17.50,
+            "liters": 10.54,
+            "price": 1.66
+        },
+        3: {
+            "id": 3,
+            "status": "ready",
+            "statusText": "PENDIENTE DE COBRO",
+            "fuel": "Sin Plomo 95",
+            "amount": 30.00,
+            "liters": 18.07,
+            "price": 1.66
+        },
+        4: {
+            "id": 4,
+            "status": "dispensing",
+            "statusText": "AUTORIZADO",
+            "fuel": "Gasóleo A",
+            "amount": 80.00,
+            "liters": 44.94,
+            "price": 1.78
+        },
+        5: {
+            "id": 5,
+            "status": "ready",
+            "statusText": "PENDIENTE DE COBRO",
+            "fuel": "Gasóleo A",
+            "amount": 18.10,
+            "liters": 10.17,
+            "price": 1.78
+        },
+        6: {
+            "id": 6,
+            "status": "dispensing",
+            "statusText": "AUTORIZADO",
+            "fuel": "Gasóleo A",
+            "amount": 30.00,
+            "liters": 16.85,
+            "price": 1.78
+        },
+        7: {
+            "id": 7,
+            "status": "ready",
+            "statusText": "PENDIENTE DE COBRO",
+            "fuel": "Gasóleo A",
+            "amount": 18.50,
+            "liters": 10.39,
+            "price": 1.78
+        },
+        8: {
+            "id": 8,
+            "status": "ready",
+            "statusText": "PENDIENTE DE COBRO",
+            "fuel": "Gasóleo A",
+            "amount": 50.00,
+            "liters": 28.09,
+            "price": 1.78
+        },
+    }
+}
 
 class PosGasStationController(http.Controller):
 
@@ -52,7 +118,8 @@ class PosGasStationController(http.Controller):
                         {"code": "95", "name": "Sin Plomo 95", "class": "sp95"}
                     ]
 
-        overrides = STATION_PUMP_OVERRIDES.get(int(config_id or 1), {})
+        cfg_id = int(config_id or 1)
+        overrides = STATION_PUMP_OVERRIDES.get(cfg_id, {})
 
         pumps = []
         for i in range(1, num_pumps + 1):
