@@ -402,11 +402,33 @@ export class UtrecarMainScreen extends Component {
         this.state.storeSearch = ev.target.value;
     }
 
-    async addStoreProductToOrder(product) {
+    async addStoreProductToOrder(virtusItem) {
+        if (!virtusItem || virtusItem.is_empty) return;
         const currentOrder = this.getOrCreateOrder();
-        if (currentOrder) {
-            await currentOrder.add_product(product, {
+        if (!currentOrder) return;
+
+        let realProduct = null;
+        if (virtusItem && typeof virtusItem.get_unit === "function") {
+            realProduct = virtusItem;
+        } else if (this.pos.db && this.pos.db.product_by_id) {
+            const all = Object.values(this.pos.db.product_by_id);
+            const code = (virtusItem.default_code || "").toLowerCase();
+            const name = (virtusItem.display_name || virtusItem.full_name || "").toLowerCase();
+
+            realProduct = all.find(p => (p.default_code || "").toLowerCase() === code) ||
+                          all.find(p => (p.display_name || p.name || "").toLowerCase().includes(name)) ||
+                          all.find(p => !(p.display_name || p.name || "").toLowerCase().includes("gasóleo") && !(p.display_name || p.name || "").toLowerCase().includes("plomo")) ||
+                          all[0];
+        }
+
+        if (realProduct) {
+            const price = virtusItem.lst_price || realProduct.lst_price || 1.0;
+            await currentOrder.add_product(realProduct, {
                 quantity: 1,
+                price: price,
+                extras: {
+                    price_manually_set: true
+                }
             });
             if (this.state.vehiclePlate) {
                 currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
