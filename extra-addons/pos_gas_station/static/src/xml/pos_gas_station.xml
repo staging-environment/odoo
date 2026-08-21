@@ -8,7 +8,7 @@
         <div class="virtus-screen-master">
 
             <!-- ======================================================== -->
-            <!-- FILA SUPERIOR: TABLA DE TICKET (IZQ) + PARRILLA TIENDA (DER) -->
+            <!-- FILA SUPERIOR: TABLA DE TICKET (68%) + PARRILLA TIENDA (32%) -->
             <!-- ======================================================== -->
             <div class="virtus-row-top">
 
@@ -17,19 +17,19 @@
                     <!-- CABECERA SUPERIOR DE VENTA -->
                     <div class="virtus-ticket-topbar">
                         <div class="ticket-card-icon" title="Tarjeta / Cliente">
-                            <i class="fa fa-credit-card text-primary"/>
+                            <span class="virtus-card-cards-badge">💳 CLIENTE</span>
                         </div>
                         <div class="virtus-plate-box">
                             <span class="eu-flag-box">🇪🇸 E</span>
                             <input type="text" 
                                    class="virtus-plate-input" 
-                                   placeholder="MATRÍCULA..." 
+                                   placeholder="3696 GBC" 
                                    t-att-value="state.vehiclePlate"
                                    t-on-input="(ev) => this.onPlateChange(ev)" />
                         </div>
                         <div class="virtus-user-badge">
-                            <i class="fa fa-user-circle mr-1 text-muted"/>
-                            <span class="user-name"><t t-esc="pos.user ? pos.user.name : 'OPERARIO'"/></span>
+                            <i class="fa fa-user mr-1 text-primary"/>
+                            <span class="user-name"><t t-esc="pos.user ? pos.user.name : 'SUPERVISOR'"/></span>
                         </div>
                         <div class="station-mini-label">
                             <t t-esc="state.stationName"/>
@@ -54,7 +54,7 @@
                                     <tr class="empty-placeholder-row">
                                         <td colspan="6" class="text-center py-4 text-muted">
                                             <i class="fa fa-shopping-cart fa-2x mb-1 d-block opacity-30"/>
-                                            Sin artículos. Seleccione una <strong>Calle</strong> o pulse un <strong>Producto de Tienda</strong>.
+                                            Ticket vacío. Seleccione una <strong>Calle</strong> o pulse un <strong>Producto de Tienda</strong>.
                                         </td>
                                     </tr>
                                 </t>
@@ -62,8 +62,13 @@
                                     <t t-foreach="currentOrderLines" t-as="line" t-key="line.id">
                                         <tr t-att-class="(state.selectedLineId === line.id || line.selected) ? 'row-selected' : ''" 
                                             t-on-click="() => this.selectOrderLine(line)">
-                                            <td><t t-esc="line.product.default_code || 'ART'"/></td>
-                                            <td class="font-weight-bold"><t t-esc="line.product.display_name"/></td>
+                                            <td><span class="cell-code"><t t-esc="line.product.default_code || 'ART'"/></span></td>
+                                            <td class="font-weight-bold">
+                                                <t t-if="line.get_quantity() > 0 &amp;&amp; (line.product.display_name.includes('Gasóleo') || line.product.display_name.includes('Sin Plomo'))">
+                                                    <span class="fuel-line-icon">⛽</span>
+                                                </t>
+                                                <t t-esc="line.product.display_name"/>
+                                            </td>
                                             <td class="text-right font-weight-bold"><t t-esc="line.get_quantity_str()"/></td>
                                             <td class="text-right"><t t-esc="line.get_unit_price().toFixed(3)"/> €</td>
                                             <td class="text-right"><t t-esc="line.get_discount_str()"/> %</td>
@@ -75,23 +80,23 @@
                         </table>
                     </div>
 
-                    <!-- BARRA DE HERRAMIENTAS INFERIOR DE TICKET (ESTILO VIRTUS) -->
+                    <!-- BARRA DE HERRAMIENTAS INFERIOR DE TICKET (ESTILO VIRTUSTPV) -->
                     <div class="virtus-ticket-tools-bar">
                         <div class="tools-left-group">
                             <button class="tool-btn btn-barcode" title="Lector de código de barras" t-on-click="() => this.focusBarcode()">
-                                <i class="fa fa-barcode"/>
+                                ▌▌█║▌
                             </button>
-                            <button class="tool-btn btn-trash" title="Borrar línea" t-on-click="() => this.deleteSelectedLine()">
-                                <i class="fa fa-trash-alt text-danger"/>
+                            <button class="tool-btn btn-trash-red" title="Borrar línea seleccionada" t-on-click="() => this.deleteSelectedLine()">
+                                🗑 BORRAR
                             </button>
                             <button class="tool-btn btn-discount" title="Descuentos" t-on-click="() => this.applyQuickDiscount()">
                                 % DTO
                             </button>
                             <button class="tool-btn btn-history" title="Historial de turno / Devoluciones" t-on-click="() => this.openRefundScreen()">
-                                <i class="fa fa-history mr-1"/> Historial
+                                ⏱ Historial
                             </button>
                             <button class="tool-btn btn-cancel-order" title="Cancelar venta" t-on-click="() => this.clearCurrentOrder()">
-                                <i class="fa fa-times mr-1"/> Cancelar
+                                ✖ Cancelar
                             </button>
                         </div>
                         <div class="tools-total-box">
@@ -100,41 +105,41 @@
                     </div>
                 </div>
 
-                <!-- 2. CUADRANTE SUPERIOR DERECHO: PARRILLA DE TIENDA DIRECTA -->
+                <!-- 2. CUADRANTE SUPERIOR DERECHO: PARRILLA DE TIENDA (32%) -->
                 <div class="virtus-quadrant-store">
-                    <!-- BARRA DE CATEGORÍAS Y ACCIONES DE TIENDA -->
+                    <!-- BARRA DE CATEGORÍAS SUPERIOR -->
                     <div class="virtus-store-topbar">
                         <button class="btn-store-cat" t-on-click="() => this.onSecurityDepositClick()" title="Opciones de Turno / Ingreso de Seguridad">
-                            <i class="fa fa-clock text-danger"/>
+                            ⏱
                         </button>
-                        <button class="btn-store-cat" t-on-click="() => this.openStoreModal()" title="Catálogo Completo de Tienda">
-                            <i class="fa fa-boxes text-warning"/>
+                        <button class="btn-store-cat" t-on-click="() => this.openStoreModal()" title="Catálogo de Artículos">
+                            📦
                         </button>
                         <button class="btn-store-cat" t-on-click="() => this.openStoreModal()" title="Parrilla Tienda">
-                            <i class="fa fa-shopping-cart text-primary"/>
+                            🛒
                         </button>
                         <button class="btn-store-cat btn-cat-nav" title="Página Siguiente">
-                            <i class="fa fa-chevron-down"/>
+                            ▼
                         </button>
                     </div>
 
-                    <!-- CUADRÍCULA DE 20 BOTONES DE PRODUCTOS DIRECTOS (4x5) -->
+                    <!-- CUADRÍCULA DIRECTA DE 20 PRODUCTOS CON IMÁGENES / ICONOS DE GASOLINERA -->
                     <div class="virtus-store-grid">
                         <t t-foreach="popularStoreProducts" t-as="prod" t-key="prod.id">
                             <button class="store-item-btn" t-on-click="() => this.addStoreProductToOrder(prod)">
-                                <t t-if="prod.image_url">
-                                    <img t-att-src="prod.image_url" class="store-item-img"/>
-                                </t>
-                                <t t-else="">
-                                    <div class="store-item-icon">
-                                        <i t-attf-class="fa #{prod.icon || 'fa-box'}"/>
-                                    </div>
-                                </t>
+                                <div class="store-item-thumb">
+                                    <t t-if="prod.image_url">
+                                        <img t-att-src="prod.image_url" class="store-item-img"/>
+                                    </t>
+                                    <t t-else="">
+                                        <span class="store-item-emoji"><t t-esc="prod.icon || '📦'"/></span>
+                                    </t>
+                                </div>
                                 <span class="store-item-name"><t t-esc="prod.display_name"/></span>
                                 <span class="store-item-price"><t t-esc="prod.lst_price.toFixed(2)"/> €</span>
                             </button>
                         </t>
-                        <!-- BOTONES DE RELLENO VACÍOS PARA COMPLETAR LA MATRIZ DE 20 -->
+                        <!-- HUECOS VACÍOS DE LA MATRIZ DE 20 -->
                         <t t-foreach="storeFillerSlots" t-as="slot" t-key="slot">
                             <div class="store-item-btn empty-slot"></div>
                         </t>
@@ -144,62 +149,64 @@
             </div>
 
             <!-- ======================================================== -->
-            <!-- FILA INFERIOR: MAPA SURTIDORES (IZQ) + TECLADO COBRO (DER) -->
+            <!-- FILA INFERIOR: MAPA SURTIDORES (68%) + TECLADO COBRO (32%) -->
             <!-- ======================================================== -->
             <div class="virtus-row-bottom">
 
-                <!-- 3. CUADRANTE INFERIOR IZQUIERDO: POSTES DE SURTIDORES (ASEPRODA) -->
+                <!-- 3. CUADRANTE INFERIOR IZQUIERDO: POSTES DE SURTIDORES ASEPRODA -->
                 <div class="virtus-quadrant-pumps">
-                    <div class="pumps-brand-watermark">UTRECAR / ASEPRODA</div>
+                    <div class="pumps-brand-watermark">
+                        <span class="aseproda-logo-text"><span class="a-blue">A</span>seproda</span>
+                    </div>
                     
                     <div class="virtus-pumps-row">
                         <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
                             <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
-                            <div t-attf-class="virtus-pump-dispenser status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
+                            
+                            <!-- POSTE CON SILUETA Y MANGUERA TÍPICA ASEPRODA -->
+                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
                                  t-on-click="() => this.onPumpSelect(pump)">
                                 
-                                <!-- CABECERA DEL POSTE (Nº DE CALLE) -->
-                                <div class="dispenser-cap">
-                                    <span class="dispenser-num"><t t-esc="pump.id"/></span>
-                                    <span class="dispenser-state-badge"><t t-esc="pump.statusText"/></span>
-                                </div>
-
-                                <!-- PANTALLA LCD INTEGRADA EN EL POSTE -->
-                                <div class="dispenser-screen">
-                                    <div class="dispenser-fuel-row">
-                                        <span class="f-code"><t t-esc="fuelInfo.shortCode"/></span>
-                                        <span class="f-liters"><t t-esc="pump.liters > 0 ? pump.liters.toFixed(2) + ' L' : '0.00 L'"/></span>
-                                    </div>
-                                    <div class="dispenser-amount-row">
-                                        <t t-esc="pump.amount > 0 ? pump.amount.toFixed(2) + ' €' : '0.00 €'"/>
-                                    </div>
-                                    <div class="dispenser-mode-row">
-                                        <t t-if="pump.status === 'dispensing'">Suministrando</t>
-                                        <t t-elif="pump.status === 'ready'">Fin Repostaje</t>
-                                        <t t-else="">Sin prefijado</t>
+                                <!-- PARTE SUPERIOR DEL POSTE: NÚMERO Y PANTALLA LCD -->
+                                <div class="dispenser-head">
+                                    <div class="dispenser-number-tag"><t t-esc="pump.id"/></div>
+                                    <div class="dispenser-lcd-screen">
+                                        <div class="lcd-header-line">
+                                            <span class="f-code"><t t-esc="fuelInfo.shortCode"/></span>
+                                            <span class="f-liters"><t t-esc="pump.liters > 0 ? pump.liters.toFixed(2) + ' L' : '0.00 L'"/></span>
+                                        </div>
+                                        <div class="lcd-price-main">
+                                            <t t-esc="pump.amount > 0 ? pump.amount.toFixed(2) + ' €' : '0,00 €'"/>
+                                        </div>
+                                        <div class="lcd-footer-line">
+                                            <t t-if="pump.status === 'dispensing'">Suministrando</t>
+                                            <t t-elif="pump.status === 'ready'">Fin Repostaje</t>
+                                            <t t-else="">Sin prefijado</t>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- CUERPO DEL SURTIDOR / BOTÓN DE ACCIÓN -->
-                                <div class="dispenser-body">
+                                <!-- PARTE INFERIOR DEL POSTE: CUERPO CON MANGUERA Y BOTÓN DE ESTADO -->
+                                <div class="dispenser-lower-body">
                                     <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
-                                        <button class="btn-virtus-load-ticket" t-on-click.stop="() => this.onPumpClick(pump)">
-                                            <i class="fa fa-arrow-circle-up mr-1"/> PASAR A TICKET
+                                        <button class="btn-virtus-pasar-ticket" t-on-click.stop="() => this.onPumpClick(pump)">
+                                            <div class="icon-up">⬆</div>
+                                            <strong>PASAR A TICKET</strong>
                                         </button>
                                     </t>
                                     <t t-elif="pump.status === 'dispensing'">
-                                        <div class="dispenser-active-anim">
-                                            <i class="fa fa-lock text-danger"/>
-                                            <span class="disp-status-text">AUTORIZADO</span>
+                                        <div class="dispenser-green-padlock">
+                                            <span class="padlock-icon">🔒</span>
+                                            <span class="padlock-sub"><t t-esc="pump.liters > 0 ? pump.liters.toFixed(1) + ' L' : 'SUMINISTRO'"/></span>
                                         </div>
-                                        <button class="btn-dispenser-cancel" t-on-click.stop="() => this.cancelPumpAuthorization(pump)">
+                                        <button class="btn-cancel-dispenser" t-on-click.stop="() => this.cancelPumpAuthorization(pump)">
                                             Cancelar
                                         </button>
                                     </t>
                                     <t t-else="">
-                                        <div class="dispenser-idle-icon">
-                                            <i class="fa fa-gas-pump"/>
-                                            <span class="idle-text">LIBRE</span>
+                                        <div class="dispenser-nozzle-panel">
+                                            <div class="nozzle-icon">⛽</div>
+                                            <span class="nozzle-text">LIBRE</span>
                                         </div>
                                     </t>
                                 </div>
@@ -208,7 +215,7 @@
                     </div>
                 </div>
 
-                <!-- 4. CUADRANTE INFERIOR DERECHO: TECLADO BILLETES + COMBUSTIBLE + COBRO -->
+                <!-- 4. CUADRANTE INFERIOR DERECHO: TECLADO Y COBRO (32%) -->
                 <div class="virtus-quadrant-keypad">
                     
                     <!-- DISPLAY LCD SUPERIOR DE PREFIJADO -->
@@ -220,11 +227,11 @@
                             <t t-esc="state.mode === 'money' ? 'Modo Dinero' : 'Modo Litros'"/>
                         </button>
                         <button class="btn-numpad-tool btn-gear" t-on-click="() => this.openStoreModal()">
-                            <i class="fa fa-cog"/>
+                            ⚙
                         </button>
                     </div>
 
-                    <!-- MATRIZ CENTRAL: BILLETES (IZQ) + COMBUSTIBLES (DER) -->
+                    <!-- MATRIZ CENTRAL: BILLETES (65%) + COMBUSTIBLES (35%) -->
                     <div class="virtus-keypad-matrix">
                         
                         <!-- 6 BOTONES DE BILLETES Y MONEDAS (3 cols x 2 rows) -->
@@ -261,7 +268,7 @@
 
                     </div>
 
-                    <!-- FILA DE ACCIÓN: GOTA 💧 + BORRAR C + BOTÓN AUTORIZAR / COBRAR -->
+                    <!-- FILA DE ACCIÓN: GOTA 💧 + BORRAR C + AUTORIZAR / COBRAR -->
                     <div class="virtus-action-row">
                         <button class="btn-action-tile btn-water-drop" t-on-click="() => this.toggleMode()" title="Conmutar Litros/Euros">
                             💧
@@ -277,7 +284,7 @@
                         </button>
                     </div>
 
-                    <!-- BARRA INFERIOR DE ESTADO DEL TPV (IDÉNTICO A VIRTUS) -->
+                    <!-- BARRA INFERIOR DE ESTADO DEL TPV -->
                     <div class="virtus-tpv-status-footer">
                         <span>CAJA: <strong>A</strong></span>
                         <span>TPV: <strong>1</strong></span>
@@ -296,12 +303,11 @@
                 <div class="utrecar-modal-backdrop" t-on-click="() => this.closeStoreModal()">
                     <div class="utrecar-store-modal" t-on-click.stop="">
                         <div class="store-modal-header">
-                            <div class="modal-title"><i class="fa fa-store mr-2 text-primary"/> CATÁLOGO COMPLETO DE TIENDA</div>
+                            <div class="modal-title">🛒 CATÁLOGO COMPLETO DE TIENDA</div>
                             <div class="modal-search-box">
-                                <i class="fa fa-search search-icon"/>
                                 <input type="text" class="store-search-input" placeholder="Buscar producto..." t-att-value="state.storeSearch" t-on-input="(ev) => this.onStoreSearchInput(ev)" />
                             </div>
-                            <button class="btn-close-modal" t-on-click="() => this.closeStoreModal()"><i class="fa fa-times"/></button>
+                            <button class="btn-close-modal" t-on-click="() => this.closeStoreModal()">✖</button>
                         </div>
                         <div class="store-products-grid">
                             <t t-foreach="filteredStoreProducts" t-as="product" t-key="product.id">
@@ -311,7 +317,7 @@
                                         <div class="product-name"><t t-esc="product.display_name"/></div>
                                         <div class="product-price"><t t-esc="product.lst_price.toFixed(2)"/> €</div>
                                     </div>
-                                    <div class="product-card-footer"><i class="fa fa-plus-circle mr-1"/> Añadir</div>
+                                    <div class="product-card-footer">➕ Añadir</div>
                                 </div>
                             </t>
                         </div>
@@ -331,7 +337,7 @@
         </xpath>
     </t>
 
-    <!-- EXTENSIÓN DE PAYMENTSCREENVALIDATE - LAS 3 SALIDAS DE VIRTUSTPV (TICKET / FACTURA / SIN IMPRIMIR) -->
+    <!-- EXTENSIÓN DE PAYMENTSCREENVALIDATE - LAS 3 SALIDAS DE VIRTUSTPV -->
     <t t-name="pos_gas_station.PaymentScreenValidate" t-inherit="point_of_sale.PaymentScreenValidate" t-inherit-mode="extension" owl="1">
         <xpath expr="//div[hasclass('validation')]" position="after">
             <div class="virtus-payment-actions-bar">

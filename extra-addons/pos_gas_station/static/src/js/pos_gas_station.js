@@ -82,17 +82,38 @@ export class UtrecarMainScreen extends Component {
     }
 
     get popularStoreProducts() {
-        if (!this.pos || !this.pos.db) return [];
-        const all = Object.values(this.pos.db.product_by_id || {});
-        const storeProds = all.filter(p => {
-            const name = (p.display_name || p.name || "").toLowerCase();
-            return !name.startsWith("gasóleo") && !name.startsWith("gasoleo") && !name.startsWith("sin plomo") && p.available_in_pos;
-        }).slice(0, 20);
+        const defaultVirtusItems = [
+            { id: "v_hielo", display_name: "Bolsa Hielo 2Kg", lst_price: 2.50, icon: "🧊", default_code: "HIELO" },
+            { id: "v_chupa", display_name: "Chupa Chups", lst_price: 0.50, icon: "🍭", default_code: "CHUPA" },
+            { id: "v_recarga", display_name: "Recarga Móvil", lst_price: 10.00, icon: "📱", default_code: "RECARGA" },
+            { id: "v_mechero", display_name: "Mechero Clipper", lst_price: 1.20, icon: "🔥", default_code: "MECHERO" },
+            { id: "v_butano", display_name: "Bombona Butano", lst_price: 16.50, icon: "🛢️", default_code: "BUTANO" },
+            { id: "v_mahou", display_name: "Cerveza Mahou", lst_price: 1.50, icon: "🍺", default_code: "MAHOU" },
+            { id: "v_aceite", display_name: "Aceite Motor 10W40", lst_price: 9.80, icon: "🛢", default_code: "ACEITE" },
+            { id: "v_coca", display_name: "Coca Cola Lata", lst_price: 1.50, icon: "🥤", default_code: "COCA" },
+            { id: "v_2t", display_name: "Tubo Aceite 2T", lst_price: 2.20, icon: "🧪", default_code: "ACEITE2T" },
+            { id: "v_agua", display_name: "Agua Mineral 1.5L", lst_price: 1.00, icon: "💧", default_code: "AGUA" },
+            { id: "v_limpia", display_name: "Limpiaparabrisas", lst_price: 3.50, icon: "🧼", default_code: "LIMPIA" },
+            { id: "v_boc", display_name: "Bocadillo Jamón", lst_price: 3.80, icon: "🥪", default_code: "BOC" },
+            { id: "v_pan", display_name: "Pan de Torrija", lst_price: 1.80, icon: "🥖", default_code: "PAN" },
+            { id: "v_redbull", display_name: "Red Bull 250ml", lst_price: 2.20, icon: "⚡", default_code: "REDBULL" },
+            { id: "v_patatas", display_name: "Patatas Fritas", lst_price: 1.60, icon: "🥔", default_code: "PATATAS" },
+            { id: "v_chicle", display_name: "Chicles Orbit", lst_price: 1.00, icon: "🍬", default_code: "CHICLE" }
+        ];
 
-        if (storeProds.length > 0) {
-            return storeProds;
+        if (!this.pos || !this.pos.db) return defaultVirtusItems;
+        const all = Object.values(this.pos.db.product_by_id || {});
+        const realProds = all.filter(p => {
+            const name = (p.display_name || p.name || "").toLowerCase();
+            return !name.startsWith("gasóleo") && !name.startsWith("gasoleo") && !name.startsWith("sin plomo") && p.available_in_pos && !name.includes("oficina") && !name.includes("escritorio");
+        });
+
+        if (realProds.length >= 8) {
+            return realProds.slice(0, 20);
         }
-        return all.slice(0, 16);
+
+        // Si en Odoo aún no están creados los artículos de gasolinera, mapeamos con los productos estándar de VirtusTPV
+        return defaultVirtusItems;
     }
 
     get storeFillerSlots() {
