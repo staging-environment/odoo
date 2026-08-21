@@ -1,10 +1,10 @@
 /* ============================================================
-   INTERFAZ TPV UTRECAR - RÉPLICA DE VIRTUSTPV / ASEPRODA (68% / 32%)
+   INTERFAZ TPV UTRECAR - RÉPLICA CALIBRADA VIRTUSTPV / ASEPRODA
    ============================================================ */
 
 /* ELIMINAR ESPACIOS POR DEFECTO DE ODOO */
 .pos .pos-content {
-    background: #a3adb9 !important;
+    background: #94a3b8 !important;
     overflow: hidden !important;
 }
 
@@ -13,8 +13,8 @@
     align-items: center !important;
     justify-content: space-between !important;
     background: #ffffff !important;
-    border-bottom: 2px solid #475569 !important;
-    height: 42px !important;
+    border-bottom: 2px solid #334155 !important;
+    height: 40px !important;
     padding: 0 10px !important;
 }
 
@@ -22,8 +22,8 @@
 .pos-topheader img.pos-logo,
 .pos-topheader .navbar-brand {
     content: url('/pos_gas_station/static/src/img/utrecar_brand_logo.svg') !important;
-    height: 34px !important;
-    max-height: 34px !important;
+    height: 32px !important;
+    max-height: 32px !important;
     width: auto !important;
     object-fit: contain !important;
     display: block !important;
@@ -31,11 +31,11 @@
 
 .product-screen {
     width: 100vw !important;
-    height: calc(100vh - 42px) !important;
+    height: calc(100vh - 40px) !important;
     padding: 0 !important;
     margin: 0 !important;
     overflow: hidden !important;
-    background: #a3adb9 !important;
+    background: #94a3b8 !important;
 }
 
 .product-screen .leftpane,
@@ -53,10 +53,10 @@
     display: flex !important;
     flex-direction: column !important;
     width: 100vw !important;
-    height: calc(100vh - 42px) !important;
+    height: calc(100vh - 40px) !important;
     padding: 4px !important;
     gap: 4px !important;
-    background: #a3adb9 !important;
+    background: #94a3b8 !important;
     box-sizing: border-box !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", sans-serif !important;
 }
@@ -75,17 +75,17 @@
 .virtus-quadrant-ticket {
     flex: 1 1 68% !important;
     background: #ffffff !important;
-    border: 1px solid #475569 !important;
+    border: 1px solid #334155 !important;
     border-radius: 4px !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
     min-width: 0 !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
 }
 
 .virtus-ticket-topbar {
-    height: 38px !important;
+    height: 36px !important;
     background: #e2e8f0 !important;
     border-bottom: 1px solid #94a3b8 !important;
     display: flex !important;
@@ -102,6 +102,7 @@
     font-size: 11px !important;
     font-weight: 800 !important;
     color: #1e3a8a !important;
+    white-space: nowrap !important;
 }
 
 .virtus-plate-box {
@@ -137,13 +138,15 @@
     color: #334155 !important;
     display: flex !important;
     align-items: center !important;
+    white-space: nowrap !important;
 }
 
 .station-mini-label {
     margin-left: auto !important;
-    font-size: 12px !important;
+    font-size: 11.5px !important;
     font-weight: 800 !important;
     color: #1e3a8a !important;
+    white-space: nowrap !important;
 }
 
 .virtus-table-container {
@@ -170,7 +173,7 @@
 }
 
 .virtus-grid-table tbody td {
-    padding: 5px 8px !important;
+    padding: 4px 8px !important;
     border-bottom: 1px solid #e2e8f0 !important;
     color: #1e293b !important;
 }
@@ -194,7 +197,7 @@
 }
 
 .virtus-ticket-tools-bar {
-    height: 38px !important;
+    height: 36px !important;
     background: #f1f5f9 !important;
     border-top: 1px solid #94a3b8 !important;
     display: flex !important;
@@ -212,11 +215,12 @@
     background: #ffffff !important;
     border: 1px solid #94a3b8 !important;
     border-radius: 4px !important;
-    padding: 4px 8px !important;
+    padding: 3px 8px !important;
     font-size: 11px !important;
     font-weight: 800 !important;
     cursor: pointer !important;
     color: #334155 !important;
+    white-space: nowrap !important;
 }
 .tool-btn:hover { background: #e2e8f0 !important; }
 
@@ -237,7 +241,7 @@
 .tools-total-box {
     background: #1e3a8a !important;
     color: #ffffff !important;
-    padding: 3px 14px !important;
+    padding: 2px 14px !important;
     border-radius: 4px !important;
     font-weight: 900 !important;
     font-size: 16px !important;
@@ -250,30 +254,30 @@
 .virtus-quadrant-store {
     flex: 0 0 32% !important;
     background: #ffffff !important;
-    border: 1px solid #475569 !important;
+    border: 1px solid #334155 !important;
     border-radius: 4px !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
     min-width: 0 !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
 }
 
 .virtus-store-topbar {
-    height: 38px !important;
+    height: 34px !important;
     background: #e2e8f0 !important;
     border-bottom: 1px solid #94a3b8 !important;
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 4px !important;
-    padding: 3px 6px !important;
+    gap: 3px !important;
+    padding: 2px 4px !important;
 }
 
 .btn-store-cat {
     background: #ffffff !important;
     border: 1px solid #94a3b8 !important;
-    border-radius: 4px !important;
-    font-size: 15px !important;
+    border-radius: 3px !important;
+    font-size: 14px !important;
     cursor: pointer !important;
     display: flex !important;
     align-items: center !important;
@@ -303,6 +307,7 @@
     cursor: pointer !important;
     text-align: center !important;
     transition: transform 0.08s !important;
+    overflow: hidden !important;
 }
 .store-item-btn:hover {
     border-color: #2563eb !important;
@@ -319,33 +324,29 @@
 }
 
 .store-item-thumb {
-    height: 20px !important;
+    height: 18px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
 }
 
 .store-item-emoji {
-    font-size: 14px !important;
-}
-
-.store-item-img {
-    height: 18px !important;
-    width: auto !important;
-    object-fit: contain !important;
+    font-size: 13px !important;
 }
 
 .store-item-name {
-    font-size: 8.5px !important;
+    font-size: 8px !important;
     font-weight: 800 !important;
     color: #0f172a !important;
-    line-height: 1.05 !important;
-    max-height: 18px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
     overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    width: 100% !important;
 }
 
 .store-item-price {
-    font-size: 8.5px !important;
+    font-size: 8px !important;
     font-weight: 900 !important;
     color: #16a34a !important;
 }
@@ -356,21 +357,21 @@
 .virtus-quadrant-pumps {
     flex: 1 1 68% !important;
     background: #ffffff !important;
-    border: 1px solid #475569 !important;
+    border: 1px solid #334155 !important;
     border-radius: 4px !important;
     display: flex !important;
     flex-direction: column !important;
     position: relative !important;
-    padding: 6px !important;
+    padding: 4px !important;
     overflow: hidden !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
 }
 
 .pumps-brand-watermark {
     position: absolute !important;
-    top: 6px !important;
-    left: 12px !important;
-    font-size: 28px !important;
+    top: 4px !important;
+    left: 10px !important;
+    font-size: 26px !important;
     font-weight: 900 !important;
     color: #e2e8f0 !important;
     letter-spacing: 2px !important;
@@ -390,21 +391,21 @@
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
     grid-template-rows: repeat(2, 1fr) !important;
-    gap: 6px !important;
+    gap: 4px !important;
     z-index: 1 !important;
 }
 
-/* POSTE INDIVIDUAL ASEPRODA CON MANGUERA Y LCD */
+/* POSTE INDIVIDUAL ASEPRODA */
 .aseproda-dispenser-box {
     background: #ffffff !important;
-    border-radius: 6px !important;
+    border-radius: 5px !important;
     border: 2px solid #64748b !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
     padding: 3px !important;
     cursor: pointer !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06) !important;
     transition: all 0.15s !important;
 }
 
@@ -442,7 +443,7 @@
 }
 
 .dispenser-number-tag {
-    font-size: 12px !important;
+    font-size: 11px !important;
     font-weight: 900 !important;
     color: #ffffff !important;
     display: flex !important;
@@ -462,13 +463,13 @@
 .lcd-header-line {
     display: flex !important;
     justify-content: space-between !important;
-    font-size: 9px !important;
+    font-size: 8.5px !important;
     font-weight: 800 !important;
     color: #475569 !important;
 }
 
 .lcd-price-main {
-    font-size: 13.5px !important;
+    font-size: 13px !important;
     font-weight: 900 !important;
     color: #0f172a !important;
     font-family: 'Courier New', Courier, monospace !important;
@@ -492,7 +493,7 @@
     color: #ffffff !important;
     border: none !important;
     border-radius: 3px !important;
-    font-size: 9.5px !important;
+    font-size: 9px !important;
     font-weight: 900 !important;
     padding: 3px 0 !important;
     cursor: pointer !important;
@@ -500,21 +501,23 @@
     align-items: center !important;
     justify-content: center !important;
     gap: 3px !important;
+    white-space: nowrap !important;
 }
-.btn-virtus-pasar-ticket .icon-up { font-size: 10px !important; }
+.btn-virtus-pasar-ticket .icon-up { font-size: 9px !important; }
 
 .dispenser-green-padlock {
     background: #dcfce7 !important;
     border: 1px solid #86efac !important;
     color: #15803d !important;
-    font-size: 9px !important;
+    font-size: 8.5px !important;
     font-weight: 900 !important;
     border-radius: 3px !important;
     padding: 2px 0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 4px !important;
+    gap: 3px !important;
+    white-space: nowrap !important;
 }
 
 .btn-cancel-dispenser {
@@ -522,23 +525,25 @@
     background: transparent !important;
     border: 1px solid #fca5a5 !important;
     color: #dc2626 !important;
-    font-size: 8.5px !important;
+    font-size: 8px !important;
     font-weight: 800 !important;
     margin-top: 1px !important;
     cursor: pointer !important;
+    white-space: nowrap !important;
 }
 
 .dispenser-nozzle-panel {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 4px !important;
-    font-size: 9px !important;
+    gap: 3px !important;
+    font-size: 8.5px !important;
     font-weight: 800 !important;
     color: #94a3b8 !important;
     padding: 1px 0 !important;
+    white-space: nowrap !important;
 }
-.nozzle-icon { font-size: 11px !important; }
+.nozzle-icon { font-size: 10px !important; }
 
 /* ------------------------------------------------------------
    4. CUADRANTE INFERIOR DERECHO: TECLADO Y COBRO (32%)
@@ -546,20 +551,21 @@
 .virtus-quadrant-keypad {
     flex: 0 0 32% !important;
     background: #ffffff !important;
-    border: 1px solid #475569 !important;
+    border: 1px solid #334155 !important;
     border-radius: 4px !important;
     display: flex !important;
     flex-direction: column !important;
-    padding: 4px !important;
-    justify-content: space-between !important;
+    padding: 3px !important;
+    gap: 3px !important;
     min-width: 0 !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
 }
 
 .virtus-numpad-header {
     display: flex !important;
     gap: 3px !important;
-    height: 34px !important;
+    height: 32px !important;
+    flex: 0 0 32px !important;
 }
 
 .lcd-value-display {
@@ -574,7 +580,7 @@
 }
 
 .lcd-current {
-    font-size: 17px !important;
+    font-size: 16px !important;
     font-weight: 900 !important;
     color: #0f172a !important;
     font-family: 'Courier New', Courier, monospace !important;
@@ -588,12 +594,18 @@
     font-weight: 800 !important;
     cursor: pointer !important;
     padding: 0 6px !important;
+    white-space: nowrap !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
+/* MATRIZ CENTRAL (BILLETES + COMBUSTIBLES) - LLENA EL ESPACIO */
 .virtus-keypad-matrix {
+    flex: 1 1 auto !important;
     display: flex !important;
     gap: 3px !important;
-    margin: 3px 0 !important;
+    min-height: 0 !important;
 }
 
 .matrix-bills-grid {
@@ -602,33 +614,39 @@
     grid-template-columns: repeat(3, 1fr) !important;
     grid-template-rows: repeat(2, 1fr) !important;
     gap: 3px !important;
-    height: 75px !important;
+    height: 100% !important;
 }
 
 .matrix-bill-btn {
     border-radius: 4px !important;
-    border: 1px solid #94a3b8 !important;
-    background-size: cover !important;
+    border: 1px solid #475569 !important;
+    background-size: 100% 100% !important;
     background-position: center !important;
+    background-repeat: no-repeat !important;
     cursor: pointer !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     font-size: 12px !important;
     font-weight: 900 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
 }
-.matrix-bill-btn:active { transform: scale(0.95); }
+.matrix-bill-btn:active { transform: scale(0.96); }
 
 .liter-tile {
     background: #f0f9ff !important;
     color: #0284c7 !important;
     border-color: #7dd3fc !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
 }
 
 .liter-full-tile {
     background: #fef3c7 !important;
     color: #b45309 !important;
     border-color: #fcd34d !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
 }
 
 .matrix-fuels-grid {
@@ -637,13 +655,14 @@
     grid-template-columns: repeat(2, 1fr) !important;
     grid-template-rows: repeat(2, 1fr) !important;
     gap: 3px !important;
+    height: 100% !important;
 }
 
 .fuel-matrix-btn {
     border-radius: 4px !important;
     border: 1px solid #94a3b8 !important;
     background: #f1f5f9 !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
     font-weight: 900 !important;
     cursor: pointer !important;
     display: flex !important;
@@ -656,11 +675,13 @@
     color: #1e3a8a !important;
 }
 
+/* FILA DE ACCIÓN */
 .virtus-action-row {
+    flex: 0 0 34px !important;
     display: grid !important;
-    grid-template-columns: 32px 32px 1fr 1fr !important;
+    grid-template-columns: 32px 32px 1.2fr 1.3fr !important;
     gap: 3px !important;
-    height: 36px !important;
+    height: 34px !important;
 }
 
 .btn-action-tile {
@@ -672,6 +693,10 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    padding: 0 4px !important;
 }
 
 .btn-water-drop {
@@ -701,6 +726,7 @@
 
 .virtus-tpv-status-footer {
     height: 18px !important;
+    flex: 0 0 18px !important;
     background: #0f172a !important;
     color: #94a3b8 !important;
     font-size: 8.5px !important;
@@ -709,10 +735,12 @@
     align-items: center !important;
     border-radius: 3px !important;
     letter-spacing: 0.5px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
 }
 .virtus-tpv-status-footer strong { color: #ffffff !important; }
 
-/* VECTORES DE BILLETES */
+/* VECTORES DE BILLETES (100% 100% COVERAGE SIN DEFORMACIÓN) */
 .bill-svg.bill-1e { background-image: url('/pos_gas_station/static/src/img/bill_1.svg') !important; }
 .bill-svg.bill-5e { background-image: url('/pos_gas_station/static/src/img/bill_5.svg') !important; }
 .bill-svg.bill-10e { background-image: url('/pos_gas_station/static/src/img/bill_10.svg') !important; }
@@ -744,7 +772,7 @@
     overflow: hidden !important;
 }
 .store-modal-header {
-    height: 46px !important;
+    height: 44px !important;
     background: #f1f5f9 !important;
     border-bottom: 1px solid #cbd5e1 !important;
     display: flex !important;
