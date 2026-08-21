@@ -34,17 +34,14 @@ export class UtrecarMainScreen extends Component {
             pumps: []
         });
 
-        this.pollInterval = null;
         this.barcodeBuffer = "";
         this.barcodeTimeout = null;
 
-        // Escucha global de pistola de código de barras
         this.onGlobalKeyDown = (ev) => {
-            if (ev.target && ev.target.classList.contains("euro-plate-text")) {
+            if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA')) {
                 return;
             }
-
-            if (ev.key === "Enter") {
+            if (ev.key === 'Enter') {
                 if (this.barcodeBuffer.length >= 3) {
                     this.handleBarcodeScan(this.barcodeBuffer.trim());
                     this.barcodeBuffer = "";
@@ -82,6 +79,27 @@ export class UtrecarMainScreen extends Component {
             }
             window.removeEventListener("keydown", this.onGlobalKeyDown);
         });
+    }
+
+    get popularStoreProducts() {
+        if (!this.pos || !this.pos.db) return [];
+        const all = Object.values(this.pos.db.product_by_id || {});
+        const storeProds = all.filter(p => {
+            const name = (p.display_name || p.name || "").toLowerCase();
+            return !name.startsWith("gasóleo") && !name.startsWith("gasoleo") && !name.startsWith("sin plomo") && p.available_in_pos;
+        }).slice(0, 20);
+
+        if (storeProds.length > 0) {
+            return storeProds;
+        }
+        return all.slice(0, 16);
+    }
+
+    get storeFillerSlots() {
+        const count = this.popularStoreProducts.length;
+        const totalDesired = 20;
+        const remaining = Math.max(0, totalDesired - count);
+        return Array.from({ length: remaining }, (_, i) => i);
     }
 
     get isSelectedPumpOccupied() {
@@ -128,7 +146,6 @@ export class UtrecarMainScreen extends Component {
 
         const f = (rawFuel || "").toLowerCase().trim();
 
-        // Si la calle está libre y no tiene un combustible exclusivo seleccionado
         if (!isBusy && !isSelectedWithPreset && (f.includes("/") || !rawFuel || f.includes("libre"))) {
             return {
                 isActive: false,
@@ -142,7 +159,6 @@ export class UtrecarMainScreen extends Component {
             };
         }
 
-        // 1. Gasolina / Sin Plomo (95 o 98)
         if (f.includes("plomo") || f.includes("95") || f.includes("gasolina") || f.includes("sp95") || f.includes("98") || f.includes("sp98")) {
             const is98 = f.includes("98") || f.includes("sp98");
             return {
@@ -157,7 +173,6 @@ export class UtrecarMainScreen extends Component {
             };
         }
 
-        // 2. Gasóleo B / Agrícola
         if (f.includes("gasoleo b") || f.includes("gasóleo b") || f.includes("gb") || f.includes("agricola") || f.includes("agrícola")) {
             return {
                 isActive: true,
@@ -171,7 +186,6 @@ export class UtrecarMainScreen extends Component {
             };
         }
 
-        // 3. Diésel Plus / Premium / Óptima
         if (f.includes("plus") || f.includes("optima") || f.includes("óptima") || f.includes("premium")) {
             return {
                 isActive: true,
@@ -185,7 +199,6 @@ export class UtrecarMainScreen extends Component {
             };
         }
 
-        // 4. Gasóleo A / Diésel estándar
         return {
             isActive: true,
             type: "diesel",
@@ -201,83 +214,38 @@ export class UtrecarMainScreen extends Component {
     getOrCreateOrder() {
         let order = this.pos.get_order();
         if (!order) {
-            if (typeof this.pos.add_new_order === "function") {
-                order = this.pos.add_new_order();
-            } else if (this.pos.models && this.pos.models["pos.order"]) {
-                order = this.pos.models["pos.order"].create();
-            }
+            order = this.pos.add_new_order();
         }
         return order;
     }
 
-    findFuelProduct(fuelCode) {
-        const allProducts = Object.values(this.pos.db?.product_by_id || {});
-        const code = (fuelCode || "GA").toUpperCase();
-        
-        let prod = null;
-        if (code === "GA" || code === "DIESEL" || code === "1") {
-            prod = allProducts.find(p => p.default_code === "1" || p.default_code === "GA" || (p.display_name && p.display_name.toLowerCase().includes("gasoleo a")) || (p.display_name && p.display_name.toLowerCase().includes("gasoleo")));
-        } else if (code === "95" || code === "SP95" || code === "2") {
-            prod = allProducts.find(p => p.default_code === "2" || p.default_code === "SP95" || p.default_code === "95" || (p.display_name && p.display_name.toLowerCase().includes("plomo 95")) || (p.display_name && p.display_name.toLowerCase().includes("plomo")));
-        } else if (code === "GB" || code === "3") {
-            prod = allProducts.find(p => p.default_code === "3" || p.default_code === "GB" || (p.display_name && p.display_name.toLowerCase().includes("gasoleo b")));
-        }
-
-        if (!prod && allProducts.length > 0) {
-            prod = allProducts.find(p => p.display_name && (p.display_name.toLowerCase().includes("gas") || p.display_name.toLowerCase().includes("plomo"))) || allProducts[0];
-        }
-        return prod;
-    }
-
-    async handleBarcodeScan(code) {
-        if (!code) return;
-        const allProducts = Object.values(this.pos.db?.product_by_id || {});
-        
-        const found = allProducts.find(p => 
-            (p.barcode && p.barcode.toLowerCase() === code.toLowerCase()) ||
-            (p.default_code && p.default_code.toLowerCase() === code.toLowerCase())
-        );
-
-        if (found) {
-            const currentOrder = this.getOrCreateOrder();
-            if (currentOrder) {
-                await currentOrder.add_product(found, { quantity: 1 });
-                if (this.state.vehiclePlate) {
-                    currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
-                }
-                this.state.orderVersion = Date.now();
-                if (this.state.isStoreModalOpen) {
-                    this.closeStoreModal();
-                }
-            }
-        } else {
-            console.warn("Código de barras no encontrado en catálogo:", code);
-        }
-    }
-
     get currentOrderLines() {
-        const dummy = this.state.orderVersion;
         const order = this.pos.get_order();
-        return order ? (order.get_orderlines?.() || order.orderlines || []) : [];
+        if (!order) return [];
+        if (typeof order.get_orderlines === "function") {
+            return order.get_orderlines();
+        }
+        return order.orderlines || [];
     }
 
     get currentTotalAmount() {
-        const dummy = this.state.orderVersion;
         const order = this.pos.get_order();
-        return order ? (order.get_total_with_tax?.() || 0.00) : 0.00;
+        if (!order) return 0.0;
+        if (typeof order.get_total_with_tax === "function") {
+            return order.get_total_with_tax();
+        }
+        return order.amount_total || 0.0;
     }
 
     get filteredStoreProducts() {
-        let all = [];
-        if (this.pos.db && this.pos.db.product_by_id) {
-            all = Object.values(this.pos.db.product_by_id);
-        } else if (this.pos.models && this.pos.models["product.product"]) {
-            all = this.pos.models["product.product"].getAll();
-        }
-
+        if (!this.pos || !this.pos.db) return [];
+        const all = Object.values(this.pos.db.product_by_id || {});
         const q = (this.state.storeSearch || "").toLowerCase().trim();
         if (!q) {
-            return all.slice(0, 40);
+            return all.filter(p => {
+                const name = (p.display_name || p.name || "").toLowerCase();
+                return !name.startsWith("gasóleo") && !name.startsWith("gasoleo") && !name.startsWith("sin plomo") && p.available_in_pos;
+            }).slice(0, 40);
         }
         return all.filter(p => {
             const name = (p.display_name || p.name || "").toLowerCase();
@@ -339,71 +307,51 @@ export class UtrecarMainScreen extends Component {
         if (!currentOrder || !line) return;
 
         try {
-            if (typeof currentOrder._unlink_order_line === "function") {
+            if (typeof currentOrder.remove_orderline === "function") {
+                currentOrder.remove_orderline(line);
+            } else if (typeof currentOrder._unlink_order_line === "function") {
                 currentOrder._unlink_order_line(line);
             } else if (typeof currentOrder.removeOrderline === "function") {
                 currentOrder.removeOrderline(line);
-            } else if (typeof currentOrder.remove_orderline === "function") {
-                currentOrder.remove_orderline(line);
-            } else if (typeof line.set_quantity === "function") {
-                line.set_quantity(0);
-            } else if (typeof line.delete === "function") {
-                line.delete();
             }
         } catch (e) {
-            console.debug("Error en eliminación:", e);
+            try {
+                if (typeof line.delete === "function") {
+                    line.delete();
+                }
+            } catch (err) {
+                console.error("Error al borrar linea:", err);
+            }
         }
-
-        if (currentOrder.orderlines) {
-            const idx = currentOrder.orderlines.indexOf(line);
-            if (idx > -1) currentOrder.orderlines.splice(idx, 1);
-        }
-        if (currentOrder.lines && Array.isArray(currentOrder.lines)) {
-            const idx = currentOrder.lines.indexOf(line);
-            if (idx > -1) currentOrder.lines.splice(idx, 1);
-        }
-
-        if (this.state.selectedLineId === line.id) {
-            this.state.selectedLineId = null;
-        }
+        this.state.selectedLineId = null;
         this.state.orderVersion = Date.now();
     }
 
     deleteSelectedLine() {
         const currentOrder = this.pos.get_order();
         if (!currentOrder) return;
-
-        const lines = this.currentOrderLines;
-        if (lines.length === 0) return;
-
-        let targetLine = null;
-        if (this.state.selectedLineId) {
-            targetLine = lines.find(l => l.id === this.state.selectedLineId);
-        }
-        if (!targetLine) {
-            targetLine = currentOrder.get_selected_orderline?.() || currentOrder.selected_orderline || lines[lines.length - 1];
-        }
-
-        if (targetLine) {
-            this.deleteSpecificLine(targetLine);
+        const line = currentOrder.get_selected_orderline();
+        if (line) {
+            this.deleteSpecificLine(line);
+        } else if (this.currentOrderLines.length > 0) {
+            this.deleteSpecificLine(this.currentOrderLines[this.currentOrderLines.length - 1]);
         }
     }
 
     clearCurrentOrder() {
         const currentOrder = this.pos.get_order();
-        if (!currentOrder) return;
-
-        if (confirm("¿Está seguro de que desea cancelar y vaciar el ticket actual?")) {
-            const lines = [...(currentOrder.get_orderlines?.() || currentOrder.orderlines || [])];
-            lines.forEach(l => {
-                this.deleteSpecificLine(l);
-            });
-            if (currentOrder.orderlines) currentOrder.orderlines.length = 0;
-            if (currentOrder.lines && Array.isArray(currentOrder.lines)) currentOrder.lines.length = 0;
-
-            this.state.selectedLineId = null;
+        if (currentOrder && confirm("¿Desea cancelar y vaciar el ticket actual?")) {
+            try {
+                const lines = [...this.currentOrderLines];
+                for (const l of lines) {
+                    this.deleteSpecificLine(l);
+                }
+                currentOrder.set_note?.("");
+            } catch (e) {
+                console.debug("Error al vaciar orden:", e);
+            }
             this.state.vehiclePlate = "";
-            currentOrder.set_note?.("");
+            this.state.selectedLineId = null;
             this.state.orderVersion = Date.now();
         }
     }
@@ -470,13 +418,38 @@ export class UtrecarMainScreen extends Component {
         this.state.selectedPumpId = null;
     }
 
+    findFuelProduct(fuelCode) {
+        const allProducts = Object.values(this.pos.db.product_by_id || {});
+        let targetName = "Gasóleo A";
+        let targetRef = "GAS_A";
+
+        if (fuelCode === "95" || fuelCode === "SP95") {
+            targetName = "Sin Plomo 95";
+            targetRef = "SP95";
+        } else if (fuelCode === "GB") {
+            targetName = "Gasóleo B";
+            targetRef = "GAS_B";
+        } else if (fuelCode === "G+") {
+            targetName = "Gasóleo Plus";
+            targetRef = "GAS_PLUS";
+        }
+
+        let p = allProducts.find(x => x.default_code === targetRef || (x.name && x.name.toLowerCase().includes(targetName.toLowerCase())));
+        if (!p) {
+            p = allProducts.find(x => x.name && (x.name.toLowerCase().includes("carburante") || x.name.toLowerCase().includes("combustible")));
+        }
+        if (!p && allProducts.length > 0) {
+            p = allProducts[0];
+        }
+        return p;
+    }
+
     async authorizePreset() {
         const pumpId = this.state.selectedPumpId || 1;
         const targetPump = this.state.pumps.find(p => p.id === pumpId);
 
-        // BLOQUEO ESTRICTO: No permitir apertura si la pista ya está ocupada por otro cliente
         if (targetPump && (targetPump.status === "dispensing" || targetPump.status === "ready" || targetPump.amount > 0 || targetPump.statusText === "AUTORIZADO")) {
-            alert(`⚠️ La Calle ${pumpId} ya está ocupada por otro cliente (${targetPump.statusText}).\nDebe cobrarse o liberarse antes de una nueva autorización.`);
+            alert(`⚠️ La Calle ${pumpId} ya está ocupada (${targetPump.statusText}).\nDebe cobrarse o liberarse antes de una nueva autorización.`);
             return;
         }
 
@@ -486,7 +459,6 @@ export class UtrecarMainScreen extends Component {
         const isMoney = this.state.mode === "money";
         const presetVal = this.state.presetValue;
 
-        // 1. Marcar inmediatamente la calle como AUTORIZADO / EN PROCESO en la vista
         if (targetPump) {
             targetPump.status = "dispensing";
             targetPump.statusText = "AUTORIZADO";
@@ -497,7 +469,6 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
-        // 2. Si tiene importe prefijado (Prepago), añadir al ticket activo
         if (presetVal > 0) {
             const currentOrder = this.getOrCreateOrder();
             if (currentOrder) {
@@ -531,7 +502,6 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
-        // 3. Enviar orden al backend / concentrador
         try {
             await jsonrpc("/pos_gas_station/authorize", {
                 config_id: this.configId,
@@ -591,7 +561,6 @@ export class UtrecarMainScreen extends Component {
     }
 
     async onPumpClick(pump) {
-        // Si el surtidor tiene suministro realizado (Postpago)
         if (pump.amount > 0 && pump.liters > 0) {
             const currentOrder = this.getOrCreateOrder();
             if (!currentOrder) return;
@@ -618,7 +587,6 @@ export class UtrecarMainScreen extends Component {
                     currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
                 }
 
-                // Liberar surtidor una vez pasado al ticket
                 pump.status = "idle";
                 pump.statusText = "LIBRE";
                 pump.amount = 0;
@@ -635,41 +603,8 @@ export class UtrecarMainScreen extends Component {
                 this.state.orderVersion = Date.now();
             }
         } else {
-            // Si está libre, seleccionarlo para autorizar
             this.state.selectedPumpId = pump.id;
         }
-    }
-}
-
-patch(ProductScreen.prototype, {
-    setup() {
-        super.setup(...arguments);
-    }
-});
-
-
-    get popularStoreProducts() {
-        if (!this.pos.db) return [];
-        const all = Object.values(this.pos.db.product_by_id || {});
-        // Filtrar productos que no sean combustibles principales para la parrilla de tienda
-        const storeProds = all.filter(p => {
-            const name = (p.display_name || p.name || "").toLowerCase();
-            return !name.startsWith("gasóleo") && !name.startsWith("gasoleo") && !name.startsWith("sin plomo") && p.available_in_pos;
-        }).slice(0, 20);
-
-        if (storeProds.length > 0) {
-            return storeProds;
-        }
-
-        // Si no hay productos de tienda creados en Odoo todavía, mostrar artículos habituales de gasolinera
-        return all.slice(0, 16);
-    }
-
-    get storeFillerSlots() {
-        const count = this.popularStoreProducts.length;
-        const totalDesired = 20;
-        const remaining = Math.max(0, totalDesired - count);
-        return Array.from({ length: remaining }, (_, i) => i);
     }
 
     applyQuickDiscount() {
@@ -699,6 +634,13 @@ patch(ProductScreen.prototype, {
             }
         }
     }
+}
+
+patch(ProductScreen.prototype, {
+    setup() {
+        super.setup(...arguments);
+    }
+});
 
 ProductScreen.components = {
     ...ProductScreen.components,
@@ -742,7 +684,6 @@ patch(PaymentScreen.prototype, {
         
         await this.validateOrder(false);
         
-        // Finalización rápida sin imprimir: abrir nueva venta directamente
         if (this.pos.mainScreen && (this.pos.mainScreen.name === "ReceiptScreen" || this.pos.mainScreen.name === "TicketScreen")) {
             this.pos.add_new_order();
             this.pos.showScreen("ProductScreen");
