@@ -15,95 +15,34 @@
                 <!-- 1. CUADRANTE SUPERIOR IZQUIERDO: TICKET / ARTÍCULOS -->
                 <div class="virtus-quadrant-ticket">
                     <!-- CABECERA SUPERIOR DE VENTA -->
-                    <div class="virtus-ticket-topbar">
-                        <div class="ticket-card-icon" title="Tarjeta / Cliente">
-                            <span class="virtus-card-cards-badge">💳 CLIENTE</span>
-                        </div>
-                        <div class="virtus-plate-box">
-                            <span class="eu-flag-box">🇪🇸 E</span>
-                            <input type="text" 
-                                   class="virtus-plate-input" 
-                                   placeholder="3696 GBC" 
-                                   t-att-value="state.vehiclePlate"
-                                   t-on-input="(ev) => this.onPlateChange(ev)" />
-                        </div>
-                        <div class="virtus-user-badge">
-                            <i class="fa fa-user mr-1 text-primary"/>
-                            <span class="user-name"><t t-esc="pos.user ? pos.user.name : 'SUPERVISOR'"/></span>
-                        </div>
-                        <div class="station-mini-label">
-                            <t t-esc="state.stationName"/>
-                        </div>
-                    </div>
-
-                    <!-- TABLA PRINCIPAL DE LÍNEAS DE VENTA -->
-                    <div class="virtus-table-container">
-                        <table class="virtus-grid-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 14%;">Código</th>
-                                    <th style="width: 38%;">Artículo</th>
-                                    <th style="width: 12%; text-align: right;">+Cantidad</th>
-                                    <th style="width: 12%; text-align: right;">Precio</th>
-                                    <th style="width: 10%; text-align: right;">Descuento</th>
-                                    <th style="width: 14%; text-align: right;">Importe</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="currentOrderLines.length === 0">
-                                    <tr class="empty-placeholder-row">
-                                        <td colspan="6" class="text-center py-4 text-muted">
-                                            <i class="fa fa-shopping-cart fa-2x mb-1 d-block opacity-30"/>
-                                            Ticket vacío. Seleccione una <strong>Calle</strong> o pulse un <strong>Producto de Tienda</strong>.
-                                        </td>
-                                    </tr>
+                                        <div class="virtus-ticket-topbar">
+                        <div class="virtus-ticket-client-area">
+                            <button class="virtus-card-cards-badge" t-on-click="onClickPartner">
+                                <i class="fa fa-address-card me-1"/>
+                                <t t-if="currentOrderPartner">
+                                    <t t-esc="currentOrderPartner.name"/>
                                 </t>
                                 <t t-else="">
-                                    <t t-foreach="currentOrderLines" t-as="line" t-key="line.id">
-                                        <tr t-att-class="(state.selectedLineId === line.id || line.selected) ? 'row-selected' : ''" 
-                                            t-on-click="() => this.selectOrderLine(line)">
-                                            <td><span class="cell-code"><t t-esc="line.product.default_code || 'ART'"/></span></td>
-                                            <td class="font-weight-bold">
-                                                <t t-if="line.get_quantity() > 0 &amp;&amp; (line.product.display_name.includes('Gasóleo') || line.product.display_name.includes('Sin Plomo'))">
-                                                    <span class="fuel-line-icon">⛽</span>
-                                                </t>
-                                                <t t-esc="line.product.display_name"/>
-                                            </td>
-                                            <td class="text-right font-weight-bold"><t t-esc="line.get_quantity_str()"/></td>
-                                            <td class="text-right"><t t-esc="line.get_unit_price().toFixed(3)"/> €</td>
-                                            <td class="text-right"><t t-esc="line.get_discount_str()"/> %</td>
-                                            <td class="text-right font-weight-bold text-primary"><t t-esc="line.get_display_price().toFixed(2)"/> €</td>
-                                        </tr>
-                                    </t>
+                                    💳 CLIENTE
                                 </t>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- BARRA DE HERRAMIENTAS INFERIOR DE TICKET (ESTILO VIRTUSTPV) -->
-                    <div class="virtus-ticket-tools-bar">
-                        <div class="tools-left-group">
-                            <button class="tool-btn btn-barcode" title="Lector de código de barras" t-on-click="() => this.focusBarcode()">
-                                ▌▌█║▌
                             </button>
-                            <button class="tool-btn btn-trash-red" title="Borrar línea seleccionada" t-on-click="() => this.deleteSelectedLine()">
-                                🗑 BORRAR
-                            </button>
-                            <button class="tool-btn btn-discount" title="Descuentos" t-on-click="() => this.applyQuickDiscount()">
-                                % DTO
-                            </button>
-                            <button class="tool-btn btn-history" title="Historial de turno / Devoluciones" t-on-click="() => this.openRefundScreen()">
-                                ⏱ Historial
-                            </button>
-                            <button class="tool-btn btn-cancel-order" title="Cancelar venta" t-on-click="() => this.clearCurrentOrder()">
-                                ✖ Cancelar
-                            </button>
+                            <div class="virtus-plate-box">
+                                <span class="eu-flag-box">🇪🇸 E</span>
+                                <input type="text" class="virtus-plate-input" 
+                                       placeholder="MATRÍCULA" 
+                                       t-model="state.vehiclePlate"
+                                       t-on-change="onPlateChange"/>
+                            </div>
                         </div>
-                        <div class="tools-total-box">
-                            <span class="total-digits"><t t-esc="currentTotalAmount.toFixed(2)"/> €</span>
+                        <button class="virtus-user-badge-btn" t-on-click="onClickCashier">
+                            <i class="fa fa-user me-1"/>
+                            <t t-esc="cashierName"/>
+                        </button>
+                        <div class="station-mini-label">
+                            <t t-esc="posStationName"/>
                         </div>
                     </div>
-                </div>
+                    </div>
 
                 <!-- 2. CUADRANTE SUPERIOR DERECHO: PARRILLA DE TIENDA (32%) -->
                 <div class="virtus-quadrant-store">
