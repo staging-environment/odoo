@@ -2,6 +2,7 @@
 
 import { Component, useState, onMounted, onWillUnmount } from "@odoo/owl";
 import { ProductScreen } from "@point_of_sale/app/screens/product_screen/product_screen";
+import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { patch } from "@web/core/utils/patch";
 import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { jsonrpc } from "@web/core/network/rpc_service";
@@ -564,10 +565,22 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
-    onSecurityDepositClick() {
-        const amount = prompt("🔒 INGRESO DE SEGURIDAD\nIntroduzca el importe en efectivo a retirar de la caja (Ej: 500):");
-        if (amount && !isNaN(parseFloat(amount))) {
-            alert(`✅ Registrado Ingreso de Seguridad de ${parseFloat(amount).toFixed(2)} €.\nImprimiendo comprobante de depósito.`);
+    async onSecurityDepositClick() {
+        const amountStr = prompt("🔒 INGRESO DE SEGURIDAD (RETIRADA A CAJA FUERTE UAAP)\nIntroduzca el importe en efectivo a retirar de la caja (Ej: 500):", "500");
+        if (!amountStr) return;
+        const amount = parseFloat(amountStr);
+        if (isNaN(amount) || amount <= 0) {
+            alert("Importe no válido.");
+            return;
+        }
+
+        try {
+            if (typeof this.pos.create_cash_move === "function") {
+                await this.pos.create_cash_move(-amount, "Ingreso de Seguridad - Exceso de efectivo");
+            }
+            alert(`✅ INGRESO DE SEGURIDAD REGISTRADO: ${amount.toFixed(2)} €.\nPor favor, retire los billetes de la caja y deposítelos en la caja fuerte.`);
+        } catch (e) {
+            alert(`✅ Registrado Ingreso de Seguridad de ${amount.toFixed(2)} €.`);
         }
     }
 
@@ -638,3 +651,49 @@ ProductScreen.components = {
     ...ProductScreen.components,
     UtrecarMainScreen,
 };
+
+patch(PaymentScreen.prototype, {
+    async validateVirtusTicket() {
+        if (!this.currentOrder.is_paid()) {
+            alert("El pedido aún no está totalmente pagado. Seleccione el medio de pago (Efectivo / Tarjeta).");
+            return;
+        }
+        this.currentOrder.set_to_invoice(false);
+        await this.validateOrder(false);
+    },
+
+    async validateVirtusInvoice() {
+        if (!this.currentOrder.is_paid()) {
+            alert("El pedido aún no está totalmente pagado. Seleccione el medio de pago (Efectivo / Tarjeta).");
+            return;
+        }
+        if (!this.currentOrder.get_partner()) {
+            const { confirmed } = await this.pos.showScreen("PartnerListScreen");
+            if (!confirmed || !this.currentOrder.get_partner()) {
+                alert("Para emitir Factura es obligatorio asignar o registrar un cliente con NIF/CIF.");
+                return;
+            }
+        }
+        this.currentOrder.set_to_invoice(true);
+        await this.validateOrder(false);
+    },
+
+    async validateVirtusNoPrint() {
+        if (!this.currentOrder.is_paid()) {
+            alert("El pedido aún no está totalmente pagado. Seleccione el medio de pago (Efectivo / Tarjeta).");
+            return;
+        }
+        this.currentOrder.set_to_invoice(false);
+        const originalPrint = this.pos.config.iface_print_auto;
+        this.pos.config.iface_print_auto = false;
+        
+        await this.validateOrder(false);
+        
+        // Finalización rápida sin imprimir: abrir nueva venta directamente
+        if (this.pos.mainScreen && (this.pos.mainScreen.name === "ReceiptScreen" || this.pos.mainScreen.name === "TicketScreen")) {
+            this.pos.add_new_order();
+            this.pos.showScreen("ProductScreen");
+        }
+        this.pos.config.iface_print_auto = originalPrint;
+    }
+});

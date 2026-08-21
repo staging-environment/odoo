@@ -1037,3 +1037,100 @@
 .pump-station-box.is-fuel-diesel {
     /* Identificador superior sutil cuando no está en alerta */
 }
+
+/* ============================================================
+   ESTILOS ADICIONALES VIRTUSTPV (PANTALLA DE PAGO Y PREFIJADO)
+   ============================================================ */
+
+.btn-liter-full {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    border: 2px solid #b45309 !important;
+    box-shadow: 0 3px 6px rgba(217, 119, 6, 0.35) !important;
+}
+
+.btn-liter-full:active {
+    transform: scale(0.96);
+}
+
+/* BARRA DE LAS 3 SALIDAS DE VIRTUSTPV EN PAYMENTSCREEN */
+.virtus-payment-actions-bar {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+    margin-top: 15px !important;
+    padding: 12px !important;
+    background: #ffffff !important;
+    border-radius: 10px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05) !important;
+}
+
+.btn-virtus-action {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 12px 14px !important;
+    border-radius: 8px !important;
+    border: none !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    font-family: inherit !important;
+}
+
+.btn-virtus-action .action-icon {
+    font-size: 24px !important;
+    margin-right: 12px !important;
+}
+
+.btn-virtus-action .action-details {
+    display: flex !important;
+    flex-direction: column !important;
+    text-align: left !important;
+}
+
+.btn-virtus-action .action-details strong {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+}
+
+.btn-virtus-action .action-details span {
+    font-size: 11px !important;
+    opacity: 0.85 !important;
+    margin-top: 2px !important;
+}
+
+/* 1. TICKET IMPRESO */
+.btn-action-ticket {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3) !important;
+}
+.btn-action-ticket:hover {
+    background: linear-gradient(135deg, #172554 0%, #1d4ed8 100%) !important;
+    transform: translateY(-1px);
+}
+
+/* 2. FACTURA CON NIF */
+.btn-action-invoice {
+    background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 8px rgba(109, 40, 217, 0.3) !important;
+}
+.btn-action-invoice:hover {
+    background: linear-gradient(135deg, #2e1065 0%, #5b21b6 100%) !important;
+    transform: translateY(-1px);
+}
+
+/* 3. SIN TICKET (RÁPIDO) */
+.btn-action-noprint {
+    background: linear-gradient(135deg, #065f46 0%, #059669 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3) !important;
+}
+.btn-action-noprint:hover {
+    background: linear-gradient(135deg, #064e3b 0%, #047857 100%) !important;
+    transform: translateY(-1px);
+}

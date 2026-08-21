@@ -240,7 +240,7 @@
                         </button>
                     </div>
 
-                    <!-- BOTONERA DE BILLETES Y MONEDAS CON VECTORES SVG PERFECTOS -->
+                    <!-- BOTONERA DE BILLETES Y MONEDAS CON VECTORES SVG PERFECTOS (VIRTUSTPV) -->
                     <div class="keypad-bills-grid">
                         <t t-if="state.mode === 'money'">
                             <button class="bill-btn bill-svg bill-1e" t-on-click="() => this.addPreset(1)" title="1 Euro"></button>
@@ -251,12 +251,12 @@
                             <button class="bill-btn bill-svg bill-100e" t-on-click="() => this.addPreset(100)" title="100 Euros"></button>
                         </t>
                         <t t-else="">
+                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(1)">1 L</button>
                             <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(5)">5 L</button>
                             <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(10)">10 L</button>
                             <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(20)">20 L</button>
-                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(30)">30 L</button>
-                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(40)">40 L</button>
                             <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(50)">50 L</button>
+                            <button class="bill-btn liter-btn btn-liter-full" t-on-click="() => this.addPreset(999)" title="Lleno / Sin límite">⛽ LLENO</button>
                         </t>
                     </div>
 
@@ -355,4 +355,34 @@
             </div>
         </xpath>
     </t>
+
+    <!-- EXTENSIÓN DE PAYMENTSCREEN - LAS 3 SALIDAS DE VIRTUSTPV (TICKET / FACTURA / SIN IMPRIMIR) -->
+    <t t-name="pos_gas_station.PaymentScreen" t-inherit="point_of_sale.PaymentScreen" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('payment-buttons')]" position="after">
+            <div class="virtus-payment-actions-bar">
+                <button class="btn-virtus-action btn-action-ticket" t-on-click="() => this.validateVirtusTicket()">
+                    <div class="action-icon">🖨</div>
+                    <div class="action-details">
+                        <strong>TICKET</strong>
+                        <span>Imprimir ticket térmico</span>
+                    </div>
+                </button>
+                <button class="btn-virtus-action btn-action-invoice" t-on-click="() => this.validateVirtusInvoice()">
+                    <div class="action-icon">📄</div>
+                    <div class="action-details">
+                        <strong>FACTURA</strong>
+                        <span>Emitir factura con NIF</span>
+                    </div>
+                </button>
+                <button class="btn-virtus-action btn-action-noprint" t-on-click="() => this.validateVirtusNoPrint()">
+                    <div class="action-icon">⚡</div>
+                    <div class="action-details">
+                        <strong>SIN TICKET</strong>
+                        <span>Finalizar rápido (Ecológico)</span>
+                    </div>
+                </button>
+            </div>
+        </xpath>
+    </t>
+
 </templates>
