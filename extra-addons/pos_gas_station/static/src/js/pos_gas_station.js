@@ -647,6 +647,59 @@ patch(ProductScreen.prototype, {
     }
 });
 
+
+    get popularStoreProducts() {
+        if (!this.pos.db) return [];
+        const all = Object.values(this.pos.db.product_by_id || {});
+        // Filtrar productos que no sean combustibles principales para la parrilla de tienda
+        const storeProds = all.filter(p => {
+            const name = (p.display_name || p.name || "").toLowerCase();
+            return !name.startsWith("gasóleo") && !name.startsWith("gasoleo") && !name.startsWith("sin plomo") && p.available_in_pos;
+        }).slice(0, 20);
+
+        if (storeProds.length > 0) {
+            return storeProds;
+        }
+
+        // Si no hay productos de tienda creados en Odoo todavía, mostrar artículos habituales de gasolinera
+        return all.slice(0, 16);
+    }
+
+    get storeFillerSlots() {
+        const count = this.popularStoreProducts.length;
+        const totalDesired = 20;
+        const remaining = Math.max(0, totalDesired - count);
+        return Array.from({ length: remaining }, (_, i) => i);
+    }
+
+    applyQuickDiscount() {
+        const currentOrder = this.pos.get_order();
+        if (!currentOrder) return;
+        const line = currentOrder.get_selected_orderline();
+        if (!line) {
+            alert("Seleccione primero una línea de la venta para aplicar descuento.");
+            return;
+        }
+        const dtoStr = prompt("Introduzca el porcentaje de descuento % (Ej: 5 o 10):", "5");
+        if (dtoStr && !isNaN(parseFloat(dtoStr))) {
+            line.set_discount(parseFloat(dtoStr));
+            this.state.orderVersion = Date.now();
+        }
+    }
+
+    focusBarcode() {
+        const code = prompt("Escanear o teclear código de barras / referencia:");
+        if (code) {
+            const all = Object.values(this.pos.db.product_by_id || {});
+            const prod = all.find(p => p.barcode === code || p.default_code === code);
+            if (prod) {
+                this.addStoreProductToOrder(prod);
+            } else {
+                alert(`No se encontró ningún producto con código ${code}`);
+            }
+        }
+    }
+
 ProductScreen.components = {
     ...ProductScreen.components,
     UtrecarMainScreen,
