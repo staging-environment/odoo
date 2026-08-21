@@ -81,8 +81,8 @@ export class UtrecarMainScreen extends Component {
         });
     }
 
-                get popularStoreProducts() {
-        // 20 casillas de VirtusTPV vinculadas directamente a las imágenes exportadas de virtusgesnet MySQL
+                    get popularStoreProducts() {
+        // Matriz completa de 20 casillas de VirtusTPV (5x4) con todas las imágenes de la base de datos
         const virtusGridItems = [
             // Fila 1
             { id: "v_hielo", display_name: "HIELO EN BOLSA", lst_price: 1.90, bg_image: "/pos_gas_station/static/src/img/products/prod_341005.png", default_code: "341005" },
@@ -92,7 +92,7 @@ export class UtrecarMainScreen extends Component {
 
             // Fila 2
             { id: "v_butano", display_name: "BOMBONA BUTANO", lst_price: 23.00, bg_image: "/pos_gas_station/static/src/img/products/prod_360014.png", default_code: "360014" },
-            { id: "v_empty_2_2", is_empty: true },
+            { id: "v_dulces", display_name: "DULCES DULCESOL", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_315006.png", default_code: "315006" },
             { id: "v_coca", display_name: "LATA COCA-COLA", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_342001.png", default_code: "342001" },
             { id: "v_cocazero", display_name: "COCA-COLA ZERO", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_342003.png", default_code: "342003" },
 
@@ -105,14 +105,14 @@ export class UtrecarMainScreen extends Component {
             // Fila 4
             { id: "v_cafe", display_name: "CAFE", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_382001.png", default_code: "382001" },
             { id: "v_zumo", display_name: "ZUMO DE BOTE", lst_price: 1.30, bg_image: "/pos_gas_station/static/src/img/products/prod_382006.png", default_code: "382006" },
-            { id: "v_empty_4_3", is_empty: true },
-            { id: "v_empty_4_4", is_empty: true },
+            { id: "v_bifrutas", display_name: "BI FRUTAS", lst_price: 1.20, bg_image: "/pos_gas_station/static/src/img/products/prod_382008.png", default_code: "382008" },
+            { id: "v_cubata", display_name: "CUBATAS", lst_price: 4.00, bg_image: "/pos_gas_station/static/src/img/products/prod_383003.png", default_code: "383003" },
 
-            // Fila 5 (Botones de texto directo)
+            // Fila 5
             { id: "v_boc", display_name: "BOC", text_only: true, full_name: "TOSTADA / BOCADILLO", lst_price: 1.70, default_code: "381001" },
             { id: "v_cocatxt", display_name: "COCA COLA LATA", text_only: true, full_name: "LATA COCA-COLA", lst_price: 1.50, default_code: "342001" },
             { id: "v_pan", display_name: "PAN DE TORRIJA", text_only: true, full_name: "PAN PARA LLEVAR", lst_price: 0.60, default_code: "381003" },
-            { id: "v_empty_5_4", is_empty: true }
+            { id: "v_tostada", display_name: "MEDIA TOSTADA", text_only: true, full_name: "MEDIA TOSTADA", lst_price: 1.30, default_code: "381002" }
         ];
 
         return virtusGridItems;
