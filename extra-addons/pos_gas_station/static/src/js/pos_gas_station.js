@@ -407,14 +407,6 @@ export class UtrecarMainScreen extends Component {
         return order ? order.get_partner() : null;
     }
 
-    get cashierName() {
-        return this.pos.get_cashier() ? this.pos.get_cashier().name : (this.pos.user ? this.pos.user.name : "Admin");
-    }
-
-    get posStationName() {
-        return (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA - E.S. RONDA NORTE";
-    }
-
     async onClickPartner() {
         const currentPartner = this.currentOrderPartner;
         const { confirmed, payload: newPartner } = await this.pos.showTempScreen(
@@ -425,22 +417,7 @@ export class UtrecarMainScreen extends Component {
             const order = this.pos.get_order();
             if (order) {
                 order.set_partner(newPartner);
-                this.state.orderVersion = Date.now();
             }
-        }
-    }
-
-    async onClickCashier() {
-        if (this.pos.config.module_pos_hr) {
-            await this.pos.selectCashier();
-            this.state.orderVersion = Date.now();
-        }
-    }
-
-    onPlateChange() {
-        const order = this.pos.get_order();
-        if (order && this.state.vehiclePlate) {
-            order.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
         }
     }
 
