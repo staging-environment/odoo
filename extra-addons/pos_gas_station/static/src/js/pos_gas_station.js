@@ -81,37 +81,37 @@ export class UtrecarMainScreen extends Component {
         });
     }
 
-        get popularStoreProducts() {
-        // 20 casillas de la parrilla de tienda de VirtusTPV (5 filas x 4 columnas)
+            get popularStoreProducts() {
+        // Matriz exacta de 20 casillas de VirtusTPV vinculadas a productos de Odoo DB
         const virtusGridItems = [
             // Fila 1
-            { id: "v_hielo", display_name: "Bolsa Hielo", lst_price: 2.50, bg_image: "/pos_gas_station/static/src/img/products/prod_hielo.png", default_code: "HIELO" },
-            { id: "v_chupa", display_name: "Chupa Chups", lst_price: 0.50, bg_image: "/pos_gas_station/static/src/img/products/prod_chupa.png", default_code: "CHUPA" },
-            { id: "v_recarga", display_name: "Recarga Móvil", lst_price: 10.00, bg_image: "/pos_gas_station/static/src/img/products/prod_telefono.png", default_code: "RECARGA" },
-            { id: "v_mechero", display_name: "Mechero Clipper", lst_price: 1.20, bg_image: "/pos_gas_station/static/src/img/products/prod_mechero.png", default_code: "MECHERO" },
+            { id: "v_hielo", display_name: "HIELO EN BOLSA", lst_price: 1.90, bg_image: "/pos_gas_station/static/src/img/products/prod_hielo.png", default_code: "341005" },
+            { id: "v_chupa", display_name: "CHUPA CHUPS", lst_price: 0.40, bg_image: "/pos_gas_station/static/src/img/products/prod_chupa.png", default_code: "312006" },
+            { id: "v_recarga", display_name: "RECARGA MOVIL", lst_price: 10.00, bg_image: "/pos_gas_station/static/src/img/products/prod_telefono.png", default_code: "370019" },
+            { id: "v_mechero", display_name: "MECHERO CLIPPER", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_mechero.png", default_code: "323003" },
 
             // Fila 2
-            { id: "v_butano", display_name: "Bombona Butano", lst_price: 16.50, bg_image: "/pos_gas_station/static/src/img/products/prod_butano.png", default_code: "BUTANO" },
+            { id: "v_butano", display_name: "BOMBONA BUTANO", lst_price: 23.00, bg_image: "/pos_gas_station/static/src/img/products/prod_butano.png", default_code: "360014" },
             { id: "v_empty_2_2", is_empty: true },
-            { id: "v_cerveza", display_name: "Cerveza Mahou", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_cerveza.png", default_code: "MAHOU" },
-            { id: "v_aceite1", display_name: "Aceite Motor", lst_price: 9.80, bg_image: "/pos_gas_station/static/src/img/products/prod_aceite1.png", default_code: "ACEITE1" },
+            { id: "v_cerveza", display_name: "LATA CERVEZA", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_cerveza.png", default_code: "343001" },
+            { id: "v_aceite1", display_name: "ACEITE REPSOL 5W30", lst_price: 9.95, bg_image: "/pos_gas_station/static/src/img/products/prod_aceite1.png", default_code: "331004" },
 
             // Fila 3
-            { id: "v_lata", display_name: "Bebida Lata", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_lata.png", default_code: "LATA" },
-            { id: "v_aceite2t", display_name: "Aceite 2T Tubo", lst_price: 2.20, bg_image: "/pos_gas_station/static/src/img/products/prod_aceite2t.png", default_code: "ACEITE2T" },
-            { id: "v_tubo", display_name: "Aditivo Motor", lst_price: 4.50, bg_image: "/pos_gas_station/static/src/img/products/prod_tubo.png", default_code: "ADITIVO" },
-            { id: "v_aceite2", display_name: "Aceite Sintético", lst_price: 12.00, bg_image: "/pos_gas_station/static/src/img/products/prod_aceite2.png", default_code: "ACEITE2" },
+            { id: "v_lata", display_name: "LATA COCA-COLA", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_lata.png", default_code: "342001" },
+            { id: "v_aceite2t", display_name: "ACEITE NIPOMIX 2T", lst_price: 1.40, bg_image: "/pos_gas_station/static/src/img/products/prod_aceite2t.png", default_code: "331002" },
+            { id: "v_tubo", display_name: "ACEITE 2T MOTUL", lst_price: 2.00, bg_image: "/pos_gas_station/static/src/img/products/prod_tubo.png", default_code: "331014" },
+            { id: "v_aceite2", display_name: "ACEITE GOOD YEAR", lst_price: 9.60, bg_image: "/pos_gas_station/static/src/img/products/prod_aceite2.png", default_code: "331028" },
 
             // Fila 4
-            { id: "v_agua1", display_name: "Agua 0.5L", lst_price: 0.80, bg_image: "/pos_gas_station/static/src/img/products/prod_agua1.png", default_code: "AGUA50" },
-            { id: "v_agua2", display_name: "Agua 1.5L", lst_price: 1.20, bg_image: "/pos_gas_station/static/src/img/products/prod_agua2.png", default_code: "AGUA150" },
+            { id: "v_agua1", display_name: "AGUA MINERAL 50cl", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_agua1.png", default_code: "341009" },
+            { id: "v_agua2", display_name: "AGUA MINERAL 1.5L", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_agua2.png", default_code: "341008" },
             { id: "v_empty_4_3", is_empty: true },
             { id: "v_empty_4_4", is_empty: true },
 
-            // Fila 5 (Botones con texto directo)
-            { id: "v_boc", display_name: "BOC", text_only: true, full_name: "Bocadillo", lst_price: 3.50, default_code: "BOC" },
-            { id: "v_coca", display_name: "COCA COLA LATA", text_only: true, full_name: "Coca Cola Lata", lst_price: 1.50, default_code: "COCA" },
-            { id: "v_pan", display_name: "PAN DE TORRIJA", text_only: true, full_name: "Pan de Torrija", lst_price: 1.80, default_code: "PAN" },
+            // Fila 5 (Botones de texto directo)
+            { id: "v_boc", display_name: "BOC", text_only: true, full_name: "TOSTADA / BOCADILLO", lst_price: 1.70, default_code: "381001" },
+            { id: "v_coca", display_name: "COCA COLA LATA", text_only: true, full_name: "LATA COCA-COLA", lst_price: 1.50, default_code: "342001" },
+            { id: "v_pan", display_name: "PAN DE TORRIJA", text_only: true, full_name: "PAN PARA LLEVAR", lst_price: 0.60, default_code: "381003" },
             { id: "v_empty_5_4", is_empty: true }
         ];
 
