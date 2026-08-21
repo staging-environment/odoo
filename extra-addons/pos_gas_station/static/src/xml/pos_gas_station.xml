@@ -130,10 +130,10 @@
                                 <div class="store-item-btn empty-slot"></div>
                             </t>
                             <t t-elif="prod.bg_image">
-                                <button class="store-item-btn with-bg-img" 
-                                        t-attf-style="background-image: url('#{prod.bg_image}');"
+                                <button class="store-item-btn" 
                                         t-att-title="prod.display_name"
                                         t-on-click="() => this.addStoreProductToOrder(prod)">
+                                    <img t-att-src="prod.bg_image" class="store-product-img-tag" alt="Producto"/>
                                 </button>
                             </t>
                             <t t-elif="prod.text_only">
