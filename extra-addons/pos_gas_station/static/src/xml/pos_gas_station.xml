@@ -1,215 +1,172 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-    
-    <!-- PANTALLA COMPLETA PRINCIPAL UTRECAR TPV -->
-    <t t-name="pos_gas_station.UtrecarMainScreen" owl="1">
-        <div class="utrecar-fullscreen-tpv">
-            
-            <!-- ============================================================ -->
-            <!-- ZONA 1 (SUPERIOR): CABECERA, MATRÍCULA Y TABLA DE ARTÍCULOS  -->
-            <!-- ============================================================ -->
-            <div class="utrecar-top-section">
-                
-                <!-- BARRA SUPERIOR DE ACCIONES -->
-                <div class="utrecar-header-bar">
-                    <div class="header-left">
-                        <span class="station-brand-badge">
-                            <i class="fa fa-gas-pump mr-1"/> <t t-esc="state.stationName"/>
-                        </span>
-                        <span class="live-indicator"><i class="fa fa-circle mr-1"/> EN DIRECTO (1s)</span>
-                    </div>
 
-                    <!-- MATRÍCULA EUROPEA CENTRAL -->
-                    <div class="header-center">
-                        <div class="euro-plate-wrapper">
-                            <span class="eu-flag">🇪🇸 E</span>
+    <!-- ============================================================ -->
+    <!-- PLANTILLA PRINCIPAL VIRTUSTPV PARA ODOO 17 (4 ZONAS DE TRABAJO)-->
+    <!-- ============================================================ -->
+    <t t-name="pos_gas_station.UtrecarMainScreen" owl="1">
+        <div class="virtus-layout-container">
+
+            <!-- ============================================================ -->
+            <!-- COLUMNA IZQUIERDA (74% ANCHO): TABLA DE ARTÍCULOS + SURTIDORES -->
+            <!-- ============================================================ -->
+            <div class="virtus-left-workspace">
+
+                <!-- 1. ZONA SUPERIOR: CABECERA + TABLA DE ARTÍCULOS EN VENTA -->
+                <div class="virtus-top-ticket-card">
+                    
+                    <!-- BARRA SUPERIOR DE TICKET -->
+                    <div class="ticket-header-bar">
+                        <div class="station-title-badge">
+                            <i class="fa fa-gas-pump mr-2 text-primary"/>
+                            <span class="station-name-text"><t t-esc="state.stationName"/></span>
+                        </div>
+
+                        <!-- MATRÍCULA CENTRAL ESPAÑOLA / EUROPEA -->
+                        <div class="euro-plate-container">
+                            <span class="plate-flag">🇪🇸 E</span>
                             <input type="text" 
-                                   class="euro-plate-text" 
+                                   class="plate-input-field" 
                                    placeholder="MATRÍCULA..." 
                                    t-att-value="state.vehiclePlate"
                                    t-on-input="(ev) => this.onPlateChange(ev)" />
                         </div>
+
+                        <!-- ACCIONES RÁPIDAS DE LÍNEAS -->
+                        <div class="ticket-actions-group">
+                            <button class="btn-ticket-tool" t-on-click="() => this.openRefundScreen()" title="Historial de tickets / Devolución">
+                                <i class="fa fa-history mr-1"/> Historial
+                            </button>
+                            <button class="btn-ticket-tool" t-on-click="() => this.deleteSelectedLine()" title="Eliminar línea seleccionada">
+                                <i class="fa fa-trash-alt mr-1"/> Borrar
+                            </button>
+                            <button class="btn-ticket-tool btn-tool-cancel" t-on-click="() => this.clearCurrentOrder()" title="Cancelar venta actual">
+                                <i class="fa fa-times-circle mr-1"/> Cancelar
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- BOTONES DE TURNO, DEVOLUCIONES Y SEGURIDAD -->
-                    <div class="header-right">
-                        <button class="btn-top-action btn-store-toggle" t-on-click="() => this.openStoreModal()">
-                            <i class="fa fa-shopping-bag mr-1"/> <strong>TIENDA / PARRILLA</strong>
-                        </button>
-                        <button class="btn-top-action btn-refund" t-on-click="() => this.openRefundScreen()" title="Consultar tickets anteriores o realizar un abono/devolución">
-                            <i class="fa fa-undo mr-1"/> <strong>Devolución / Historial</strong>
-                        </button>
-                        <button class="btn-top-action btn-security" t-on-click="() => this.onSecurityDepositClick()">
-                            <i class="fa fa-shield-alt mr-1"/> Ingreso Seguridad
-                        </button>
-                        <button class="btn-top-action btn-emergency" t-on-click="() => this.onEmergencyStopClick()">
-                            <i class="fa fa-stop-circle mr-1"/> Parada Emergencia
-                        </button>
-                    </div>
-                </div>
-
-                <!-- TABLA DE ARTÍCULOS / TICKET EN CURSO -->
-                <div class="utrecar-ticket-table-container">
-                    <table class="utrecar-ticket-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 10%;">CÓDIGO</th>
-                                <th style="width: 38%;">ARTÍCULO / COMBUSTIBLE</th>
-                                <th style="width: 12%; text-align: right;">CANTIDAD</th>
-                                <th style="width: 12%; text-align: right;">PRECIO</th>
-                                <th style="width: 8%; text-align: right;">DESC %</th>
-                                <th style="width: 14%; text-align: right;">IMPORTE</th>
-                                <th style="width: 6%; text-align: center;">BORRAR</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <t t-if="currentOrderLines.length === 0">
-                                <tr class="empty-ticket-row">
-                                    <td colspan="7" class="text-center py-4 text-muted">
-                                        <i class="fa fa-shopping-cart fa-2x mb-2 d-block opacity-50"/>
-                                        Ticket vacío. Seleccione una <strong>Calle libre</strong> + importe para Prepago, o pulse <strong>PASAR A TICKET</strong> para Postpago.
-                                    </td>
+                    <!-- TABLA DE ARTÍCULOS REGISTRADOS -->
+                    <div class="ticket-table-wrapper">
+                        <table class="virtus-pos-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 12%;">CÓDIGO</th>
+                                    <th style="width: 38%;">ARTÍCULO / COMBUSTIBLE</th>
+                                    <th style="width: 12%; text-align: right;">CANTIDAD</th>
+                                    <th style="width: 12%; text-align: right;">PRECIO</th>
+                                    <th style="width: 10%; text-align: right;">DESC %</th>
+                                    <th style="width: 16%; text-align: right;">IMPORTE</th>
                                 </tr>
-                            </t>
-                            <t t-else="">
-                                <t t-foreach="currentOrderLines" t-as="line" t-key="line.id">
-                                    <tr t-att-class="(state.selectedLineId === line.id || line.selected) ? 'selected-line' : ''" 
-                                        t-on-click="() => this.selectOrderLine(line)"
-                                        style="cursor: pointer;">
-                                        <td><t t-esc="line.product.default_code || 'COMB'"/></td>
-                                        <td class="font-weight-bold"><t t-esc="line.product.display_name"/></td>
-                                        <td class="text-right"><t t-esc="line.get_quantity_str()"/> <t t-esc="line.product.uom_id ? line.product.uom_id[1] : 'Ud'"/></td>
-                                        <td class="text-right"><t t-esc="line.get_unit_price().toFixed(3)"/> €</td>
-                                        <td class="text-right"><t t-esc="line.get_discount_str()"/> %</td>
-                                        <td class="text-right font-weight-bold text-success"><t t-esc="line.get_display_price().toFixed(2)"/> €</td>
-                                        <td class="text-center" style="padding: 2px;">
-                                            <button class="btn btn-sm btn-outline-danger" 
-                                                    style="padding: 2px 6px; font-size: 11px; border-radius: 4px;"
-                                                    t-on-click.stop="() => this.deleteSpecificLine(line)" 
-                                                    title="Eliminar esta línea">
-                                                <i class="fa fa-times text-danger"/>
-                                            </button>
+                            </thead>
+                            <tbody>
+                                <t t-if="currentOrderLines.length === 0">
+                                    <tr class="empty-row">
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="fa fa-shopping-cart fa-2x mb-1 d-block opacity-40"/>
+                                            Ticket vacío. Seleccione una <strong>Calle libre</strong> para Prepago o pulse <strong>PASAR A TICKET</strong> para Postpago.
                                         </td>
                                     </tr>
                                 </t>
-                            </t>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- BARRA INFERIOR DE TICKET (TOTAL COMBINADO Y BOTÓN DE COBRO) -->
-                <div class="utrecar-ticket-footer">
-                    <div class="ticket-tools">
-                        <button class="btn-tool btn-add-product" t-on-click="() => this.openStoreModal()" title="Añadir producto de tienda">
-                            <i class="fa fa-plus-circle mr-1 text-primary"/> <strong>Añadir Artículo</strong>
-                        </button>
-                        <button class="btn-tool btn-delete-line" t-on-click="() => this.deleteSelectedLine()" title="Eliminar línea seleccionada">
-                            <i class="fa fa-trash-alt mr-1"/> Borrar Artículo
-                        </button>
-                        <button class="btn-tool btn-clear-all" t-on-click="() => this.clearCurrentOrder()" title="Cancelar venta">
-                            <i class="fa fa-times-circle mr-1"/> Cancelar Ticket
-                        </button>
-                    </div>
-                    
-                    <div class="ticket-totals-box">
-                        <span class="total-label">TOTAL A COBRAR:</span>
-                        <span class="total-amount"><t t-esc="currentTotalAmount.toFixed(2)"/> €</span>
-                        <button class="btn-pay-now" t-on-click="() => this.goToPayment()">
-                            <i class="fa fa-credit-card mr-2"/> COBRAR (<t t-esc="currentTotalAmount.toFixed(2)"/> €)
-                        </button>
+                                <t t-else="">
+                                    <t t-foreach="currentOrderLines" t-as="line" t-key="line.id">
+                                        <tr t-att-class="(state.selectedLineId === line.id || line.selected) ? 'selected-row' : ''" 
+                                            t-on-click="() => this.selectOrderLine(line)">
+                                            <td><span class="badge-code"><t t-esc="line.product.default_code || 'COMB'"/></span></td>
+                                            <td class="font-weight-bold text-dark"><t t-esc="line.product.display_name"/></td>
+                                            <td class="text-right font-weight-bold"><t t-esc="line.get_quantity_str()"/> <t t-esc="line.product.uom_id ? line.product.uom_id[1] : 'Ud'"/></td>
+                                            <td class="text-right"><t t-esc="line.get_unit_price().toFixed(3)"/> €</td>
+                                            <td class="text-right"><t t-esc="line.get_discount_str()"/> %</td>
+                                            <td class="text-right font-weight-bold text-primary"><t t-esc="line.get_display_price().toFixed(2)"/> €</td>
+                                        </tr>
+                                    </t>
+                                </t>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            </div>
 
-            <!-- ============================================================ -->
-            <!-- ZONA 2 (INFERIOR): MAPA DE SURTIDORES + TECLADO DE BILLETES  -->
-            <!-- ============================================================ -->
-            <div class="utrecar-bottom-section">
-                
-                <!-- PARTE INFERIOR IZQUIERDA: MAPA DE SURTIDORES (CALLAS 1 A 8) -->
-                <div class="utrecar-pumps-card-panel">
-                    <div class="panel-section-title">
-                        <i class="fa fa-tachometer-alt mr-2 text-info"/> ESTADO EN PISTA DE SURTIDORES
+                <!-- 2. ZONA INFERIOR: MAPA DE SURTIDORES (CALLAS 1 A 8) -->
+                <div class="virtus-bottom-pumps-card">
+                    <div class="pumps-card-header">
+                        <div class="pumps-title">
+                            <i class="fa fa-tachometer-alt mr-2 text-info"/> CONTROL DE PISTA — ESTADO DE SURTIDORES
+                        </div>
+                        <div class="pumps-status-legend">
+                            <span class="legend-item"><span class="dot dot-free"/> Libre</span>
+                            <span class="legend-item"><span class="dot dot-ready"/> Pendiente Cobro</span>
+                            <span class="legend-item"><span class="dot dot-dispensing"/> Suministrando / Autorizado</span>
+                        </div>
                     </div>
-                    
-                    <div class="pumps-auto-grid">
+
+                    <!-- GRID DE SURTIDORES EN 2 FILAS DE 4 CALLES -->
+                    <div class="virtus-pumps-grid">
                         <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
                             <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
-                            <div t-attf-class="pump-station-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-active-selection' : ''} #{getPumpFuelClass(pump)}"
+                            <div t-attf-class="pump-tile status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''} #{getPumpFuelClass(pump)}"
                                  t-on-click="() => this.onPumpSelect(pump)">
                                 
-                                <div class="box-head">
-                                    <span class="box-calle">CALLE <t t-esc="pump.id"/></span>
-                                    <span class="box-badge"><t t-esc="pump.statusText"/></span>
+                                <div class="pump-tile-top">
+                                    <span class="pump-num">CALLE <t t-esc="pump.id"/></span>
+                                    <span class="pump-badge"><t t-esc="pump.statusText"/></span>
                                 </div>
 
-                                <!-- BANNER VISUAL ULTRA CLARO DE COMBUSTIBLE (DIESEL / GASOLINA) -->
-                                <div class="box-fuel-wrapper">
+                                <!-- CHIP DE COMBUSTIBLE -->
+                                <div class="pump-fuel-banner">
                                     <t t-if="fuelInfo.isActive">
-                                        <div t-attf-class="fuel-chip #{fuelInfo.badgeClass}">
-                                            <div class="fuel-chip-top">
-                                                <span class="fuel-icon-circle">
-                                                    <i t-attf-class="fa #{fuelInfo.icon}"/>
-                                                </span>
-                                                <span class="fuel-category-pill"><t t-esc="fuelInfo.category"/></span>
-                                                <span class="fuel-code-pill"><t t-esc="fuelInfo.shortCode"/></span>
-                                            </div>
-                                            <div class="fuel-name-display" t-att-title="fuelInfo.name">
-                                                <t t-esc="fuelInfo.name"/>
-                                            </div>
+                                        <div t-attf-class="fuel-chip-badge #{fuelInfo.badgeClass}">
+                                            <span class="f-code"><t t-esc="fuelInfo.shortCode"/></span>
+                                            <span class="f-name"><t t-esc="fuelInfo.name"/></span>
                                         </div>
                                     </t>
                                     <t t-else="">
-                                        <div class="fuel-chip fuel-chip-idle">
-                                            <div class="fuel-chip-top">
-                                                <span class="idle-icon"><i class="fa fa-gas-pump text-muted"/></span>
-                                                <span class="idle-tag tag-diesel">GA</span>
-                                                <span class="idle-tag tag-gasolina">95</span>
-                                            </div>
-                                            <div class="fuel-name-display text-muted">
-                                                <t t-esc="pump.fuel || 'Gasóleo A / Sin Plomo 95'"/>
-                                            </div>
+                                        <div class="fuel-chip-badge fuel-chip-idle">
+                                            <span class="f-code text-muted">GA/95</span>
+                                            <span class="f-name text-muted"><t t-esc="pump.fuel || 'Gasóleo / Sin Plomo'"/></span>
                                         </div>
                                     </t>
                                 </div>
 
-                                <div class="box-lcd-counter">
-                                    <div class="lcd-euros">
+                                <!-- CONTADOR LCD DE SURTIDOR -->
+                                <div class="pump-lcd-box">
+                                    <div class="lcd-euros-row">
                                         <t t-if="pump.amount > 0">
                                             <t t-esc="pump.amount.toFixed(2)"/> €
                                         </t>
-                                        <t t-else="">0.00 €</t>
+                                        <t t-else="">
+                                            0.00 €
+                                        </t>
                                     </div>
-                                    <div class="lcd-liters">
+                                    <div class="lcd-liters-row">
                                         <t t-if="pump.liters > 0">
                                             <t t-esc="pump.liters.toFixed(2)"/> L
                                         </t>
-                                        <t t-else="">0.00 L</t>
+                                        <t t-else="">
+                                            0.00 L
+                                        </t>
                                     </div>
                                 </div>
 
-                                <div class="box-action-slot">
-                                    <t t-if="pump.status === 'ready' || (pump.status !== 'dispensing' &amp;&amp; pump.amount > 0)">
-                                        <button class="btn-box-load" t-on-click.stop="() => this.onPumpClick(pump)">
+                                <!-- BOTÓN DE ACCIÓN SEGÚN ESTADO DE VIRTUSTPV -->
+                                <div class="pump-bottom-action">
+                                    <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
+                                        <button class="btn-pump-action btn-pump-ticket" t-on-click.stop="() => this.onPumpClick(pump)">
                                             <i class="fa fa-arrow-circle-up mr-1"/> PASAR A TICKET
                                         </button>
                                     </t>
-                                    <t t-elif="pump.status === 'dispensing' || pump.statusText === 'AUTORIZADO'">
-                                        <div class="badge-dispensing">
+                                    <t t-elif="pump.status === 'dispensing'">
+                                        <div class="dispensing-pill">
                                             <i class="fa fa-spinner fa-spin mr-1"/> EN PROCESO
                                         </div>
-                                        <button class="btn btn-sm btn-outline-danger mt-1 w-100" 
-                                                style="font-size: 9.5px; padding: 2px 0; font-weight: 800; border-radius: 4px;" 
-                                                t-on-click.stop="() => this.cancelPumpAuthorization(pump)"
-                                                title="Cancelar autorización y bloquear surtidor">
+                                        <button class="btn-cancel-auth" t-on-click.stop="() => this.cancelPumpAuthorization(pump)">
                                             <i class="fa fa-ban mr-1"/> Cancelar
                                         </button>
                                     </t>
                                     <t t-else="">
-                                        <div class="badge-idle">
+                                        <div class="idle-state-tag">
                                             <t t-if="state.selectedPumpId === pump.id &amp;&amp; state.presetValue > 0">
-                                                <button class="btn-box-load" style="background:#2563eb; color:#fff;" t-on-click.stop="() => this.authorizePreset()">
-                                                    <i class="fa fa-plus mr-1"/> PREPAGO A TICKET
+                                                <button class="btn-load-preset" t-on-click.stop="() => this.authorizePreset()">
+                                                    <i class="fa fa-check mr-1"/> PREPAGO A TICKET
                                                 </button>
                                             </t>
                                             <t t-else="">
@@ -223,66 +180,85 @@
                     </div>
                 </div>
 
-                <!-- PARTE INFERIOR DERECHA: PAD RÁPIDO CON BILLETES SVG VECTORIALES NÍTITOS -->
-                <div class="utrecar-keypad-panel">
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- COLUMNA DERECHA (26% ANCHO, ALTURA COMPLETA): PANEL VIRTUS   -->
+            <!-- ============================================================ -->
+            <div class="virtus-right-control-panel">
+
+                <!-- 1. OPCIONES DE TURNO Y UTILIDADES (ARRIBA) -->
+                <div class="virtus-top-tools-grid">
+                    <button class="btn-virtus-menu btn-menu-store" t-on-click="() => this.openStoreModal()">
+                        <i class="fa fa-th-large mr-2"/> TIENDA / PARRILLA
+                    </button>
+                    <button class="btn-virtus-menu btn-menu-security" t-on-click="() => this.onSecurityDepositClick()" title="Retirada de efectivo a caja fuerte">
+                        <i class="fa fa-shield-alt mr-2"/> INGRESO SEGURIDAD
+                    </button>
+                    <button class="btn-virtus-menu btn-menu-danger" t-on-click="() => this.onEmergencyStopClick()" title="Parada de emergencia de surtidores">
+                        <i class="fa fa-stop-circle mr-2"/> PARADA EMERGENCIA
+                    </button>
+                </div>
+
+                <!-- 2. CUADRÍCULA DE PREFIJADO / COBRO RÁPIDO (CENTRO) -->
+                <div class="virtus-keypad-container">
                     
-                    <!-- DISPLAY DIGITAL -->
-                    <div class="keypad-lcd-display">
-                        <div class="lcd-info">
-                            <span class="lcd-sub"><t t-esc="state.mode === 'money' ? 'PREFIJADO IMPORTE' : 'PREFIJADO LITROS'"/></span>
-                            <span class="lcd-main"><t t-esc="state.presetValue > 0 ? state.presetValue : '0'"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/></span>
+                    <!-- DISPLAY DIGITAL DE PREFIJADO -->
+                    <div class="virtus-lcd-screen">
+                        <div class="lcd-digits-box">
+                            <span class="lcd-subtitle"><t t-esc="state.mode === 'money' ? 'PREFIJADO IMPORTE' : 'PREFIJADO LITROS'"/></span>
+                            <span class="lcd-value"><t t-esc="state.presetValue > 0 ? state.presetValue : '0'"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/></span>
                         </div>
-                        <button t-attf-class="btn-toggle-drop #{state.mode === 'liters' ? 'is-liters' : ''}" 
+                        <button t-attf-class="btn-drop-switcher #{state.mode === 'liters' ? 'is-active-drop' : ''}" 
                                 t-on-click="() => this.toggleMode()"
-                                title="Cambiar a litros o dinero">
-                            <span class="drop-icon">💧</span>
-                            <span class="drop-text"><t t-esc="state.mode === 'money' ? 'A LITROS' : 'A EUROS'"/></span>
+                                title="Cambiar entre Euros y Litros">
+                            <span class="drop-symbol">💧</span>
+                            <span class="drop-caption"><t t-esc="state.mode === 'money' ? 'A LITROS' : 'A EUROS'"/></span>
                         </button>
                     </div>
 
-                    <!-- BOTONERA DE BILLETES Y MONEDAS CON VECTORES SVG PERFECTOS (VIRTUSTPV) -->
-                    <div class="keypad-bills-grid">
+                    <!-- BOTONERA DE BILLETES Y MONEDAS / LITROS EN ALTA VISIBILIDAD -->
+                    <div class="virtus-fast-grid">
                         <t t-if="state.mode === 'money'">
-                            <button class="bill-btn bill-svg bill-1e" t-on-click="() => this.addPreset(1)" title="1 Euro"></button>
-                            <button class="bill-btn bill-svg bill-5e" t-on-click="() => this.addPreset(5)" title="5 Euros"></button>
-                            <button class="bill-btn bill-svg bill-10e" t-on-click="() => this.addPreset(10)" title="10 Euros"></button>
-                            <button class="bill-btn bill-svg bill-20e" t-on-click="() => this.addPreset(20)" title="20 Euros"></button>
-                            <button class="bill-btn bill-svg bill-50e" t-on-click="() => this.addPreset(50)" title="50 Euros"></button>
-                            <button class="bill-btn bill-svg bill-100e" t-on-click="() => this.addPreset(100)" title="100 Euros"></button>
+                            <button class="btn-fast-money bill-svg bill-1e" t-on-click="() => this.addPreset(1)" title="1 Euro"></button>
+                            <button class="btn-fast-money bill-svg bill-5e" t-on-click="() => this.addPreset(5)" title="5 Euros"></button>
+                            <button class="btn-fast-money bill-svg bill-10e" t-on-click="() => this.addPreset(10)" title="10 Euros"></button>
+                            <button class="btn-fast-money bill-svg bill-20e" t-on-click="() => this.addPreset(20)" title="20 Euros"></button>
+                            <button class="btn-fast-money bill-svg bill-50e" t-on-click="() => this.addPreset(50)" title="50 Euros"></button>
+                            <button class="btn-fast-money bill-svg bill-100e" t-on-click="() => this.addPreset(100)" title="100 Euros"></button>
                         </t>
                         <t t-else="">
-                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(1)">1 L</button>
-                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(5)">5 L</button>
-                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(10)">10 L</button>
-                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(20)">20 L</button>
-                            <button class="bill-btn liter-btn" t-on-click="() => this.addPreset(50)">50 L</button>
-                            <button class="bill-btn liter-btn btn-liter-full" t-on-click="() => this.addPreset(999)" title="Lleno / Sin límite">⛽ LLENO</button>
+                            <button class="btn-fast-liter" t-on-click="() => this.addPreset(1)">1 L</button>
+                            <button class="btn-fast-liter" t-on-click="() => this.addPreset(5)">5 L</button>
+                            <button class="btn-fast-liter" t-on-click="() => this.addPreset(10)">10 L</button>
+                            <button class="btn-fast-liter" t-on-click="() => this.addPreset(20)">20 L</button>
+                            <button class="btn-fast-liter" t-on-click="() => this.addPreset(50)">50 L</button>
+                            <button class="btn-fast-liter btn-liter-full" t-on-click="() => this.addPreset(999)" title="Lleno / Sin límite">⛽ LLENO</button>
                         </t>
                     </div>
 
-                    <!-- SELECTOR DE COMBUSTIBLE DINÁMICO SEGÚN LA GASOLINERA -->
-                    <div class="keypad-fuel-grid">
+                    <!-- SELECTOR DE COMBUSTIBLE (GA / 95 / GB / G+) -->
+                    <div class="virtus-fuels-tab-bar">
                         <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
-                            <button t-attf-class="fuel-tab #{fuel.class} #{state.selectedFuel === fuel.code ? 'active-fuel' : ''}" 
+                            <button t-attf-class="btn-fuel-tab #{fuel.class} #{state.selectedFuel === fuel.code ? 'active-fuel' : ''}" 
                                     t-on-click="() => this.selectFuel(fuel.code)">
-                                <strong><t t-esc="fuel.code"/></strong> <t t-esc="fuel.name"/>
+                                <strong><t t-esc="fuel.code"/></strong> <span><t t-esc="fuel.name"/></span>
                             </button>
                         </t>
                     </div>
 
-                    <!-- BOTONES DE ACCIÓN (BORRAR / AUTORIZAR) -->
-                    <div class="keypad-action-grid">
-                        <button class="btn-keypad-action btn-c-clear" t-on-click="() => this.clearPreset()">
+                    <!-- ACCIONES DE PISTA: BORRAR / AUTORIZAR CALLE -->
+                    <div class="virtus-keypad-actions">
+                        <button class="btn-action-clear" t-on-click="() => this.clearPreset()">
                             <i class="fa fa-times mr-1"/> C (BORRAR)
                         </button>
-                        
                         <t t-if="isSelectedPumpActive">
-                            <button class="btn-keypad-action" style="background:#f59e0b; color:#fff; cursor: not-allowed;" title="Esta calle ya se encuentra en proceso de suministro">
+                            <button class="btn-action-auth btn-busy" title="Esta calle ya se encuentra en proceso de suministro">
                                 <i class="fa fa-spinner fa-spin mr-1"/> EN PROCESO
                             </button>
                         </t>
                         <t t-else="">
-                            <button class="btn-keypad-action btn-authorize-call" t-on-click="() => this.authorizePreset()">
+                            <button class="btn-action-auth" t-on-click="() => this.authorizePreset()">
                                 <i class="fa fa-check-circle mr-1"/> AUTORIZAR <t t-if="state.selectedPumpId">CALLE <t t-esc="state.selectedPumpId"/></t>
                             </button>
                         </t>
@@ -290,10 +266,21 @@
 
                 </div>
 
+                <!-- 3. BARRA DE TOTAL Y BOTÓN DE COBRO GIGANTE (ABAJO) -->
+                <div class="virtus-checkout-card">
+                    <div class="checkout-amount-display">
+                        <span class="checkout-label">TOTAL A COBRAR:</span>
+                        <span class="checkout-val"><t t-esc="currentTotalAmount.toFixed(2)"/> €</span>
+                    </div>
+                    <button class="btn-virtus-pay" t-on-click="() => this.goToPayment()">
+                        <i class="fa fa-credit-card mr-2"/> COBRAR (<t t-esc="currentTotalAmount.toFixed(2)"/> €)
+                    </button>
+                </div>
+
             </div>
 
             <!-- ============================================================ -->
-            <!-- MODAL / PARRILLA DE PRODUCTOS DE TIENDA DE LA GASOLINERA     -->
+            <!-- MODAL / PARRILLA DE PRODUCTOS DE TIENDA                      -->
             <!-- ============================================================ -->
             <t t-if="state.isStoreModalOpen">
                 <div class="utrecar-modal-backdrop" t-on-click="() => this.closeStoreModal()">
@@ -316,7 +303,6 @@
                             </button>
                         </div>
 
-                        <!-- CUADRÍCULA TÁCTIL DE PRODUCTOS DE TIENDA -->
                         <div class="store-products-grid">
                             <t t-if="filteredStoreProducts.length === 0">
                                 <div class="text-center py-5 w-100 text-muted">
