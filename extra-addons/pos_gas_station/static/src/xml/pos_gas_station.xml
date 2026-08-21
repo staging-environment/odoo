@@ -123,25 +123,31 @@
                         </button>
                     </div>
 
-                    <!-- CUADRÍCULA DIRECTA DE 20 PRODUCTOS CON IMÁGENES / ICONOS DE GASOLINERA -->
+                    <!-- CUADRÍCULA DIRECTA DE 20 PRODUCTOS EXACTOS VIRTUSTPV (5x4) -->
                     <div class="virtus-store-grid">
                         <t t-foreach="popularStoreProducts" t-as="prod" t-key="prod.id">
-                            <button class="store-item-btn" t-on-click="() => this.addStoreProductToOrder(prod)">
-                                <div class="store-item-thumb">
-                                    <t t-if="prod.image_url">
-                                        <img t-att-src="prod.image_url" class="store-item-img"/>
-                                    </t>
-                                    <t t-else="">
-                                        <span class="store-item-emoji"><t t-esc="prod.icon || '📦'"/></span>
-                                    </t>
-                                </div>
-                                <span class="store-item-name"><t t-esc="prod.display_name"/></span>
-                                <span class="store-item-price"><t t-esc="prod.lst_price.toFixed(2)"/> €</span>
-                            </button>
-                        </t>
-                        <!-- HUECOS VACÍOS DE LA MATRIZ DE 20 -->
-                        <t t-foreach="storeFillerSlots" t-as="slot" t-key="slot">
-                            <div class="store-item-btn empty-slot"></div>
+                            <t t-if="prod.is_empty">
+                                <div class="store-item-btn empty-slot"></div>
+                            </t>
+                            <t t-elif="prod.bg_image">
+                                <button class="store-item-btn with-bg-img" 
+                                        t-attf-style="background-image: url('#{prod.bg_image}');"
+                                        t-att-title="prod.display_name"
+                                        t-on-click="() => this.addStoreProductToOrder(prod)">
+                                </button>
+                            </t>
+                            <t t-elif="prod.text_only">
+                                <button class="store-item-btn text-item-btn" 
+                                        t-att-title="prod.full_name || prod.display_name"
+                                        t-on-click="() => this.addStoreProductToOrder(prod)">
+                                    <span class="text-btn-label"><t t-esc="prod.display_name"/></span>
+                                </button>
+                            </t>
+                            <t t-else="">
+                                <button class="store-item-btn" t-on-click="() => this.addStoreProductToOrder(prod)">
+                                    <span class="store-item-name"><t t-esc="prod.display_name"/></span>
+                                </button>
+                            </t>
                         </t>
                     </div>
                 </div>
