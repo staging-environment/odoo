@@ -32,3 +32,19 @@ Este archivo documenta la configuración del entorno, infraestructura y accesos 
 ## 🔗 Repositorio Git
 - **URL HTTPS:** `https://github.com/staging-environment/odoo`
 - **URL SSH:** `git@github.com:staging-environment/odoo.git`
+
+---
+
+---
+
+## ⚠️ Estado del Servicio de Sincronización en Producción (VirtusGesNet / Odoo)
+- **Servicio Systemd:** `odoo-sync-stations.service` (deshabilitado e inactivo).
+- **Ruta Script:** `/opt/utrecar/sync_all_stations_odoo.py` en el servidor `164.68.101.69`.
+- **Logs:** `/var/log/odoo_sync_stations.log`
+- **Estado:** **DESACTIVADO Y DESHABILITADO TEMPORALMENTE** en producción (`/home/developer/utrecardbs`).
+- **Motivo:** Verificación de contención / bloqueos de tabla en MariaDB que afectaban a las búsquedas de clientes del TPV Aseproda (Ronda Norte).
+- **Comandos de control:**
+  - Activar: `systemctl enable --now odoo-sync-stations.service`
+  - Desactivar: `systemctl disable --now odoo-sync-stations.service`
+  - Ver logs: `journalctl -u odoo-sync-stations.service -f`
+- **Documentación técnica y plan de optimización:** Ver [INCIDENCIA_SINCRONIZACION_Y_OPTIMIZACION.md](file:///home/bonilla/Projects/odoo/docs/INCIDENCIA_SINCRONIZACION_Y_OPTIMIZACION.md).
