@@ -862,3 +862,105 @@
     background: #e2e8f0 !important;
     border-color: #cbd5e1 !important;
 }
+
+/* MODAL FLOTANTE DE CLIENTES */
+.utrecar-client-modal {
+    width: 75vw !important;
+    max-width: 900px !important;
+    height: 75vh !important;
+    background: #ffffff !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
+}
+
+.client-modal-header {
+    height: 50px !important;
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 16px !important;
+    gap: 12px !important;
+}
+
+.client-search-input {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    padding: 6px 12px !important;
+    font-size: 14px !important;
+    width: 320px !important;
+    color: #0f172a !important;
+    outline: none !important;
+}
+
+.header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.btn-clear-client {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 5px 12px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+}
+.btn-clear-client:hover { background: #b91c1c !important; }
+
+.client-table-wrapper {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    background: #ffffff !important;
+}
+
+.client-modal-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 13.5px !important;
+}
+
+.client-modal-table thead th {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    font-weight: 800 !important;
+    padding: 8px 12px !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2 !important;
+}
+
+.client-row {
+    cursor: pointer !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    transition: background 0.1s !important;
+}
+.client-row td {
+    padding: 8px 12px !important;
+    color: #1e293b !important;
+}
+.client-row:hover td {
+    background: #e0f2fe !important;
+}
+.client-row.selected td {
+    background: #bae6fd !important;
+    font-weight: bold !important;
+}
+
+.vat-badge {
+    background: #f1f5f9 !important;
+    padding: 2px 6px !important;
+    border-radius: 3px !important;
+    font-weight: 700 !important;
+    font-size: 12px !important;
+    color: #475569 !important;
+}

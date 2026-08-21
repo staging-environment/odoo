@@ -17,9 +17,10 @@
                     <!-- CABECERA SUPERIOR DE VENTA -->
                     <div class="virtus-ticket-topbar">
                         <div class="ticket-card-icon" title="Tarjeta / Cliente">
-                            <button class="virtus-card-cards-badge" t-on-click="() => this.onClickPartner()">
+                            <button class="virtus-card-cards-badge" t-on-click="() => this.openClientModal()">
+                                <i class="fa fa-address-card me-1"/>
                                 <t t-if="currentOrderPartner">
-                                    💳 <t t-esc="currentOrderPartner.name"/>
+                                    <t t-esc="currentOrderPartner.name"/>
                                 </t>
                                 <t t-else="">
                                     💳 CLIENTE
@@ -333,6 +334,73 @@
                                     <div class="product-card-footer">➕ Añadir</div>
                                 </div>
                             </t>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+
+            <!-- ======================================================== -->
+            <!-- MODAL FLOTANTE DE BÚSQUEDA Y SELECCIÓN DE CLIENTE        -->
+            <!-- ======================================================== -->
+            <t t-if="state.isClientModalOpen">
+                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeClientModal()">
+                    <div class="utrecar-client-modal" t-on-click.stop="">
+                        <div class="client-modal-header">
+                            <div class="modal-title">
+                                <i class="fa fa-address-card mr-2"/>
+                                <strong>SELECCIÓN DE CLIENTE</strong>
+                            </div>
+                            <div class="modal-search-box">
+                                <input type="text" class="client-search-input" 
+                                       placeholder="Buscar por Nombre, CIF/NIF, Teléfono..." 
+                                       t-att-value="state.clientSearch" 
+                                       t-on-input="(ev) => this.onClientSearchInput(ev)" />
+                            </div>
+                            <div class="header-actions">
+                                <button class="btn-clear-client" t-on-click="() => this.removeClient()" title="Desasignar cliente">
+                                    Quitar Cliente
+                                </button>
+                                <button class="btn-close-modal" t-on-click="() => this.closeClientModal()">✖</button>
+                            </div>
+                        </div>
+                        <div class="client-table-wrapper">
+                            <table class="client-modal-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 38%;">Nombre / Razón Social</th>
+                                        <th style="width: 18%;">CIF / NIF</th>
+                                        <th style="width: 18%;">Teléfono</th>
+                                        <th style="width: 26%;">Email / Población</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="filteredClients.length === 0">
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4 text-muted">
+                                                No se encontraron clientes con ese criterio.
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <t t-foreach="filteredClients" t-as="c" t-key="c.id">
+                                        <tr t-att-class="(currentOrderPartner and currentOrderPartner.id === c.id) ? 'client-row selected' : 'client-row'"
+                                            t-on-click="() => this.selectClient(c)">
+                                            <td>
+                                                <strong><t t-esc="c.name"/></strong>
+                                            </td>
+                                            <td>
+                                                <span class="vat-badge"><t t-esc="c.vat || '-'"/></span>
+                                            </td>
+                                            <td>
+                                                <t t-esc="c.phone || c.mobile || '-'"/>
+                                            </td>
+                                            <td>
+                                                <t t-esc="c.email || c.city || '-'"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

@@ -30,6 +30,8 @@ export class UtrecarMainScreen extends Component {
                 { code: "95", name: "Sin Plomo 95", class: "sp95" }
             ],
             isStoreModalOpen: false,
+            isClientModalOpen: false,
+            clientSearch: "",
             storeSearch: "",
             pumps: []
         });
@@ -402,10 +404,59 @@ export class UtrecarMainScreen extends Component {
         this.state.storeSearch = ev.target.value;
     }
 
-    get currentOrderPartner() {
+        get currentOrderPartner() {
         const order = this.pos.get_order();
         return order ? order.get_partner() : null;
     }
+
+    openClientModal() {
+        this.state.isClientModalOpen = true;
+        this.state.clientSearch = "";
+    }
+
+    closeClientModal() {
+        this.state.isClientModalOpen = false;
+        this.state.clientSearch = "";
+    }
+
+    onClientSearchInput(ev) {
+        this.state.clientSearch = ev.target.value;
+    }
+
+    get filteredClients() {
+        const search = (this.state.clientSearch || "").toLowerCase().trim();
+        const allPartners = Object.values(this.pos.db.partner_by_id || {});
+        if (!search) {
+            return allPartners.slice(0, 30);
+        }
+        return allPartners.filter(p => {
+            const name = (p.name || "").toLowerCase();
+            const vat = (p.vat || "").toLowerCase();
+            const phone = (p.phone || p.mobile || "").toLowerCase();
+            const email = (p.email || "").toLowerCase();
+            const barcode = (p.barcode || "").toLowerCase();
+            return name.includes(search) || vat.includes(search) || phone.includes(search) || email.includes(search) || barcode.includes(search);
+        }).slice(0, 40);
+    }
+
+    selectClient(partner) {
+        const order = this.pos.get_order();
+        if (order) {
+            order.set_partner(partner);
+            this.state.orderVersion = Date.now();
+        }
+        this.closeClientModal();
+    }
+
+    removeClient() {
+        const order = this.pos.get_order();
+        if (order) {
+            order.set_partner(null);
+            this.state.orderVersion = Date.now();
+        }
+        this.closeClientModal();
+    }
+
 
     async onClickPartner() {
         const currentPartner = this.currentOrderPartner;
