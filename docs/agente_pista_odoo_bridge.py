@@ -4,9 +4,10 @@ UTRECAR ERP - Agente Puente de Pista en Tiempo Real (E.S. Repsol - Trieste)
 Conecta la pista local (Aseproda SDES / dw.log + MySQL) con el TPV de Odoo Cloud.
 
 Características:
-- Sincroniza al instante el Modo de Trabajo de VirtusTPV:
+- Sincroniza al instante los 3 Modos de Trabajo de VirtusTPV:
+    * ATENDIDO (Modo 1): Casillas en VERDE con texto ATENDIDO 🔓.
     * PREPAGO (Modo 2 / Bloqueo): Casillas en ROJO con candado cerrado 🔒.
-    * POSTPAGO / ATENDIDO (Modo 0 / Desbloqueo): Casillas en VERDE con candado abierto 🔓.
+    * POSTPAGO (Modo 0 / Desbloqueo): Casillas en VERDE con texto POSTPAGO 🔓.
 - Detecta al instante la NUEVA OPERACIÓN cuando cuelgan la manguera (litros, importe, producto y precio).
 - Pone los surtidores en 'PENDIENTE DE COBRO' con el combustible y color exacto (Verde SP95, Negro GA, Azul G+).
 - Pasa al ticket del TPV con un toque en la pantalla táctil y libera la pista.
@@ -68,7 +69,7 @@ class AgentePistaRepsol:
         self.ultimo_id_expedicion = 0
         self.ultimo_envio_odoo = 0
         self.ultimo_dibujo = 0
-        self.modo_estacion_global = "postpago"  # "postpago" o "blocked"
+        self.modo_estacion_global = "atendido"  # "atendido", "postpago" o "blocked"
         self.inicializar_calles()
 
     def inicializar_calles(self):
@@ -80,8 +81,8 @@ class AgentePistaRepsol:
                 "fuel": "Gasóleo A / Sin Plomo 95",
                 "amount": 0.0,
                 "liters": 0.0,
-                "status": "postpago",
-                "statusText": "POSTPAGO",
+                "status": "atendido",
+                "statusText": "ATENDIDO",
                 "product_id": 56,
                 "price": 1.789,
                 "updated_at": time.time()
@@ -174,9 +175,10 @@ class AgentePistaRepsol:
                         local = self.pumps[pid - 1]
                         if op.get("status") == "idle" and local["status"] == "ready":
                             if time.time() - local.get("updated_at", 0) > 1.5:
-                                logging.info(f"Calle {pid} cobrada en Odoo. Volviendo al modo activo ({self.modo_estacion_global}).")
+                                status_txt = "PREPAGO" if self.modo_estacion_global == "blocked" else ("ATENDIDO" if self.modo_estacion_global == "atendido" else "POSTPAGO")
+                                logging.info(f"Calle {pid} cobrada en Odoo. Volviendo al modo activo ({status_txt}).")
                                 local["status"] = self.modo_estacion_global
-                                local["statusText"] = "PREPAGO" if self.modo_estacion_global == "blocked" else "POSTPAGO"
+                                local["statusText"] = status_txt
                                 local["amount"] = 0.0
                                 local["liters"] = 0.0
                                 local["fuel"] = "Gasóleo A / Sin Plomo 95"
@@ -186,7 +188,7 @@ class AgentePistaRepsol:
             logging.debug(f"Error leyendo liberaciones de Odoo: {e}")
 
     def cambiar_modo_calle(self, calle, status, status_text):
-        """Actualiza el modo de una calle (Prepago / Postpago) respetando ventas listas"""
+        """Actualiza el modo de una calle (Atendido / Prepago / Postpago) respetando ventas listas"""
         if 1 <= calle <= TOTAL_CALLES:
             p = self.pumps[calle - 1]
             if p["status"] != "ready":  # No pisar si está lista para cobrar
@@ -197,23 +199,6 @@ class AgentePistaRepsol:
                     p["liters"] = 0.0
                     p["updated_at"] = time.time()
                     self.enviar_estado_a_odoo(forzar=True)
-
-    def cambiar_modo_todas(self, status, status_text):
-        """Cambia el modo global de todas las calles sin venta pendiente"""
-        self.modo_estacion_global = status
-        cambios = False
-        for p in self.pumps:
-            if p["status"] != "ready":
-                if p["status"] != status or p["statusText"] != status_text:
-                    p["status"] = status
-                    p["statusText"] = status_text
-                    p["amount"] = 0.0
-                    p["liters"] = 0.0
-                    p["updated_at"] = time.time()
-                    cambios = True
-        if cambios:
-            logging.info(f"🔄 Todas las pistas cambiadas a {status_text} ({status})")
-            self.enviar_estado_a_odoo(forzar=True)
 
     def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto):
         if 1 <= calle <= TOTAL_CALLES:
@@ -252,8 +237,9 @@ class AgentePistaRepsol:
             print(f"Calle {p['id']:<3} | {p['statusText']:<22} | {p['fuel'][:18]:<18} | {lts:<9} | {amt:<9}")
         print("=" * 75)
         print(f"• Modo actual detectado: {self.modo_estacion_global.upper()} (Sincronizado con VirtusTPV)")
-        print("• En VirtusTPV cambiar a PREPAGO ➔ Odoo se pone en ROJO (🔒).")
-        print("• En VirtusTPV cambiar a POSTPAGO ➔ Odoo se pone en VERDE (🔓).")
+        print("• En VirtusTPV: [ATENDIDO] ➔ Odoo muestra ATENDIDO (Verde 🔓).")
+        print("• En VirtusTPV: [PREPAGO]  ➔ Odoo muestra PREPAGO (Rojo 🔒).")
+        print("• En VirtusTPV: [POSTPAGO] ➔ Odoo muestra POSTPAGO (Verde 🔓).")
         print("• Fin de repostaje ➔ Pasa al instante a PENDIENTE DE COBRO con botón naranja.")
         print("Presiona Ctrl+C para salir.\n")
 
@@ -314,9 +300,16 @@ class AgentePistaRepsol:
                             c = (c % 10) if c > 10 else c
                             modo = int(m_modo.group(2))
                             if modo == 2:
+                                self.modo_estacion_global = "blocked"
                                 self.cambiar_modo_calle(c, "blocked", "PREPAGO")
-                            else:
+                            elif modo == 1:
+                                self.modo_estacion_global = "atendido"
+                                self.cambiar_modo_calle(c, "atendido", "ATENDIDO")
+                            elif modo == 0:
+                                self.modo_estacion_global = "postpago"
                                 self.cambiar_modo_calle(c, "postpago", "POSTPAGO")
+                            else:
+                                logging.info(f"Modo detectado para Calle {c}: Modo={modo}")
 
                         # Bloqueo explícito de calle (PREPAGO / ROJO)
                         m_bloq = re_bloqueo.search(line)
@@ -325,12 +318,14 @@ class AgentePistaRepsol:
                             c = (c % 10) if c > 10 else c
                             self.cambiar_modo_calle(c, "blocked", "PREPAGO")
 
-                        # Desbloqueo explícito de calle (POSTPAGO / VERDE)
+                        # Desbloqueo explícito de calle (POSTPAGO o ATENDIDO según modo activo)
                         m_desb = re_desbloqueo.search(line)
                         if m_desb:
                             c = int(m_desb.group(1))
                             c = (c % 10) if c > 10 else c
-                            self.cambiar_modo_calle(c, "postpago", "POSTPAGO")
+                            status = "atendido" if self.modo_estacion_global == "atendido" else "postpago"
+                            status_text = "ATENDIDO" if self.modo_estacion_global == "atendido" else "POSTPAGO"
+                            self.cambiar_modo_calle(c, status, status_text)
 
                         # Detección de fin de suministro
                         m_op = re_nueva_op.search(line)

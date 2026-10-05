@@ -195,6 +195,7 @@
                                         <div class="lcd-footer-line">
                                             <t t-if="pump.status === 'ready'">Fin Repostaje</t>
                                             <t t-elif="pump.status === 'blocked'">Prepago (Bloqueada)</t>
+                                            <t t-elif="pump.status === 'atendido'">Atendido (Pista)</t>
                                             <t t-elif="pump.status === 'postpago' || pump.status === 'dispensing'">Postpago (Abierta)</t>
                                             <t t-else="">Sin prefijado</t>
                                         </div>
@@ -214,17 +215,24 @@
                                     <t t-elif="pump.status === 'blocked'">
                                         <div class="dispenser-padlock-panel blocked-red">
                                             <span class="padlock-icon">🔒</span>
-                                            <span class="padlock-text">PREPAGO</span>
+                                            <span class="padlock-text"><t t-esc="pump.statusText || 'PREPAGO'"/></span>
                                         </div>
                                     </t>
-                                    <!-- 3. MODO POSTPAGO / ATENDIDO / SUMINISTRANDO (VERDE VIRTUSTPV) -->
+                                    <!-- 3. MODO ATENDIDO (VERDE VIRTUSTPV) -->
+                                    <t t-elif="pump.status === 'atendido'">
+                                        <div class="dispenser-padlock-panel atendido-green">
+                                            <span class="padlock-icon">🔓</span>
+                                            <span class="padlock-text"><t t-esc="pump.statusText || 'ATENDIDO'"/></span>
+                                        </div>
+                                    </t>
+                                    <!-- 4. MODO POSTPAGO / SUMINISTRANDO (VERDE VIRTUSTPV) -->
                                     <t t-elif="pump.status === 'postpago' || pump.status === 'dispensing'">
                                         <div class="dispenser-padlock-panel unlocked-green">
                                             <span class="padlock-icon">🔓</span>
-                                            <span class="padlock-text">POSTPAGO</span>
+                                            <span class="padlock-text"><t t-esc="pump.statusText || 'POSTPAGO'"/></span>
                                         </div>
                                     </t>
-                                    <!-- 4. REPOSO / LIBRE -->
+                                    <!-- 5. REPOSO / LIBRE -->
                                     <t t-else="">
                                         <div class="dispenser-nozzle-panel">
                                             <div class="nozzle-icon">⛽</div>

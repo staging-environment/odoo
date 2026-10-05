@@ -1280,3 +1280,20 @@
 .dispenser-padlock-panel .padlock-icon {
     font-size: 14px !important;
 }
+
+/* 3. MODO ATENDIDO (VERDE VIBRANTE VIRTUSTPV #16a34a) */
+.aseproda-dispenser-box.status-atendido {
+    border: 3px solid #16a34a !important;
+    background: #f0fdf4 !important;
+}
+.aseproda-dispenser-box.status-atendido .dispenser-corner-tab {
+    background: #16a34a !important;
+    color: #ffffff !important;
+}
+.aseproda-dispenser-box.status-atendido .dispenser-lower-body {
+    background: #16a34a !important;
+}
+.aseproda-dispenser-box.status-atendido .lcd-header-line .f-code {
+    color: #15803d !important;
+    font-weight: 900 !important;
+}
