@@ -5,11 +5,10 @@ Conecta la pista local (Aseproda SDES / dw.log + MySQL) con el TPV de Odoo Cloud
 
 Características:
 - Monitorea las 8 Calles reales de la estación Trieste (Código 5 en VirtusGesNet).
-- Detecta al milisegundo el DESCOLGADO / SUMINISTRANDO cuando levantan la manguera en dw.log.
-- Detecta al instante la NUEVA OPERACIÓN cuando cuelgan (litros, importe, producto y precio).
-- Actualiza en vivo el parámetro 'pos_gas_station.pumps_state_7' en Odoo Cloud.
-- Pone los surtidores en 'PENDIENTE DE COBRO' al terminar el repostaje.
-- Detecta cuando el cajero pulsa en el surtidor en Odoo para liberar la pista ('LIBRE').
+- Detecta al instante la NUEVA OPERACIÓN cuando cuelgan la manguera (litros, importe, producto y precio).
+- Pone los surtidores en 'PENDIENTE DE COBRO' con el combustible y color exacto (Verde SP95, Negro GA, Azul G+).
+- Pasa al ticket del TPV con un toque en la pantalla táctil y libera la pista ('LIBRE').
+- Soporta desbloqueo, bloqueo y cierre de pistas de SDES sin falsos suministros.
 - Soporta como respaldo la base MySQL local (virtusgesnet.expediciones).
 """
 
@@ -48,37 +47,29 @@ MYSQL_DB = "virtusgesnet"
 # En Trieste: Contador 1/2 = SP95, Contador 3 = Diesel Ultimate, Contador 4 = Gasoleo A
 MAPA_COMBUSTIBLES = {
     "1": {"id": 56, "name": "Gasóleo A", "code": "GA", "price": 1.789},
-    "2": {"id": 57, "name": "Sin Plomo 95", "code": "95", "price": 1.659},
-    "3": {"id": 54, "name": "Diesel Ultimate", "code": "G+", "price": 1.849},
-    "4": {"id": 57, "name": "Sin Plomo 95", "code": "95", "price": 1.659},
+    "2": {"id": 57, "name": "Sin Plomo 95", "code": "95", "price": 1.839},
+    "3": {"id": 54, "name": "Diesel Ultimate", "code": "G+", "price": 1.899},
+    "4": {"id": 56, "name": "Gasóleo A", "code": "GA", "price": 1.789},
     "default": {"id": 56, "name": "Gasóleo A", "code": "GA", "price": 1.789}
 }
 
-# Configuración de Logging local
-LOG_FILE = r"C:\Utrecar\agente_pista_repsol.log"
-try:
-    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-    logging.basicConfig(
-        filename=LOG_FILE,
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s"
-    )
-except Exception:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[logging.StreamHandler()]
+)
 
-
-class PuentePistaOdoo:
+class AgentePistaRepsol:
     def __init__(self):
         self.uid = None
         self.models = None
         self.pumps = []
-        self.inicializar_pistas()
         self.ultimo_id_expedicion = 0
-        self.ultimo_json_enviado = ""
-        self.ultimo_push = 0
+        self.ultimo_envio_odoo = 0
         self.ultimo_dibujo = 0
+        self.inicializar_calles()
 
-    def inicializar_pistas(self):
+    def inicializar_calles(self):
         self.pumps = []
         for i in range(1, TOTAL_CALLES + 1):
             self.pumps.append({
@@ -89,52 +80,54 @@ class PuentePistaOdoo:
                 "liters": 0.0,
                 "status": "idle",
                 "statusText": "LIBRE",
-                "product_id": MAPA_COMBUSTIBLES["default"]["id"],
-                "price": MAPA_COMBUSTIBLES["default"]["price"],
+                "product_id": 56,
+                "price": 1.789,
                 "updated_at": time.time()
             })
 
     def conectar_odoo(self):
         print(f"[*] Conectando con Odoo Cloud ({ODOO_URL})...")
         try:
-            common = xmlrpc.client.ServerProxy(f"{ODOO_URL}/xmlrpc/2/common", allow_none=True)
+            common = xmlrpc.client.ServerProxy(f'{ODOO_URL}/xmlrpc/2/common', allow_none=True)
             self.uid = common.authenticate(DB_NAME, USER_LOGIN, USER_PASS, {})
-            if self.uid:
-                self.models = xmlrpc.client.ServerProxy(f"{ODOO_URL}/xmlrpc/2/object", allow_none=True)
-                print(f"[OK] Conectado a Odoo Cloud con éxito (Usuario ID: {self.uid}).")
-                logging.info(f"Conectado a Odoo Cloud con UID {self.uid}")
-                return True
-            else:
-                print("[ERROR] Autenticación fallida en Odoo Cloud.")
+            if not self.uid:
+                print("[ERROR] Credenciales Odoo incorrectas.")
+                return False
+            self.models = xmlrpc.client.ServerProxy(f'{ODOO_URL}/xmlrpc/2/object', allow_none=True)
+            print(f"[OK] Autenticado en Odoo como usuario ID #{self.uid}")
+            return True
         except Exception as e:
             print(f"[ERROR] Error al conectar con Odoo: {e}")
-            logging.error(f"Error conectando a Odoo: {e}")
-        return False
+            return False
 
     def ejecutar_sql(self, sql):
-        cmd = [MYSQL_EXE, "-u", MYSQL_USER, f"-p{MYSQL_PASS}", MYSQL_DB, "-B", "-N", "-e", sql]
+        if not os.path.exists(MYSQL_EXE):
+            return []
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, errors="ignore", timeout=4)
-            if res.returncode == 0:
-                return res.stdout.strip().splitlines()
+            cmd = [MYSQL_EXE, f"-u{MYSQL_USER}", f"-p{MYSQL_PASS}", MYSQL_DB, "-e", sql, "-B", "-N"]
+            res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return [line.strip() for line in res.stdout.strip().split("\n") if line.strip()]
         except Exception as e:
-            logging.debug(f"Error ejecutando SQL: {e}")
-        return []
+            logging.debug(f"Error consultando MySQL: {e}")
+            return []
 
     def obtener_ultimo_id_expedicion(self):
-        lineas = self.ejecutar_sql(f"SELECT MAX(id) FROM expediciones WHERE CodigoDeEstacion = {CODIGO_ESTACION};")
-        if lineas and lineas[0] and lineas[0].isdigit():
-            return int(lineas[0])
+        filas = self.ejecutar_sql(f"SELECT MAX(id) FROM expediciones WHERE CodigoDeEstacion = {CODIGO_ESTACION};")
+        if filas and filas[0] and filas[0] != "NULL":
+            try:
+                return int(filas[0])
+            except ValueError:
+                pass
         return 0
 
     def enviar_estado_a_odoo(self, forzar=False):
         now = time.time()
-        if not forzar and (now - self.ultimo_push < 0.6):
+        if not forzar and (now - self.ultimo_envio_odoo < 1.0):
             return
+        self.ultimo_envio_odoo = now
 
         if not self.uid or not self.models:
-            if not self.conectar_odoo():
-                return
+            return
 
         payload = {
             "station_name": "CONTROL DE PISTA - E.S. REPSOL (TRIESTE)",
@@ -145,28 +138,21 @@ class PuentePistaOdoo:
             ],
             "pumps": self.pumps
         }
-        json_data = json.dumps(payload)
-
-        if not forzar and json_data == self.ultimo_json_enviado and (now - self.ultimo_push < 2.5):
-            return
 
         try:
             param_key = f"pos_gas_station.pumps_state_{CONFIG_ID}"
             self.models.execute_kw(
                 DB_NAME, self.uid, USER_PASS,
                 'ir.config_parameter', 'set_param',
-                [param_key, json_data]
+                [param_key, json.dumps(payload)]
             )
-            self.ultimo_json_enviado = json_data
-            self.ultimo_push = now
         except Exception as e:
-            logging.error(f"Error enviando pumps_state a Odoo: {e}")
-            self.uid = None
+            logging.warning(f"Error enviando estado a Odoo: {e}")
 
-    def sincronizar_liberaciones_desde_odoo(self):
+    def leer_liberaciones_de_odoo(self):
         """
-        Cuando el cajero pulsa en el TPV una calle pendiente de cobro, Odoo llama a
-        clear_pump y pone el surtidor en 'idle' (LIBRE). Aquí lo leemos para liberar la pista local.
+        Sincroniza cuando el cajero pulsa en el TPV de Odoo ('PASAR A TICKET' o cobro).
+        Si Odoo marca la calle como 'idle', liberamos localmente la calle a LIBRE.
         """
         if not self.uid or not self.models:
             return
@@ -184,28 +170,21 @@ class PuentePistaOdoo:
                     pid = op.get("id")
                     if 1 <= pid <= TOTAL_CALLES:
                         local = self.pumps[pid - 1]
-                        if local["status"] == "ready" and op.get("status") == "idle":
-                            logging.info(f"Cajero cargó Calle {pid} en el ticket del TPV. Liberando a LIBRE.")
-                            local["status"] = "idle"
-                            local["statusText"] = "LIBRE"
-                            local["amount"] = 0.0
-                            local["liters"] = 0.0
-                            local["updated_at"] = time.time()
+                        # Si Odoo liberó la calle y nosotros no tenemos una nueva venta pendiente recién salida
+                        if op.get("status") == "idle" and local["status"] != "idle":
+                            # Solo liberar si pasaron al menos 1.5 seg desde la última venta
+                            if time.time() - local.get("updated_at", 0) > 1.5:
+                                logging.info(f"Calle {pid} liberada desde el TPV de Odoo -> LIBRE.")
+                                local["status"] = "idle"
+                                local["statusText"] = "LIBRE"
+                                local["amount"] = 0.0
+                                local["liters"] = 0.0
+                                local["fuel"] = "Gasóleo A / Sin Plomo 95"
+                                local["updated_at"] = time.time()
         except Exception as e:
             logging.debug(f"Error leyendo liberaciones de Odoo: {e}")
 
-    def marcar_calle_descolgada(self, calle):
-        if 1 <= calle <= TOTAL_CALLES:
-            p = self.pumps[calle - 1]
-            if p["status"] != "ready":  # No pisar si está pendiente de cobro
-                p["status"] = "dispensing"
-                p["statusText"] = "SUMINISTRANDO"
-                p["updated_at"] = time.time()
-                logging.info(f"⛽ Calle {calle} DESCOLGADA -> SUMINISTRANDO")
-                print(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🚨 CALLE {calle}: Manguera descolgada -> ¡SUMINISTRANDO EN PISTA!")
-                self.enviar_estado_a_odoo(forzar=True)
-
-    def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto, fecha_hora=None):
+    def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto):
         if 1 <= calle <= TOTAL_CALLES:
             p = self.pumps[calle - 1]
             prod = MAPA_COMBUSTIBLES.get(str(cod_producto), MAPA_COMBUSTIBLES["default"])
@@ -219,8 +198,37 @@ class PuentePistaOdoo:
             p["product_id"] = prod["id"]
             p["updated_at"] = time.time()
 
-            logging.info(f"🎯 SUMINISTRO REGISTRADO: Calle {calle} | {prod['name']} | {litros:.3f}L | {importe:.2f}€")
-            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⛽ VENTA FINALIZADA -> Calle {calle}: {prod['name']} | {litros:.3f}L | {importe:.2f}€ -> ¡PENDIENTE DE COBRO EN TPV!")
+            logging.info(f"🎯 VENTA FINALIZADA: Calle {calle} | {prod['name']} | {litros:.2f}L | {importe:.2f}€")
+            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⛽ VENTA FINALIZADA -> Calle {calle}: {prod['name']} | {litros:.2f}L | {importe:.2f}€ -> ¡PENDIENTE DE COBRO EN TPV!")
+            self.enviar_estado_a_odoo(forzar=True)
+
+    def marcar_calle_libre(self, calle):
+        if 1 <= calle <= TOTAL_CALLES:
+            p = self.pumps[calle - 1]
+            # No pisar si tiene un ticket pendiente de cobro sin pasar al TPV
+            if p["status"] != "ready":
+                if p["status"] != "idle":
+                    p["status"] = "idle"
+                    p["statusText"] = "LIBRE"
+                    p["amount"] = 0.0
+                    p["liters"] = 0.0
+                    p["fuel"] = "Gasóleo A / Sin Plomo 95"
+                    p["updated_at"] = time.time()
+                    self.enviar_estado_a_odoo(forzar=True)
+
+    def resetear_todas_a_libre(self):
+        """Fuerza todas las calles sin venta pendiente a LIBRE"""
+        cambios = False
+        for p in self.pumps:
+            if p["status"] != "ready":
+                p["status"] = "idle"
+                p["statusText"] = "LIBRE"
+                p["amount"] = 0.0
+                p["liters"] = 0.0
+                p["fuel"] = "Gasóleo A / Sin Plomo 95"
+                p["updated_at"] = time.time()
+                cambios = True
+        if cambios:
             self.enviar_estado_a_odoo(forzar=True)
 
     def pintar_tabla_consola(self):
@@ -241,10 +249,10 @@ class PuentePistaOdoo:
             lts = f"{p['liters']:.2f} L" if p['liters'] > 0 else "-"
             print(f"Calle {p['id']:<3} | {p['statusText']:<22} | {p['fuel'][:18]:<18} | {lts:<9} | {amt:<9}")
         print("=" * 75)
-        print("• Descolgar manguera -> Se ilumina en Odoo como SUMINISTRANDO.")
-        print("• Colgar manguera    -> Pasa a PENDIENTE DE COBRO (litros e importe listos).")
-        print("• Tocar en pantalla  -> El cajero pulsa en el TPV y se carga al ticket.")
-        print("Presiona Ctrl+C para detener.\n")
+        print("• Repostaje finalizado -> Aparece en TPV como PENDIENTE DE COBRO (litros y €).")
+        print("• Pistas cerradas/libres -> Aparecen limpias como LIBRE.")
+        print("• Pulsa 'PASAR A TICKET' en Odoo para cargar la venta al ticket del cajero.")
+        print("Presiona Ctrl+C para salir.\n")
 
     def iniciar(self):
         print("=" * 75)
@@ -259,12 +267,17 @@ class PuentePistaOdoo:
         self.ultimo_id_expedicion = self.obtener_ultimo_id_expedicion()
         print(f"[OK] Conectado a base local Aseproda. Último ID expedición: #{self.ultimo_id_expedicion}")
         print(f"[OK] Inicializando las {TOTAL_CALLES} calles en Odoo Cloud...")
-        self.enviar_estado_a_odoo(forzar=True)
+        
+        # Reset inicial limpio
+        self.resetear_todas_a_libre()
         time.sleep(1.0)
 
-        # Configuración del lector dw.log
+        # Expresiones regulares dw.log
         dw_handle = None
-        re_descolgado = re.compile(r"Calle:DESBLOQUEO\.\s*SOLICITADO>\s*Calle=(\d+)", re.IGNORECASE)
+        # Cuando se desbloquea, bloquea o cierra una calle en SDES -> Está disponible o cerrada (LIBRE)
+        re_pista_estado = re.compile(r"Calle:(?:DESBLOQUEO\.\s*SOLICITADO|BLOQUEO|CERRAR)>\s*Calle=(\d+)", re.IGNORECASE)
+        
+        # Cuando termina el suministro y cuelgan la manguera
         re_nueva_op = re.compile(
             r"CALLE:ANALIZATESTADO\.\s*NUEVAOPERACION>\s*Calle=(\d+).*?Producto=(\d+)\s+Litros=([\d\.]+)\s+Importe=([\d\.]+)\s+Precio=([\d\.]+)",
             re.IGNORECASE
@@ -286,12 +299,12 @@ class PuentePistaOdoo:
                 if dw_handle:
                     line = dw_handle.readline()
                     while line:
-                        # Detección de manguera levantada
-                        m_desc = re_descolgado.search(line)
-                        if m_desc:
-                            c = int(m_desc.group(1))
+                        # Si la calle se abre, se cierra o se desbloquea
+                        m_est = re_pista_estado.search(line)
+                        if m_est:
+                            c = int(m_est.group(1))
                             c = (c % 10) if c > 10 else c
-                            self.marcar_calle_descolgada(c)
+                            self.marcar_calle_libre(c)
 
                         # Detección de fin de suministro
                         m_op = re_nueva_op.search(line)
@@ -330,38 +343,24 @@ class PuentePistaOdoo:
                             litros = float(partes[3].replace(",", "."))
                             precio = float(partes[4].replace(",", "."))
                             importe = float(partes[5].replace(",", "."))
-                            cod_prod = partes[6]
-                            fecha_hora = partes[7]
-
-                            # Si no estaba ya en ready, actualizarla
-                            if 1 <= surtidor <= TOTAL_CALLES:
-                                if self.pumps[surtidor - 1]["status"] != "ready":
-                                    self.marcar_calle_completada(surtidor, litros, importe, precio, cod_prod, fecha_hora)
+                            producto = partes[6]
                             self.ultimo_id_expedicion = max(self.ultimo_id_expedicion, exp_id)
+                            calle = (surtidor % 10) if surtidor > 10 else surtidor
+                            self.marcar_calle_completada(calle, litros, importe, precio, producto)
                     last_mysql_check = now
 
-                # 3. Sincronizar si el cajero en Odoo ha tocado una calle para cobrarla
-                self.sincronizar_liberaciones_desde_odoo()
+                # 3. SINCRONIZACIÓN DESDE ODOO (Comprobar si el cajero ha cobrado o liberado calles)
+                self.leer_liberaciones_de_odoo()
 
-                # 4. Enviar latido de sincronización a Odoo Cloud
+                # 4. ENVÍO PERIÓDICO Y PINTADO DE CONSOLA
                 self.enviar_estado_a_odoo()
-
-                # 5. Pintar tabla en terminal
                 self.pintar_tabla_consola()
 
-                time.sleep(0.3)
+                time.sleep(0.1)
 
         except KeyboardInterrupt:
-            print("\n[DETENIDO] Agente puente detenido por el usuario.")
-        except Exception as e:
-            logging.error(f"Error crítico en bucle principal: {e}")
-            print(f"\n[ERROR] Ocurrió un error: {e}")
-        finally:
-            if dw_handle:
-                dw_handle.close()
-            input("\nPresiona Enter para cerrar...")
+            print("\n[!] Agente detenido por el usuario.")
 
-
-if __name__ == '__main__':
-    puente = PuentePistaOdoo()
-    puente.iniciar()
+if __name__ == "__main__":
+    agente = AgentePistaRepsol()
+    agente.iniciar()
