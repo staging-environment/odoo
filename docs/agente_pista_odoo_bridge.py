@@ -3,15 +3,10 @@
 UTRECAR ERP - Agente Puente de Pista en Tiempo Real (E.S. Repsol - Trieste)
 Conecta la pista local (Aseproda SDES / dw.log + MySQL) con el TPV de Odoo Cloud.
 
-Características:
-- Sincroniza al instante los 3 Modos de Trabajo de VirtusTPV:
-    * ATENDIDO (Modo 1): Casillas en VERDE con texto ATENDIDO 🔓.
-    * PREPAGO (Modo 2 / Bloqueo): Casillas en ROJO con candado cerrado 🔒.
-    * POSTPAGO (Modo 0 / Desbloqueo): Casillas en VERDE con texto POSTPAGO 🔓.
-- Detecta al instante la NUEVA OPERACIÓN cuando cuelgan la manguera (litros, importe, producto y precio).
-- Pone los surtidores en 'PENDIENTE DE COBRO' con el combustible y color exacto (Verde SP95, Negro GA, Azul G+).
-- Pasa al ticket del TPV con un toque en la pantalla táctil y libera la pista.
-- Soporta como respaldo la base MySQL local (virtusgesnet.expediciones).
+Mapeo exacto verificado con SDES / dw.log:
+- Modo=0 -> ATENDIDO  (Casillas en VERDE con texto ATENDIDO 🔓)
+- Modo=1 -> POSTPAGO  (Casillas en VERDE con texto POSTPAGO 🔓)
+- Modo=2 -> PREPAGO   (Casillas en ROJO con texto PREPAGO 🔒)
 """
 
 import os
@@ -46,7 +41,6 @@ MYSQL_PASS = ".root."
 MYSQL_DB = "virtusgesnet"
 
 # Mapeo de Productos Aseproda (Trieste) -> Odoo
-# En Trieste: Contador 1/2 = SP95, Contador 3 = Diesel Ultimate, Contador 4 = Gasoleo A
 MAPA_COMBUSTIBLES = {
     "1": {"id": 56, "name": "Gasóleo A", "code": "GA", "price": 1.789},
     "2": {"id": 57, "name": "Sin Plomo 95", "code": "95", "price": 1.839},
@@ -236,7 +230,7 @@ class AgentePistaRepsol:
             lts = f"{p['liters']:.2f} L" if p['liters'] > 0 else "-"
             print(f"Calle {p['id']:<3} | {p['statusText']:<22} | {p['fuel'][:18]:<18} | {lts:<9} | {amt:<9}")
         print("=" * 75)
-        print(f"• Modo actual detectado: {self.modo_estacion_global.upper()} (Sincronizado con VirtusTPV)")
+        print(f"• Modo actual en pista: {self.modo_estacion_global.upper()} (Sincronizado con VirtusTPV)")
         print("• En VirtusTPV: [ATENDIDO] ➔ Odoo muestra ATENDIDO (Verde 🔓).")
         print("• En VirtusTPV: [PREPAGO]  ➔ Odoo muestra PREPAGO (Rojo 🔒).")
         print("• En VirtusTPV: [POSTPAGO] ➔ Odoo muestra POSTPAGO (Verde 🔓).")
@@ -263,10 +257,10 @@ class AgentePistaRepsol:
         # Expresiones regulares dw.log
         dw_handle = None
         
-        # 1. Detección de Modo de Trabajo en VirtusTPV:
-        # Modo=0 -> POSTPAGO (Verde)
-        # Modo=1 -> ATENDIDO (Verde)
-        # Modo=2 -> PREPAGO (Rojo)
+        # 1. Detección exacta de Modos según logs SDES:
+        # Modo=         0 -> ATENDIDO
+        # Modo=         1 -> POSTPAGO
+        # Modo=         2 -> PREPAGO
         re_modotrabajo = re.compile(r"CALLE:MODOTRABAJO>\s*Calle=(\d+)\s+Modo=\s*(\d+)", re.IGNORECASE)
         re_bloqueo = re.compile(r"Calle:(?:BLOQUEO|CERRAR)>\s*Calle=(\d+)", re.IGNORECASE)
         re_desbloqueo = re.compile(r"Calle:DESBLOQUEO\.\s*SOLICITADO>\s*Calle=(\d+)", re.IGNORECASE)
@@ -299,32 +293,36 @@ class AgentePistaRepsol:
                             c = int(m_modo.group(1))
                             c = (c % 10) if c > 10 else c
                             modo = int(m_modo.group(2))
-                            if modo == 2:
-                                self.modo_estacion_global = "blocked"
-                                self.cambiar_modo_calle(c, "blocked", "PREPAGO")
-                            elif modo == 1:
+                            if modo == 0:
                                 self.modo_estacion_global = "atendido"
                                 self.cambiar_modo_calle(c, "atendido", "ATENDIDO")
-                            elif modo == 0:
+                            elif modo == 1:
                                 self.modo_estacion_global = "postpago"
                                 self.cambiar_modo_calle(c, "postpago", "POSTPAGO")
+                            elif modo == 2:
+                                self.modo_estacion_global = "blocked"
+                                self.cambiar_modo_calle(c, "blocked", "PREPAGO")
                             else:
-                                logging.info(f"Modo detectado para Calle {c}: Modo={modo}")
+                                logging.info(f"Modo={modo} detectado para Calle {c}")
 
                         # Bloqueo explícito de calle (PREPAGO / ROJO)
                         m_bloq = re_bloqueo.search(line)
                         if m_bloq:
                             c = int(m_bloq.group(1))
                             c = (c % 10) if c > 10 else c
+                            self.modo_estacion_global = "blocked"
                             self.cambiar_modo_calle(c, "blocked", "PREPAGO")
 
-                        # Desbloqueo explícito de calle (POSTPAGO o ATENDIDO según modo activo)
+                        # Desbloqueo explícito de calle
                         m_desb = re_desbloqueo.search(line)
                         if m_desb:
                             c = int(m_desb.group(1))
                             c = (c % 10) if c > 10 else c
-                            status = "atendido" if self.modo_estacion_global == "atendido" else "postpago"
-                            status_text = "ATENDIDO" if self.modo_estacion_global == "atendido" else "POSTPAGO"
+                            status = self.modo_estacion_global
+                            if status == "blocked":
+                                status = "atendido"
+                                self.modo_estacion_global = "atendido"
+                            status_text = "ATENDIDO" if status == "atendido" else "POSTPAGO"
                             self.cambiar_modo_calle(c, status, status_text)
 
                         # Detección de fin de suministro
