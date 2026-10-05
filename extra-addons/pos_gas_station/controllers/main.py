@@ -45,7 +45,6 @@ STATION_MAP = {
         'fuels': [
             {'code': 'GA', 'name': 'Gasóleo A', 'class': 'ga'},
             {'code': '95', 'name': 'Sin Plomo 95', 'class': 'sp95'},
-            {'code': 'GB', 'name': 'Gasóleo B', 'class': 'gb'},
             {'code': 'G+', 'name': 'Gasóleo Plus', 'class': 'gplus'}
         ]
     },
@@ -75,7 +74,6 @@ class PosGasStationController(http.Controller):
                 'fuels': [
                     {'code': 'GA', 'name': 'Gasóleo A', 'class': 'ga'},
                     {'code': '95', 'name': 'Sin Plomo 95', 'class': 'sp95'},
-                    {'code': 'GB', 'name': 'Gasóleo B', 'class': 'gb'},
                     {'code': 'G+', 'name': 'Gasóleo Plus', 'class': 'gplus'}
                 ]
             }
