@@ -270,14 +270,11 @@
 
                         <!-- 4 BOTONES DE COMBUSTIBLES (2 cols x 2 rows) -->
                         <div class="matrix-fuels-grid">
-                            <button t-attf-class="fuel-matrix-btn fuel-ga #{state.selectedFuel === 'GA' ? 'active' : ''}" 
-                                    t-on-click="() => this.selectFuel('GA')">GA</button>
-                            <button t-attf-class="fuel-matrix-btn fuel-gb #{state.selectedFuel === 'GB' ? 'active' : ''}" 
-                                    t-on-click="() => this.selectFuel('GB')">GB</button>
-                            <button t-attf-class="fuel-matrix-btn fuel-sp95 #{state.selectedFuel === '95' ? 'active' : ''}" 
-                                    t-on-click="() => this.selectFuel('95')">95</button>
-                            <button t-attf-class="fuel-matrix-btn fuel-gplus #{state.selectedFuel === 'G+' ? 'active' : ''}" 
-                                    t-on-click="() => this.selectFuel('G+')">G+</button>
+                            <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
+                                <button t-attf-class="fuel-matrix-btn fuel-#{fuel.class} #{state.selectedFuel === fuel.code ? 'active' : ''}" 
+                                        t-on-click="() => this.selectFuel(fuel.code)" 
+                                        t-esc="fuel.code"/>
+                            </t>
                         </div>
 
                     </div>
