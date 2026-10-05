@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 UTRECAR ERP - Agente Puente de Pista en Tiempo Real (E.S. Repsol - Trieste)
-Conecta la pista local (Aseproda / VirtusGesNet) con el TPV de Odoo Cloud.
+Conecta la pista local (Aseproda SDES / dw.log + MySQL) con el TPV de Odoo Cloud.
 
 Características:
 - Monitorea las 8 Calles reales de la estación Trieste (Código 5 en VirtusGesNet).
+- Detecta al milisegundo el DESCOLGADO / SUMINISTRANDO cuando levantan la manguera en dw.log.
+- Detecta al instante la NUEVA OPERACIÓN cuando cuelgan (litros, importe, producto y precio).
 - Actualiza en vivo el parámetro 'pos_gas_station.pumps_state_7' en Odoo Cloud.
-- Pone los surtidores en 'PENDIENTE DE COBRO' al terminar el repostaje con litros e importe exactos.
+- Pone los surtidores en 'PENDIENTE DE COBRO' al terminar el repostaje.
 - Detecta cuando el cajero pulsa en el surtidor en Odoo para liberar la pista ('LIBRE').
-- Soporta detección en tiempo real desde MySQL (expediciones) y logs SDES (dw.log / multiconcentrador).
+- Soporta como respaldo la base MySQL local (virtusgesnet.expediciones).
 """
 
 import os
@@ -32,16 +34,15 @@ CONFIG_ID = 7  # ID de pos.config en Odoo (E.S. Repsol)
 CODIGO_ESTACION = 5  # Código de estación en virtusgesnet (Trieste)
 TOTAL_CALLES = 8
 
-# Conexión MySQL local Aseproda
+# Archivos SDES de Aseproda
+SDES_LOG_DIR = r"C:\SDES\logs"
+DW_LOG = os.path.join(SDES_LOG_DIR, "dw.log")
+
+# Conexión MySQL local Aseproda (Respaldo)
 MYSQL_EXE = r"C:\Program Files\Aseproda\AdministracionCorporativa\mysql.exe"
 MYSQL_USER = "root"
 MYSQL_PASS = ".root."
 MYSQL_DB = "virtusgesnet"
-
-# Rutas SDES (Opcional, si existen logs de pista directa)
-SDES_LOG_DIR = r"C:\SDES\logs"
-DW_LOG = os.path.join(SDES_LOG_DIR, "dw.log")
-MULTI_LOG = os.path.join(SDES_LOG_DIR, "multiconcentrador.log")
 
 # Mapeo de Productos Aseproda (Trieste) -> Odoo
 # En Trieste: Contador 1/2 = SP95, Contador 3 = Diesel Ultimate, Contador 4 = Gasoleo A
@@ -113,7 +114,7 @@ class PuentePistaOdoo:
     def ejecutar_sql(self, sql):
         cmd = [MYSQL_EXE, "-u", MYSQL_USER, f"-p{MYSQL_PASS}", MYSQL_DB, "-B", "-N", "-e", sql]
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, errors="ignore", timeout=5)
+            res = subprocess.run(cmd, capture_output=True, text=True, errors="ignore", timeout=4)
             if res.returncode == 0:
                 return res.stdout.strip().splitlines()
         except Exception as e:
@@ -128,7 +129,7 @@ class PuentePistaOdoo:
 
     def enviar_estado_a_odoo(self, forzar=False):
         now = time.time()
-        if not forzar and (now - self.ultimo_push < 0.8):
+        if not forzar and (now - self.ultimo_push < 0.6):
             return
 
         if not self.uid or not self.models:
@@ -136,12 +137,17 @@ class PuentePistaOdoo:
                 return
 
         payload = {
-            "station_name": "CONTROL DE PISTA - E.S. REPSOL",
+            "station_name": "CONTROL DE PISTA - E.S. REPSOL (TRIESTE)",
+            "available_fuels": [
+                {"code": "GA", "name": "Gasóleo A", "class": "ga"},
+                {"code": "95", "name": "Sin Plomo 95", "class": "sp95"},
+                {"code": "G+", "name": "Diesel Ultimate", "class": "gplus"}
+            ],
             "pumps": self.pumps
         }
         json_data = json.dumps(payload)
 
-        if not forzar and json_data == self.ultimo_json_enviado and (now - self.ultimo_push < 3.0):
+        if not forzar and json_data == self.ultimo_json_enviado and (now - self.ultimo_push < 2.5):
             return
 
         try:
@@ -188,7 +194,18 @@ class PuentePistaOdoo:
         except Exception as e:
             logging.debug(f"Error leyendo liberaciones de Odoo: {e}")
 
-    def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto, fecha_hora):
+    def marcar_calle_descolgada(self, calle):
+        if 1 <= calle <= TOTAL_CALLES:
+            p = self.pumps[calle - 1]
+            if p["status"] != "ready":  # No pisar si está pendiente de cobro
+                p["status"] = "dispensing"
+                p["statusText"] = "SUMINISTRANDO"
+                p["updated_at"] = time.time()
+                logging.info(f"⛽ Calle {calle} DESCOLGADA -> SUMINISTRANDO")
+                print(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🚨 CALLE {calle}: Manguera descolgada -> ¡SUMINISTRANDO EN PISTA!")
+                self.enviar_estado_a_odoo(forzar=True)
+
+    def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto, fecha_hora=None):
         if 1 <= calle <= TOTAL_CALLES:
             p = self.pumps[calle - 1]
             prod = MAPA_COMBUSTIBLES.get(str(cod_producto), MAPA_COMBUSTIBLES["default"])
@@ -203,12 +220,12 @@ class PuentePistaOdoo:
             p["updated_at"] = time.time()
 
             logging.info(f"🎯 SUMINISTRO REGISTRADO: Calle {calle} | {prod['name']} | {litros:.3f}L | {importe:.2f}€")
-            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⛽ VENTA EN PISTA -> Calle {calle}: {prod['name']} | {litros:.3f}L | {importe:.2f}€ -> ¡LISTO EN TPV!")
+            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⛽ VENTA FINALIZADA -> Calle {calle}: {prod['name']} | {litros:.3f}L | {importe:.2f}€ -> ¡PENDIENTE DE COBRO EN TPV!")
             self.enviar_estado_a_odoo(forzar=True)
 
     def pintar_tabla_consola(self):
         now = time.time()
-        if now - self.ultimo_dibujo < 2.0:
+        if now - self.ultimo_dibujo < 1.5:
             return
         self.ultimo_dibujo = now
 
@@ -224,8 +241,9 @@ class PuentePistaOdoo:
             lts = f"{p['liters']:.2f} L" if p['liters'] > 0 else "-"
             print(f"Calle {p['id']:<3} | {p['statusText']:<22} | {p['fuel'][:18]:<18} | {lts:<9} | {amt:<9}")
         print("=" * 75)
-        print("Cada suministro completado se ilumina en Odoo como PENDIENTE DE COBRO.")
-        print("El cajero pulsa la casilla en la pantalla táctil y se añade al ticket.")
+        print("• Descolgar manguera -> Se ilumina en Odoo como SUMINISTRANDO.")
+        print("• Colgar manguera    -> Pasa a PENDIENTE DE COBRO (litros e importe listos).")
+        print("• Tocar en pantalla  -> El cajero pulsa en el TPV y se carga al ticket.")
         print("Presiona Ctrl+C para detener.\n")
 
     def iniciar(self):
@@ -239,67 +257,53 @@ class PuentePistaOdoo:
                 return
 
         self.ultimo_id_expedicion = self.obtener_ultimo_id_expedicion()
-        print(f"[OK] Conectado a base local Aseproda (virtusgesnet). Último ID expedición: #{self.ultimo_id_expedicion}")
+        print(f"[OK] Conectado a base local Aseproda. Último ID expedición: #{self.ultimo_id_expedicion}")
         print(f"[OK] Inicializando las {TOTAL_CALLES} calles en Odoo Cloud...")
         self.enviar_estado_a_odoo(forzar=True)
         time.sleep(1.0)
 
+        # Configuración del lector dw.log
         dw_handle = None
         re_descolgado = re.compile(r"Calle:DESBLOQUEO\.\s*SOLICITADO>\s*Calle=(\d+)", re.IGNORECASE)
-        re_dart = re.compile(r"DART\.\s*REENVIO\s*DATOS>\s*Calle=(\d+)", re.IGNORECASE)
+        re_nueva_op = re.compile(
+            r"CALLE:ANALIZATESTADO\.\s*NUEVAOPERACION>\s*Calle=(\d+).*?Producto=(\d+)\s+Litros=([\d\.]+)\s+Importe=([\d\.]+)\s+Precio=([\d\.]+)",
+            re.IGNORECASE
+        )
 
         if os.path.exists(DW_LOG):
             try:
                 dw_handle = open(DW_LOG, "r", encoding="latin-1", errors="ignore")
                 dw_handle.seek(0, os.SEEK_END)
-            except Exception:
-                pass
+                print(f"[OK] Monitor dw.log de SDES enganchado en {DW_LOG}")
+            except Exception as e:
+                print(f"[AVISO] No se pudo abrir dw.log: {e}")
+
+        last_mysql_check = 0
 
         try:
             while True:
-                # 1. Monitoreo de nuevas expediciones en MySQL Aseproda
-                sql = f"""
-                SELECT id, CodigoDeMaquinaExpendedora, NumeroDeContador, CantidadExpedida, Precio, ImporteExpedido, CodigoDeProducto, FechaYHoraDeExpedicion
-                FROM expediciones
-                WHERE CodigoDeEstacion = {CODIGO_ESTACION} AND id > {self.ultimo_id_expedicion}
-                ORDER BY id ASC;
-                """
-                filas = self.ejecutar_sql(sql)
-                for f in filas:
-                    partes = f.split("\t")
-                    if len(partes) >= 8:
-                        exp_id = int(partes[0])
-                        surtidor = int(partes[1])
-                        litros = float(partes[3].replace(",", "."))
-                        precio = float(partes[4].replace(",", "."))
-                        importe = float(partes[5].replace(",", "."))
-                        cod_prod = partes[6]
-                        fecha_hora = partes[7]
-
-                        self.marcar_calle_completada(surtidor, litros, importe, precio, cod_prod, fecha_hora)
-                        self.ultimo_id_expedicion = max(self.ultimo_id_expedicion, exp_id)
-
-                # 2. Lectura en tiempo real de descolgados / flujo si existe log SDES
+                # 1. LECTURA EN TIEMPO REAL DESDE dw.log (0 ms de retardo)
                 if dw_handle:
                     line = dw_handle.readline()
                     while line:
+                        # Detección de manguera levantada
                         m_desc = re_descolgado.search(line)
                         if m_desc:
                             c = int(m_desc.group(1))
                             c = (c % 10) if c > 10 else c
-                            if 1 <= c <= TOTAL_CALLES and self.pumps[c - 1]["status"] != "ready":
-                                self.pumps[c - 1]["status"] = "dispensing"
-                                self.pumps[c - 1]["statusText"] = "DESCOLGADO"
-                                self.pumps[c - 1]["updated_at"] = time.time()
-                                self.enviar_estado_a_odoo(forzar=True)
-                        m_dart = re_dart.search(line)
-                        if m_dart:
-                            c = int(m_dart.group(1))
+                            self.marcar_calle_descolgada(c)
+
+                        # Detección de fin de suministro
+                        m_op = re_nueva_op.search(line)
+                        if m_op:
+                            c = int(m_op.group(1))
                             c = (c % 10) if c > 10 else c
-                            if 1 <= c <= TOTAL_CALLES and self.pumps[c - 1]["status"] != "ready":
-                                self.pumps[c - 1]["status"] = "dispensing"
-                                self.pumps[c - 1]["statusText"] = "SUMINISTRANDO"
-                                self.pumps[c - 1]["updated_at"] = time.time()
+                            prod_cod = m_op.group(2)
+                            litros = float(m_op.group(3))
+                            importe = float(m_op.group(4))
+                            precio = float(m_op.group(5))
+                            self.marcar_calle_completada(c, litros, importe, precio, prod_cod)
+
                         line = dw_handle.readline()
                 elif os.path.exists(DW_LOG):
                     try:
@@ -308,16 +312,44 @@ class PuentePistaOdoo:
                     except Exception:
                         pass
 
-                # 3. Sincronizar liberaciones hechas por el cajero en el TPV
+                # 2. RESPALDO MYSQL (Cada 1.5s comprueba nuevas filas en expediciones)
+                now = time.time()
+                if now - last_mysql_check > 1.5:
+                    sql = f"""
+                    SELECT id, CodigoDeMaquinaExpendedora, NumeroDeContador, CantidadExpedida, Precio, ImporteExpedido, CodigoDeProducto, FechaYHoraDeExpedicion
+                    FROM expediciones
+                    WHERE CodigoDeEstacion = {CODIGO_ESTACION} AND id > {self.ultimo_id_expedicion}
+                    ORDER BY id ASC;
+                    """
+                    filas = self.ejecutar_sql(sql)
+                    for f in filas:
+                        partes = f.split("\t")
+                        if len(partes) >= 8:
+                            exp_id = int(partes[0])
+                            surtidor = int(partes[1])
+                            litros = float(partes[3].replace(",", "."))
+                            precio = float(partes[4].replace(",", "."))
+                            importe = float(partes[5].replace(",", "."))
+                            cod_prod = partes[6]
+                            fecha_hora = partes[7]
+
+                            # Si no estaba ya en ready, actualizarla
+                            if 1 <= surtidor <= TOTAL_CALLES:
+                                if self.pumps[surtidor - 1]["status"] != "ready":
+                                    self.marcar_calle_completada(surtidor, litros, importe, precio, cod_prod, fecha_hora)
+                            self.ultimo_id_expedicion = max(self.ultimo_id_expedicion, exp_id)
+                    last_mysql_check = now
+
+                # 3. Sincronizar si el cajero en Odoo ha tocado una calle para cobrarla
                 self.sincronizar_liberaciones_desde_odoo()
 
-                # 4. Enviar latido de estado a Odoo Cloud
+                # 4. Enviar latido de sincronización a Odoo Cloud
                 self.enviar_estado_a_odoo()
 
-                # 5. Dibujar tabla interactiva en terminal
+                # 5. Pintar tabla en terminal
                 self.pintar_tabla_consola()
 
-                time.sleep(0.5)
+                time.sleep(0.3)
 
         except KeyboardInterrupt:
             print("\n[DETENIDO] Agente puente detenido por el usuario.")
