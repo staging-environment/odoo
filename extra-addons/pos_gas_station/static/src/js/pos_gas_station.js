@@ -184,6 +184,20 @@ export class UtrecarMainScreen extends Component {
             };
         }
 
+        // Si esta en curso pero todavia no se ha determinado el producto especifico
+        if (f.includes("/") || (!rawFuel && isBusy)) {
+            return {
+                isActive: true,
+                type: "dispensing-active",
+                code: "SUM",
+                shortCode: "SUM",
+                name: "Suministro en Curso",
+                category: "EN PISTA",
+                badgeClass: "fuel-badge-gasolina",
+                icon: "fa-gas-pump"
+            };
+        }
+
         if (f.includes("plomo") || f.includes("95") || f.includes("gasolina") || f.includes("sp95") || f.includes("98") || f.includes("sp98")) {
             const is98 = f.includes("98") || f.includes("sp98");
             return {

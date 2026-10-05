@@ -183,7 +183,7 @@
                                 
                                 <!-- PARTE SUPERIOR DEL POSTE: NÚMERO Y PANTALLA LCD -->
                                 <div class="dispenser-head">
-                                    <div class="dispenser-number-tag"><t t-esc="pump.id"/></div>
+                                    <div class="dispenser-number-tag dispenser-corner-tab"><t t-esc="pump.id"/></div>
                                     <div class="dispenser-lcd-screen">
                                         <div class="lcd-header-line">
                                             <span class="f-code"><t t-esc="fuelInfo.shortCode"/></span>

@@ -1128,3 +1128,100 @@
         filter: brightness(1.15) !important;
     }
 }
+
+/* ==========================================================================
+   MEJORAS VISUALES FINALES ASEPRODA - RESALTADO VIBRANTE VERDE / NEGRO / AZUL
+   ========================================================================== */
+
+/* 1. GASOLINA - VERDE VIBRANTE (#16a34a) */
+.aseproda-dispenser-box.fuel-type-gasolina.status-dispensing,
+.aseproda-dispenser-box.fuel-type-gasolina.status-ready,
+.aseproda-dispenser-box.fuel-type-dispensing-active.status-dispensing {
+    border: 3px solid #16a34a !important;
+    background: #f0fdf4 !important;
+    animation: pulse-gasolina 1.2s infinite alternate !important;
+}
+
+.aseproda-dispenser-box.fuel-type-gasolina .dispenser-corner-tab,
+.aseproda-dispenser-box.fuel-type-dispensing-active .dispenser-corner-tab {
+    background: #16a34a !important;
+    color: #ffffff !important;
+}
+
+.aseproda-dispenser-box.fuel-type-gasolina .dispenser-lower-body,
+.aseproda-dispenser-box.fuel-type-dispensing-active .dispenser-lower-body {
+    background: #15803d !important;
+}
+
+.aseproda-dispenser-box.fuel-type-gasolina .lcd-header-line .f-code,
+.aseproda-dispenser-box.fuel-type-dispensing-active .lcd-header-line .f-code {
+    color: #15803d !important;
+    font-weight: 900 !important;
+}
+
+/* 2. DIÉSEL / GASÓLEO A - NEGRO PROFUNDO GRAFITO (#09090b / #18181b) */
+.aseproda-dispenser-box.fuel-type-diesel.status-dispensing,
+.aseproda-dispenser-box.fuel-type-diesel.status-ready {
+    border: 3px solid #09090b !important;
+    background: #f8fafc !important;
+    animation: pulse-diesel 1.2s infinite alternate !important;
+}
+
+.aseproda-dispenser-box.fuel-type-diesel .dispenser-corner-tab {
+    background: #09090b !important;
+    color: #ffffff !important;
+}
+
+.aseproda-dispenser-box.fuel-type-diesel .dispenser-lower-body {
+    background: #18181b !important;
+}
+
+.aseproda-dispenser-box.fuel-type-diesel .lcd-header-line .f-code {
+    color: #09090b !important;
+    font-weight: 900 !important;
+}
+
+/* 3. DIÉSEL ULTIMATE / G+ - AZUL REPSOL (#2563eb) */
+.aseproda-dispenser-box.fuel-type-gplus.status-dispensing,
+.aseproda-dispenser-box.fuel-type-gplus.status-ready {
+    border: 3px solid #2563eb !important;
+    background: #eff6ff !important;
+    animation: pulse-gplus 1.2s infinite alternate !important;
+}
+
+.aseproda-dispenser-box.fuel-type-gplus .dispenser-corner-tab {
+    background: #2563eb !important;
+    color: #ffffff !important;
+}
+
+.aseproda-dispenser-box.fuel-type-gplus .dispenser-lower-body {
+    background: #1d4ed8 !important;
+}
+
+.aseproda-dispenser-box.fuel-type-gplus .lcd-header-line .f-code {
+    color: #1d4ed8 !important;
+    font-weight: 900 !important;
+}
+
+/* 4. BOTÓN "PASAR A TICKET" ENÉRGICO Y PULSANTE */
+.btn-virtus-pasar-ticket {
+    background: linear-gradient(135deg, #ea580c 0%, #f97316 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 5px !important;
+    font-weight: 900 !important;
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+    cursor: pointer !important;
+    animation: ready-pulse 0.9s infinite alternate !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    letter-spacing: 0.5px !important;
+}
+
+.btn-virtus-pasar-ticket:hover {
+    transform: scale(1.05) !important;
+    filter: brightness(1.2) !important;
+}
