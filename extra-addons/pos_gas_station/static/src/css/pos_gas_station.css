@@ -1225,3 +1225,58 @@
     transform: scale(1.05) !important;
     filter: brightness(1.2) !important;
 }
+
+/* ==========================================================================
+   ESTILOS DE MODO VIRTUSTPV: PREPAGO (ROJO) vs POSTPAGO (VERDE)
+   ========================================================================== */
+
+/* 1. MODO PREPAGO / BLOQUEADO (ROJO INTENSO VIRTUSTPV #dc2626 / #ef4444) */
+.aseproda-dispenser-box.status-blocked {
+    border: 3px solid #dc2626 !important;
+    background: #fef2f2 !important;
+}
+.aseproda-dispenser-box.status-blocked .dispenser-corner-tab {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+}
+.aseproda-dispenser-box.status-blocked .dispenser-lower-body {
+    background: #ef4444 !important;
+}
+.aseproda-dispenser-box.status-blocked .lcd-header-line .f-code {
+    color: #dc2626 !important;
+    font-weight: 900 !important;
+}
+
+/* 2. MODO POSTPAGO / ATENDIDO (VERDE VIBRANTE VIRTUSTPV #16a34a / #22c55e) */
+.aseproda-dispenser-box.status-postpago {
+    border: 3px solid #16a34a !important;
+    background: #f0fdf4 !important;
+}
+.aseproda-dispenser-box.status-postpago .dispenser-corner-tab {
+    background: #16a34a !important;
+    color: #ffffff !important;
+}
+.aseproda-dispenser-box.status-postpago .dispenser-lower-body {
+    background: #16a34a !important;
+}
+.aseproda-dispenser-box.status-postpago .lcd-header-line .f-code {
+    color: #15803d !important;
+    font-weight: 900 !important;
+}
+
+/* PANELES DE CANDADO DE MODO */
+.dispenser-padlock-panel {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    height: 100% !important;
+    font-weight: 900 !important;
+    font-size: 11px !important;
+    color: #ffffff !important;
+    letter-spacing: 0.5px !important;
+}
+.dispenser-padlock-panel .padlock-icon {
+    font-size: 14px !important;
+}

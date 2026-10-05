@@ -193,8 +193,9 @@
                                             <t t-esc="pump.amount > 0 ? pump.amount.toFixed(2) + ' €' : '0,00 €'"/>
                                         </div>
                                         <div class="lcd-footer-line">
-                                            <t t-if="pump.status === 'dispensing'">Suministrando</t>
-                                            <t t-elif="pump.status === 'ready'">Fin Repostaje</t>
+                                            <t t-if="pump.status === 'ready'">Fin Repostaje</t>
+                                            <t t-elif="pump.status === 'blocked'">Prepago (Bloqueada)</t>
+                                            <t t-elif="pump.status === 'postpago' || pump.status === 'dispensing'">Postpago (Abierta)</t>
                                             <t t-else="">Sin prefijado</t>
                                         </div>
                                     </div>
@@ -202,21 +203,28 @@
 
                                 <!-- PARTE INFERIOR DEL POSTE: CUERPO CON MANGUERA Y BOTÓN DE ESTADO -->
                                 <div class="dispenser-lower-body">
+                                    <!-- 1. VENTA LISTA PARA COBRAR (PASAR A TICKET) -->
                                     <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
                                         <button class="btn-virtus-pasar-ticket" t-on-click.stop="() => this.onPumpClick(pump)">
                                             <div class="icon-up">⬆</div>
                                             <strong>PASAR A TICKET</strong>
                                         </button>
                                     </t>
-                                    <t t-elif="pump.status === 'dispensing'">
-                                        <div class="dispenser-green-padlock">
+                                    <!-- 2. MODO PREPAGO / BLOQUEADO (ROJO VIRTUSTPV) -->
+                                    <t t-elif="pump.status === 'blocked'">
+                                        <div class="dispenser-padlock-panel blocked-red">
                                             <span class="padlock-icon">🔒</span>
-                                            <span class="padlock-sub"><t t-esc="pump.liters > 0 ? pump.liters.toFixed(1) + ' L' : 'SUMINISTRO'"/></span>
+                                            <span class="padlock-text">PREPAGO</span>
                                         </div>
-                                        <button class="btn-cancel-dispenser" t-on-click.stop="() => this.cancelPumpAuthorization(pump)">
-                                            Cancelar
-                                        </button>
                                     </t>
+                                    <!-- 3. MODO POSTPAGO / ATENDIDO / SUMINISTRANDO (VERDE VIRTUSTPV) -->
+                                    <t t-elif="pump.status === 'postpago' || pump.status === 'dispensing'">
+                                        <div class="dispenser-padlock-panel unlocked-green">
+                                            <span class="padlock-icon">🔓</span>
+                                            <span class="padlock-text">POSTPAGO</span>
+                                        </div>
+                                    </t>
+                                    <!-- 4. REPOSO / LIBRE -->
                                     <t t-else="">
                                         <div class="dispenser-nozzle-panel">
                                             <div class="nozzle-icon">⛽</div>
