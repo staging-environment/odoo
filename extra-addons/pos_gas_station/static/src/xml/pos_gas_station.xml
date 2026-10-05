@@ -178,7 +178,7 @@
                             <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
                             
                             <!-- POSTE CON SILUETA Y MANGUERA TÍPICA ASEPRODA -->
-                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
+                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} fuel-type-#{fuelInfo.type} #{fuelInfo.isActive ? 'fuel-active' : ''} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
                                  t-on-click="() => this.onPumpSelect(pump)">
                                 
                                 <!-- PARTE SUPERIOR DEL POSTE: NÚMERO Y PANTALLA LCD -->

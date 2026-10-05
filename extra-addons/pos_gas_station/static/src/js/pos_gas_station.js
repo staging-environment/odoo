@@ -169,11 +169,14 @@ export class UtrecarMainScreen extends Component {
         const f = (rawFuel || "").toLowerCase().trim();
 
         if (!isBusy && !isSelectedWithPreset && (f.includes("/") || !rawFuel || f.includes("libre"))) {
+            const idleCodes = (this.state && this.state.availableFuels && this.state.availableFuels.length)
+                ? this.state.availableFuels.map(f => f.code).join('/')
+                : "GA/95/G+";
             return {
                 isActive: false,
                 type: "idle",
                 code: "",
-                shortCode: "GA/95",
+                shortCode: idleCodes,
                 name: pump.fuel || "Gasóleo A / Sin Plomo 95",
                 category: "DISPONIBLE",
                 badgeClass: "fuel-badge-idle",
