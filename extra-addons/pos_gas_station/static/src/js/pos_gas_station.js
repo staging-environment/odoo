@@ -31,6 +31,9 @@ export class UtrecarMainScreen extends Component {
             ],
             isStoreModalOpen: false,
             isClientModalOpen: false,
+            isPageDropdownOpen: false,
+            currentStorePage: 1,
+            selectedModalCategory: null,
             clientSearch: "",
             storeSearch: "",
             pumps: []
@@ -58,6 +61,15 @@ export class UtrecarMainScreen extends Component {
             }
         };
 
+        this.onGlobalClick = (ev) => {
+            if (this.state.isPageDropdownOpen) {
+                const dropdownEl = document.querySelector(".btn-dropdown-wrapper");
+                if (dropdownEl && !dropdownEl.contains(ev.target)) {
+                    this.state.isPageDropdownOpen = false;
+                }
+            }
+        };
+
         onMounted(() => {
             this.fetchPumpsStatus();
             this.pollInterval = setInterval(() => {
@@ -73,6 +85,7 @@ export class UtrecarMainScreen extends Component {
                 }
             }, 800);
             window.addEventListener("keydown", this.onGlobalKeyDown);
+            window.addEventListener("click", this.onGlobalClick);
         });
 
         onWillUnmount(() => {
@@ -80,48 +93,175 @@ export class UtrecarMainScreen extends Component {
                 clearInterval(this.pollInterval);
             }
             window.removeEventListener("keydown", this.onGlobalKeyDown);
+            window.removeEventListener("click", this.onGlobalClick);
         });
     }
 
-                    get popularStoreProducts() {
-        // Matriz completa de 20 casillas de VirtusTPV (5x4) con todas las imágenes de la base de datos
-        const virtusGridItems = [
-            // Fila 1
+    handleBarcodeScan(code) {
+        if (!code) return;
+        const all = Object.values(this.pos.db.product_by_id || {});
+        const prod = all.find(p => p.barcode === code || p.default_code === code || (p.barcode && p.barcode.endsWith(code)));
+        if (prod) {
+            this.addStoreProductToOrder(prod);
+        } else {
+            console.debug("Código de barras no encontrado:", code);
+        }
+    }
+
+    get posCategories() {
+        if (!this.pos || !this.pos.db || !this.pos.db.category_by_id) return [];
+        return Object.values(this.pos.db.category_by_id).filter(c => c.id && c.name);
+    }
+
+    selectModalCategory(catId) {
+        this.state.selectedModalCategory = catId;
+    }
+
+    togglePageDropdown() {
+        this.state.isPageDropdownOpen = !this.state.isPageDropdownOpen;
+    }
+
+    setStorePage(pageNum) {
+        this.state.currentStorePage = pageNum;
+        this.state.isPageDropdownOpen = false;
+        this.state.isStoreModalOpen = false;
+    }
+
+    onCartButtonClick() {
+        if (this.state.isStoreModalOpen) {
+            this.state.isStoreModalOpen = false;
+            return;
+        }
+        // Advance to next page
+        const nextPage = (this.state.currentStorePage % 4) + 1;
+        this.state.currentStorePage = nextPage;
+        this.state.isPageDropdownOpen = false;
+    }
+
+    openStoreModalFromDropdown() {
+        this.state.isPageDropdownOpen = false;
+        this.openStoreModal();
+    }
+
+    get popularStoreProducts() {
+        const page = this.state.currentStorePage || 1;
+
+        // PÁGINA 1: ARTÍCULOS PRINCIPALES Y FAVORITOS (VIRTUSTPV)
+        const page1Items = [
             { id: "v_hielo", display_name: "HIELO EN BOLSA", lst_price: 1.90, bg_image: "/pos_gas_station/static/src/img/products/prod_341005.png", default_code: "341005" },
             { id: "v_chupa", display_name: "CHUPA CHUPS", lst_price: 0.40, bg_image: "/pos_gas_station/static/src/img/products/prod_312006.png", default_code: "312006" },
             { id: "v_kinder", display_name: "KINDER BUENO", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_311001.png", default_code: "311001" },
             { id: "v_mechero", display_name: "MECHERO CLIPPER", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_323003.png", default_code: "323003" },
 
-            // Fila 2
             { id: "v_butano", display_name: "BOMBONA BUTANO", lst_price: 23.00, bg_image: "/pos_gas_station/static/src/img/products/prod_360014.png", default_code: "360014" },
             { id: "v_dulces", display_name: "DULCES DULCESOL", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_315006.png", default_code: "315006" },
             { id: "v_coca", display_name: "LATA COCA-COLA", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_342001.png", default_code: "342001" },
             { id: "v_cocazero", display_name: "COCA-COLA ZERO", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_342003.png", default_code: "342003" },
 
-            // Fila 3
             { id: "v_aceite2t", display_name: "ACEITE 2T NIPOMIX", lst_price: 1.40, bg_image: "/pos_gas_station/static/src/img/products/prod_331002.png", default_code: "331002" },
             { id: "v_castrol", display_name: "ACEITE 2T CASTROL", lst_price: 2.00, bg_image: "/pos_gas_station/static/src/img/products/prod_331001.png", default_code: "331001" },
             { id: "v_vaper", display_name: "VAPER SABORES", lst_price: 6.50, bg_image: "/pos_gas_station/static/src/img/products/prod_323006.png", default_code: "323006" },
             { id: "v_papel", display_name: "PAPEL DE LIAR", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_323001.png", default_code: "323001" },
 
-            // Fila 4
             { id: "v_cafe", display_name: "CAFE", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_382001.png", default_code: "382001" },
             { id: "v_zumo", display_name: "ZUMO DE BOTE", lst_price: 1.30, bg_image: "/pos_gas_station/static/src/img/products/prod_382006.png", default_code: "382006" },
             { id: "v_bifrutas", display_name: "BI FRUTAS", lst_price: 1.20, bg_image: "/pos_gas_station/static/src/img/products/prod_382008.png", default_code: "382008" },
             { id: "v_cubata", display_name: "CUBATAS", lst_price: 4.00, bg_image: "/pos_gas_station/static/src/img/products/prod_383003.png", default_code: "383003" },
 
-            // Fila 5
             { id: "v_boc", display_name: "BOC", text_only: true, full_name: "TOSTADA / BOCADILLO", lst_price: 1.70, default_code: "381001" },
             { id: "v_cocatxt", display_name: "COCA COLA LATA", text_only: true, full_name: "LATA COCA-COLA", lst_price: 1.50, default_code: "342001" },
             { id: "v_pan", display_name: "PAN DE TORRIJA", text_only: true, full_name: "PAN PARA LLEVAR", lst_price: 0.60, default_code: "381003" },
             { id: "v_tostada", display_name: "MEDIA TOSTADA", text_only: true, full_name: "MEDIA TOSTADA", lst_price: 1.30, default_code: "381002" }
         ];
 
-        return virtusGridItems;
-    }
+        // PÁGINA 2: BEBIDAS, CAFETERÍA Y REFRESCOS
+        const page2Items = [
+            { id: "v_agua50", display_name: "AGUA 50CL", text_only: true, full_name: "AGUA MINERAL 50CL", lst_price: 1.00, default_code: "341001" },
+            { id: "v_agua15", display_name: "AGUA 1.5L", text_only: true, full_name: "AGUA MINERAL 1.5L", lst_price: 1.50, default_code: "341002" },
+            { id: "v_aquarius", display_name: "AQUARIUS 33CL", text_only: true, full_name: "AQUARIUS LIMÓN/NARANJA", lst_price: 1.50, default_code: "342005" },
+            { id: "v_nestea", display_name: "NESTEA 33CL", text_only: true, full_name: "NESTEA AL LIMÓN", lst_price: 1.50, default_code: "342006" },
 
-    get storeFillerSlots() {
-        return [];
+            { id: "v_fanta_n", display_name: "FANTA NARANJA", text_only: true, full_name: "FANTA NARANJA 33CL", lst_price: 1.50, default_code: "342007" },
+            { id: "v_fanta_l", display_name: "FANTA LIMON", text_only: true, full_name: "FANTA LIMÓN 33CL", lst_price: 1.50, default_code: "342008" },
+            { id: "v_redbull", display_name: "RED BULL 250ML", text_only: true, full_name: "RED BULL ENERGY DRINK", lst_price: 2.20, default_code: "343001" },
+            { id: "v_monster", display_name: "MONSTER 500ML", text_only: true, full_name: "MONSTER ENERGY 500ML", lst_price: 2.20, default_code: "343002" },
+
+            { id: "v_cerveza", display_name: "CERVEZA LATA", text_only: true, full_name: "CERVEZA CRUZCAMPO LATA", lst_price: 1.20, default_code: "344001" },
+            { id: "v_tercio", display_name: "CERVEZA TERCIO", text_only: true, full_name: "CERVEZA TERCIO ESPECIAL", lst_price: 1.50, default_code: "344002" },
+            { id: "v_cafe_solo", display_name: "CAFÉ SOLO", text_only: true, full_name: "CAFÉ SOLO EXPRESS", lst_price: 1.00, default_code: "382002" },
+            { id: "v_cafe_leche", display_name: "CAFÉ C/ LECHE", text_only: true, full_name: "CAFÉ CON LECHE", lst_price: 1.20, default_code: "382003" },
+
+            { id: "v_cortado", display_name: "CAFÉ CORTADO", text_only: true, full_name: "CAFÉ CORTADO", lst_price: 1.10, default_code: "382004" },
+            { id: "v_colacao", display_name: "COLA CAO", text_only: true, full_name: "VASO COLA CAO CALIENTE", lst_price: 1.30, default_code: "382005" },
+            { id: "v_infusion", display_name: "INFUSIONES", text_only: true, full_name: "INFUSIÓN / TÉ VARIADO", lst_price: 1.10, default_code: "382007" },
+            { id: "v_batido", display_name: "BATIDO CHOCO", text_only: true, full_name: "BATIDO DE CHOCOLATE", lst_price: 1.20, default_code: "382009" },
+
+            { id: "v_zumo_nar", display_name: "ZUMO NARANJA", text_only: true, full_name: "ZUMO NARANJA NATURAL", lst_price: 2.00, default_code: "382010" },
+            { id: "v_zumo_pina", display_name: "ZUMO PIÑA", text_only: true, full_name: "ZUMO DE PIÑA PASCUAL", lst_price: 1.30, default_code: "382011" },
+            { id: "v_tonica", display_name: "TÓNICA SCHWEPPES", text_only: true, full_name: "TÓNICA SCHWEPPES", lst_price: 1.50, default_code: "342009" },
+            { id: "v_powerade", display_name: "POWERADE 50CL", text_only: true, full_name: "POWERADE AZUL", lst_price: 1.80, default_code: "343003" }
+        ];
+
+        // PÁGINA 3: AUTOMÓVIL, ACEITES Y ACCESORIOS
+        const page3Items = [
+            { id: "v_adblue", display_name: "ADBLUE 10L", text_only: true, full_name: "GARRAFA ADBLUE 10L CON CÁNULA", lst_price: 16.50, default_code: "332001" },
+            { id: "v_anticon", display_name: "ANTICONGELANTE 5L", text_only: true, full_name: "ANTICONGELANTE 50% 5L", lst_price: 9.90, default_code: "332002" },
+            { id: "v_limpia", display_name: "LIMPIAPARABRISAS", text_only: true, full_name: "LÍQUIDO LIMPIAPARABRISAS 5L", lst_price: 4.50, default_code: "332003" },
+            { id: "v_repsol10w", display_name: "ACEITE 10W40", text_only: true, full_name: "ACEITE REPSOL 10W40 5L", lst_price: 28.00, default_code: "331005" },
+
+            { id: "v_repsol5w", display_name: "ACEITE 5W30", text_only: true, full_name: "ACEITE REPSOL 5W30 5L", lst_price: 34.00, default_code: "331006" },
+            { id: "v_frenos", display_name: "LÍQUIDO FRENOS", text_only: true, full_name: "LÍQUIDO DE FRENOS DOT-4 500ML", lst_price: 6.50, default_code: "332004" },
+            { id: "v_pino", display_name: "AMBIENTADOR PINO", text_only: true, full_name: "AMBIENTADOR ARBRE MAGIQUE", lst_price: 2.20, default_code: "333001" },
+            { id: "v_bayeta", display_name: "BAYETA MICROFIBRA", text_only: true, full_name: "BAYETA MICROFIBRA AUTO", lst_price: 1.80, default_code: "333002" },
+
+            { id: "v_bomb_h7", display_name: "BOMBILLA H7", text_only: true, full_name: "BOMBILLA HALÓGENA H7 12V", lst_price: 6.00, default_code: "334001" },
+            { id: "v_bomb_h4", display_name: "BOMBILLA H4", text_only: true, full_name: "BOMBILLA HALÓGENA H4 12V", lst_price: 5.50, default_code: "334002" },
+            { id: "v_fusibles", display_name: "PACK FUSIBLES", text_only: true, full_name: "KIT FUSIBLES COCHE 10 UDS", lst_price: 3.50, default_code: "334003" },
+            { id: "v_pulpo", display_name: "PULPOS SUJECIÓN", text_only: true, full_name: "JUEGO 2 PULPOS ELÁSTICOS", lst_price: 4.00, default_code: "335001" },
+
+            { id: "v_rasqueta", display_name: "RASQUETA HIELO", text_only: true, full_name: "RASQUETA PARA LUNAS", lst_price: 2.50, default_code: "335002" },
+            { id: "v_chaleco", display_name: "CHALECO REFLECT", text_only: true, full_name: "CHALECO REFLECTANTE HOMOLOGADO", lst_price: 3.50, default_code: "335003" },
+            { id: "v_triang", display_name: "TRIÁNGULOS EMERG", text_only: true, full_name: "SET TRIÁNGULOS V-16", lst_price: 9.00, default_code: "335004" },
+            { id: "v_guantes", display_name: "GUANTES TRABAJO", text_only: true, full_name: "GUANTES DE PROTECCIÓN PISTA", lst_price: 2.50, default_code: "335005" },
+
+            { id: "v_cinta", display_name: "CINTA AISLANTE", text_only: true, full_name: "CINTA AISLANTE NEGRA", lst_price: 1.20, default_code: "335006" },
+            { id: "v_esponja", display_name: "ESPONJA LAVADO", text_only: true, full_name: "ESPONJA LIMPIEZA CARROCERÍA", lst_price: 1.50, default_code: "333003" },
+            { id: "v_bridas", display_name: "PACK BRIDAS", text_only: true, full_name: "BOLSA BRIDAS NYLON 100 UDS", lst_price: 2.50, default_code: "335007" },
+            { id: "v_parches", display_name: "KIT REPARA PINCHAZOS", text_only: true, full_name: "KIT REPARACIÓN TUBELLES", lst_price: 8.50, default_code: "335008" }
+        ];
+
+        // PÁGINA 4: SNACKS, ALIMENTACIÓN Y DULCES
+        const page4Items = [
+            { id: "v_patatas", display_name: "PATATAS LAYS", text_only: true, full_name: "PATATAS FRITAS LAYS AL PUNTO", lst_price: 1.60, default_code: "313001" },
+            { id: "v_rufas", display_name: "RUFFLES JAMÓN", text_only: true, full_name: "RUFFLES SABOR JAMÓN", lst_price: 1.70, default_code: "313002" },
+            { id: "v_doritos", display_name: "DORITOS TEX-MEX", text_only: true, full_name: "DORITOS QUESO TEX MEX", lst_price: 1.70, default_code: "313003" },
+            { id: "v_pipas", display_name: "PIPAS FACUNDO", text_only: true, full_name: "PIPAS TOSTADAS CON SAL", lst_price: 1.20, default_code: "313004" },
+
+            { id: "v_frutos", display_name: "FRUTOS SECOS", text_only: true, full_name: "CÓCTEL FRUTOS SECOS BORGES", lst_price: 1.80, default_code: "313005" },
+            { id: "v_galletas", display_name: "PRÍNCIPE CHOC", text_only: true, full_name: "GALLETAS PRÍNCIPE DE LU", lst_price: 1.80, default_code: "311005" },
+            { id: "v_nestle", display_name: "CHOCO NESTLÉ", text_only: true, full_name: "TABLETA CHOCOLATE CON LECHE", lst_price: 1.60, default_code: "311006" },
+            { id: "v_kitkat", display_name: "KIT KAT 4 BARRAS", text_only: true, full_name: "KIT KAT CHOCOLATE NESTLÉ", lst_price: 1.40, default_code: "311002" },
+
+            { id: "v_gominolas", display_name: "GOMINOLAS HARIBO", text_only: true, full_name: "BOLSA HARIBO OSITOS", lst_price: 1.50, default_code: "312001" },
+            { id: "v_chicles", display_name: "CHICLES TRIDENT", text_only: true, full_name: "CHICLES TRIDENT HIERBABUENA", lst_price: 1.10, default_code: "312003" },
+            { id: "v_halls", display_name: "CARAMELOS HALLS", text_only: true, full_name: "HALLS EXTRA STRONG MENTOL", lst_price: 1.20, default_code: "312005" },
+            { id: "v_croissant", display_name: "CROISSANT CHOC", text_only: true, full_name: "CROISSANT RELLENO CACAO", lst_price: 1.20, default_code: "315001" },
+
+            { id: "v_ensaimada", display_name: "ENSAIMADA", text_only: true, full_name: "ENSAIMADA DULCESOL", lst_price: 1.00, default_code: "315002" },
+            { id: "v_donut", display_name: "DONUT GLACÉ", text_only: true, full_name: "DONUT CLÁSICO GLASÉ", lst_price: 1.30, default_code: "315003" },
+            { id: "v_sandwich", display_name: "SÁNDWICH MIXTO", text_only: true, full_name: "SÁNDWICH JAMÓN Y QUESO", lst_price: 2.20, default_code: "381005" },
+            { id: "v_empanada", display_name: "EMPANADILLA ATÚN", text_only: true, full_name: "EMPANADILLA CASERA ATÚN", lst_price: 1.80, default_code: "381006" },
+
+            { id: "v_marlboro", display_name: "MARLBORO GOLD", text_only: true, full_name: "MARLBORO GOLD CAJETILLA", lst_price: 5.75, default_code: "321001" },
+            { id: "v_chester", display_name: "CHESTERFIELD", text_only: true, full_name: "CHESTERFIELD ORIGINAL RED", lst_price: 5.40, default_code: "321002" },
+            { id: "v_fortuna", display_name: "FORTUNA ROJO", text_only: true, full_name: "FORTUNA ROJO DURO", lst_price: 5.20, default_code: "321003" },
+            { id: "v_filtros", display_name: "FILTROS OCB", text_only: true, full_name: "FILTROS OCB SLIM 120 UDS", lst_price: 1.00, default_code: "323002" }
+        ];
+
+        if (page === 2) return page2Items;
+        if (page === 3) return page3Items;
+        if (page === 4) return page4Items;
+        return page1Items;
     }
 
     get isSelectedPumpOccupied() {
@@ -184,7 +324,6 @@ export class UtrecarMainScreen extends Component {
             };
         }
 
-        // Si esta en curso pero todavia no se ha determinado el producto especifico
         if (f.includes("/") || (!rawFuel && isBusy)) {
             return {
                 isActive: true,
@@ -280,18 +419,40 @@ export class UtrecarMainScreen extends Component {
         if (!this.pos || !this.pos.db) return [];
         const all = Object.values(this.pos.db.product_by_id || {});
         const q = (this.state.storeSearch || "").toLowerCase().trim();
-        if (!q) {
-            return all.filter(p => {
-                const name = (p.display_name || p.name || "").toLowerCase();
-                return !name.startsWith("gasóleo") && !name.startsWith("gasoleo") && !name.startsWith("sin plomo") && p.available_in_pos;
-            }).slice(0, 40);
+        const selectedCat = this.state.selectedModalCategory;
+
+        let shopProducts = all.filter(p => p.active !== false);
+
+        if (selectedCat) {
+            shopProducts = shopProducts.filter(p => {
+                const catIds = p.pos_categ_ids || (p.pos_categ_id ? [p.pos_categ_id[0] || p.pos_categ_id] : []);
+                return catIds.includes(selectedCat);
+            });
         }
-        return all.filter(p => {
+
+        if (!q) {
+            return shopProducts.filter(p => {
+                const name = (p.display_name || p.name || "").toLowerCase();
+                return !name.startsWith("gasóleo") && !name.startsWith("gasoleo") && !name.startsWith("sin plomo");
+            }).slice(0, 80);
+        }
+
+        const terms = q.split(/\s+/).filter(Boolean);
+        return shopProducts.filter(p => {
             const name = (p.display_name || p.name || "").toLowerCase();
             const code = (p.default_code || "").toLowerCase();
             const barcode = (p.barcode || "").toLowerCase();
-            return name.includes(q) || code.includes(q) || barcode.includes(q);
-        }).slice(0, 40);
+
+            // Direct exact match on barcode or internal reference
+            if (barcode === q || code === q) return true;
+
+            // Multi-token match across name, code, barcode
+            return terms.every(t => name.includes(t) || code.includes(t) || barcode.includes(t));
+        }).slice(0, 80);
+    }
+
+    clearStoreSearch() {
+        this.state.storeSearch = "";
     }
 
     async fetchPumpsStatus() {
@@ -410,18 +571,24 @@ export class UtrecarMainScreen extends Component {
 
     openStoreModal() {
         this.state.storeSearch = "";
+        this.state.isPageDropdownOpen = false;
         this.state.isStoreModalOpen = true;
+        setTimeout(() => {
+            const input = document.querySelector(".store-search-input");
+            if (input) input.focus();
+        }, 100);
     }
 
     closeStoreModal() {
         this.state.isStoreModalOpen = false;
+        this.state.storeSearch = "";
     }
 
     onStoreSearchInput(ev) {
         this.state.storeSearch = ev.target.value;
     }
 
-        get currentOrderPartner() {
+    get currentOrderPartner() {
         const order = this.pos.get_order();
         return order ? order.get_partner() : null;
     }
@@ -429,6 +596,10 @@ export class UtrecarMainScreen extends Component {
     openClientModal() {
         this.state.isClientModalOpen = true;
         this.state.clientSearch = "";
+        setTimeout(() => {
+            const input = document.querySelector(".client-search-input");
+            if (input) input.focus();
+        }, 100);
     }
 
     closeClientModal() {
@@ -474,7 +645,6 @@ export class UtrecarMainScreen extends Component {
         this.closeClientModal();
     }
 
-
     async onClickPartner() {
         const currentPartner = this.currentOrderPartner;
         const { confirmed, payload: newPartner } = await this.pos.showTempScreen(
@@ -500,16 +670,18 @@ export class UtrecarMainScreen extends Component {
         } else if (this.pos.db && this.pos.db.product_by_id) {
             const all = Object.values(this.pos.db.product_by_id);
             const code = (virtusItem.default_code || "").toLowerCase();
+            const barcode = (virtusItem.barcode || "").toLowerCase();
             const name = (virtusItem.display_name || virtusItem.full_name || "").toLowerCase();
 
-            realProduct = all.find(p => (p.default_code || "").toLowerCase() === code) ||
+            realProduct = (barcode ? all.find(p => (p.barcode || "").toLowerCase() === barcode) : null) ||
+                          (code ? all.find(p => (p.default_code || "").toLowerCase() === code) : null) ||
                           all.find(p => (p.display_name || p.name || "").toLowerCase().includes(name)) ||
                           all.find(p => !(p.display_name || p.name || "").toLowerCase().includes("gasóleo") && !(p.display_name || p.name || "").toLowerCase().includes("plomo")) ||
                           all[0];
         }
 
         if (realProduct) {
-            const price = virtusItem.lst_price || realProduct.lst_price || 1.0;
+            const price = virtusItem.lst_price || virtusItem.list_price || realProduct.lst_price || 1.0;
             await currentOrder.add_product(realProduct, {
                 quantity: 1,
                 price: price,
@@ -808,15 +980,6 @@ patch(PaymentScreen.prototype, {
             return;
         }
         this.currentOrder.set_to_invoice(false);
-        const originalPrint = this.pos.config.iface_print_auto;
-        this.pos.config.iface_print_auto = false;
-        
         await this.validateOrder(false);
-        
-        if (this.pos.mainScreen && (this.pos.mainScreen.name === "ReceiptScreen" || this.pos.mainScreen.name === "TicketScreen")) {
-            this.pos.add_new_order();
-            this.pos.showScreen("ProductScreen");
-        }
-        this.pos.config.iface_print_auto = originalPrint;
     }
 });

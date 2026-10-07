@@ -88,7 +88,7 @@
                         </table>
                     </div>
 
-                    <!-- BARRA DE HERRAMIENTAS INFERIOR DE TICKET (ESTILO VIRTUSTPV) -->
+                    <!-- BARRA DE HERRAMIENTAS INFERIOR DE TICKET -->
                     <div class="virtus-ticket-tools-bar">
                         <div class="tools-left-group">
                             <button class="tool-btn btn-barcode" title="Lector de código de barras" t-on-click="() => this.focusBarcode()">
@@ -115,23 +115,66 @@
 
                 <!-- 2. CUADRANTE SUPERIOR DERECHO: PARRILLA DE TIENDA (32%) -->
                 <div class="virtus-quadrant-store">
-                    <!-- BARRA DE CATEGORÍAS SUPERIOR -->
+                    <!-- BARRA DE ACCIONES Y PÁGINAS SUPERIOR -->
                     <div class="virtus-store-topbar">
                         <button class="btn-store-cat" t-on-click="() => this.onSecurityDepositClick()" title="Opciones de Turno / Ingreso de Seguridad">
                             ⏱
                         </button>
-                        <button class="btn-store-cat" t-on-click="() => this.openStoreModal()" title="Catálogo de Artículos">
+                        <button class="btn-store-cat btn-catalog-open" t-on-click="() => this.openStoreModal()" title="Catálogo Completo y Búsqueda (Nombre, Código o Código de Barras)">
                             📦
                         </button>
-                        <button class="btn-store-cat" t-on-click="() => this.openStoreModal()" title="Parrilla Tienda">
-                            🛒
+                        <button t-attf-class="btn-store-cat btn-cart-toggle #{!state.isStoreModalOpen ? 'active-grid' : ''}" t-on-click="() => this.onCartButtonClick()" title="Parrilla Rápida de Tienda (Clic para avanzar de página)">
+                            🛒 <span class="page-indicator"><t t-esc="'P' + state.currentStorePage"/></span>
                         </button>
-                        <button class="btn-store-cat btn-cat-nav" title="Página Siguiente">
-                            ▼
-                        </button>
+                        <div class="btn-dropdown-wrapper">
+                            <button class="btn-store-cat btn-cat-nav" t-on-click="() => this.togglePageDropdown()" title="Desplegar Páginas y Categorías de Parrilla">
+                                ▼
+                            </button>
+                            <t t-if="state.isPageDropdownOpen">
+                                <div class="virtus-page-dropdown-menu" t-on-click.stop="">
+                                    <div class="dropdown-header-title">📄 PÁGINAS DE LA PARRILLA</div>
+                                    <div t-attf-class="dropdown-page-item #{state.currentStorePage === 1 ? 'active' : ''}" t-on-click="() => this.setStorePage(1)">
+                                        <span class="page-icon">⭐</span>
+                                        <div class="page-info">
+                                            <strong>Página 1: Favoritos</strong>
+                                            <small>Hielo, Bebidas, Cafés y Butano</small>
+                                        </div>
+                                    </div>
+                                    <div t-attf-class="dropdown-page-item #{state.currentStorePage === 2 ? 'active' : ''}" t-on-click="() => this.setStorePage(2)">
+                                        <span class="page-icon">🥤</span>
+                                        <div class="page-info">
+                                            <strong>Página 2: Bebidas y Cafetería</strong>
+                                            <small>Aguas, Refrescos, Energéticas y Cafés</small>
+                                        </div>
+                                    </div>
+                                    <div t-attf-class="dropdown-page-item #{state.currentStorePage === 3 ? 'active' : ''}" t-on-click="() => this.setStorePage(3)">
+                                        <span class="page-icon">🚗</span>
+                                        <div class="page-info">
+                                            <strong>Página 3: Auto, Aceites y Accesorios</strong>
+                                            <small>Aceites 2T, Anticongelante, AdBlue y Repuestos</small>
+                                        </div>
+                                    </div>
+                                    <div t-attf-class="dropdown-page-item #{state.currentStorePage === 4 ? 'active' : ''}" t-on-click="() => this.setStorePage(4)">
+                                        <span class="page-icon">🍫</span>
+                                        <div class="page-info">
+                                            <strong>Página 4: Snacks y Alimentación</strong>
+                                            <small>Patatas, Dulces, Chocolates y Tabaco</small>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
+                                    <div class="dropdown-page-item dropdown-catalog-item" t-on-click="() => this.openStoreModalFromDropdown()">
+                                        <span class="page-icon">📦</span>
+                                        <div class="page-info">
+                                            <strong>Abrir Catálogo Completo...</strong>
+                                            <small>Búsqueda por código interno o código de barras</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
                     </div>
 
-                    <!-- CUADRÍCULA DIRECTA DE 20 PRODUCTOS EXACTOS VIRTUSTPV (5x4) -->
+                    <!-- CUADRÍCULA DIRECTA DE 20 PRODUCTOS VIRTUSTPV (5x4) -->
                     <div class="virtus-store-grid">
                         <t t-foreach="popularStoreProducts" t-as="prod" t-key="prod.id">
                             <t t-if="prod.is_empty">
@@ -177,11 +220,9 @@
                         <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
                             <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
                             
-                            <!-- POSTE CON SILUETA Y MANGUERA TÍPICA ASEPRODA -->
                             <div t-attf-class="aseproda-dispenser-box status-#{pump.status} fuel-type-#{fuelInfo.type} #{fuelInfo.isActive ? 'fuel-active' : ''} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
                                  t-on-click="() => this.onPumpSelect(pump)">
                                 
-                                <!-- PARTE SUPERIOR DEL POSTE: NÚMERO Y PANTALLA LCD -->
                                 <div class="dispenser-head">
                                     <div class="dispenser-number-tag dispenser-corner-tab"><t t-esc="pump.id"/></div>
                                     <div class="dispenser-lcd-screen">
@@ -202,37 +243,31 @@
                                     </div>
                                 </div>
 
-                                <!-- PARTE INFERIOR DEL POSTE: CUERPO CON MANGUERA Y BOTÓN DE ESTADO -->
                                 <div class="dispenser-lower-body">
-                                    <!-- 1. VENTA LISTA PARA COBRAR (PASAR A TICKET) -->
                                     <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
                                         <button class="btn-virtus-pasar-ticket" t-on-click.stop="() => this.onPumpClick(pump)">
                                             <div class="icon-up">⬆</div>
                                             <strong>PASAR A TICKET</strong>
                                         </button>
                                     </t>
-                                    <!-- 2. MODO PREPAGO / BLOQUEADO (ROJO VIRTUSTPV) -->
                                     <t t-elif="pump.status === 'blocked'">
                                         <div class="dispenser-padlock-panel blocked-red">
                                             <span class="padlock-icon">🔒</span>
                                             <span class="padlock-text"><t t-esc="pump.statusText || 'PREPAGO'"/></span>
                                         </div>
                                     </t>
-                                    <!-- 3. MODO ATENDIDO (VERDE VIRTUSTPV) -->
                                     <t t-elif="pump.status === 'atendido'">
                                         <div class="dispenser-padlock-panel atendido-green">
                                             <span class="padlock-icon">🔓</span>
                                             <span class="padlock-text"><t t-esc="pump.statusText || 'ATENDIDO'"/></span>
                                         </div>
                                     </t>
-                                    <!-- 4. MODO POSTPAGO / SUMINISTRANDO (VERDE VIRTUSTPV) -->
                                     <t t-elif="pump.status === 'postpago' || pump.status === 'dispensing'">
                                         <div class="dispenser-padlock-panel unlocked-green">
                                             <span class="padlock-icon">🔓</span>
                                             <span class="padlock-text"><t t-esc="pump.statusText || 'POSTPAGO'"/></span>
                                         </div>
                                     </t>
-                                    <!-- 5. REPOSO / LIBRE -->
                                     <t t-else="">
                                         <div class="dispenser-nozzle-panel">
                                             <div class="nozzle-icon">⛽</div>
@@ -248,7 +283,6 @@
                 <!-- 4. CUADRANTE INFERIOR DERECHO: TECLADO Y COBRO (32%) -->
                 <div class="virtus-quadrant-keypad">
                     
-                    <!-- DISPLAY LCD SUPERIOR DE PREFIJADO -->
                     <div class="virtus-numpad-header">
                         <div class="lcd-value-display">
                             <span class="lcd-current"><t t-esc="state.presetValue > 0 ? state.presetValue : '0,00'"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/></span>
@@ -256,15 +290,12 @@
                         <button class="btn-numpad-tool btn-mode-calles" t-on-click="() => this.toggleMode()">
                             <t t-esc="state.mode === 'money' ? 'Modo Dinero' : 'Modo Litros'"/>
                         </button>
-                        <button class="btn-numpad-tool btn-gear" t-on-click="() => this.openStoreModal()">
+                        <button class="btn-numpad-tool btn-gear" t-on-click="() => this.openStoreModal()" title="Abrir Catálogo">
                             ⚙
                         </button>
                     </div>
 
-                    <!-- MATRIZ CENTRAL: BILLETES (65%) + COMBUSTIBLES (35%) -->
                     <div class="virtus-keypad-matrix">
-                        
-                        <!-- 6 BOTONES DE BILLETES Y MONEDAS (3 cols x 2 rows) -->
                         <div class="matrix-bills-grid">
                             <t t-if="state.mode === 'money'">
                                 <button class="matrix-bill-btn bill-svg bill-1e" t-on-click="() => this.addPreset(1)"></button>
@@ -284,7 +315,6 @@
                             </t>
                         </div>
 
-                        <!-- 4 BOTONES DE COMBUSTIBLES (2 cols x 2 rows) -->
                         <div class="matrix-fuels-grid">
                             <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
                                 <button t-attf-class="fuel-matrix-btn fuel-#{fuel.class} #{state.selectedFuel === fuel.code ? 'active' : ''}" 
@@ -292,10 +322,8 @@
                                         t-esc="fuel.code"/>
                             </t>
                         </div>
-
                     </div>
 
-                    <!-- FILA DE ACCIÓN: GOTA 💧 + BORRAR C + AUTORIZAR / COBRAR -->
                     <div class="virtus-action-row">
                         <button class="btn-action-tile btn-water-drop" t-on-click="() => this.toggleMode()" title="Conmutar Litros/Euros">
                             💧
@@ -311,7 +339,6 @@
                         </button>
                     </div>
 
-                    <!-- BARRA INFERIOR DE ESTADO DEL TPV -->
                     <div class="virtus-tpv-status-footer">
                         <span>CAJA: <strong>A</strong></span>
                         <span>TPV: <strong>1</strong></span>
@@ -330,28 +357,61 @@
                 <div class="utrecar-modal-backdrop" t-on-click="() => this.closeStoreModal()">
                     <div class="utrecar-store-modal" t-on-click.stop="">
                         <div class="store-modal-header">
-                            <div class="modal-title">🛒 CATÁLOGO COMPLETO DE TIENDA</div>
+                            <div class="modal-title">
+                                <i class="fa fa-boxes me-2"/>
+                                <strong>CATÁLOGO COMPLETO DE TIENDA</strong>
+                            </div>
                             <div class="modal-search-box">
-                                <input type="text" class="store-search-input" placeholder="Buscar producto..." t-att-value="state.storeSearch" t-on-input="(ev) => this.onStoreSearchInput(ev)" />
+                                <input type="text" 
+                                       class="store-search-input" 
+                                       placeholder="Buscar por Nombre, Código Interno o Código de Barras..." 
+                                       t-att-value="state.storeSearch" 
+                                       t-on-input="(ev) => this.onStoreSearchInput(ev)" />
+                                <button t-if="state.storeSearch" class="btn-clear-search-store" t-on-click="() => this.clearStoreSearch()">✖</button>
                             </div>
                             <button class="btn-close-modal" t-on-click="() => this.closeStoreModal()">✖</button>
                         </div>
+
+                        <!-- CATEGORÍAS TPV EN EL MODAL -->
+                        <div class="store-modal-categories" t-if="posCategories.length > 0">
+                            <button t-attf-class="btn-cat-chip #{!state.selectedModalCategory ? 'active' : ''}" 
+                                    t-on-click="() => this.selectModalCategory(null)">
+                                Todos los Artículos
+                            </button>
+                            <t t-foreach="posCategories" t-as="cat" t-key="cat.id">
+                                <button t-attf-class="btn-cat-chip #{state.selectedModalCategory === cat.id ? 'active' : ''}" 
+                                        t-on-click="() => this.selectModalCategory(cat.id)">
+                                    <t t-esc="cat.name"/>
+                                </button>
+                            </t>
+                        </div>
+
                         <div class="store-products-grid">
+                            <t t-if="filteredStoreProducts.length === 0">
+                                <div class="col-12 text-center py-5 text-muted">
+                                    <i class="fa fa-search fa-2x mb-2 d-block opacity-40"/>
+                                    No se encontró ningún artículo para "<strong><t t-esc="state.storeSearch"/></strong>".
+                                </div>
+                            </t>
                             <t t-foreach="filteredStoreProducts" t-as="product" t-key="product.id">
                                 <div class="store-product-card" t-on-click="() => this.addStoreProductToOrder(product)">
                                     <div class="product-card-body">
-                                        <div class="product-code"><t t-esc="product.default_code || 'ART'"/></div>
+                                        <div class="product-badges-row">
+                                            <span class="product-code" t-if="product.default_code"><t t-esc="product.default_code"/></span>
+                                            <span class="product-barcode-tag" t-if="product.barcode">
+                                                <i class="fa fa-barcode me-1"/><t t-esc="product.barcode"/>
+                                            </span>
+                                        </div>
                                         <div class="product-name"><t t-esc="product.display_name"/></div>
-                                        <div class="product-price"><t t-esc="product.lst_price.toFixed(2)"/> €</div>
+                                        <div class="product-price"><t t-esc="(product.lst_price || product.list_price || 0).toFixed(2)"/> €</div>
                                     </div>
-                                    <div class="product-card-footer">➕ Añadir</div>
+                                    <div class="product-card-footer">➕ Añadir a Venta</div>
                                 </div>
                             </t>
                         </div>
                     </div>
                 </div>
             </t>
-
 
             <!-- ======================================================== -->
             <!-- MODAL FLOTANTE DE BÚSQUEDA Y SELECCIÓN DE CLIENTE        -->
@@ -431,7 +491,7 @@
         </xpath>
     </t>
 
-    <!-- EXTENSIÓN DE PAYMENTSCREENVALIDATE - LAS 3 SALIDAS DE VIRTUSTPV -->
+    <!-- EXTENSIÓN DE PAYMENTSCREENVALIDATE -->
     <t t-name="pos_gas_station.PaymentScreenValidate" t-inherit="point_of_sale.PaymentScreenValidate" t-inherit-mode="extension" owl="1">
         <xpath expr="//div[hasclass('validation')]" position="after">
             <div class="virtus-payment-actions-bar">

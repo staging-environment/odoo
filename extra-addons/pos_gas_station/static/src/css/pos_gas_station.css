@@ -1297,3 +1297,178 @@
     color: #15803d !important;
     font-weight: 900 !important;
 }
+
+/* ============================================================
+   ESTILOS PARA MENÚ DESPLEGABLE DE PÁGINAS Y BÚSQUEDA MEJORADA
+   ============================================================ */
+
+.btn-dropdown-wrapper {
+    position: relative !important;
+    display: inline-block !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.btn-dropdown-wrapper .btn-cat-nav {
+    width: 100% !important;
+    height: 100% !important;
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    font-weight: bold !important;
+    border-color: #172554 !important;
+}
+.btn-dropdown-wrapper .btn-cat-nav:hover {
+    background: #2563eb !important;
+}
+
+.btn-cart-toggle {
+    position: relative !important;
+    font-weight: bold !important;
+}
+
+.page-indicator {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    padding: 1px 4px !important;
+    border-radius: 3px !important;
+    margin-left: 2px !important;
+}
+
+.virtus-page-dropdown-menu {
+    position: absolute !important;
+    top: calc(100% + 4px) !important;
+    right: 0 !important;
+    width: 260px !important;
+    background: #ffffff !important;
+    border: 2px solid #1e3a8a !important;
+    border-radius: 6px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    animation: fadeInDropdown 0.15s ease-out !important;
+}
+
+@keyframes fadeInDropdown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-header-title {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    padding: 6px 10px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.dropdown-page-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+    cursor: pointer !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    transition: background 0.1s !important;
+}
+.dropdown-page-item:hover {
+    background: #eff6ff !important;
+}
+.dropdown-page-item.active {
+    background: #dbeafe !important;
+    border-left: 4px solid #1e3a8a !important;
+}
+
+.dropdown-page-item .page-icon {
+    font-size: 16px !important;
+}
+
+.dropdown-page-item .page-info {
+    display: flex !important;
+    flex-direction: column !important;
+}
+.dropdown-page-item .page-info strong {
+    font-size: 12px !important;
+    color: #0f172a !important;
+}
+.dropdown-page-item .page-info small {
+    font-size: 10.5px !important;
+    color: #64748b !important;
+}
+
+.dropdown-divider {
+    height: 1px !important;
+    background: #cbd5e1 !important;
+    margin: 2px 0 !important;
+}
+
+.dropdown-catalog-item {
+    background: #f8fafc !important;
+}
+.dropdown-catalog-item:hover {
+    background: #e2e8f0 !important;
+}
+
+/* MODAL DE TIENDA Y CHIPS DE CATEGORÍA */
+.store-modal-categories {
+    display: flex !important;
+    gap: 6px !important;
+    padding: 6px 12px !important;
+    background: #f1f5f9 !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    overflow-x: auto !important;
+}
+
+.btn-cat-chip {
+    background: #ffffff !important;
+    border: 1px solid #94a3b8 !important;
+    border-radius: 14px !important;
+    padding: 3px 10px !important;
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+}
+.btn-cat-chip:hover {
+    background: #e2e8f0 !important;
+}
+.btn-cat-chip.active {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    border-color: #1e3a8a !important;
+}
+
+.product-badges-row {
+    display: flex !important;
+    gap: 4px !important;
+    margin-bottom: 2px !important;
+    flex-wrap: wrap !important;
+}
+
+.product-barcode-tag {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+    padding: 1px 4px !important;
+    border-radius: 3px !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    border: 1px solid #fde68a !important;
+}
+
+.btn-clear-search-store {
+    background: transparent !important;
+    border: none !important;
+    color: #94a3b8 !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    padding: 0 6px !important;
+}
+.btn-clear-search-store:hover {
+    color: #dc2626 !important;
+}
