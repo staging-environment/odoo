@@ -10,6 +10,9 @@
                     <field string="Vehículos" name="vehicle_count" widget="statinfo"/>
                 </button>
             </div>
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="invoice_delivery_method" widget="radio" options="{'horizontal': True}"/>
+            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Vehículos / Matrículas" name="vehicles">
                     <field name="vehicle_ids">

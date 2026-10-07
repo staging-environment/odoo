@@ -1,17 +1,18 @@
 {
-    'name': 'Utrecar - Datos de Vehículo y Conductor en Facturas',
-    'version': '17.0.1.0.0',
+    'name': 'Utrecar - Datos de Vehículo, Conductor y Envío Automático en Facturas',
+    'version': '17.0.1.1.0',
     'category': 'Accounting/Accounting',
-    'summary': 'Matrícula autoguardada por cliente, kilómetros y conductor en facturas e impresión PDF',
+    'summary': 'Matrícula autoguardada, kms, conductor y envío automático por email vs papel con avisos en Odoo',
     'description': """
         Módulo para UTRECAR / Estaciones de Servicio:
         - Registro y autoguardado de matrículas por cliente (res.partner.vehicle).
         - Campos en factura (account.move): Matrícula, Kilómetros y Conductor (texto libre).
-        - Visualización y gestión de vehículos en la ficha del cliente.
+        - Preferencia de facturación (Email vs Papel) por cliente y en factura.
+        - Envío automático de la factura por correo al confirmar con notificación interactiva en Odoo.
         - Impresión automática en el informe PDF de la factura si los datos existen.
     """,
     'author': 'Utrecar',
-    'depends': ['account', 'base', 'contacts'],
+    'depends': ['account', 'base', 'contacts', 'mail'],
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_vehicle_views.xml',

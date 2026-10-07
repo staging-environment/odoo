@@ -11,6 +11,11 @@
                 <field name="vehicle_mileage" placeholder="Ej: 145000"/>
                 <field name="vehicle_driver" placeholder="Nombre del conductor"/>
             </xpath>
+            <xpath expr="//field[@name='payment_reference']" position="after">
+                <field name="invoice_delivery_method" widget="radio" options="{'horizontal': True}" invisible="move_type not in ('out_invoice', 'out_refund')"/>
+                <field name="invoice_partner_email" placeholder="correo@cliente.com" invisible="move_type not in ('out_invoice', 'out_refund') or invoice_delivery_method != 'email'"/>
+                <field name="invoice_email_sent" widget="boolean_toggle" readonly="1" invisible="move_type not in ('out_invoice', 'out_refund') or invoice_delivery_method != 'email'"/>
+            </xpath>
         </field>
     </record>
 
@@ -22,6 +27,13 @@
             <xpath expr="//field[@name='name']" position="after">
                 <field name="vehicle_plate" string="Matrícula" filter_domain="[('vehicle_plate', 'ilike', self)]"/>
                 <field name="vehicle_driver" string="Conductor" filter_domain="[('vehicle_driver', 'ilike', self)]"/>
+                <field name="invoice_partner_email" string="Correo Factura" filter_domain="[('invoice_partner_email', 'ilike', self)]"/>
+            </xpath>
+            <xpath expr="//filter[@name='cancel']" position="after">
+                <separator/>
+                <filter name="filter_delivery_email" string="Envío Correo" domain="[('invoice_delivery_method', '=', 'email')]"/>
+                <filter name="filter_delivery_paper" string="Entrega en Papel" domain="[('invoice_delivery_method', '=', 'paper')]"/>
+                <filter name="filter_email_sent" string="Enviadas por Email" domain="[('invoice_email_sent', '=', True)]"/>
             </xpath>
         </field>
     </record>
