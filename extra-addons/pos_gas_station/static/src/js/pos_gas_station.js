@@ -478,17 +478,11 @@ export class UtrecarMainScreen extends Component {
                     }
                 }
                 if (data.pumps && Array.isArray(data.pumps)) {
-                    const currentTrackMode = this.state.trackMode || "atendido";
-                    this.state.pumps = data.pumps.map(p => {
-                        if (p.status === "idle" || p.status === "blocked" || p.status === "atendido") {
-                            return {
-                                ...p,
-                                status: currentTrackMode === "atendido" ? "atendido" : "blocked",
-                                statusText: currentTrackMode === "atendido" ? "LIBRE" : "PREPAGO"
-                            };
-                        }
-                        return p;
-                    });
+                    this.state.pumps = data.pumps;
+                    const samplePump = data.pumps.find(p => p.status === "atendido" || p.status === "postpago" || p.status === "blocked" || p.status === "prepago");
+                    if (samplePump) {
+                        this.state.trackMode = (samplePump.status === "atendido" || samplePump.status === "postpago") ? "atendido" : "prepago";
+                    }
                 }
             }
         } catch (err) {

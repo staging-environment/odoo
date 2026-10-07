@@ -260,7 +260,7 @@
                                     </div>
                                 </div>
 
-                                <!-- Cuerpo inferior rojo con candado circular y flecha verde -->
+                                <!-- Cuerpo inferior (Verde en atendido/postpago, Rojo en prepago/bloqueado) -->
                                 <div class="dispenser-lower-body">
                                     <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
                                         <button class="btn-virtus-pasar-ticket" t-on-click.stop="() => this.onPumpClick(pump)">
@@ -268,10 +268,9 @@
                                             <strong>COBRAR</strong>
                                         </button>
                                     </t>
-                                    <t t-elif="pump.status === 'atendido'">
+                                    <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || pump.status === 'idle'">
                                         <div class="dispenser-padlock-panel atendido-green">
-                                            <span class="padlock-icon">🔓</span>
-                                            <span class="padlock-text">LIBRE</span>
+                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔓" />
                                         </div>
                                     </t>
                                     <t t-else="">

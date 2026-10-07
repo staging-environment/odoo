@@ -2371,3 +2371,70 @@
 .virtus-tpv-status-footer-double strong {
     color: #60a5fa !important;
 }
+
+
+/* ==========================================================================
+   DYNAMIC STATUS SYNC FROM VIRTUSTPV (GREEN ATENDIDO / RED PREPAGO)
+   ========================================================================== */
+
+/* 1. MODO ATENDIDO / POSTPAGO / LIBRE (VERDE BRILLANTE VIRTUSTPV) */
+.aseproda-dispenser-box.status-atendido,
+.aseproda-dispenser-box.status-postpago,
+.aseproda-dispenser-box.status-idle {
+    border-color: #22c55e !important;
+}
+
+.aseproda-dispenser-box.status-atendido .dispenser-corner-tab,
+.aseproda-dispenser-box.status-postpago .dispenser-corner-tab,
+.aseproda-dispenser-box.status-idle .dispenser-corner-tab {
+    background: #22c55e !important;
+    color: #ffffff !important;
+}
+
+.aseproda-dispenser-box.status-atendido .dispenser-lower-body,
+.aseproda-dispenser-box.status-postpago .dispenser-lower-body,
+.aseproda-dispenser-box.status-idle .dispenser-lower-body {
+    background: #22c55e !important;
+}
+
+/* 2. MODO PREPAGO / BLOQUEADO (ROJO VIRTUSTPV) */
+.aseproda-dispenser-box.status-blocked,
+.aseproda-dispenser-box.status-prepago {
+    border-color: #dc2626 !important;
+}
+
+.aseproda-dispenser-box.status-blocked .dispenser-corner-tab,
+.aseproda-dispenser-box.status-prepago .dispenser-corner-tab {
+    background: #2563eb !important;
+    color: #ffffff !important;
+}
+
+.aseproda-dispenser-box.status-blocked .dispenser-lower-body,
+.aseproda-dispenser-box.status-prepago .dispenser-lower-body {
+    background: #dc2626 !important;
+}
+
+/* 3. MODO READY / PENDIENTE COBRO (NARANJA VIRTUSTPV) */
+.aseproda-dispenser-box.status-ready {
+    border-color: #ea580c !important;
+}
+
+.aseproda-dispenser-box.status-ready .dispenser-corner-tab {
+    background: #ea580c !important;
+    color: #ffffff !important;
+}
+
+.aseproda-dispenser-box.status-ready .dispenser-lower-body {
+    background: #ea580c !important;
+}
+
+/* 4. MODO DISPENSING / SUMINISTRANDO EN VIVO */
+.aseproda-dispenser-box.status-dispensing {
+    border-color: #16a34a !important;
+}
+.aseproda-dispenser-box.status-dispensing .dispenser-corner-tab {
+    background: #16a34a !important;
+}
+.aseproda-dispenser-box.status-dispensing .dispenser-lower-body {
+    background: #16a34a !important;
+}
