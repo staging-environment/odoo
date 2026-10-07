@@ -22,6 +22,7 @@ export class UtrecarMainScreen extends Component {
             selectedPumpId: null,
             selectedLineId: null,
             orderVersion: 0,
+            trackMode: localStorage.getItem("utrecar_track_mode") || "atendido", // 'atendido' o 'prepago'
             mode: "money", // 'money' o 'liters'
             presetValue: 0,
             selectedFuel: "GA",
@@ -471,7 +472,17 @@ export class UtrecarMainScreen extends Component {
                     }
                 }
                 if (data.pumps && Array.isArray(data.pumps)) {
-                    this.state.pumps = data.pumps;
+                    const currentTrackMode = this.state.trackMode || "atendido";
+                    this.state.pumps = data.pumps.map(p => {
+                        if (p.status === "idle" || p.status === "blocked" || p.status === "atendido") {
+                            return {
+                                ...p,
+                                status: currentTrackMode === "atendido" ? "atendido" : "blocked",
+                                statusText: currentTrackMode === "atendido" ? "LIBRE" : "PREPAGO"
+                            };
+                        }
+                        return p;
+                    });
                 }
             }
         } catch (err) {
@@ -712,6 +723,48 @@ export class UtrecarMainScreen extends Component {
 
     selectFuel(fuel) {
         this.state.selectedFuel = fuel;
+    }
+
+    
+    toggleTrackMode() {
+        const nextMode = this.state.trackMode === "atendido" ? "prepago" : "atendido";
+        this.state.trackMode = nextMode;
+        localStorage.setItem("utrecar_track_mode", nextMode);
+        
+        // Update idle pumps instantly
+        if (this.state.pumps && Array.isArray(this.state.pumps)) {
+            for (const pump of this.state.pumps) {
+                if (pump.status === "idle" || pump.status === "blocked" || pump.status === "atendido") {
+                    if (nextMode === "atendido") {
+                        pump.status = "atendido";
+                        pump.statusText = "LIBRE";
+                    } else {
+                        pump.status = "blocked";
+                        pump.statusText = "PREPAGO";
+                    }
+                }
+            }
+        }
+        this.state.orderVersion = Date.now();
+    }
+
+    promptCustomAmount() {
+        const unit = this.state.mode === "money" ? "€" : "Litros";
+        const currentVal = this.state.presetValue > 0 ? this.state.presetValue.toString() : "";
+        const input = prompt(`⌨️ INTRODUCIR CANTIDAD CON DECIMALES (${unit}):\n(Ejemplo: 15.50 o 32,80)`, currentVal);
+        if (input !== null) {
+            const clean = input.trim().replace(",", ".");
+            if (clean === "" || clean === "0") {
+                this.state.presetValue = 0;
+            } else {
+                const parsed = parseFloat(clean);
+                if (!isNaN(parsed) && parsed > 0) {
+                    this.state.presetValue = parseFloat(parsed.toFixed(2));
+                } else {
+                    alert("Por favor, introduzca un número válido con punto o coma decimal.");
+                }
+            }
+        }
     }
 
     clearPreset() {

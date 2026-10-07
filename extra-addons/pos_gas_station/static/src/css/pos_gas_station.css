@@ -1628,3 +1628,125 @@
     margin-bottom: 8px !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
 }
+
+/* TRACK MODE SWITCH HEADER */
+.track-mode-switch-wrapper {
+    display: flex !important;
+    align-items: center !important;
+}
+
+.btn-track-mode-toggle {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 3px 10px !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+    border: 1px solid transparent !important;
+    transition: all 0.15s ease !important;
+}
+
+.btn-track-mode-toggle.mode-atendido {
+    background: #ecfdf5 !important;
+    color: #065f46 !important;
+    border-color: #10b981 !important;
+}
+.btn-track-mode-toggle.mode-atendido:hover {
+    background: #d1fae5 !important;
+}
+
+.btn-track-mode-toggle.mode-prepago {
+    background: #fef2f2 !important;
+    color: #991b1b !important;
+    border-color: #ef4444 !important;
+}
+.btn-track-mode-toggle.mode-prepago:hover {
+    background: #fee2e2 !important;
+}
+
+.mode-led {
+    font-size: 13px !important;
+    line-height: 1 !important;
+}
+.led-green { color: #10b981 !important; text-shadow: 0 0 6px rgba(16, 185, 129, 0.6) !important; }
+.led-red { color: #ef4444 !important; text-shadow: 0 0 6px rgba(239, 68, 68, 0.6) !important; }
+
+.mode-switch-hint {
+    font-size: 9.5px !important;
+    opacity: 0.8 !important;
+    padding-left: 4px !important;
+    border-left: 1px solid currentColor !important;
+    margin-left: 4px !important;
+}
+
+/* ATENDIDO PUMP DISPLAY (GREEN / UNLOCKED) */
+.aseproda-dispenser-box.status-atendido {
+    border-color: #10b981 !important;
+    background: #ffffff !important;
+}
+.aseproda-dispenser-box.status-atendido .dispenser-corner-tab {
+    background: #10b981 !important;
+    color: #ffffff !important;
+}
+.aseproda-dispenser-box.status-atendido .dispenser-lower-body {
+    background: #10b981 !important;
+}
+.dispenser-padlock-panel.atendido-green {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    font-size: 11px !important;
+}
+
+/* BLOCKED PUMP DISPLAY (RED / LOCKED) */
+.aseproda-dispenser-box.status-blocked {
+    border-color: #ef4444 !important;
+    background: #ffffff !important;
+}
+.aseproda-dispenser-box.status-blocked .dispenser-corner-tab {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+}
+.aseproda-dispenser-box.status-blocked .dispenser-lower-body {
+    background: #ef4444 !important;
+}
+.dispenser-padlock-panel.blocked-red {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    font-size: 11px !important;
+}
+
+/* DECIMAL EDIT HINT ON LCD */
+.lcd-value-display {
+    cursor: pointer !important;
+    position: relative !important;
+}
+.lcd-value-display:hover {
+    background: #f8fafc !important;
+    border-color: #2563eb !important;
+}
+.lcd-edit-icon {
+    font-size: 10px !important;
+    margin-left: 6px !important;
+    opacity: 0.7 !important;
+}
+
+.btn-decimals-tool {
+    background: #e0f2fe !important;
+    border-color: #7dd3fc !important;
+    color: #0369a1 !important;
+    font-weight: 800 !important;
+    font-size: 11px !important;
+}
+.btn-decimals-tool:hover {
+    background: #bae6fd !important;
+}

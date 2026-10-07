@@ -212,8 +212,22 @@
 
                 <!-- 3. CUADRANTE INFERIOR IZQUIERDO: POSTES DE SURTIDORES ASEPRODA -->
                 <div class="virtus-quadrant-pumps">
-                    <div class="pumps-brand-watermark">
+                    <div class="pumps-brand-watermark d-flex justify-content-between align-items-center">
                         <span class="aseproda-logo-text"><span class="a-blue">A</span>seproda</span>
+                        <div class="track-mode-switch-wrapper">
+                            <button t-attf-class="btn-track-mode-toggle #{state.trackMode === 'atendido' ? 'mode-atendido' : 'mode-prepago'}"
+                                    t-on-click="() => this.toggleTrackMode()"
+                                    title="Haga clic para cambiar entre modo Prepago y Atendido">
+                                <t t-if="state.trackMode === 'atendido'">
+                                    <span class="mode-led led-green">●</span> <strong>PISTA: ATENDIDO (POSTPAGO)</strong>
+                                    <span class="mode-switch-hint">🔄 Cambiar a Prepago</span>
+                                </t>
+                                <t t-else="">
+                                    <span class="mode-led led-red">●</span> <strong>PISTA: PREPAGO (BLOQUEO)</strong>
+                                    <span class="mode-switch-hint">🔄 Cambiar a Atendido</span>
+                                </t>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="virtus-pumps-row">
@@ -284,11 +298,15 @@
                 <div class="virtus-quadrant-keypad">
                     
                     <div class="virtus-numpad-header">
-                        <div class="lcd-value-display">
-                            <span class="lcd-current"><t t-esc="state.presetValue > 0 ? state.presetValue : '0,00'"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/></span>
+                        <div class="lcd-value-display" t-on-click="() => this.promptCustomAmount()" title="Pulsar para teclear importe exacto con decimales">
+                            <span class="lcd-current"><t t-esc="state.presetValue > 0 ? (state.presetValue % 1 === 0 ? state.presetValue.toFixed(0) : state.presetValue.toFixed(2)) : '0,00'"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/></span>
+                            <span class="lcd-edit-icon" title="Editar importe con decimales">✏️</span>
                         </div>
+                        <button class="btn-numpad-tool btn-decimals-tool" t-on-click="() => this.promptCustomAmount()" title="Escribir cantidad exacta con decimales">
+                            🔢 Dec.
+                        </button>
                         <button class="btn-numpad-tool btn-mode-calles" t-on-click="() => this.toggleMode()">
-                            <t t-esc="state.mode === 'money' ? 'Modo Dinero' : 'Modo Litros'"/>
+                            <t t-esc="state.mode === 'money' ? 'Modo €' : 'Modo L'"/>
                         </button>
                         <button class="btn-numpad-tool btn-gear" t-on-click="() => this.openStoreModal()" title="Abrir Catálogo">
                             ⚙
