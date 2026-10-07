@@ -193,8 +193,17 @@ class AccountMove(models.Model):
 
         if template:
             try:
-                email_values = {'email_to': target_email}
-                template.send_mail(self.id, force_send=True, email_values=email_values)
+                mail_server = self.env['ir.mail_server'].search([('active', '=', True)], order='sequence, id', limit=1)
+                smtp_sender = mail_server.smtp_user if mail_server else 'informatica@utrecar.com'
+                company_name = self.company_id.name or 'UTRECAR S.L.'
+
+                email_values = {
+                    'email_to': target_email,
+                    'email_from': f'"{company_name}" <{smtp_sender}>',
+                    'reply_to': f'"{company_name}" <{smtp_sender}>',
+                    'auto_delete': False,
+                }
+                mail_id = template.send_mail(self.id, force_send=True, email_values=email_values)
                 self.invoice_email_sent = True
                 
                 # Register in chatter

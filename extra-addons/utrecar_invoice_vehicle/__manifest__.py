@@ -1,6 +1,6 @@
 {
     'name': 'Utrecar - Datos de Vehículo, Conductor y Envío Automático en Facturas',
-    'version': '17.0.1.1.0',
+    'version': '17.0.1.2.0',
     'category': 'Accounting/Accounting',
     'summary': 'Matrícula autoguardada, kms, conductor y envío automático por email vs papel con avisos en Odoo',
     'description': """
