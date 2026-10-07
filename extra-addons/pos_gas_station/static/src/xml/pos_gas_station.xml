@@ -213,7 +213,7 @@
                 <!-- 3. CUADRANTE INFERIOR IZQUIERDO: POSTES DE SURTIDORES ASEPRODA -->
                 <div class="virtus-quadrant-pumps">
                     <div class="pumps-brand-watermark d-flex justify-content-between align-items-center">
-                        <span class="aseproda-logo-text"><span class="a-blue">A</span>seproda</span>
+                        <span class="pumps-panel-title fw-bold text-dark"><i class="fa fa-gas-pump me-1 text-primary"/>SURTIDORES DE PISTA</span>
                         <div class="track-mode-switch-wrapper">
                             <button t-attf-class="btn-track-mode-toggle #{state.trackMode === 'atendido' ? 'mode-atendido' : 'mode-prepago'}"
                                     t-on-click="() => this.toggleTrackMode()"
