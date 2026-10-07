@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_partner_form_inherit_vehicle" model="ir.ui.view">
-        <field name="name">res.partner.form.inherit.vehicle</field>
+    <record id="view_partner_form_inherit_commercial_mgmt" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.commercial.mgmt</field>
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
@@ -10,10 +10,22 @@
                     <field string="Vehículos" name="vehicle_count" widget="statinfo"/>
                 </button>
             </div>
-            <xpath expr="//field[@name='vat']" position="after">
-                <field name="invoice_delivery_method" widget="radio" options="{'horizontal': True}"/>
-            </xpath>
             <xpath expr="//notebook" position="inside">
+                <page string="Condiciones Comerciales y Facturación" name="commercial_conditions">
+                    <group>
+                        <group string="Modalidad de Pago y Facturación">
+                            <field name="customer_payment_mode" widget="radio" options="{'horizontal': True}"/>
+                            <field name="invoice_periodicity"/>
+                            <field name="invoice_closing_day" invisible="invoice_periodicity not in ('decadal', 'biweekly', 'monthly')"/>
+                            <field name="invoice_delivery_method" widget="radio" options="{'horizontal': True}"/>
+                        </group>
+                        <group string="Gestión de Riesgo y Crédito">
+                            <field name="credit_limit_amount" widget="monetary"/>
+                            <field name="credit_blocked" widget="boolean_toggle"/>
+                            <field name="payment_method_desc" placeholder="Ej: Domiciliación SEPA B2B, Transferencia 30 días..."/>
+                        </group>
+                    </group>
+                </page>
                 <page string="Vehículos / Matrículas" name="vehicles">
                     <field name="vehicle_ids">
                         <tree editable="bottom">
@@ -22,6 +34,28 @@
                         </tree>
                     </field>
                 </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_res_partner_filter_inherit_commercial" model="ir.ui.view">
+        <field name="name">res.partner.select.inherit.commercial</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='type_person']" position="before">
+                <filter name="filter_customer_credit" string="Clientes de Crédito" domain="[('customer_payment_mode', '=', 'credit')]"/>
+                <filter name="filter_customer_cash" string="Clientes de Contado" domain="[('customer_payment_mode', '=', 'cash')]"/>
+                <separator/>
+                <filter name="filter_invoice_monthly" string="Facturación Mensual" domain="[('invoice_periodicity', '=', 'monthly')]"/>
+                <filter name="filter_invoice_daily" string="Facturación Diaria" domain="[('invoice_periodicity', '=', 'daily')]"/>
+                <separator/>
+                <filter name="filter_credit_blocked" string="Crédito Bloqueado" domain="[('credit_blocked', '=', True)]"/>
+                <separator/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter name="group_payment_mode" string="Modalidad de Pago" context="{'group_by': 'customer_payment_mode'}"/>
+                <filter name="group_periodicity" string="Periodicidad Facturación" context="{'group_by': 'invoice_periodicity'}"/>
             </xpath>
         </field>
     </record>

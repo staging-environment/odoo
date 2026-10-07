@@ -49,6 +49,20 @@ class AccountMove(models.Model):
         help="Indica si la factura ha sido enviada por correo electrónico."
     )
 
+    customer_payment_mode = fields.Selection(
+        related='partner_id.customer_payment_mode',
+        string='Modalidad Cliente',
+        readonly=True,
+        store=True
+    )
+
+    invoice_periodicity = fields.Selection(
+        related='partner_id.invoice_periodicity',
+        string='Periodicidad Cliente',
+        readonly=True,
+        store=True
+    )
+
     @api.onchange('partner_id')
     def _onchange_partner_id_delivery(self):
         if self.partner_id:
