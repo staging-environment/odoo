@@ -306,12 +306,12 @@
                     <div class="virtus-keypad-matrix">
                         <div class="matrix-bills-grid">
                             <t t-if="state.mode === 'money'">
-                                <button class="matrix-bill-btn bill-svg bill-1e" t-on-click="() => this.addPreset(1)"></button>
-                                <button class="matrix-bill-btn bill-svg bill-5e" t-on-click="() => this.addPreset(5)"></button>
-                                <button class="matrix-bill-btn bill-svg bill-10e" t-on-click="() => this.addPreset(10)"></button>
-                                <button class="matrix-bill-btn bill-svg bill-20e" t-on-click="() => this.addPreset(20)"></button>
-                                <button class="matrix-bill-btn bill-svg bill-50e" t-on-click="() => this.addPreset(50)"></button>
-                                <button class="matrix-bill-btn bill-svg bill-100e" t-on-click="() => this.addPreset(100)"></button>
+                                <button class="matrix-bill-btn bill-img-tile bill-1e" t-on-click="() => this.addPreset(1)"></button>
+                                <button class="matrix-bill-btn bill-img-tile bill-5e" t-on-click="() => this.addPreset(5)"></button>
+                                <button class="matrix-bill-btn bill-img-tile bill-10e" t-on-click="() => this.addPreset(10)"></button>
+                                <button class="matrix-bill-btn bill-img-tile bill-20e" t-on-click="() => this.addPreset(20)"></button>
+                                <button class="matrix-bill-btn bill-img-tile bill-50e" t-on-click="() => this.addPreset(50)"></button>
+                                <button class="matrix-bill-btn bill-img-tile bill-100e" t-on-click="() => this.addPreset(100)"></button>
                             </t>
                             <t t-else="">
                                 <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(1)">1 L</button>

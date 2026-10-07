@@ -2438,3 +2438,109 @@
 .aseproda-dispenser-box.status-dispensing .dispenser-lower-body {
     background: #16a34a !important;
 }
+
+
+/* ==========================================================================
+   HD REALISTIC FULL-SIZE EURO BILLS AND COIN (VIRTUSTPV HD)
+   ========================================================================== */
+
+.virtus-keypad-matrix {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    gap: 3px !important;
+    min-height: 130px !important;
+    height: 100% !important;
+}
+
+.matrix-bills-grid {
+    flex: 1 1 65% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: 1fr 1fr !important;
+    gap: 3px !important;
+    height: 100% !important;
+}
+
+.matrix-bill-btn.bill-img-tile {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 58px !important;
+    border-radius: 2px !important;
+    border: 1px solid #334155 !important;
+    background-size: 100% 100% !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-color: #ffffff !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+    transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+.matrix-bill-btn.bill-img-tile:hover {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
+    transform: scale(1.02) !important;
+    z-index: 2 !important;
+}
+.matrix-bill-btn.bill-img-tile:active {
+    transform: scale(0.97) !important;
+}
+
+/* HD Real Scans */
+.matrix-bill-btn.bill-img-tile.bill-1e {
+    background-image: url('/pos_gas_station/static/src/img/bill_img_1.png') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-5e {
+    background-image: url('/pos_gas_station/static/src/img/bill_img_5.png') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-10e {
+    background-image: url('/pos_gas_station/static/src/img/bill_img_10.png') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-20e {
+    background-image: url('/pos_gas_station/static/src/img/bill_img_20.png') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-50e {
+    background-image: url('/pos_gas_station/static/src/img/bill_img_50.png') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-100e {
+    background-image: url('/pos_gas_station/static/src/img/bill_img_100.png') !important;
+    background-size: 100% 100% !important;
+}
+
+/* Combustibles a la derecha */
+.matrix-fuels-grid {
+    flex: 1 1 35% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-rows: 1fr 1fr !important;
+    gap: 3px !important;
+    height: 100% !important;
+}
+
+.fuel-matrix-btn {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 58px !important;
+    background: #ffffff !important;
+    border: 1px solid #334155 !important;
+    border-radius: 2px !important;
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+}
+.fuel-matrix-btn:hover {
+    background: #f1f5f9 !important;
+}
+.fuel-matrix-btn.active {
+    background: #dbeafe !important;
+    border: 2px solid #2563eb !important;
+    color: #1e3a8a !important;
+}
