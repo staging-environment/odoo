@@ -1,6 +1,6 @@
-# Contexto del Proyecto: Odoo 17 ERP
+# Contexto del Proyecto: Odoo 17 ERP - UTRECAR
 
-Este archivo documenta la configuración del entorno, infraestructura, accesos y la integración de datos de Aseproda en el proyecto Odoo.
+Este archivo documenta la configuración del entorno, infraestructura, accesos, arquitectura de hardware de pista y la integración de datos de Aseproda en el proyecto Odoo.
 
 ## 📌 Datos de Entornos
 
@@ -20,6 +20,18 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos y
 - **Dirección IP:** `164.68.101.69`
 - **Base de Datos Aseproda:** MariaDB / MySQL 5.5 en puerto `33061` (Contenedor `ddev-utrecar3-db`)
 - **Ruta Bases de Datos Aseproda:** `/home/developer/Projects/utrecardbs`
+
+---
+
+## ⛽ Arquitectura de Pista y Estrategia de Control (IMPORTANTE)
+
+### 1. Conexión Física Actual:
+- **Sin hardware DOMS:** Las estaciones cuentan con **conexión directa** de los surtidores a los puertos serie / concentrador local en el PC de la estación (`SDES.exe` / puertos COM).
+- **Puente en tiempo real:** El script `scripts/agente_pista_odoo_bridge.py` monitoriza en tiempo real los eventos de pista (`dw.log` y base de datos local) y los traslada a Odoo Cloud (`pos_gas_station`).
+
+### 2. Estrategia y Hoja de Ruta Acordada:
+1. **Fase Actual (Prioridad Absoluta):** Afinar al 100% toda la operativa funcional de Odoo (ventas de tienda, combos, cobros, facturación con matrícula/conductor, envío por email, clientes de crédito y arqueos). Mantener el modo puente/espejo estable sin alterar la conexión física de pista.
+2. **Fase Futura Planificada:** Cuando la operativa de Odoo esté completamente afinada y validada en producción, **Odoo asumirá el rol de MÁSTER directo de pista sobre la conexión directa existente**, prescindiendo y apagando definitivamente VirtusTPV.
 
 ---
 
@@ -49,31 +61,21 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 
 ## 🛠️ Scripts y Herramientas del Proyecto
 
+- `scripts/agente_pista_odoo_bridge.py`: Agente puente en tiempo real entre la pista local (conexión directa) y Odoo Cloud.
 - `scripts/migrate_aseproda_to_odoo.py`: Importador optimizado de clientes y facturas con precarga en memoria y consultas indexadas.
 - `scripts/cleanup_aseproda_test_data.py`: **Herramienta de purga total** para eliminar de forma segura facturas, quants de inventario, proveedores y clientes de prueba, restaurando Odoo a su estado limpio.
-- `docs/INTEGRACION_ASEPRODA_ODOO.md`: Documentación técnica detallada de la integración.
-
-### Comandos Clave:
-```bash
-# Sincronizar clientes y facturación de 2026:
-python3 scripts/migrate_aseproda_to_odoo.py --all
-
-# Simular borrado de pruebas:
-python3 scripts/cleanup_aseproda_test_data.py --dry-run
-
-# Confirmar y purgar todos los datos de prueba de Aseproda en Odoo:
-python3 scripts/cleanup_aseproda_test_data.py --confirm
-```
+- `docs/HISTORICO_PROYECTO_UTRECAR.md`: Histórico técnico completo de cambios, módulos y despliegues.
+- `docs/INFORME_Y_GUIA_OPERATIVA_VENTAS_TPV_UTRECAR.md`: Guía de operativa táctil para el cajero.
 
 ---
 
 ## 📁 Estructura del Repositorio
 - `.ddev/`: Configuración del entorno virtualizado DDEV.
 - `config/odoo.conf`: Archivo de configuración de Odoo 17.
-- `extra-addons/`: Módulos y addons personalizados.
-- `scripts/`: Scripts de integración, mantenimiento y purga.
-- `docs/`: Guías de arquitectura, hojas de ruta y diagnósticos.
-- `AGENTS.md`: Contexto e instrucciones del proyecto.
+- `extra-addons/`: Módulos personalizados (`pos_gas_station`, `utrecar_invoice_vehicle`).
+- `scripts/`: Scripts de integración, mantenimiento y puente de pista.
+- `docs/`: Guías de arquitectura, hojas de ruta, informes PDF y diagnósticos.
+- `AGENTS.md`: Contexto e instrucciones clave del proyecto.
 - `README.md`: Documentación general.
 
 ---
@@ -81,11 +83,3 @@ python3 scripts/cleanup_aseproda_test_data.py --confirm
 ## 🔗 Repositorio Git
 - **URL HTTPS:** `https://github.com/staging-environment/odoo`
 - **URL SSH:** `git@github.com:staging-environment/odoo.git`
-
----
-
-## ⚠️ Estado del Servicio de Sincronización en Producción (VirtusGesNet / Odoo)
-- **Servicio Systemd:** `odoo-sync-stations.service` (deshabilitado temporalmente para comprobación de bloqueos MyISAM).
-- **Ruta Script:** `/opt/utrecar/sync_all_stations_odoo.py` en el servidor `164.68.101.69`.
-- **Logs:** `/var/log/odoo_sync_stations.log`
-- **Documentación técnica:** Ver [INCIDENCIA_SINCRONIZACION_Y_OPTIMIZACION.md](file:///home/bonilla/Projects/odoo/docs/INCIDENCIA_SINCRONIZACION_Y_OPTIMIZACION.md).
