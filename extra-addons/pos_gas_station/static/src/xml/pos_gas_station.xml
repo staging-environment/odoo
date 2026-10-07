@@ -491,30 +491,72 @@
         </xpath>
     </t>
 
-    <!-- EXTENSIÓN DE PAYMENTSCREENVALIDATE -->
+    <!-- HEADER SUPERIOR DE PAYMENTSCREEN CON BOTÓN VOLVER MUY VISIBLE -->
+    <t t-name="pos_gas_station.PaymentScreenTop" t-inherit="point_of_sale.PaymentScreenTop" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('top-content')]" position="replace">
+            <div class="top-content utrecar-payment-top-bar d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                <button class="btn btn-danger btn-lg d-flex align-items-center gap-2 fw-bold text-white shadow-sm utrecar-back-btn" t-on-click="() => pos.showScreen('ProductScreen')">
+                    <i class="fa fa-arrow-left fa-lg" />
+                    <span>⬅ VOLVER A PISTA / CANCELAR</span>
+                </button>
+                <div class="top-content-center">
+                    <h3 class="mb-0 fw-bold text-dark text-uppercase">
+                        <i class="fa fa-credit-card me-2 text-primary"/>Cobro de Venta
+                    </h3>
+                </div>
+                <div>
+                    <button class="btn btn-outline-danger fw-bold" t-on-click="() => pos.showScreen('ProductScreen')">
+                        <i class="fa fa-times me-1"/> Salir sin cobrar
+                    </button>
+                </div>
+            </div>
+        </xpath>
+    </t>
+
+    <!-- SUSTITUCIÓN COMPLETA DEL BOTÓN VALIDATE DE PAYMENTSCREEN -->
     <t t-name="pos_gas_station.PaymentScreenValidate" t-inherit="point_of_sale.PaymentScreenValidate" t-inherit-mode="extension" owl="1">
-        <xpath expr="//div[hasclass('validation')]" position="after">
-            <div class="virtus-payment-actions-bar">
-                <button class="btn-virtus-action btn-action-ticket" t-on-click="() => this.validateVirtusTicket()">
-                    <div class="action-icon">🖨</div>
-                    <div class="action-details">
-                        <strong>TICKET</strong>
-                        <span>Imprimir</span>
-                    </div>
-                </button>
-                <button class="btn-virtus-action btn-action-invoice" t-on-click="() => this.validateVirtusInvoice()">
-                    <div class="action-icon">📄</div>
-                    <div class="action-details">
-                        <strong>FACTURA</strong>
-                        <span>NIF/CIF</span>
-                    </div>
-                </button>
-                <button class="btn-virtus-action btn-action-noprint" t-on-click="() => this.validateVirtusNoPrint()">
-                    <div class="action-icon">⚡</div>
-                    <div class="action-details">
-                        <strong>SIN TICKET</strong>
-                        <span>Rápido</span>
-                    </div>
+        <xpath expr="//div[hasclass('validation')]" position="replace">
+            <div class="utrecar-payment-actions-wrapper p-2 bg-light border-top">
+                <div class="utrecar-payment-actions-grid mb-2">
+                    <button class="btn-virtus-pay btn-pay-ticket" 
+                            t-att-class="{ 'disabled-action': !currentOrder.is_paid() }" 
+                            t-on-click="() => this.validateVirtusTicket()"
+                            title="Cobrar e imprimir ticket">
+                        <div class="pay-icon">🖨</div>
+                        <div class="pay-details">
+                            <strong>TICKET</strong>
+                            <span>Imprimir</span>
+                        </div>
+                    </button>
+
+                    <button class="btn-virtus-pay btn-pay-invoice" 
+                            t-att-class="{ 'disabled-action': !currentOrder.is_paid() }" 
+                            t-on-click="() => this.validateVirtusInvoice()"
+                            title="Cobrar y emitir Factura con NIF/CIF">
+                        <div class="pay-icon">📄</div>
+                        <div class="pay-details">
+                            <strong>FACTURA</strong>
+                            <span>NIF / CIF</span>
+                        </div>
+                    </button>
+
+                    <button class="btn-virtus-pay btn-pay-noprint" 
+                            t-att-class="{ 'disabled-action': !currentOrder.is_paid() }" 
+                            t-on-click="() => this.validateVirtusNoPrint()"
+                            title="Cobro rápido sin imprimir">
+                        <div class="pay-icon">⚡</div>
+                        <div class="pay-details">
+                            <strong>RÁPIDO</strong>
+                            <span>Sin Ticket</span>
+                        </div>
+                    </button>
+                </div>
+                
+                <button class="btn-virtus-pay-standard w-100" 
+                        t-att-class="{ 'disabled-action': !currentOrder.is_paid() }" 
+                        t-on-click="() => this.validateOrder()">
+                    <i class="fa fa-check-circle me-2"/>
+                    <span>VALIDAR COBRO</span>
                 </button>
             </div>
         </xpath>

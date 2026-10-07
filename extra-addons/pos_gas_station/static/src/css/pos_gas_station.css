@@ -1472,3 +1472,159 @@
 .btn-clear-search-store:hover {
     color: #dc2626 !important;
 }
+
+/* ==========================================================================
+   PAYMENT SCREEN CUSTOMIZATION (UTRECAR / VIRTUSTPV)
+   ========================================================================== */
+.utrecar-payment-top-bar {
+    background: #ffffff !important;
+    min-height: 58px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+
+.utrecar-back-btn {
+    background: #dc2626 !important;
+    border-color: #b91c1c !important;
+    padding: 8px 18px !important;
+    font-size: 15px !important;
+    letter-spacing: 0.5px !important;
+    border-radius: 6px !important;
+    transition: all 0.15s ease !important;
+    cursor: pointer !important;
+}
+.utrecar-back-btn:hover {
+    background: #b91c1c !important;
+    transform: scale(1.02) !important;
+}
+
+.utrecar-payment-actions-wrapper {
+    background: #f1f5f9 !important;
+    border-top: 2px solid #cbd5e1 !important;
+}
+
+.utrecar-payment-actions-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 6px !important;
+}
+
+.btn-virtus-pay {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px 4px !important;
+    border: none !important;
+    border-radius: 6px !important;
+    color: #ffffff !important;
+    cursor: pointer !important;
+    min-height: 62px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.12) !important;
+    transition: all 0.15s ease !important;
+}
+
+.btn-virtus-pay .pay-icon {
+    font-size: 20px !important;
+    line-height: 1 !important;
+    margin-bottom: 2px !important;
+}
+
+.btn-virtus-pay .pay-details {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+.btn-virtus-pay .pay-details strong {
+    font-size: 12.5px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.5px !important;
+    line-height: 1.1 !important;
+}
+
+.btn-virtus-pay .pay-details span {
+    font-size: 10px !important;
+    opacity: 0.9 !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+}
+
+.btn-pay-ticket {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+}
+.btn-pay-ticket:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+}
+
+.btn-pay-invoice {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+}
+.btn-pay-invoice:hover {
+    background: linear-gradient(135deg, #6d28d9, #5b21b6) !important;
+}
+
+.btn-pay-noprint {
+    background: linear-gradient(135deg, #059669, #047857) !important;
+}
+.btn-pay-noprint:hover {
+    background: linear-gradient(135deg, #047857, #065f46) !important;
+}
+
+.btn-virtus-pay-standard {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    font-size: 14.5px !important;
+    font-weight: 800 !important;
+    padding: 10px !important;
+    border-radius: 6px !important;
+    border: none !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 4px rgba(30, 58, 138, 0.25) !important;
+    transition: all 0.15s ease !important;
+}
+.btn-virtus-pay-standard:hover {
+    background: #172554 !important;
+}
+
+.disabled-action {
+    opacity: 0.45 !important;
+    filter: grayscale(40%) !important;
+    cursor: not-allowed !important;
+    pointer-events: auto !important;
+}
+
+/* Enhancements to PaymentScreen in POS */
+.pos .payment-screen .left-content {
+    background: #f8fafc !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+}
+
+.pos .payment-screen .paymentmethods .paymentmethod {
+    padding: 12px 14px !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: #ffffff !important;
+    transition: background 0.1s ease !important;
+}
+.pos .payment-screen .paymentmethods .paymentmethod:hover {
+    background: #e0f2fe !important;
+}
+
+.pos .payment-screen .center-content {
+    background: #f1f5f9 !important;
+}
+
+.pos .payment-screen .payment-status {
+    background: #ffffff !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 8px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
