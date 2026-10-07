@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg100" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#dcfce7"/>
+      <stop offset="35%" stop-color="#4ade80"/>
+      <stop offset="70%" stop-color="#16a34a"/>
+      <stop offset="100%" stop-color="#14532d"/>
+    </linearGradient>
+    <linearGradient id="arch100" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#14532d"/>
+      <stop offset="100%" stop-color="#052e16"/>
+    </linearGradient>
+    <linearGradient id="holo100" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#86efac"/>
+      <stop offset="50%" stop-color="#f0fdf4"/>
+      <stop offset="100%" stop-color="#bbf7d0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="200" height="130" rx="3" fill="url(#bg100)" stroke="#14532d" stroke-width="1.5"/>
+
+  <!-- Baroque Gateway (100€) -->
+  <path d="M 52 115 L 52 45 C 52 15 148 15 148 45 L 148 115 Z" fill="none" stroke="url(#arch100)" stroke-width="6" opacity="0.35"/>
+  <circle cx="100" cy="40" r="16" fill="none" stroke="#052e16" stroke-width="3" opacity="0.4"/>
+
+  <!-- European Flag -->
+  <rect x="12" y="12" width="30" height="20" fill="#003399" rx="1"/>
+  <circle cx="27" cy="22" r="6" fill="none" stroke="#ffcc00" stroke-width="1.5" stroke-dasharray="1.5 2"/>
+
+  <!-- Hologram Stripe -->
+  <rect x="168" y="0" width="22" height="130" fill="url(#holo100)" opacity="0.75" stroke="#86efac" stroke-width="0.5"/>
+  <text x="179" y="70" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="900" fill="#14532d" text-anchor="middle" transform="rotate(-90 179 70)">EURO 100</text>
+
+  <!-- Large Bold '100' Value -->
+  <text x="60" y="92" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="900" fill="#052e16" letter-spacing="-4">100</text>
+  <text x="58" y="90" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="900" fill="#f0fdf4" letter-spacing="-4">100</text>
+
+  <text x="14" y="118" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="900" fill="#052e16">100</text>
+  <text x="14" y="44" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="900" fill="#14532d">EURO / ΕΥΡΩ</text>
+</svg>

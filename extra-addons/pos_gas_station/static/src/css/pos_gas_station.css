@@ -2544,3 +2544,33 @@
     border: 2px solid #2563eb !important;
     color: #1e3a8a !important;
 }
+
+
+/* ==========================================================================
+   RAZOR-SHARP VECTOR EURO CURRENCY ASSETS (ULTRA-HIGH DEFINITION)
+   ========================================================================== */
+
+.matrix-bill-btn.bill-img-tile.bill-1e {
+    background-image: url('/pos_gas_station/static/src/img/bill_vector_1.svg') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-5e {
+    background-image: url('/pos_gas_station/static/src/img/bill_vector_5.svg') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-10e {
+    background-image: url('/pos_gas_station/static/src/img/bill_vector_10.svg') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-20e {
+    background-image: url('/pos_gas_station/static/src/img/bill_vector_20.svg') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-50e {
+    background-image: url('/pos_gas_station/static/src/img/bill_vector_50.svg') !important;
+    background-size: 100% 100% !important;
+}
+.matrix-bill-btn.bill-img-tile.bill-100e {
+    background-image: url('/pos_gas_station/static/src/img/bill_vector_100.svg') !important;
+    background-size: 100% 100% !important;
+}
