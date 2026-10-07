@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_res_partner_vehicle_tree" model="ir.ui.view">
+        <field name="name">res.partner.vehicle.tree</field>
+        <field name="model">res.partner.vehicle</field>
+        <field name="arch" type="xml">
+            <tree string="Vehículos" editable="bottom">
+                <field name="name" placeholder="Ej: 1234-BBB"/>
+                <field name="partner_id"/>
+                <field name="notes" placeholder="Marca, modelo o notas..."/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_res_partner_vehicle_form" model="ir.ui.view">
+        <field name="name">res.partner.vehicle.form</field>
+        <field name="model">res.partner.vehicle</field>
+        <field name="arch" type="xml">
+            <form string="Vehículo">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" placeholder="Ej: 1234-BBB"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group>
+                            <field name="notes"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_res_partner_vehicle_search" model="ir.ui.view">
+        <field name="name">res.partner.vehicle.search</field>
+        <field name="model">res.partner.vehicle</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Vehículo">
+                <field name="name" filter_domain="[('name', 'ilike', self)]"/>
+                <field name="partner_id"/>
+                <field name="notes"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_res_partner_vehicle" model="ir.actions.act_window">
+        <field name="name">Vehículos y Matrículas</field>
+        <field name="res_model">res.partner.vehicle</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_res_partner_vehicle_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Registra la primera matrícula de vehículo para tus clientes
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_res_partner_vehicle_invoicing"
+              name="Vehículos / Matrículas"
+              parent="account.menu_finance_receivables"
+              action="action_res_partner_vehicle"
+              sequence="110"/>
+</odoo>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_invoice_document_inherit_vehicle" inherit_id="account.report_invoice_document">
+        <xpath expr="//div[@id='informations']" position="after">
+            <div id="vehicle_informations" class="row mt-2 mb-3 py-2 px-3" t-if="o.vehicle_plate or o.vehicle_mileage or o.vehicle_driver" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px;">
+                <div class="col-4" t-if="o.vehicle_plate">
+                    <strong>Matrícula:</strong>
+                    <span class="m-0" t-field="o.vehicle_plate"/>
+                </div>
+                <div class="col-4" t-if="o.vehicle_mileage">
+                    <strong>Kilómetros:</strong>
+                    <span class="m-0" t-esc="o.vehicle_mileage"/> km
+                </div>
+                <div class="col-4" t-if="o.vehicle_driver">
+                    <strong>Conductor:</strong>
+                    <span class="m-0" t-field="o.vehicle_driver"/>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>
