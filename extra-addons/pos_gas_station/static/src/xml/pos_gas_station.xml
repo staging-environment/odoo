@@ -35,9 +35,10 @@
                                    t-att-value="state.vehiclePlate"
                                    t-on-input="(ev) => this.onPlateChange(ev)" />
                         </div>
-                        <div class="virtus-user-badge">
+                        <div class="virtus-user-badge" t-on-click="() => this.changeCashierName()" title="Haga clic para cambiar de cajero / operador" style="cursor: pointer;">
                             <i class="fa fa-user mr-1 text-primary"/>
                             <span class="user-name"><t t-esc="pos.user ? pos.user.name : 'SUPERVISOR'"/></span>
+                            <i class="fa fa-pencil ms-1 text-muted" style="font-size: 10px;"/>
                         </div>
                         <div class="station-mini-label">
                             <t t-esc="state.stationName"/>

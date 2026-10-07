@@ -187,3 +187,20 @@ class PosGasStationController(http.Controller):
             _logger.error(f'Error resetting pump in {param_key}: {e}')
 
         return {'status': 'cleared', 'pump_id': pid}
+
+    @http.route('/pos_gas_station/set_cashier_name', type='json', auth='user', methods=['POST'], csrf=False)
+    def set_cashier_name(self, name=None, user_id=None, **kw):
+        if name and name.strip():
+            target_user = request.env.user
+            if user_id:
+                try:
+                    u = request.env['res.users'].sudo().browse(int(user_id))
+                    if u.exists():
+                        target_user = u
+                except Exception:
+                    pass
+            target_user.sudo().write({'name': name.strip()})
+            if target_user.partner_id:
+                target_user.partner_id.sudo().write({'name': name.strip()})
+            return {'status': 'success', 'name': name.strip()}
+        return {'status': 'error'}

@@ -407,6 +407,27 @@ export class UtrecarMainScreen extends Component {
         return order.orderlines || [];
     }
 
+    
+    async changeCashierName() {
+        const currentName = this.pos.user ? this.pos.user.name : "";
+        const newName = prompt("👤 CAMBIAR NOMBRE DE CAJERO / OPERADOR:\nIntroduzca el nombre del operador que atiende en este turno:", currentName);
+        if (newName && newName.trim()) {
+            if (this.pos.user) {
+                this.pos.user.name = newName.trim();
+            }
+            try {
+                await jsonrpc("/pos_gas_station/set_cashier_name", {
+                    config_id: this.configId,
+                    user_id: this.pos.user ? this.pos.user.id : null,
+                    name: newName.trim()
+                });
+            } catch (e) {
+                console.debug("Nombre de cajero actualizado localmente");
+            }
+            this.state.orderVersion = Date.now();
+        }
+    }
+
     get currentDateTimeStr() {
         const d = new Date();
         const pad = (n) => String(n).padStart(2, '0');
