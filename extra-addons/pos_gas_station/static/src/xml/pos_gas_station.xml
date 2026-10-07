@@ -234,58 +234,49 @@
                         <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
                             <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
                             
-                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} fuel-type-#{fuelInfo.type} #{fuelInfo.isActive ? 'fuel-active' : ''} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
+                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
                                  t-on-click="() => this.onPumpSelect(pump)">
                                 
+                                <!-- Pestana superior azul con numero de calle -->
+                                <div class="dispenser-corner-tab"><t t-esc="pump.id"/></div>
+                                
+                                <!-- Silueta lateral de manguera / boquilla negra -->
+                                <div class="dispenser-nozzle-handle"></div>
+
+                                <!-- Cabecera / Display LCD blanco -->
                                 <div class="dispenser-head">
-                                    <div class="dispenser-number-tag dispenser-corner-tab"><t t-esc="pump.id"/></div>
-                                    <div class="dispenser-lcd-screen">
-                                        <div class="lcd-header-line">
-                                            <span class="f-code"><t t-esc="fuelInfo.shortCode"/></span>
-                                            <span class="f-liters"><t t-esc="pump.liters > 0 ? pump.liters.toFixed(2) + ' L' : '0.00 L'"/></span>
-                                        </div>
-                                        <div class="lcd-price-main">
-                                            <t t-esc="pump.amount > 0 ? pump.amount.toFixed(2) + ' €' : '0,00 €'"/>
-                                        </div>
-                                        <div class="lcd-footer-line">
-                                            <t t-if="pump.status === 'ready'">Fin Repostaje</t>
-                                            <t t-elif="pump.status === 'blocked'">Prepago (Bloqueada)</t>
-                                            <t t-elif="pump.status === 'atendido'">Atendido (Pista)</t>
-                                            <t t-elif="pump.status === 'postpago' || pump.status === 'dispensing'">Postpago (Abierta)</t>
-                                            <t t-else="">Sin prefijado</t>
-                                        </div>
+                                    <div class="lcd-header-line">
+                                        <span class="f-code"><t t-esc="pump.amount > 0 ? (pump.fuel ? pump.fuel.slice(0,4) : 'GA') : 'N/A'"/></span>
+                                        <span class="f-liters"><t t-esc="pump.liters > 0 ? pump.liters.toFixed(2) + 'L' : '0.00L'"/></span>
+                                    </div>
+                                    <div class="lcd-price-main">
+                                        <t t-esc="pump.amount > 0 ? pump.amount.toFixed(2).replace('.', ',') + ' €' : '0,00 €'"/>
+                                    </div>
+                                    <div class="lcd-black-strip">
+                                        <t t-if="pump.status === 'ready'">FIN REPOSTAJE</t>
+                                        <t t-elif="pump.status === 'atendido'">POSTPAGO LIBRE</t>
+                                        <t t-elif="pump.amount > 0">SUMINISTRO</t>
+                                        <t t-else="">Sin prefijado</t>
                                     </div>
                                 </div>
 
+                                <!-- Cuerpo inferior rojo con candado circular y flecha verde -->
                                 <div class="dispenser-lower-body">
                                     <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
                                         <button class="btn-virtus-pasar-ticket" t-on-click.stop="() => this.onPumpClick(pump)">
                                             <div class="icon-up">⬆</div>
-                                            <strong>PASAR A TICKET</strong>
+                                            <strong>COBRAR</strong>
                                         </button>
-                                    </t>
-                                    <t t-elif="pump.status === 'blocked'">
-                                        <div class="dispenser-padlock-panel blocked-red">
-                                            <span class="padlock-icon">🔒</span>
-                                            <span class="padlock-text"><t t-esc="pump.statusText || 'PREPAGO'"/></span>
-                                        </div>
                                     </t>
                                     <t t-elif="pump.status === 'atendido'">
                                         <div class="dispenser-padlock-panel atendido-green">
                                             <span class="padlock-icon">🔓</span>
-                                            <span class="padlock-text"><t t-esc="pump.statusText || 'ATENDIDO'"/></span>
-                                        </div>
-                                    </t>
-                                    <t t-elif="pump.status === 'postpago' || pump.status === 'dispensing'">
-                                        <div class="dispenser-padlock-panel unlocked-green">
-                                            <span class="padlock-icon">🔓</span>
-                                            <span class="padlock-text"><t t-esc="pump.statusText || 'POSTPAGO'"/></span>
+                                            <span class="padlock-text">LIBRE</span>
                                         </div>
                                     </t>
                                     <t t-else="">
-                                        <div class="dispenser-nozzle-panel">
-                                            <div class="nozzle-icon">⛽</div>
-                                            <span class="nozzle-text">LIBRE</span>
+                                        <div class="dispenser-padlock-panel blocked-red">
+                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
                                         </div>
                                     </t>
                                 </div>
@@ -357,11 +348,19 @@
                         </button>
                     </div>
 
-                    <div class="virtus-tpv-status-footer">
-                        <span>CAJA: <strong>A</strong></span>
-                        <span>TPV: <strong>1</strong></span>
-                        <span>TURNO: <strong>MAÑANA</strong></span>
-                        <span>USUARIO: <strong><t t-esc="pos.user ? pos.user.name.toUpperCase() : 'SUPERVISOR'"/></strong></span>
+                    <!-- BARRA DE SINCRONIZACIÓN AZUL VIRTUS -->
+                    <div class="virtus-sync-bar">
+                        <span>SYNC: 0</span>
+                    </div>
+
+                    <!-- PIE DE ESTADO DE DOS LÍNEAS VIRTUS -->
+                    <div class="virtus-tpv-status-footer-double">
+                        <div class="footer-line-1">
+                            CAJA: <strong>A</strong> | TPV: <strong>1</strong> | TURNO: <strong>MAÑANA</strong>
+                        </div>
+                        <div class="footer-line-2">
+                            USUARIO: <strong><t t-esc="pos.user ? pos.user.name.toUpperCase() : 'SUPERVISOR'"/></strong> | <t t-esc="currentDateTimeStr"/>
+                        </div>
                     </div>
 
                 </div>

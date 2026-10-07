@@ -1750,3 +1750,624 @@
 .btn-decimals-tool:hover {
     background: #bae6fd !important;
 }
+
+/* ==========================================================================
+   VIRTUSTPV EXACT REPLICA STYLING (PUMPS + KEYPAD)
+   ========================================================================== */
+
+/* Cuadrante de Surtidores (Izquierda) */
+.virtus-quadrant-pumps {
+    background: #ffffff !important;
+    border: 1px solid #94a3b8 !important;
+    border-radius: 2px !important;
+    padding: 6px !important;
+    overflow-y: auto !important;
+}
+
+.virtus-pumps-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px 10px !important;
+    align-content: flex-start !important;
+    padding: 4px 0 !important;
+    height: auto !important;
+}
+
+/* Poste Individual VirtusTPV (112px x 142px) */
+.aseproda-dispenser-box {
+    width: 110px !important;
+    height: 140px !important;
+    flex: 0 0 110px !important;
+    background: #ffffff !important;
+    border: 2px solid #dc2626 !important;
+    border-radius: 2px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    margin-right: 8px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
+    cursor: pointer !important;
+    transition: transform 0.1s ease !important;
+}
+.aseproda-dispenser-box:hover {
+    transform: translateY(-2px) !important;
+}
+.aseproda-dispenser-box.is-selected {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5) !important;
+}
+
+/* Pestaña superior azul con número */
+.aseproda-dispenser-box .dispenser-corner-tab {
+    position: absolute !important;
+    top: -1px !important;
+    left: -1px !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    padding: 1px 7px !important;
+    border-bottom-right-radius: 4px !important;
+    z-index: 2 !important;
+}
+
+/* Silueta lateral de manguera en el borde derecho */
+.aseproda-dispenser-box .dispenser-nozzle-handle {
+    position: absolute !important;
+    right: -7px !important;
+    top: 36px !important;
+    width: 7px !important;
+    height: 30px !important;
+    background: #0f172a !important;
+    border-radius: 0 3px 3px 0 !important;
+    z-index: 1 !important;
+}
+
+/* Display LCD superior (Blanco) */
+.aseproda-dispenser-box .dispenser-head {
+    height: 64px !important;
+    background: #ffffff !important;
+    padding: 2px 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+}
+
+.aseproda-dispenser-box .lcd-header-line {
+    display: flex !important;
+    justify-content: space-between !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    color: #475569 !important;
+    padding-left: 18px !important; /* Espacio para no tapar pestaña azul */
+}
+.aseproda-dispenser-box .lcd-header-line .f-code {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+.aseproda-dispenser-box .lcd-header-line .f-liters {
+    color: #0284c7 !important;
+    font-weight: 900 !important;
+}
+
+.aseproda-dispenser-box .lcd-price-main {
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    text-align: center !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.5px !important;
+}
+
+.aseproda-dispenser-box .lcd-black-strip {
+    background: #000000 !important;
+    color: #ffffff !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+    padding: 1px 0 !important;
+    margin: 0 -4px !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+}
+
+/* Cuerpo inferior Rojo con Candado Circular Metálico */
+.aseproda-dispenser-box .dispenser-lower-body {
+    height: 72px !important;
+    background: #e60000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+}
+
+.virtus-dial-lock {
+    width: 48px !important;
+    height: 48px !important;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)) !important;
+}
+
+/* Estado Atendido / Verde */
+.aseproda-dispenser-box.status-atendido {
+    border-color: #16a34a !important;
+}
+.aseproda-dispenser-box.status-atendido .dispenser-lower-body {
+    background: #16a34a !important;
+}
+.aseproda-dispenser-box.status-atendido .dispenser-padlock-panel.atendido-green {
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    font-size: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+/* Estado Ready / Cobrar */
+.aseproda-dispenser-box.status-ready {
+    border-color: #ea580c !important;
+}
+.aseproda-dispenser-box.status-ready .dispenser-lower-body {
+    background: #ea580c !important;
+}
+
+/* ------------------------------------------------------------
+   CUADRANTE DERECHO: TECLADO Y BILLETES REALISTAS VIRTUS
+   ------------------------------------------------------------ */
+.virtus-quadrant-keypad {
+    background: #ffffff !important;
+    border: 1px solid #94a3b8 !important;
+    border-radius: 2px !important;
+    padding: 4px !important;
+}
+
+.virtus-numpad-header {
+    height: 38px !important;
+    flex: 0 0 38px !important;
+}
+
+.lcd-value-display {
+    background: #ffffff !important;
+    border: 1px solid #64748b !important;
+    border-radius: 2px !important;
+    font-size: 20px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    padding: 0 10px !important;
+}
+
+.btn-numpad-tool {
+    background: #ffffff !important;
+    border: 1px solid #64748b !important;
+    border-radius: 2px !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+    font-size: 11px !important;
+}
+
+/* Billetes reales Euro */
+.bill-svg.bill-1e {
+    background-image: url('/pos_gas_station/static/src/img/euro_1.png') !important;
+    background-size: contain !important;
+    background-color: #ffffff !important;
+}
+.bill-svg.bill-5e {
+    background-image: url('/pos_gas_station/static/src/img/euro_5.png') !important;
+    background-size: 100% 100% !important;
+    background-color: #ffffff !important;
+}
+.bill-svg.bill-10e {
+    background-image: url('/pos_gas_station/static/src/img/euro_10.png') !important;
+    background-size: 100% 100% !important;
+    background-color: #ffffff !important;
+}
+.bill-svg.bill-20e {
+    background-image: url('/pos_gas_station/static/src/img/euro_20.png') !important;
+    background-size: 100% 100% !important;
+    background-color: #ffffff !important;
+}
+.bill-svg.bill-50e {
+    background-image: url('/pos_gas_station/static/src/img/euro_50.png') !important;
+    background-size: 100% 100% !important;
+    background-color: #ffffff !important;
+}
+.bill-svg.bill-100e {
+    background-image: url('/pos_gas_station/static/src/img/euro_100.png') !important;
+    background-size: 100% 100% !important;
+    background-color: #ffffff !important;
+}
+
+.fuel-matrix-btn {
+    background: #ffffff !important;
+    border: 1px solid #64748b !important;
+    border-radius: 2px !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+}
+.fuel-matrix-btn.active {
+    background: #dbeafe !important;
+    border: 2px solid #2563eb !important;
+    color: #1e3a8a !important;
+}
+
+/* Barra SYNC azul */
+.virtus-sync-bar {
+    height: 18px !important;
+    flex: 0 0 18px !important;
+    background: #337ab7 !important;
+    color: #ffffff !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Pie de dos líneas VirtusTPV */
+.virtus-tpv-status-footer-double {
+    height: 32px !important;
+    flex: 0 0 32px !important;
+    background: #172554 !important;
+    color: #ffffff !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    line-height: 1.2 !important;
+    border-radius: 2px !important;
+}
+.virtus-tpv-status-footer-double strong {
+    color: #60a5fa !important;
+}
+
+
+/* ==========================================================================
+   DEFINITIVE VIRTUSTPV THEME REPLICA - PUMPS & KEYPAD
+   ========================================================================== */
+
+/* CUADRANTE DE SURTIDORES */
+.virtus-quadrant-pumps {
+    flex: 1 1 68% !important;
+    background: #ffffff !important;
+    border: 1px solid #94a3b8 !important;
+    border-radius: 2px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 4px 6px !important;
+    overflow-y: auto !important;
+    position: relative !important;
+}
+
+.virtus-pumps-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px 12px !important;
+    align-content: flex-start !important;
+    padding: 4px 2px !important;
+    height: auto !important;
+}
+
+/* POSTE INDIVIDUAL VIRTUSTPV (108px x 136px) */
+.aseproda-dispenser-box {
+    width: 106px !important;
+    height: 136px !important;
+    flex: 0 0 106px !important;
+    background: #ffffff !important;
+    border: 2px solid #e60000 !important;
+    border-radius: 2px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    margin-right: 8px !important;
+    margin-bottom: 6px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+    cursor: pointer !important;
+    overflow: visible !important;
+}
+.aseproda-dispenser-box:hover {
+    transform: translateY(-2px) !important;
+}
+.aseproda-dispenser-box.is-selected {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.45) !important;
+}
+
+/* Pestaña superior izquierda con número de calle */
+.aseproda-dispenser-box .dispenser-corner-tab {
+    position: absolute !important;
+    top: -1px !important;
+    left: -1px !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    padding: 1px 7px !important;
+    border-bottom-right-radius: 4px !important;
+    z-index: 2 !important;
+}
+
+/* Silueta lateral de boquilla/manguera en el borde derecho */
+.aseproda-dispenser-box .dispenser-nozzle-handle {
+    position: absolute !important;
+    right: -7px !important;
+    top: 34px !important;
+    width: 7px !important;
+    height: 28px !important;
+    background: #0f172a !important;
+    border-radius: 0 3px 3px 0 !important;
+    z-index: 1 !important;
+}
+
+/* Display LCD superior blanco */
+.aseproda-dispenser-box .dispenser-head {
+    height: 60px !important;
+    background: #ffffff !important;
+    padding: 2px 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    border-bottom: 1px solid #94a3b8 !important;
+}
+
+.aseproda-dispenser-box .lcd-header-line {
+    display: flex !important;
+    justify-content: space-between !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    color: #334155 !important;
+    padding-left: 20px !important;
+}
+.aseproda-dispenser-box .lcd-header-line .f-code {
+    color: #000000 !important;
+    font-weight: 900 !important;
+}
+.aseproda-dispenser-box .lcd-header-line .f-liters {
+    color: #0284c7 !important;
+    font-weight: 900 !important;
+    font-family: Arial, sans-serif !important;
+}
+
+.aseproda-dispenser-box .lcd-price-main {
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    text-align: center !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.5px !important;
+    font-family: Arial, sans-serif !important;
+}
+
+.aseproda-dispenser-box .lcd-black-strip {
+    background: #000000 !important;
+    color: #ffffff !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+    padding: 1px 0 !important;
+    margin: 0 -4px !important;
+    letter-spacing: 0.3px !important;
+    text-transform: uppercase !important;
+}
+
+/* Cuerpo inferior rojo con candado circular y flecha verde */
+.aseproda-dispenser-box .dispenser-lower-body {
+    height: 72px !important;
+    background: #e60000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+}
+
+.virtus-dial-lock {
+    width: 44px !important;
+    height: 44px !important;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35)) !important;
+}
+
+/* Estados alternativos de pista */
+.aseproda-dispenser-box.status-atendido {
+    border-color: #16a34a !important;
+}
+.aseproda-dispenser-box.status-atendido .dispenser-lower-body {
+    background: #16a34a !important;
+}
+
+.aseproda-dispenser-box.status-ready {
+    border-color: #ea580c !important;
+}
+.aseproda-dispenser-box.status-ready .dispenser-lower-body {
+    background: #ea580c !important;
+}
+
+/* CUADRANTE DERECHO: TECLADO Y BILLETES REALES */
+.virtus-quadrant-keypad {
+    flex: 0 0 32% !important;
+    background: #ffffff !important;
+    border: 1px solid #94a3b8 !important;
+    border-radius: 2px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 3px !important;
+    gap: 3px !important;
+}
+
+.virtus-numpad-header {
+    display: flex !important;
+    gap: 3px !important;
+    height: 36px !important;
+    flex: 0 0 36px !important;
+}
+
+.lcd-value-display {
+    flex: 1 1 auto !important;
+    background: #ffffff !important;
+    border: 1px solid #64748b !important;
+    border-radius: 2px !important;
+    font-size: 20px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    padding: 0 8px !important;
+    cursor: pointer !important;
+}
+
+.btn-numpad-tool {
+    background: #ffffff !important;
+    border: 1px solid #64748b !important;
+    border-radius: 2px !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+    font-size: 11px !important;
+    cursor: pointer !important;
+    padding: 0 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.btn-numpad-tool:hover {
+    background: #f1f5f9 !important;
+}
+
+/* Billetes reales Euro */
+.matrix-bills-grid {
+    flex: 1 1 65% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: repeat(2, 1fr) !important;
+    gap: 2px !important;
+    height: 100% !important;
+}
+
+.matrix-bill-btn {
+    border-radius: 2px !important;
+    border: 1px solid #64748b !important;
+    background-size: 100% 100% !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-color: #ffffff !important;
+    cursor: pointer !important;
+    height: 44px !important;
+}
+.matrix-bill-btn:active {
+    transform: scale(0.97) !important;
+}
+
+.bill-svg.bill-1e {
+    background-image: url('/pos_gas_station/static/src/img/euro_1.png') !important;
+    background-size: contain !important;
+}
+.bill-svg.bill-5e {
+    background-image: url('/pos_gas_station/static/src/img/euro_5.png') !important;
+}
+.bill-svg.bill-10e {
+    background-image: url('/pos_gas_station/static/src/img/euro_10.png') !important;
+}
+.bill-svg.bill-20e {
+    background-image: url('/pos_gas_station/static/src/img/euro_20.png') !important;
+}
+.bill-svg.bill-50e {
+    background-image: url('/pos_gas_station/static/src/img/euro_50.png') !important;
+}
+.bill-svg.bill-100e {
+    background-image: url('/pos_gas_station/static/src/img/euro_100.png') !important;
+}
+
+.matrix-fuels-grid {
+    flex: 1 1 35% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-rows: repeat(2, 1fr) !important;
+    gap: 2px !important;
+    height: 100% !important;
+}
+
+.fuel-matrix-btn {
+    background: #ffffff !important;
+    border: 1px solid #64748b !important;
+    border-radius: 2px !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.fuel-matrix-btn:hover {
+    background: #f8fafc !important;
+}
+.fuel-matrix-btn.active {
+    background: #dbeafe !important;
+    border: 2px solid #2563eb !important;
+    color: #1e3a8a !important;
+}
+
+/* Fila de Acciones */
+.virtus-action-row {
+    flex: 0 0 34px !important;
+    display: grid !important;
+    grid-template-columns: 34px 34px 1.2fr 1.3fr !important;
+    gap: 2px !important;
+    height: 34px !important;
+}
+
+.btn-water-drop {
+    background: #ffffff !important;
+    border: 1px solid #64748b !important;
+    border-radius: 2px !important;
+    font-size: 16px !important;
+    cursor: pointer !important;
+}
+.btn-c-reset {
+    background: #ffffff !important;
+    border: 1px solid #64748b !important;
+    border-radius: 2px !important;
+    font-size: 14px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    cursor: pointer !important;
+}
+
+/* Barra SYNC azul */
+.virtus-sync-bar {
+    height: 16px !important;
+    flex: 0 0 16px !important;
+    background: #337ab7 !important;
+    color: #ffffff !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    letter-spacing: 0.5px !important;
+    border-radius: 2px !important;
+}
+
+/* Pie de dos líneas Virtus */
+.virtus-tpv-status-footer-double {
+    height: 28px !important;
+    flex: 0 0 28px !important;
+    background: #172554 !important;
+    color: #ffffff !important;
+    font-size: 8.5px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    line-height: 1.2 !important;
+    border-radius: 2px !important;
+}
+.virtus-tpv-status-footer-double strong {
+    color: #60a5fa !important;
+}

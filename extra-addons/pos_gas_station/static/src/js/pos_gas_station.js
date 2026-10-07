@@ -407,6 +407,12 @@ export class UtrecarMainScreen extends Component {
         return order.orderlines || [];
     }
 
+    get currentDateTimeStr() {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
     get currentTotalAmount() {
         const order = this.pos.get_order();
         if (!order) return 0.0;

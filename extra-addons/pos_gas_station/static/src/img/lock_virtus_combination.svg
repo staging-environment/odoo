@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <!-- Shackle Metallic Gradient -->
+    <linearGradient id="shackleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#94a3b8"/>
+      <stop offset="30%" stop-color="#f8fafc"/>
+      <stop offset="60%" stop-color="#cbd5e1"/>
+      <stop offset="100%" stop-color="#64748b"/>
+    </linearGradient>
+    <!-- Dial Outer Ring -->
+    <radialGradient id="outerRing" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="60%" stop-color="#0284c7"/>
+      <stop offset="90%" stop-color="#0369a1"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </radialGradient>
+    <!-- Inner Metallic Knob -->
+    <radialGradient id="innerKnob" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#cbd5e1"/>
+      <stop offset="85%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Metallic Padlock Shackle -->
+  <path d="M 28 42 L 28 24 C 28 12 62 12 62 24 L 62 42" 
+        fill="none" stroke="url(#shackleGrad)" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Dial Outer Body / Bezel -->
+  <circle cx="45" cy="58" r="28" fill="url(#outerRing)" stroke="#1e293b" stroke-width="2"/>
+  
+  <!-- Outer Bezel Notches -->
+  <circle cx="45" cy="58" r="25" fill="none" stroke="#e0f2fe" stroke-width="1.5" stroke-dasharray="3 3"/>
+  
+  <!-- Inner Metallic Knob -->
+  <circle cx="45" cy="58" r="16" fill="url(#innerKnob)" stroke="#334155" stroke-width="1.5"/>
+  <circle cx="45" cy="58" r="6" fill="#0284c7" stroke="#0369a1" stroke-width="1"/>
+
+  <!-- Top Red Indicator Dot -->
+  <polygon points="45,34 42,39 48,39" fill="#ef4444"/>
+
+  <!-- Neon Green Up Arrow on the right -->
+  <path d="M 80 62 L 80 44 M 74 50 L 80 42 L 86 50" 
+        fill="none" stroke="#22c55e" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
