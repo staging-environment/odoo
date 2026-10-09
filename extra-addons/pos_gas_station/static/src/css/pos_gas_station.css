@@ -3146,3 +3146,117 @@
 .btn-auth-confirm:active {
     transform: translateY(1px) !important;
 }
+
+
+/* ==========================================================================
+   PERFECT RESPONSIVE BILLS & FUELS MATRIX (ALL SCREEN SIZES & RATIOS)
+   ========================================================================== */
+
+/* 1. Proporciones y ancho inteligente del cuadrante derecho del teclado */
+.virtus-quadrant-keypad {
+    flex: 0 0 clamp(370px, 36%, 480px) !important;
+    min-width: 360px !important;
+    max-width: 520px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    overflow: hidden !important;
+}
+
+@media (max-width: 1440px) {
+    .virtus-quadrant-keypad {
+        flex: 0 0 38% !important;
+        min-width: 360px !important;
+    }
+}
+
+@media (max-width: 1150px) {
+    .virtus-quadrant-keypad {
+        flex: 0 0 42% !important;
+        min-width: 350px !important;
+    }
+}
+
+/* 2. Matriz central de billetes y combustibles con proporción armónica */
+.virtus-keypad-matrix {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    gap: 4px !important;
+    min-height: 120px !important;
+    max-height: 195px !important;
+    height: auto !important;
+    margin: auto 0 !important;
+    align-items: stretch !important;
+}
+
+/* 3. Rejilla de billetes (3 columnas = 60% del ancho) */
+.matrix-bills-grid {
+    flex: 3 3 60% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: repeat(2, 1fr) !important;
+    gap: 3px !important;
+    height: 100% !important;
+}
+
+/* 4. Rejilla de combustibles (2 columnas = 40% del ancho) */
+.matrix-fuels-grid {
+    flex: 2 2 40% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-rows: repeat(2, 1fr) !important;
+    gap: 3px !important;
+    height: 100% !important;
+}
+
+/* 5. Tecla de billete de euro: Proporción horizontal natural y llenado 100% */
+.matrix-bill-btn.bill-img-tile {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 52px !important;
+    max-height: 92px !important;
+    border-radius: 3px !important;
+    border: 1px solid #334155 !important;
+    background-size: 100% 100% !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+.matrix-bill-btn.bill-img-tile:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
+    transform: scale(1.02) !important;
+    z-index: 2 !important;
+}
+.matrix-bill-btn.bill-img-tile:active {
+    transform: scale(0.97) !important;
+}
+
+/* 6. Tecla de combustible: Mismo tamaño y proporción equilibrada */
+.fuel-matrix-btn {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 52px !important;
+    max-height: 92px !important;
+    background: #ffffff !important;
+    border: 1px solid #334155 !important;
+    border-radius: 3px !important;
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+    transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+.fuel-matrix-btn:hover {
+    background: #f8fafc !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+    transform: scale(1.02) !important;
+}
+.fuel-matrix-btn:active {
+    transform: scale(0.97) !important;
+}
