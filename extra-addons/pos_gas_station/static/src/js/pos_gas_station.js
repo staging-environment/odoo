@@ -1063,7 +1063,8 @@ export class UtrecarMainScreen extends Component {
 
                     if (isMoney) {
                         targetTotal = presetVal;
-                        qty = parseFloat((presetVal / currentFuelPrice).toFixed(2));
+                        // Usar 3 decimales para litros (mililitros en combustible) para evitar saltos de céntimo
+                        qty = parseFloat((presetVal / currentFuelPrice).toFixed(3));
                         if (qty <= 0) qty = 1;
                     } else {
                         qty = presetVal;
@@ -1073,6 +1074,7 @@ export class UtrecarMainScreen extends Component {
                     const unitPrice = this.getNetPriceForTargetTotal(product, targetTotal, qty, currentOrder);
 
                     const existingLine = currentOrder.get_orderlines().find(l => l.pump_id === pumpId || (l.customerNote && l.customerNote.includes(`Calle ${pumpId}`)));
+                    let activeLine = existingLine;
                     if (existingLine) {
                         existingLine.set_quantity(qty);
                         existingLine.set_unit_price(unitPrice);
@@ -1087,10 +1089,20 @@ export class UtrecarMainScreen extends Component {
                                 fuel_display_price: currentFuelPrice
                             }
                         });
-                        const lastLine = currentOrder.get_last_orderline();
-                        if (lastLine) {
-                            lastLine.pump_id = pumpId;
-                            lastLine.fuel_display_price = currentFuelPrice;
+                        activeLine = currentOrder.get_last_orderline();
+                        if (activeLine) {
+                            activeLine.pump_id = pumpId;
+                            activeLine.fuel_display_price = currentFuelPrice;
+                        }
+                    }
+
+                    // Blindaje milimétrico de redondeo: garantiza que el importe sea exactamente presetVal (sin .01 ni .99)
+                    if (activeLine && targetTotal > 0) {
+                        const currentDisp = activeLine.get_display_price();
+                        const diff = Math.round((targetTotal - currentDisp) * 100) / 100;
+                        if (Math.abs(diff) >= 0.01) {
+                            const curQty = activeLine.get_quantity() || 1;
+                            activeLine.set_unit_price(activeLine.get_unit_price() + (diff / curQty));
                         }
                     }
 
@@ -1162,6 +1174,7 @@ export class UtrecarMainScreen extends Component {
                 const fuelPvp = pump.price || (targetTotal / targetQty);
 
                 const existingLine = currentOrder.get_orderlines().find(l => l.pump_id === pump.id || (l.customerNote && l.customerNote.includes(`Calle ${pump.id}`)));
+                let activeLine = existingLine;
                 if (existingLine) {
                     existingLine.set_quantity(targetQty);
                     existingLine.set_unit_price(unitPrice);
@@ -1176,10 +1189,20 @@ export class UtrecarMainScreen extends Component {
                             fuel_display_price: fuelPvp
                         }
                     });
-                    const lastLine = currentOrder.get_last_orderline();
-                    if (lastLine) {
-                        lastLine.pump_id = pump.id;
-                        lastLine.fuel_display_price = fuelPvp;
+                    activeLine = currentOrder.get_last_orderline();
+                    if (activeLine) {
+                        activeLine.pump_id = pump.id;
+                        activeLine.fuel_display_price = fuelPvp;
+                    }
+                }
+
+                // Blindaje milimétrico de redondeo: garantiza que el importe coincida exactamente con la bomba
+                if (activeLine && targetTotal > 0) {
+                    const currentDisp = activeLine.get_display_price();
+                    const diff = Math.round((targetTotal - currentDisp) * 100) / 100;
+                    if (Math.abs(diff) >= 0.01) {
+                        const curQty = activeLine.get_quantity() || 1;
+                        activeLine.set_unit_price(activeLine.get_unit_price() + (diff / curQty));
                     }
                 }
                 if (this.state.vehiclePlate) {

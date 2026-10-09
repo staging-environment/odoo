@@ -3484,15 +3484,17 @@
 
 .dispenser-prepay-coin {
     position: absolute !important;
-    top: -15px !important;
-    left: 54px !important;
+    top: -14px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
     z-index: 35 !important;
-    width: 30px !important;
-    height: 30px !important;
+    width: 28px !important;
+    height: 28px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     pointer-events: none !important;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45)) !important;
     animation: coin-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 
