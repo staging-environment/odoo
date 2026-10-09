@@ -1727,50 +1727,55 @@
     color: #64748b !important;
 }
 
-/* 2. CALCULADORA (MÁS PEQUEÑA Y ERGONÓMICA) */
+/* 2. CALCULADORA (MÁS PEQUEÑA Y BIEN MAQUETADA) */
 .pos .payment-screen .center-content .numpad {
     flex-grow: 0 !important;
     flex: 0 0 auto !important;
     max-width: 480px !important;
     width: 100% !important;
-    margin: 8px auto 16px auto !important;
+    margin: 12px auto 20px auto !important;
     background: #ffffff !important;
-    padding: 10px !important;
-    border-radius: 12px !important;
+    padding: 12px !important;
+    border-radius: 14px !important;
     border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 8px !important;
+    gap: 10px !important;
 }
 
 .pos .payment-screen .center-content .numpad button {
-    height: 56px !important;
-    min-height: 56px !important;
-    max-height: 56px !important;
-    font-size: 22px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+    height: 62px !important;
+    min-height: 62px !important;
+    max-height: 62px !important;
+    font-size: 24px !important;
     font-weight: 800 !important;
     color: #1e293b !important;
-    background: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 8px !important;
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 10px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 0 !important;
     margin: 0 !important;
     cursor: pointer !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
     transition: all 0.1s ease !important;
 }
 
 .pos .payment-screen .center-content .numpad button:hover {
-    background: #e2e8f0 !important;
-    border-color: #cbd5e1 !important;
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+    transform: translateY(-1px) !important;
 }
 
 .pos .payment-screen .center-content .numpad button:active {
-    background: #cbd5e1 !important;
+    background: #e2e8f0 !important;
+    transform: translateY(1px) !important;
 }
 
 /* Botones de incremento rápido (+10, +20, +50) */
@@ -1778,26 +1783,28 @@
 .pos .payment-screen .center-content .numpad button:nth-child(8),
 .pos .payment-screen .center-content .numpad button:nth-child(12) {
     background: #eff6ff !important;
-    color: #2563eb !important;
-    border-color: #bfdbfe !important;
-    font-size: 19px !important;
+    color: #1d4ed8 !important;
+    border-color: #93c5fd !important;
+    font-size: 20px !important;
     font-weight: 900 !important;
 }
 .pos .payment-screen .center-content .numpad button:nth-child(4):hover,
 .pos .payment-screen .center-content .numpad button:nth-child(8):hover,
 .pos .payment-screen .center-content .numpad button:nth-child(12):hover {
     background: #dbeafe !important;
+    border-color: #60a5fa !important;
 }
 
 /* Botón de borrar (Backspace) */
 .pos .payment-screen .center-content .numpad button:nth-child(16) {
     background: #fef2f2 !important;
     color: #dc2626 !important;
-    border-color: #fecaca !important;
-    font-size: 20px !important;
+    border-color: #fca5a5 !important;
+    font-size: 22px !important;
 }
 .pos .payment-screen .center-content .numpad button:nth-child(16):hover {
     background: #fee2e2 !important;
+    border-color: #f87171 !important;
 }
 
 /* TRACK MODE SWITCH HEADER */
