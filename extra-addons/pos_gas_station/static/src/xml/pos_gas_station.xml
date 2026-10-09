@@ -560,10 +560,10 @@
                     <button class="btn-virtus-pay btn-pay-noprint" 
                             t-att-class="{ 'disabled-action': !currentOrder.is_paid() }" 
                             t-on-click="() => this.validateVirtusNoPrint()"
-                            title="Cobro rápido sin imprimir">
-                        <div class="pay-icon">⚡</div>
+                            title="Guardar venta sin imprimir ticket">
+                        <div class="pay-icon">💾</div>
                         <div class="pay-details">
-                            <strong>RÁPIDO</strong>
+                            <strong>GUARDAR</strong>
                             <span>Sin Ticket</span>
                         </div>
                     </button>
