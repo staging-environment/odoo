@@ -1617,16 +1617,187 @@
     background: #e0f2fe !important;
 }
 
-.pos .payment-screen .center-content {
-    background: #f1f5f9 !important;
+/* Barra superior de cabecera en Cobro */
+.utrecar-payment-top-bar {
+    background: #ffffff !important;
+    min-height: 70px !important;
+    padding: 10px 24px !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
+}
+.utrecar-payment-top-bar .utrecar-back-btn {
+    padding: 12px 24px !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+}
+.utrecar-payment-top-bar h3 {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
 }
 
-.pos .payment-screen .payment-status {
+/* Área central de Cobro */
+.pos .payment-screen .center-content {
+    background: #f1f5f9 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    padding: 8px 12px !important;
+}
+
+/* 1. VISOR / BARRA DE ARRIBA DE IMPORTES (MÁS GRANDE Y DESTACADA) */
+.pos .payment-screen .paymentlines-container {
     background: #ffffff !important;
+    border-radius: 10px !important;
+    padding: 20px 28px !important;
+    margin: 8px 6px 14px 6px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    min-height: 105px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+}
+
+.pos .payment-screen .payment-status-container {
+    align-items: center !important;
+}
+
+.pos .payment-screen .payment-status-remaining {
+    display: flex !important;
+    align-items: baseline !important;
+    gap: 8px !important;
+}
+.pos .payment-screen .payment-status-remaining .label {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+}
+.pos .payment-screen .payment-status-remaining .amount {
+    font-size: 32px !important;
+    font-weight: 900 !important;
+    color: #0f172a !important;
+}
+.pos .payment-screen .payment-status-remaining .amount.highlight {
+    color: #dc2626 !important;
+}
+
+.pos .payment-screen .payment-status-total-due {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    padding-top: 4px !important;
+}
+.pos .payment-screen .payment-status-total-due span:last-child {
+    font-size: 19px !important;
+    font-weight: 800 !important;
+    color: #334155 !important;
+    margin-left: 6px !important;
+}
+
+.pos .payment-screen .payment-status-change {
+    background: #f0fdf4 !important;
+    border: 1.5px solid #86efac !important;
     border-radius: 8px !important;
-    padding: 12px 16px !important;
-    margin-bottom: 8px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    padding: 8px 18px !important;
+    display: flex !important;
+    align-items: baseline !important;
+    gap: 10px !important;
+}
+.pos .payment-screen .payment-status-change .label {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #166534 !important;
+}
+.pos .payment-screen .payment-status-change .amount {
+    font-size: 36px !important;
+    font-weight: 900 !important;
+    color: #15803d !important;
+}
+
+.pos .payment-screen .paymentlines-empty .total {
+    font-size: 3.5rem !important;
+    font-weight: 900 !important;
+    color: #1e3a8a !important;
+    text-shadow: none !important;
+}
+.pos .payment-screen .paymentlines-empty .message {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+}
+
+/* 2. CALCULADORA (MÁS PEQUEÑA Y ERGONÓMICA) */
+.pos .payment-screen .center-content .numpad {
+    flex-grow: 0 !important;
+    flex: 0 0 auto !important;
+    max-width: 480px !important;
+    width: 100% !important;
+    margin: 8px auto 16px auto !important;
+    background: #ffffff !important;
+    padding: 10px !important;
+    border-radius: 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+}
+
+.pos .payment-screen .center-content .numpad button {
+    height: 56px !important;
+    min-height: 56px !important;
+    max-height: 56px !important;
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    color: #1e293b !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    transition: all 0.1s ease !important;
+}
+
+.pos .payment-screen .center-content .numpad button:hover {
+    background: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+}
+
+.pos .payment-screen .center-content .numpad button:active {
+    background: #cbd5e1 !important;
+}
+
+/* Botones de incremento rápido (+10, +20, +50) */
+.pos .payment-screen .center-content .numpad button:nth-child(4),
+.pos .payment-screen .center-content .numpad button:nth-child(8),
+.pos .payment-screen .center-content .numpad button:nth-child(12) {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+    border-color: #bfdbfe !important;
+    font-size: 19px !important;
+    font-weight: 900 !important;
+}
+.pos .payment-screen .center-content .numpad button:nth-child(4):hover,
+.pos .payment-screen .center-content .numpad button:nth-child(8):hover,
+.pos .payment-screen .center-content .numpad button:nth-child(12):hover {
+    background: #dbeafe !important;
+}
+
+/* Botón de borrar (Backspace) */
+.pos .payment-screen .center-content .numpad button:nth-child(16) {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+    border-color: #fecaca !important;
+    font-size: 20px !important;
+}
+.pos .payment-screen .center-content .numpad button:nth-child(16):hover {
+    background: #fee2e2 !important;
 }
 
 /* TRACK MODE SWITCH HEADER */
