@@ -1082,9 +1082,8 @@ patch(PaymentScreen.prototype, {
     async validateVirtusInvoice() {
         this.ensureOrderPaid();
         if (!this.currentOrder.get_partner()) {
-            const { confirmed } = await this.pos.showScreen("PartnerListScreen");
-            if (!confirmed || !this.currentOrder.get_partner()) {
-                alert("Para emitir Factura es obligatorio asignar o registrar un cliente con NIF/CIF.");
+            await this.selectPartner();
+            if (!this.currentOrder.get_partner()) {
                 return;
             }
         }
