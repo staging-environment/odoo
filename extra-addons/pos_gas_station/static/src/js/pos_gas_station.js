@@ -820,7 +820,10 @@ export class UtrecarMainScreen extends Component {
         return p;
     }
 
-    async authorizePreset() {
+    async authorizePreset(targetPumpId = null) {
+        if (targetPumpId) {
+            this.state.selectedPumpId = targetPumpId;
+        }
         const pumpId = this.state.selectedPumpId || 1;
         const targetPump = this.state.pumps.find(p => p.id === pumpId);
 

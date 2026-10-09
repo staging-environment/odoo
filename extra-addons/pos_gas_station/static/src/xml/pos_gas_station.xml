@@ -98,9 +98,6 @@
                             <button class="tool-btn btn-trash-red" title="Borrar línea seleccionada" t-on-click="() => this.deleteSelectedLine()">
                                 🗑 BORRAR
                             </button>
-                            <button class="tool-btn btn-discount" title="Descuentos" t-on-click="() => this.applyQuickDiscount()">
-                                % DTO
-                            </button>
                             <button class="tool-btn btn-history" title="Historial de turno / Devoluciones" t-on-click="() => this.openRefundScreen()">
                                 ⏱ Historial
                             </button>
@@ -261,7 +258,7 @@
                                     </div>
                                 </div>
 
-                                <!-- Cuerpo inferior (Verde en atendido/postpago, Rojo en prepago/bloqueado) -->
+                                <!-- Cuerpo inferior: Cobrar si terminado, Suministro si echando, Autorizar para despacho -->
                                 <div class="dispenser-lower-body">
                                     <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
                                         <button class="btn-virtus-pasar-ticket" t-on-click.stop="() => this.onPumpClick(pump)">
@@ -269,15 +266,17 @@
                                             <strong>COBRAR</strong>
                                         </button>
                                     </t>
-                                    <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || (pump.status === 'idle' &amp;&amp; state.trackMode === 'atendido')">
-                                        <div class="dispenser-padlock-panel atendido-green">
-                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔓" />
+                                    <t t-elif="pump.status === 'dispensing'">
+                                        <div class="dispenser-dispensing-panel">
+                                            <span class="dispensing-anim">⛽</span>
+                                            <strong>SUMINISTRO</strong>
                                         </div>
                                     </t>
                                     <t t-else="">
-                                        <div class="dispenser-padlock-panel blocked-red">
-                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
-                                        </div>
+                                        <button class="btn-virtus-autorizar-pump" t-on-click.stop="() => this.authorizePreset(pump.id)" t-attf-title="Autorizar Calle #{pump.id}">
+                                            <div class="icon-auth">⚡</div>
+                                            <strong>AUTORIZAR</strong>
+                                        </button>
                                     </t>
                                 </div>
                             </div>
@@ -335,15 +334,11 @@
 
                     <div class="virtus-action-row">
                         <button class="btn-action-tile btn-water-drop" t-on-click="() => this.toggleMode()" title="Conmutar Litros/Euros">
-                            💧
+                            💧 <t t-esc="state.mode === 'money' ? 'MODO €' : 'MODO L'"/>
                         </button>
                         <button class="btn-action-tile btn-c-reset" t-on-click="() => this.clearPreset()" title="Borrar prefijado">
-                            C
+                            C LIMPIAR
                         </button>
-                        <button class="btn-action-tile btn-auth-green" t-on-click="() => this.authorizePreset()" title="Autorizar calle seleccionada">
-                            AUTORIZAR <t t-if="state.selectedPumpId">CALLE <t t-esc="state.selectedPumpId"/></t>
-                        </button>
-
                     </div>
 
                     <!-- BARRA DE SINCRONIZACIÓN AZUL VIRTUS -->

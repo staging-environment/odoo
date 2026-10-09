@@ -740,7 +740,7 @@
 .virtus-action-row {
     flex: 0 0 36px !important;
     display: grid !important;
-    grid-template-columns: 34px 34px 1fr !important;
+    grid-template-columns: 1.1fr 1fr !important;
     gap: 3px !important;
     height: 36px !important;
 }
@@ -2507,7 +2507,7 @@
 .virtus-action-row {
     flex: 0 0 34px !important;
     display: grid !important;
-    grid-template-columns: 34px 34px 1fr !important;
+    grid-template-columns: 1.1fr 1fr !important;
     gap: 2px !important;
     height: 34px !important;
 }
@@ -2789,4 +2789,63 @@
 }
 .track-prepago .aseproda-dispenser-box.status-idle .dispenser-lower-body {
     background: #dc2626 !important;
+}
+
+
+/* BOTON AUTORIZAR INTEGRADO EN CADA PISTA */
+.btn-virtus-autorizar-pump {
+    width: 90% !important;
+    height: 82% !important;
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+    border-radius: 4px !important;
+    font-weight: 900 !important;
+    font-size: 11px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.28) !important;
+    transition: all 0.15s ease !important;
+    user-select: none !important;
+}
+.btn-virtus-autorizar-pump .icon-auth {
+    font-size: 13px !important;
+    line-height: 1 !important;
+}
+.btn-virtus-autorizar-pump:hover {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 3px 8px rgba(22, 163, 74, 0.5) !important;
+}
+.btn-virtus-autorizar-pump:active {
+    transform: scale(0.97) !important;
+    filter: brightness(0.9) !important;
+}
+
+.dispenser-dispensing-panel {
+    width: 90% !important;
+    height: 82% !important;
+    background: #15803d !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 4px !important;
+    font-weight: 900 !important;
+    font-size: 10px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    animation: ready-pulse 1.2s infinite alternate !important;
+}
+.dispenser-dispensing-panel .dispensing-anim {
+    font-size: 14px !important;
+    line-height: 1 !important;
 }
