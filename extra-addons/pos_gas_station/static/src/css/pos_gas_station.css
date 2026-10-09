@@ -1727,31 +1727,31 @@
     color: #64748b !important;
 }
 
-/* 2. CALCULADORA (MÁS PEQUEÑA Y BIEN MAQUETADA) */
+/* 2. CALCULADORA (MÁS AMPLIA Y ERGONÓMICA) */
 .pos .payment-screen .center-content .numpad {
     flex-grow: 0 !important;
     flex: 0 0 auto !important;
-    max-width: 480px !important;
-    width: 100% !important;
-    margin: 12px auto 20px auto !important;
+    max-width: 680px !important;
+    width: 96% !important;
+    margin: 12px auto 24px auto !important;
     background: #ffffff !important;
-    padding: 12px !important;
+    padding: 16px !important;
     border-radius: 14px !important;
     border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06) !important;
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 10px !important;
+    gap: 12px !important;
 }
 
 .pos .payment-screen .center-content .numpad button {
     width: 100% !important;
     max-width: 100% !important;
     flex: 1 1 auto !important;
-    height: 62px !important;
-    min-height: 62px !important;
-    max-height: 62px !important;
-    font-size: 24px !important;
+    height: 78px !important;
+    min-height: 78px !important;
+    max-height: 78px !important;
+    font-size: 28px !important;
     font-weight: 800 !important;
     color: #1e293b !important;
     background: #ffffff !important;
@@ -1785,7 +1785,7 @@
     background: #eff6ff !important;
     color: #1d4ed8 !important;
     border-color: #93c5fd !important;
-    font-size: 20px !important;
+    font-size: 23px !important;
     font-weight: 900 !important;
 }
 .pos .payment-screen .center-content .numpad button:nth-child(4):hover,
@@ -1800,7 +1800,7 @@
     background: #fef2f2 !important;
     color: #dc2626 !important;
     border-color: #fca5a5 !important;
-    font-size: 22px !important;
+    font-size: 24px !important;
 }
 .pos .payment-screen .center-content .numpad button:nth-child(16):hover {
     background: #fee2e2 !important;
