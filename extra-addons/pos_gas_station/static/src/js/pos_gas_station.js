@@ -838,6 +838,15 @@ export class UtrecarMainScreen extends Component {
         const isMoney = this.state.mode === "money";
         const presetVal = this.state.presetValue;
 
+        // Confirmación requerida antes de autorizar el surtidor
+        const confirmMsg = presetVal > 0
+            ? `¿Desea autorizar la Calle ${pumpId}?\n\n• Importe: ${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}\n• Producto: ${fuelName}`
+            : `¿Desea autorizar la Calle ${pumpId} para suministro libre (sin prefijado)?`;
+
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+
         if (targetPump) {
             targetPump.status = "dispensing";
             targetPump.statusText = "AUTORIZADO";

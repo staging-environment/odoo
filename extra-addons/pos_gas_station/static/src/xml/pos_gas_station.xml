@@ -272,11 +272,21 @@
                                             <strong>SUMINISTRO</strong>
                                         </div>
                                     </t>
+                                    <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || (pump.status === 'idle' &amp;&amp; state.trackMode === 'atendido')">
+                                        <div class="dispenser-padlock-panel atendido-green">
+                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔓" />
+                                            <button class="btn-pump-authorize-action" t-on-click.stop="() => this.authorizePreset(pump.id)" t-attf-title="Autorizar Calle #{pump.id}">
+                                                AUTORIZAR
+                                            </button>
+                                        </div>
+                                    </t>
                                     <t t-else="">
-                                        <button class="btn-virtus-autorizar-pump" t-on-click.stop="() => this.authorizePreset(pump.id)" t-attf-title="Autorizar Calle #{pump.id}">
-                                            <div class="icon-auth">⚡</div>
-                                            <strong>AUTORIZAR</strong>
-                                        </button>
+                                        <div class="dispenser-padlock-panel blocked-red">
+                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
+                                            <button class="btn-pump-authorize-action" t-on-click.stop="() => this.authorizePreset(pump.id)" t-attf-title="Autorizar Calle #{pump.id}">
+                                                AUTORIZAR
+                                            </button>
+                                        </div>
                                     </t>
                                 </div>
                             </div>
