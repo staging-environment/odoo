@@ -3463,3 +3463,53 @@
 .btn-cancel-modal-action:active {
     transform: translateY(1px) !important;
 }
+
+
+/* ==========================================================================
+   MONEDA DE PREPAGO ENCIMA DEL SURTIDOR (VIRTUSTPV COIN BADGE)
+   ========================================================================== */
+
+.virtus-quadrant-pumps {
+    padding-top: 18px !important;
+}
+
+.virtus-pumps-row {
+    padding-top: 14px !important;
+    overflow: visible !important;
+}
+
+.aseproda-dispenser-box {
+    overflow: visible !important;
+}
+
+.dispenser-prepay-coin {
+    position: absolute !important;
+    top: -15px !important;
+    left: 54px !important;
+    z-index: 35 !important;
+    width: 30px !important;
+    height: 30px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    pointer-events: none !important;
+    animation: coin-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+@keyframes coin-pop {
+    0% {
+        transform: translateY(10px) scale(0.3);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.prepay-coin-svg {
+    width: 30px !important;
+    height: 30px !important;
+    display: block !important;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45)) !important;
+}

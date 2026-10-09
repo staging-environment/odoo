@@ -235,6 +235,36 @@
                             <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
                                  t-on-click="() => this.onPumpCardClick(pump)">
                                 
+                                <!-- MONEDA DE PREPAGO FLOTANTE ENCIMA DEL SURTIDOR -->
+                                <t t-if="shouldShowPrepayCoin(pump)">
+                                    <div class="dispenser-prepay-coin" title="Surtidor con importe prepagado">
+                                        <svg viewBox="0 0 36 36" width="30" height="30" class="prepay-coin-svg">
+                                            <defs>
+                                                <radialGradient id="coinGoldGrad" cx="35%" cy="35%" r="65%">
+                                                    <stop offset="0%" stop-color="#fffbeb"/>
+                                                    <stop offset="30%" stop-color="#fde047"/>
+                                                    <stop offset="70%" stop-color="#ca8a04"/>
+                                                    <stop offset="100%" stop-color="#854d0e"/>
+                                                </radialGradient>
+                                                <radialGradient id="coinSilverGrad" cx="35%" cy="35%" r="65%">
+                                                    <stop offset="0%" stop-color="#ffffff"/>
+                                                    <stop offset="45%" stop-color="#e2e8f0"/>
+                                                    <stop offset="100%" stop-color="#94a3b8"/>
+                                                </radialGradient>
+                                                <filter id="coinDropShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                                    <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.4"/>
+                                                </filter>
+                                            </defs>
+                                            <!-- Borde exterior dorado -->
+                                            <circle cx="18" cy="18" r="16" fill="url(#coinGoldGrad)" filter="url(#coinDropShadow)" stroke="#78350f" stroke-width="0.8"/>
+                                            <circle cx="18" cy="18" r="14.8" fill="none" stroke="#fef08a" stroke-width="0.5" stroke-dasharray="1 1.2"/>
+                                            <!-- Núcleo plateado -->
+                                            <circle cx="18" cy="18" r="11" fill="url(#coinSilverGrad)" stroke="#64748b" stroke-width="0.6"/>
+                                            <!-- Símbolo euro en relieve -->
+                                            <text x="13" y="22.5" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="900" fill="#1e293b" letter-spacing="-0.5">€</text>
+                                        </svg>
+                                    </div>
+                                </t>
                                 <!-- Pestana superior azul con numero de calle -->
                                 <div class="dispenser-corner-tab"><t t-esc="pump.id"/></div>
                                 

@@ -507,8 +507,9 @@ export class UtrecarMainScreen extends Component {
                 if (data.pumps && Array.isArray(data.pumps)) {
                     data.pumps.forEach(p => {
                         if (this.state.pumpPresets && this.state.pumpPresets[p.id]) {
-                            if (p.status === "dispensing") {
+                            if (p.status === "dispensing" || p.status === "ready") {
                                 p.preset_amount = this.state.pumpPresets[p.id].amount;
+                                p.has_prepay = true;
                                 if (!p.fuel || p.fuel === "N/A") {
                                     p.fuel = this.state.pumpPresets[p.id].fuel;
                                 }
@@ -747,6 +748,21 @@ export class UtrecarMainScreen extends Component {
         this.closeStoreModal();
     }
 
+    shouldShowPrepayCoin(pump) {
+        if (!pump) return false;
+        if (pump.status === "idle" || pump.status === "blocked") return false;
+
+        const hasPresetStored = Boolean(this.state.pumpPresets && this.state.pumpPresets[pump.id] && this.state.pumpPresets[pump.id].amount > 0);
+        const hasPresetAmount = Boolean((pump.preset_amount && pump.preset_amount > 0) || pump.has_prepay);
+
+        if (pump.status === "dispensing" || pump.status === "ready") {
+            if (hasPresetStored || hasPresetAmount || this.state.trackMode === "prepago") {
+                return true;
+            }
+        }
+        return false;
+    }
+
     getPumpPresetAmount(pump) {
         if (!pump) return 0;
         if (pump.preset_amount && pump.preset_amount > 0) return pump.preset_amount;
@@ -977,6 +993,7 @@ export class UtrecarMainScreen extends Component {
             targetPump.statusText = "AUTORIZADO";
             targetPump.fuel = fuelName;
             targetPump.preset_amount = presetVal;
+            targetPump.has_prepay = Boolean(presetVal > 0 || this.state.trackMode === "prepago");
             if (presetVal > 0) {
                 targetPump.amount = isMoney ? presetVal : 0;
                 targetPump.liters = !isMoney ? presetVal : 0;
@@ -1087,6 +1104,11 @@ export class UtrecarMainScreen extends Component {
                 pump.statusText = "LIBRE";
                 pump.amount = 0;
                 pump.liters = 0;
+                pump.has_prepay = false;
+                pump.preset_amount = 0;
+                if (this.state.pumpPresets) {
+                    delete this.state.pumpPresets[pump.id];
+                }
                 try {
                     await jsonrpc("/pos_gas_station/clear_pump", {
                         config_id: this.configId,
