@@ -536,7 +536,7 @@
             <div class="utrecar-payment-actions-wrapper p-2 bg-light border-top">
                 <div class="utrecar-payment-actions-grid mb-2">
                     <button class="btn-virtus-pay btn-pay-ticket" 
-                            t-att-class="{ 'disabled-action': !currentOrder.is_paid() }" 
+                             
                             t-on-click="() => this.validateVirtusTicket()"
                             title="Cobrar e imprimir ticket">
                         <div class="pay-icon">🖨</div>
@@ -547,7 +547,7 @@
                     </button>
 
                     <button class="btn-virtus-pay btn-pay-invoice" 
-                            t-att-class="{ 'disabled-action': !currentOrder.is_paid() }" 
+                             
                             t-on-click="() => this.validateVirtusInvoice()"
                             title="Cobrar y emitir Factura con NIF/CIF">
                         <div class="pay-icon">📄</div>
@@ -558,7 +558,7 @@
                     </button>
 
                     <button class="btn-virtus-pay btn-pay-noprint" 
-                            t-att-class="{ 'disabled-action': !currentOrder.is_paid() }" 
+                             
                             t-on-click="() => this.validateVirtusNoPrint()"
                             title="Guardar venta sin imprimir ticket">
                         <div class="pay-icon">💾</div>
@@ -570,7 +570,7 @@
                 </div>
                 
                 <button class="btn-virtus-pay-standard w-100" 
-                        t-att-class="{ 'disabled-action': !currentOrder.is_paid() }" 
+                         
                         t-on-click="() => this.validateOrder()">
                     <i class="fa fa-check-circle me-2"/>
                     <span>VALIDAR COBRO</span>

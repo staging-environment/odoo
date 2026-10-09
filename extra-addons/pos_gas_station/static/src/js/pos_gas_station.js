@@ -1023,20 +1023,46 @@ ProductScreen.components = {
 };
 
 patch(PaymentScreen.prototype, {
-    async validateVirtusTicket() {
-        if (!this.currentOrder.is_paid()) {
-            alert("El pedido aún no está totalmente pagado. Seleccione el medio de pago (Efectivo / Tarjeta).");
-            return;
+    setup() {
+        super.setup(...arguments);
+        onMounted(() => {
+            // Auto-asignar método de pago por defecto (Efectivo) para permitir cobro inmediato sin calculadora
+            if (this.currentOrder && this.currentOrder.get_paymentlines().length === 0 && this.payment_methods_from_config.length > 0) {
+                const defaultPm = this.payment_methods_from_config.find(m => m.is_cash_count || (m.name && m.name.toLowerCase().includes("efectivo")))
+                                  || this.payment_methods_from_config[0];
+                if (defaultPm) {
+                    this.addNewPaymentLine(defaultPm);
+                }
+            }
+        });
+    },
+
+    ensureOrderPaid() {
+        if (!this.currentOrder) return false;
+        if (this.currentOrder.is_paid()) return true;
+
+        const due = this.currentOrder.get_due();
+        if (due > 0) {
+            const defaultPm = this.payment_methods_from_config.find(m => m.is_cash_count || (m.name && m.name.toLowerCase().includes("efectivo")))
+                              || this.payment_methods_from_config[0];
+            const existingLine = this.selectedPaymentLine || this.currentOrder.get_paymentlines()[0];
+            if (existingLine) {
+                existingLine.set_amount(existingLine.get_amount() + due);
+            } else if (defaultPm) {
+                this.addNewPaymentLine(defaultPm);
+            }
         }
+        return this.currentOrder.is_paid();
+    },
+
+    async validateVirtusTicket() {
+        this.ensureOrderPaid();
         this.currentOrder.set_to_invoice(false);
         await this.validateOrder(false);
     },
 
     async validateVirtusInvoice() {
-        if (!this.currentOrder.is_paid()) {
-            alert("El pedido aún no está totalmente pagado. Seleccione el medio de pago (Efectivo / Tarjeta).");
-            return;
-        }
+        this.ensureOrderPaid();
         if (!this.currentOrder.get_partner()) {
             const { confirmed } = await this.pos.showScreen("PartnerListScreen");
             if (!confirmed || !this.currentOrder.get_partner()) {
@@ -1049,11 +1075,13 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusNoPrint() {
-        if (!this.currentOrder.is_paid()) {
-            alert("El pedido aún no está totalmente pagado. Seleccione el medio de pago (Efectivo / Tarjeta).");
-            return;
-        }
+        this.ensureOrderPaid();
         this.currentOrder.set_to_invoice(false);
         await this.validateOrder(false);
+    },
+
+    async validateOrder(isForceValidate) {
+        this.ensureOrderPaid();
+        await super.validateOrder(...arguments);
     }
 });
