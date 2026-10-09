@@ -79,7 +79,7 @@
                                                 <t t-esc="line.product.display_name"/>
                                             </td>
                                             <td class="text-right font-weight-bold"><t t-esc="line.get_quantity_str()"/></td>
-                                            <td class="text-right"><t t-esc="line.get_unit_price().toFixed(3)"/> €</td>
+                                            <td class="text-right"><t t-esc="getLineDisplayUnitPrice(line)"/> €</td>
                                             <td class="text-right"><t t-esc="line.get_discount_str()"/> %</td>
                                             <td class="text-right font-weight-bold text-primary"><t t-esc="line.get_display_price().toFixed(2)"/> €</td>
                                         </tr>

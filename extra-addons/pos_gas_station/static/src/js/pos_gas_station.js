@@ -769,6 +769,46 @@ export class UtrecarMainScreen extends Component {
         return false;
     }
 
+
+    getNetPriceForTargetTotal(product, targetTotal, qty, order = null) {
+        if (!product || !qty || qty <= 0) return targetTotal;
+        const currentOrder = order || this.getOrCreateOrder();
+        const taxesIds = product.taxes_id || [];
+        const productTaxes = this.pos.get_taxes_after_fp(taxesIds, currentOrder?.fiscal_position);
+
+        if (!productTaxes || productTaxes.length === 0) {
+            return targetTotal / qty;
+        }
+
+        const allIncluded = productTaxes.every(t => t.price_include);
+        if (allIncluded) {
+            return targetTotal / qty;
+        }
+
+        try {
+            const sampleRes = this.pos.compute_all(productTaxes, 1.0, 1, this.pos.currency.rounding, false);
+            const factor = sampleRes.total_included > 0 ? sampleRes.total_included : 1.0;
+            const netTotal = targetTotal / factor;
+            return netTotal / qty;
+        } catch (e) {
+            const taxSum = productTaxes.reduce((sum, t) => sum + (t.amount || 0), 0);
+            const factor = 1.0 + (taxSum / 100.0);
+            return (targetTotal / factor) / qty;
+        }
+    }
+
+    getLineDisplayUnitPrice(line) {
+        if (!line) return "0.000";
+        if (line.fuel_display_price) {
+            return Number(line.fuel_display_price).toFixed(3);
+        }
+        if (line.product && line.product.lst_price) {
+            return Number(line.product.lst_price).toFixed(3);
+        }
+        const qty = Math.abs(line.get_quantity()) || 1;
+        return (line.get_display_price() / qty).toFixed(3);
+    }
+
     isPumpDispensing(pump) {
         if (!pump) return false;
         return pump.status === "dispensing" || pump.statusText === "AUTORIZADO";
@@ -1019,23 +1059,40 @@ export class UtrecarMainScreen extends Component {
                 if (product) {
                     const currentFuelPrice = product.lst_price > 0 ? product.lst_price : (fuelCode === 'GA' ? 1.78 : 1.66);
                     let qty = 1;
-                    let unitPrice = currentFuelPrice;
+                    let targetTotal = presetVal;
 
                     if (isMoney) {
+                        targetTotal = presetVal;
                         qty = parseFloat((presetVal / currentFuelPrice).toFixed(2));
-                        unitPrice = currentFuelPrice;
+                        if (qty <= 0) qty = 1;
                     } else {
                         qty = presetVal;
-                        unitPrice = currentFuelPrice;
+                        targetTotal = presetVal * currentFuelPrice;
                     }
 
-                    await currentOrder.add_product(product, {
-                        quantity: qty,
-                        price: unitPrice,
-                        extras: {
-                            price_manually_set: true
+                    const unitPrice = this.getNetPriceForTargetTotal(product, targetTotal, qty, currentOrder);
+
+                    const existingLine = currentOrder.get_orderlines().find(l => l.pump_id === pumpId || (l.customerNote && l.customerNote.includes(`Calle ${pumpId}`)));
+                    if (existingLine) {
+                        existingLine.set_quantity(qty);
+                        existingLine.set_unit_price(unitPrice);
+                        existingLine.fuel_display_price = currentFuelPrice;
+                    } else {
+                        await currentOrder.add_product(product, {
+                            quantity: qty,
+                            price: unitPrice,
+                            extras: {
+                                price_manually_set: true,
+                                pump_id: pumpId,
+                                fuel_display_price: currentFuelPrice
+                            }
+                        });
+                        const lastLine = currentOrder.get_last_orderline();
+                        if (lastLine) {
+                            lastLine.pump_id = pumpId;
+                            lastLine.fuel_display_price = currentFuelPrice;
                         }
-                    });
+                    }
 
                     const plateInfo = this.state.vehiclePlate ? `Matrícula: ${this.state.vehiclePlate} | ` : "";
                     currentOrder.set_note?.(`${plateInfo}Calle ${pumpId} [Prepago: ${presetVal} ${isMoney ? '€' : 'L'}]`);
@@ -1099,14 +1156,32 @@ export class UtrecarMainScreen extends Component {
             }
 
             if (product) {
-                const unitPrice = pump.price || (pump.amount / pump.liters);
-                await currentOrder.add_product(product, {
-                    quantity: pump.liters,
-                    price: unitPrice,
-                    extras: {
-                        price_manually_set: true
+                const targetTotal = pump.amount;
+                const targetQty = pump.liters;
+                const unitPrice = this.getNetPriceForTargetTotal(product, targetTotal, targetQty, currentOrder);
+                const fuelPvp = pump.price || (targetTotal / targetQty);
+
+                const existingLine = currentOrder.get_orderlines().find(l => l.pump_id === pump.id || (l.customerNote && l.customerNote.includes(`Calle ${pump.id}`)));
+                if (existingLine) {
+                    existingLine.set_quantity(targetQty);
+                    existingLine.set_unit_price(unitPrice);
+                    existingLine.fuel_display_price = fuelPvp;
+                } else {
+                    await currentOrder.add_product(product, {
+                        quantity: targetQty,
+                        price: unitPrice,
+                        extras: {
+                            price_manually_set: true,
+                            pump_id: pump.id,
+                            fuel_display_price: fuelPvp
+                        }
+                    });
+                    const lastLine = currentOrder.get_last_orderline();
+                    if (lastLine) {
+                        lastLine.pump_id = pump.id;
+                        lastLine.fuel_display_price = fuelPvp;
                     }
-                });
+                }
                 if (this.state.vehiclePlate) {
                     currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
                 }
