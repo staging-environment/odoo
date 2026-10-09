@@ -35,6 +35,9 @@ export class UtrecarMainScreen extends Component {
             isClientModalOpen: false,
             isAuthModalOpen: false,
             authModalPump: null,
+            isCancelModalOpen: false,
+            cancelModalPump: null,
+            pumpPresets: {},
             isPageDropdownOpen: false,
             currentStorePage: 1,
             selectedModalCategory: null,
@@ -502,6 +505,18 @@ export class UtrecarMainScreen extends Component {
                     }
                 }
                 if (data.pumps && Array.isArray(data.pumps)) {
+                    data.pumps.forEach(p => {
+                        if (this.state.pumpPresets && this.state.pumpPresets[p.id]) {
+                            if (p.status === "dispensing") {
+                                p.preset_amount = this.state.pumpPresets[p.id].amount;
+                                if (!p.fuel || p.fuel === "N/A") {
+                                    p.fuel = this.state.pumpPresets[p.id].fuel;
+                                }
+                            } else if (p.status === "idle" || p.status === "ready") {
+                                delete this.state.pumpPresets[p.id];
+                            }
+                        }
+                    });
                     this.state.pumps = data.pumps;
                     const samplePump = data.pumps.find(p => p.status === "atendido" || p.status === "postpago" || p.status === "blocked" || p.status === "prepago");
                     if (samplePump) {
@@ -732,6 +747,68 @@ export class UtrecarMainScreen extends Component {
         this.closeStoreModal();
     }
 
+    getPumpPresetAmount(pump) {
+        if (!pump) return 0;
+        if (pump.preset_amount && pump.preset_amount > 0) return pump.preset_amount;
+        if (this.state.pumpPresets && this.state.pumpPresets[pump.id]) {
+            return this.state.pumpPresets[pump.id].amount || 0;
+        }
+        if (pump.amount && pump.amount > 0) return pump.amount;
+        return 0;
+    }
+
+    getPumpFuelCode(pump) {
+        if (!pump) return 'GA';
+        if (pump.fuel && pump.fuel !== 'N/A') {
+            const f = pump.fuel.toLowerCase();
+            if (f.includes('95') || f.includes('plomo')) return '95';
+            if (f.includes('plus') || f.includes('g+')) return 'G+';
+            if (f.includes('gasóleo b') || f.includes('diesel b')) return 'GB';
+            return 'GA';
+        }
+        if (this.state.pumpPresets && this.state.pumpPresets[pump.id]) {
+            return this.state.pumpPresets[pump.id].code || 'GA';
+        }
+        return 'GA';
+    }
+
+    openCancelModal(pump) {
+        if (!pump) return;
+        this.state.selectedPumpId = pump.id;
+        this.state.cancelModalPump = pump;
+        this.state.isCancelModalOpen = true;
+    }
+
+    closeCancelModal() {
+        this.state.isCancelModalOpen = false;
+        this.state.cancelModalPump = null;
+    }
+
+    async cancelPumpAuthorization(pump) {
+        this.closeCancelModal();
+        const pumpId = pump ? pump.id : this.state.selectedPumpId;
+        const target = this.state.pumps.find(p => p.id === pumpId);
+        if (target) {
+            target.status = "idle";
+            target.statusText = "LIBRE";
+            target.amount = 0;
+            target.liters = 0;
+            target.preset_amount = 0;
+        }
+        if (this.state.pumpPresets) {
+            delete this.state.pumpPresets[pumpId];
+        }
+        try {
+            await jsonrpc("/pos_gas_station/cancel_authorize", {
+                config_id: this.configId,
+                pump_id: pumpId
+            });
+        } catch (e) {
+            console.debug("Cancel authorization orden enviada:", e);
+        }
+        this.state.orderVersion = Date.now();
+    }
+
     get selectedFuelObj() {
         return this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || this.state.availableFuels[0] || { code: "GA", name: "Gasóleo A" };
     }
@@ -747,8 +824,9 @@ export class UtrecarMainScreen extends Component {
             this.onPumpClick(pump);
             return;
         }
-        // Si está suministrando activamente:
+        // Si está suministrando activamente: abrir ventana de cancelación
         if (pump.status === 'dispensing') {
+            this.openCancelModal(pump);
             return;
         }
         // Abrir ventana flotante para autorizar
@@ -884,10 +962,21 @@ export class UtrecarMainScreen extends Component {
         const isMoney = this.state.mode === "money";
         const presetVal = this.state.presetValue;
 
+        if (!this.state.pumpPresets) {
+            this.state.pumpPresets = {};
+        }
+        this.state.pumpPresets[pumpId] = {
+            amount: presetVal,
+            fuel: fuelName,
+            code: fuelCode,
+            isMoney: isMoney
+        };
+
         if (targetPump) {
             targetPump.status = "dispensing";
             targetPump.statusText = "AUTORIZADO";
             targetPump.fuel = fuelName;
+            targetPump.preset_amount = presetVal;
             if (presetVal > 0) {
                 targetPump.amount = isMoney ? presetVal : 0;
                 targetPump.liters = !isMoney ? presetVal : 0;

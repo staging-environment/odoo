@@ -152,6 +152,7 @@ class PosGasStationController(http.Controller):
             'fuel': fuel_name,
             'amount': amt,
             'liters': lts,
+            'preset_amount': amt,
             'price': 1.45 if 'Gasóleo A' in fuel_name else 1.55,
             '_timestamp': time.time()
         }

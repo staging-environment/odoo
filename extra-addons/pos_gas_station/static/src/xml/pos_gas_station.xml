@@ -244,15 +244,27 @@
                                 <!-- Cabecera / Display LCD blanco -->
                                 <div class="dispenser-head">
                                     <div class="lcd-header-line">
-                                        <span class="f-code"><t t-esc="pump.amount > 0 ? (pump.fuel ? pump.fuel.slice(0,4) : 'GA') : 'N/A'"/></span>
+                                        <span class="f-code"><t t-esc="getPumpFuelCode(pump)"/></span>
                                         <span class="f-liters"><t t-esc="pump.liters > 0 ? pump.liters.toFixed(2) + 'L' : '0.00L'"/></span>
                                     </div>
                                     <div class="lcd-price-main">
-                                        <t t-esc="pump.amount > 0 ? pump.amount.toFixed(2).replace('.', ',') + ' €' : '0,00 €'"/>
+                                        <t t-if="pump.amount > 0">
+                                            <t t-esc="pump.amount.toFixed(2).replace('.', ',') + ' €'"/>
+                                        </t>
+                                        <t t-elif="getPumpPresetAmount(pump) > 0">
+                                            <t t-esc="getPumpPresetAmount(pump).toFixed(2).replace('.', ',') + ' €'"/>
+                                        </t>
+                                        <t t-else="">0,00 €</t>
                                     </div>
                                     <div class="lcd-black-strip">
                                         <t t-if="pump.status === 'ready'">FIN REPOSTAJE</t>
                                         <t t-elif="pump.status === 'atendido'">POSTPAGO LIBRE</t>
+                                        <t t-elif="pump.status === 'dispensing'">
+                                            <t t-if="getPumpPresetAmount(pump) > 0">
+                                                PREF. <t t-esc="getPumpPresetAmount(pump).toFixed(2).replace('.', ',')"/> €
+                                            </t>
+                                            <t t-else="">SUMINISTRO</t>
+                                        </t>
                                         <t t-elif="pump.amount > 0">SUMINISTRO</t>
                                         <t t-else="">Sin prefijado</t>
                                     </div>
@@ -580,6 +592,85 @@
                     </div>
                 </div>
             </t>
+            <!-- ======================================================== -->
+            <!-- VENTANA FLOTANTE DE GESTIÓN Y CANCELACIÓN DE SUMINISTRO   -->
+            <!-- ======================================================== -->
+            <t t-if="state.isCancelModalOpen &amp;&amp; state.cancelModalPump">
+                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeCancelModal()">
+                    <div class="utrecar-cancel-modal" t-on-click.stop="">
+                        
+                        <!-- Cabecera -->
+                        <div class="cancel-modal-header">
+                            <div class="cancel-header-left">
+                                <div class="cancel-header-icon">
+                                    <i class="fa fa-gas-pump"/>
+                                </div>
+                                <div class="cancel-header-titles">
+                                    <h3>CALLE <t t-esc="state.cancelModalPump.id"/> - EN SUMINISTRO</h3>
+                                    <span class="cancel-header-subtitle">Gestión y control de repostaje en curso</span>
+                                </div>
+                            </div>
+                            <button class="btn-modal-close" t-on-click="() => this.closeCancelModal()" title="Cerrar ventana">✖</button>
+                        </div>
+
+                        <!-- Cuerpo del modal -->
+                        <div class="cancel-modal-body">
+                            
+                            <!-- Banner prominente de Calle y Estado -->
+                            <div class="cancel-pump-badge-row">
+                                <span class="cancel-badge-label">ESTADO ACTUAL DE PISTA</span>
+                                <div class="cancel-pump-badge">
+                                    ⛽ CALLE <t t-esc="state.cancelModalPump.id"/>: SUMINISTRANDO
+                                </div>
+                            </div>
+
+                            <!-- Tarjeta informativa de la autorización activa -->
+                            <div class="cancel-info-card">
+                                <t t-if="getPumpPresetAmount(state.cancelModalPump) > 0">
+                                    <div class="cancel-info-line">
+                                        <span class="info-label">IMPORTE AUTORIZADO:</span>
+                                        <span class="info-value-highlight">
+                                            <t t-esc="getPumpPresetAmount(state.cancelModalPump).toFixed(2)"/> €
+                                        </span>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="cancel-info-line">
+                                        <span class="info-label">MODALIDAD:</span>
+                                        <span class="info-value text-success fw-bold">SUMINISTRO LIBRE / ATENDIDO</span>
+                                    </div>
+                                </t>
+                                <div class="cancel-info-line">
+                                    <span class="info-label">CARBURANTE:</span>
+                                    <span class="info-value">
+                                        <t t-esc="state.cancelModalPump.fuel || getPumpFuelCode(state.cancelModalPump)"/>
+                                    </span>
+                                </div>
+                                <div class="cancel-warning-box">
+                                    <div class="warning-icon">⚠️</div>
+                                    <div class="warning-text">
+                                        <strong>¿Desea cancelar la autorización?</strong>
+                                        <p>Al cancelar, el surtidor se bloqueará de inmediato y volverá a estar disponible.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Pie con botones de acción -->
+                        <div class="cancel-modal-footer">
+                            <button class="btn-cancel-modal-keep" t-on-click="() => this.closeCancelModal()">
+                                ⬅ CERRAR / MANTENER
+                            </button>
+                            <button class="btn-cancel-modal-action" t-on-click="() => this.cancelPumpAuthorization(state.cancelModalPump)">
+                                🛑 CANCELAR Y BLOQUEAR CALLE <t t-esc="state.cancelModalPump.id"/>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </t>
+
         </div>
     </t>
 
