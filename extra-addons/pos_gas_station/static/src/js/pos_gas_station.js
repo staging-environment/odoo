@@ -1031,24 +1031,6 @@ export class UtrecarMainScreen extends Component {
         this.clearPreset();
     }
 
-    async cancelPumpAuthorization(pump) {
-        if (confirm(`¿Desea cancelar la autorización y volver a bloquear la Calle ${pump.id}?`)) {
-            pump.status = "idle";
-            pump.statusText = "LIBRE";
-            pump.amount = 0;
-            pump.liters = 0;
-            try {
-                await jsonrpc("/pos_gas_station/cancel_authorize", {
-                    config_id: this.configId,
-                    pump_id: pump.id
-                });
-            } catch (e) {
-                console.debug("Cancelación enviada:", e);
-            }
-            this.state.orderVersion = Date.now();
-        }
-    }
-
     async onSecurityDepositClick() {
         const amountStr = prompt("🔒 INGRESO DE SEGURIDAD (RETIRADA A CAJA FUERTE UAAP)\nIntroduzca el importe en efectivo a retirar de la caja (Ej: 500):", "500");
         if (!amountStr) return;
