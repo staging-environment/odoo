@@ -23,7 +23,7 @@ export class UtrecarMainScreen extends Component {
             selectedPumpId: null,
             selectedLineId: null,
             orderVersion: 0,
-            trackMode: localStorage.getItem("utrecar_track_mode") || "atendido", // 'atendido' o 'prepago'
+            trackMode: localStorage.getItem("utrecar_track_mode") || "prepago", // 'atendido' o 'prepago'
             mode: "money", // 'money' o 'liters'
             presetValue: 0,
             selectedFuel: "GA",
@@ -750,17 +750,10 @@ export class UtrecarMainScreen extends Component {
 
     shouldShowPrepayCoin(pump) {
         if (!pump) return false;
-        if (pump.status === "idle" || pump.status === "blocked") return false;
-
-        const hasPresetStored = Boolean(this.state.pumpPresets && this.state.pumpPresets[pump.id] && this.state.pumpPresets[pump.id].amount > 0);
-        const hasPresetAmount = Boolean((pump.preset_amount && pump.preset_amount > 0) || pump.has_prepay);
-
-        if (pump.status === "dispensing" || pump.status === "ready") {
-            if (hasPresetStored || hasPresetAmount || this.state.trackMode === "prepago") {
-                return true;
-            }
-        }
-        return false;
+        // El símbolo de la moneda aparece cuando termina el suministro de una calle autorizada
+        // (y permanece mientras no se cobre el dinero del surtidor)
+        const isFinishedSupply = pump.status === "ready" || (pump.amount > 0 && pump.status !== "dispensing");
+        return Boolean(isFinishedSupply);
     }
 
     getPumpPresetAmount(pump) {

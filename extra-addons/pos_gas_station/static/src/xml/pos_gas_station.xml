@@ -217,12 +217,12 @@
                                     t-on-click="() => this.toggleTrackMode()"
                                     title="Haga clic para cambiar entre modo Prepago y Atendido">
                                 <t t-if="state.trackMode === 'atendido'">
-                                    <span class="mode-led led-green">●</span> <strong>PISTA: ATENDIDO (POSTPAGO)</strong>
-                                    <span class="mode-switch-hint">🔄 Cambiar a Prepago</span>
+                                    <span class="mode-led led-green">●</span> <strong>PISTA: LLENO</strong>
+                                    <span class="mode-switch-hint">🔄 Cambiar a Prefijado</span>
                                 </t>
                                 <t t-else="">
-                                    <span class="mode-led led-red">●</span> <strong>PISTA: PREPAGO (BLOQUEO)</strong>
-                                    <span class="mode-switch-hint">🔄 Cambiar a Atendido</span>
+                                    <span class="mode-led led-red">●</span> <strong>PISTA: PREFIJADO</strong>
+                                    <span class="mode-switch-hint">🔄 Cambiar a Lleno</span>
                                 </t>
                             </button>
                         </div>
@@ -287,16 +287,26 @@
                                         <t t-else="">0,00 €</t>
                                     </div>
                                     <div class="lcd-black-strip">
-                                        <t t-if="pump.status === 'ready'">FIN REPOSTAJE</t>
-                                        <t t-elif="pump.status === 'atendido'">POSTPAGO LIBRE</t>
+                                        <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
+                                            FIN REPOSTAJE
+                                        </t>
                                         <t t-elif="pump.status === 'dispensing'">
                                             <t t-if="getPumpPresetAmount(pump) > 0">
-                                                PREF. <t t-esc="getPumpPresetAmount(pump).toFixed(2).replace('.', ',')"/> €
+                                                AUTORIZADO <t t-esc="getPumpPresetAmount(pump).toFixed(2).replace('.', ',')"/> €
                                             </t>
-                                            <t t-else="">SUMINISTRO</t>
+                                            <t t-else="">
+                                                AUTORIZADO (LLENO)
+                                            </t>
                                         </t>
-                                        <t t-elif="pump.amount > 0">SUMINISTRO</t>
-                                        <t t-else="">Sin prefijado</t>
+                                        <t t-elif="state.trackMode === 'atendido'">
+                                            LLENO (POSTPAGO)
+                                        </t>
+                                        <t t-elif="getPumpPresetAmount(pump) > 0">
+                                            PREFIJADO <t t-esc="getPumpPresetAmount(pump).toFixed(2).replace('.', ',')"/> €
+                                        </t>
+                                        <t t-else="">
+                                            Sin prefijado
+                                        </t>
                                     </div>
                                 </div>
 
