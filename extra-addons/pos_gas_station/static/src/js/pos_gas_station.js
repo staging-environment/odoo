@@ -33,6 +33,8 @@ export class UtrecarMainScreen extends Component {
             ],
             isStoreModalOpen: false,
             isClientModalOpen: false,
+            isAuthModalOpen: false,
+            authModalPump: null,
             isPageDropdownOpen: false,
             currentStorePage: 1,
             selectedModalCategory: null,
@@ -730,8 +732,47 @@ export class UtrecarMainScreen extends Component {
         this.closeStoreModal();
     }
 
+    get selectedFuelObj() {
+        return this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || this.state.availableFuels[0] || { code: "GA", name: "Gasóleo A" };
+    }
+
     onPumpSelect(pump) {
         this.state.selectedPumpId = pump.id;
+    }
+
+    onPumpCardClick(pump) {
+        this.state.selectedPumpId = pump.id;
+        // Si ha finalizado repostaje o tiene saldo por cobrar: cobrar
+        if (pump.status === 'ready' || (pump.amount > 0 && pump.status !== 'dispensing')) {
+            this.onPumpClick(pump);
+            return;
+        }
+        // Si está suministrando activamente:
+        if (pump.status === 'dispensing') {
+            return;
+        }
+        // Abrir ventana flotante para autorizar
+        this.openAuthorizeModal(pump);
+    }
+
+    openAuthorizeModal(pump) {
+        if (!pump) return;
+        this.state.selectedPumpId = pump.id;
+        this.state.authModalPump = pump;
+        this.state.isAuthModalOpen = true;
+    }
+
+    closeAuthorizeModal() {
+        this.state.isAuthModalOpen = false;
+        this.state.authModalPump = null;
+    }
+
+    async confirmAndAuthorize() {
+        const pump = this.state.authModalPump || this.state.pumps.find(p => p.id === this.state.selectedPumpId);
+        this.closeAuthorizeModal();
+        if (pump) {
+            await this.executeAuthorizePump(pump.id);
+        }
     }
 
     toggleMode() {
@@ -820,11 +861,16 @@ export class UtrecarMainScreen extends Component {
         return p;
     }
 
-    async authorizePreset(targetPumpId = null) {
-        if (targetPumpId) {
-            this.state.selectedPumpId = targetPumpId;
+    authorizePreset(targetPumpId = null) {
+        const targetId = targetPumpId || this.state.selectedPumpId || 1;
+        const pump = this.state.pumps.find(p => p.id === targetId);
+        if (pump) {
+            this.openAuthorizeModal(pump);
         }
-        const pumpId = this.state.selectedPumpId || 1;
+    }
+
+    async executeAuthorizePump(pumpId) {
+        this.state.selectedPumpId = pumpId;
         const targetPump = this.state.pumps.find(p => p.id === pumpId);
 
         if (targetPump && (targetPump.status === "dispensing" || targetPump.status === "ready" || targetPump.amount > 0 || targetPump.statusText === "AUTORIZADO")) {
@@ -832,20 +878,11 @@ export class UtrecarMainScreen extends Component {
             return;
         }
 
-        const currentFuelObj = this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || this.state.availableFuels[0] || { code: "GA", name: "Gasóleo A" };
+        const currentFuelObj = this.selectedFuelObj;
         const fuelName = currentFuelObj.name;
         const fuelCode = currentFuelObj.code;
         const isMoney = this.state.mode === "money";
         const presetVal = this.state.presetValue;
-
-        // Confirmación requerida antes de autorizar el surtidor
-        const confirmMsg = presetVal > 0
-            ? `¿Desea autorizar la Calle ${pumpId}?\n\n• Importe: ${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}\n• Producto: ${fuelName}`
-            : `¿Desea autorizar la Calle ${pumpId} para suministro libre (sin prefijado)?`;
-
-        if (!confirm(confirmMsg)) {
-            return;
-        }
 
         if (targetPump) {
             targetPump.status = "dispensing";

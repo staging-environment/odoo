@@ -2864,8 +2864,8 @@
 }
 
 .dispenser-padlock-panel .virtus-dial-lock {
-    width: 34px !important;
-    height: 34px !important;
+    width: 44px !important;
+    height: 44px !important;
     filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)) !important;
     transition: transform 0.15s ease !important;
 }
@@ -2899,4 +2899,250 @@
 .btn-pump-authorize-action:active {
     transform: scale(0.97) !important;
     filter: brightness(0.9) !important;
+}
+
+
+/* ==========================================================================
+   VENTANA FLOTANTE DE CONFIRMACIÓN DE AUTORIZACIÓN (PREMIUM VIRTUS)
+   ========================================================================== */
+
+.utrecar-auth-modal {
+    width: 460px !important;
+    max-width: 92vw !important;
+    background: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.4), 0 0 0 1px rgba(148, 163, 184, 0.25) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    animation: modal-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    user-select: none !important;
+}
+
+@keyframes modal-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.92) translateY(-10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.auth-modal-header {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    padding: 14px 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-bottom: 2px solid #2563eb !important;
+}
+
+.auth-header-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.auth-header-icon {
+    width: 38px !important;
+    height: 38px !important;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 18px !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3) !important;
+}
+
+.auth-header-titles h3 {
+    margin: 0 !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.5px !important;
+    color: #ffffff !important;
+}
+
+.auth-header-subtitle {
+    font-size: 11px !important;
+    color: #94a3b8 !important;
+    display: block !important;
+    margin-top: 1px !important;
+}
+
+.btn-modal-close {
+    background: transparent !important;
+    border: none !important;
+    color: #94a3b8 !important;
+    font-size: 18px !important;
+    cursor: pointer !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    transition: all 0.15s ease !important;
+}
+.btn-modal-close:hover {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.auth-modal-body {
+    padding: 20px 22px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    background: #f8fafc !important;
+}
+
+.auth-pump-badge-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+.auth-badge-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    letter-spacing: 0.6px !important;
+    text-transform: uppercase !important;
+}
+
+.auth-pump-badge {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-size: 22px !important;
+    font-weight: 900 !important;
+    letter-spacing: 1px !important;
+    padding: 8px 24px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.35) !important;
+    border: 2px solid #ffffff !important;
+}
+
+.auth-info-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 14px 16px !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+}
+
+.auth-info-line {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 4px 0 !important;
+    border-bottom: 1px dashed #f1f5f9 !important;
+}
+.auth-info-line:last-child {
+    border-bottom: none !important;
+}
+
+.auth-info-line .info-label {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+}
+
+.auth-info-line .info-value {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+}
+
+.auth-info-line .info-value-highlight {
+    font-size: 20px !important;
+    font-weight: 900 !important;
+    color: #16a34a !important;
+    font-family: 'Courier New', Courier, monospace !important;
+}
+
+.auth-free-supply-notice {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    background: #ecfdf5 !important;
+    border: 1px solid #a7f3d0 !important;
+    border-radius: 6px !important;
+    padding: 10px 12px !important;
+}
+
+.auth-free-supply-notice .notice-icon {
+    font-size: 20px !important;
+    color: #16a34a !important;
+}
+
+.auth-free-supply-notice .notice-text strong {
+    font-size: 12px !important;
+    color: #065f46 !important;
+    display: block !important;
+    margin-bottom: 2px !important;
+}
+
+.auth-free-supply-notice .notice-text p {
+    margin: 0 !important;
+    font-size: 11px !important;
+    color: #047857 !important;
+    line-height: 1.3 !important;
+}
+
+.auth-modal-footer {
+    background: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+    padding: 14px 18px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1.6fr !important;
+    gap: 12px !important;
+}
+
+.btn-auth-cancel {
+    height: 42px !important;
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.btn-auth-cancel:hover {
+    background: #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+.btn-auth-confirm {
+    height: 42px !important;
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.5px !important;
+    cursor: pointer !important;
+    box-shadow: 0 3px 8px rgba(22, 163, 74, 0.35) !important;
+    transition: all 0.15s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.btn-auth-confirm:hover {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.45) !important;
+}
+.btn-auth-confirm:active {
+    transform: translateY(1px) !important;
 }

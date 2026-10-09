@@ -233,7 +233,7 @@
                             <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
                             
                             <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
-                                 t-on-click="() => this.onPumpSelect(pump)">
+                                 t-on-click="() => this.onPumpCardClick(pump)">
                                 
                                 <!-- Pestana superior azul con numero de calle -->
                                 <div class="dispenser-corner-tab"><t t-esc="pump.id"/></div>
@@ -275,17 +275,11 @@
                                     <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || (pump.status === 'idle' &amp;&amp; state.trackMode === 'atendido')">
                                         <div class="dispenser-padlock-panel atendido-green">
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔓" />
-                                            <button class="btn-pump-authorize-action" t-on-click.stop="() => this.authorizePreset(pump.id)" t-attf-title="Autorizar Calle #{pump.id}">
-                                                AUTORIZAR
-                                            </button>
                                         </div>
                                     </t>
                                     <t t-else="">
                                         <div class="dispenser-padlock-panel blocked-red">
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
-                                            <button class="btn-pump-authorize-action" t-on-click.stop="() => this.authorizePreset(pump.id)" t-attf-title="Autorizar Calle #{pump.id}">
-                                                AUTORIZAR
-                                            </button>
                                         </div>
                                     </t>
                                 </div>
@@ -499,6 +493,93 @@
                 </div>
             </t>
 
+
+            <!-- ======================================================== -->
+            <!-- VENTANA FLOTANTE DE CONFIRMACIÓN DE AUTORIZACIÓN          -->
+            <!-- ======================================================== -->
+            <t t-if="state.isAuthModalOpen &amp;&amp; state.authModalPump">
+                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeAuthorizeModal()">
+                    <div class="utrecar-auth-modal" t-on-click.stop="">
+                        
+                        <!-- Cabecera -->
+                        <div class="auth-modal-header">
+                            <div class="auth-header-left">
+                                <div class="auth-header-icon">
+                                    <i class="fa fa-gas-pump"/>
+                                </div>
+                                <div class="auth-header-titles">
+                                    <h3>AUTORIZAR PISTA</h3>
+                                    <span class="auth-header-subtitle">Confirmación de apertura de suministro</span>
+                                </div>
+                            </div>
+                            <button class="btn-modal-close" t-on-click="() => this.closeAuthorizeModal()" title="Cerrar ventana">✖</button>
+                        </div>
+
+                        <!-- Cuerpo del modal -->
+                        <div class="auth-modal-body">
+                            
+                            <!-- Indicador de Calle seleccionado -->
+                            <div class="auth-pump-badge-row">
+                                <span class="auth-badge-label">SURTIDOR SELECCIONADO</span>
+                                <div class="auth-pump-badge">
+                                    CALLE <t t-esc="state.authModalPump.id"/>
+                                </div>
+                            </div>
+
+                            <!-- Tarjeta de detalle de la orden de autorización -->
+                            <div class="auth-info-card">
+                                <t t-if="state.presetValue > 0">
+                                    <div class="auth-info-line">
+                                        <span class="info-label">IMPORTE PREFIJADO:</span>
+                                        <span class="info-value-highlight">
+                                            <t t-esc="state.presetValue.toFixed(2)"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/>
+                                        </span>
+                                    </div>
+                                    <div class="auth-info-line">
+                                        <span class="info-label">PRODUCTO:</span>
+                                        <span class="info-value">
+                                            <t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)
+                                        </span>
+                                    </div>
+                                    <t t-if="state.vehiclePlate">
+                                        <div class="auth-info-line">
+                                            <span class="info-label">MATRÍCULA:</span>
+                                            <span class="info-value"><t t-esc="state.vehiclePlate"/></span>
+                                        </div>
+                                    </t>
+                                </t>
+                                <t t-else="">
+                                    <div class="auth-free-supply-notice">
+                                        <div class="notice-icon">⚡</div>
+                                        <div class="notice-text">
+                                            <strong>SUMINISTRO LIBRE (SIN PREFIJADO)</strong>
+                                            <p>La pista se desbloqueará sin límite previo. El importe final se cobrará al terminar el repostaje.</p>
+                                        </div>
+                                    </div>
+                                    <div class="auth-info-line mt-2">
+                                        <span class="info-label">PRODUCTO SELECCIONADO:</span>
+                                        <span class="info-value">
+                                            <t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)
+                                        </span>
+                                    </div>
+                                </t>
+                            </div>
+
+                        </div>
+
+                        <!-- Pie con botones de acción -->
+                        <div class="auth-modal-footer">
+                            <button class="btn-auth-cancel" t-on-click="() => this.closeAuthorizeModal()">
+                                ✖ CANCELAR
+                            </button>
+                            <button class="btn-auth-confirm" t-on-click="() => this.confirmAndAuthorize()">
+                                ✔ AUTORIZAR CALLE <t t-esc="state.authModalPump.id"/>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </t>
         </div>
     </t>
 
