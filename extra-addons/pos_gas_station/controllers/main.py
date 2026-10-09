@@ -3,6 +3,7 @@ from odoo import http
 from odoo.http import request
 import json
 import logging
+import time
 
 _logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ STATION_MAP = {
 }
 
 STATION_PUMP_OVERRIDES = {}
+OVERRIDE_TIMEOUT_SECONDS = 300  # 5 minutos max para sobreescrituras en memoria
 
 class PosGasStationController(http.Controller):
 
@@ -104,11 +106,19 @@ class PosGasStationController(http.Controller):
                     'price': 1.45
                 })
 
+        now = time.time()
         overrides = STATION_PUMP_OVERRIDES.get(config_id, {})
+        # Limpieza de overrides expirados
+        expired_pids = [pid for pid, o in overrides.items() if now - o.get('_timestamp', now) > OVERRIDE_TIMEOUT_SECONDS]
+        for pid in expired_pids:
+            del overrides[pid]
+
         for i, pump in enumerate(pumps):
             pid = pump.get('id', i + 1)
             if pid in overrides:
-                pumps[i] = overrides[pid]
+                # Copiar override excluyendo campos internos
+                ov = {k: v for k, v in overrides[pid].items() if not k.startswith('_')}
+                pumps[i] = ov
 
         return {
             'status': 'success',
@@ -142,7 +152,8 @@ class PosGasStationController(http.Controller):
             'fuel': fuel_name,
             'amount': amt,
             'liters': lts,
-            'price': 1.45 if 'Gasóleo A' in fuel_name else 1.55
+            'price': 1.45 if 'Gasóleo A' in fuel_name else 1.55,
+            '_timestamp': time.time()
         }
         STATION_PUMP_OVERRIDES[cfg][pid] = override_data
 
@@ -172,12 +183,19 @@ class PosGasStationController(http.Controller):
             if status_raw:
                 parsed = json.loads(status_raw)
                 p_list = parsed.get('pumps', []) if isinstance(parsed, dict) else parsed
+                
+                # Determinar si el modo predominante de la pista es bloqueado (prepago) o libre (atendido)
+                is_mostly_blocked = sum(1 for p in p_list if p.get('status') in ('blocked', 'prepago')) >= (len(p_list) / 2)
+                fallback_status = 'blocked' if is_mostly_blocked else 'idle'
+                fallback_text = 'PREPAGO' if is_mostly_blocked else 'LIBRE'
+
                 for p in p_list:
                     if p.get('id') == pid:
-                        p['status'] = 'idle'
-                        p['statusText'] = 'LIBRE'
+                        p['status'] = fallback_status
+                        p['statusText'] = fallback_text
                         p['amount'] = 0.0
                         p['liters'] = 0.0
+                        
                 if isinstance(parsed, dict):
                     parsed['pumps'] = p_list
                     request.env['ir.config_parameter'].sudo().set_param(param_key, json.dumps(parsed))

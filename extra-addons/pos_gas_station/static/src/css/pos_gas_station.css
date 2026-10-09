@@ -2587,3 +2587,15 @@
     gap: 4px !important;
     text-transform: uppercase !important;
 }
+
+/* En modo PREPAGO, los surtidores en reposo (idle) deben verse en ROJO/BLOQUEADOS */
+.track-prepago .aseproda-dispenser-box.status-idle {
+    border-color: #dc2626 !important;
+}
+.track-prepago .aseproda-dispenser-box.status-idle .dispenser-corner-tab {
+    background: #2563eb !important;
+    color: #ffffff !important;
+}
+.track-prepago .aseproda-dispenser-box.status-idle .dispenser-lower-body {
+    background: #dc2626 !important;
+}

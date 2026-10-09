@@ -212,7 +212,7 @@
             <div class="virtus-row-bottom">
 
                 <!-- 3. CUADRANTE INFERIOR IZQUIERDO: POSTES DE SURTIDORES ASEPRODA -->
-                <div class="virtus-quadrant-pumps">
+                <div t-attf-class="virtus-quadrant-pumps #{state.trackMode === 'atendido' ? 'track-atendido' : 'track-prepago'}">
                     <div class="pumps-brand-watermark d-flex justify-content-between align-items-center">
                         <span class="pumps-panel-title fw-bold text-dark"><i class="fa fa-gas-pump me-1 text-primary"/>SURTIDORES DE PISTA</span>
                         <div class="track-mode-switch-wrapper">
@@ -269,7 +269,7 @@
                                             <strong>COBRAR</strong>
                                         </button>
                                     </t>
-                                    <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || pump.status === 'idle'">
+                                    <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || (pump.status === 'idle' &amp;&amp; state.trackMode === 'atendido')">
                                         <div class="dispenser-padlock-panel atendido-green">
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔓" />
                                         </div>
