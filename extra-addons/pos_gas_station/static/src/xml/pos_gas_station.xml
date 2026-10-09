@@ -108,7 +108,7 @@
                                 ✖ Cancelar
                             </button>
                         </div>
-                        <div class="tools-total-box">
+                        <div class="tools-total-box" t-on-click="() => this.goToPayment()" title="Haga clic aquí para cobrar el ticket">
                             <span class="total-digits"><t t-esc="currentTotalAmount.toFixed(2)"/> €</span>
                         </div>
                     </div>
@@ -343,9 +343,7 @@
                         <button class="btn-action-tile btn-auth-green" t-on-click="() => this.authorizePreset()" title="Autorizar calle seleccionada">
                             AUTORIZAR <t t-if="state.selectedPumpId">CALLE <t t-esc="state.selectedPumpId"/></t>
                         </button>
-                        <button class="btn-action-tile btn-pay-direct" t-on-click="() => this.goToPayment()" title="Pasar al Cobro">
-                            COBRAR <t t-esc="currentTotalAmount.toFixed(2)"/> €
-                        </button>
+
                     </div>
 
                     <!-- BARRA DE SINCRONIZACIÓN AZUL VIRTUS -->
