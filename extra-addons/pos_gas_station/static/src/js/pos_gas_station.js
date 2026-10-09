@@ -750,10 +750,28 @@ export class UtrecarMainScreen extends Component {
 
     shouldShowPrepayCoin(pump) {
         if (!pump) return false;
-        // El símbolo de la moneda aparece cuando termina el suministro de una calle autorizada
-        // (y permanece mientras no se cobre el dinero del surtidor)
-        const isFinishedSupply = pump.status === "ready" || (pump.amount > 0 && pump.status !== "dispensing");
-        return Boolean(isFinishedSupply);
+        if (pump.status === "idle" && (!pump.amount || pump.amount === 0)) return false;
+        if (pump.status === "blocked") return false;
+
+        const isPrepago = this.state.trackMode === "prepago" || Boolean(pump.has_prepay);
+        const hasPreset = Boolean((pump.preset_amount && pump.preset_amount > 0) || (this.state.pumpPresets && this.state.pumpPresets[pump.id] && this.state.pumpPresets[pump.id].amount > 0));
+
+        // 1. Cuando se prefija una cantidad en prepago, encima del surtidor sale la moneda durante el suministro
+        if (pump.status === "dispensing" && isPrepago && hasPreset) {
+            return true;
+        }
+
+        // 2. Mientras no se cobre el dinero del surtidor (fin de consumo / pendiente de cobro)
+        if (pump.status === "ready" || (pump.amount > 0 && pump.status !== "dispensing")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    isPumpDispensing(pump) {
+        if (!pump) return false;
+        return pump.status === "dispensing" || pump.statusText === "AUTORIZADO";
     }
 
     getPumpPresetAmount(pump) {

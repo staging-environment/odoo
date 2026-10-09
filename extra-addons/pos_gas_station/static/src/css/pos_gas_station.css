@@ -3513,3 +3513,42 @@
     display: block !important;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45)) !important;
 }
+
+
+/* ==========================================================================
+   MANGUERA DESCOLGADA EN SUMINISTRO (VIRTUSTPV UNHOOKED NOZZLE)
+   ========================================================================== */
+
+.dispenser-nozzle-unhooked {
+    position: absolute !important;
+    right: -16px !important;
+    top: 26px !important;
+    width: 22px !important;
+    height: 46px !important;
+    z-index: 20 !important;
+    pointer-events: none !important;
+    animation: nozzle-vibrate 1.4s infinite ease-in-out alternate !important;
+}
+
+@keyframes nozzle-vibrate {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(1.5px) rotate(-2deg);
+    }
+    100% {
+        transform: translateY(-1px) rotate(1.5deg);
+    }
+}
+
+.nozzle-unhooked-svg {
+    width: 22px !important;
+    height: 46px !important;
+    display: block !important;
+    filter: drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.4)) !important;
+}
+
+.aseproda-dispenser-box.nozzle-is-off-hook {
+    box-shadow: 0 0 10px rgba(22, 163, 74, 0.5) !important;
+}

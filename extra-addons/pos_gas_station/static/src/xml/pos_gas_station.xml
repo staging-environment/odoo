@@ -232,7 +232,7 @@
                         <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
                             <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
                             
-                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''}"
+                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''} #{isPumpDispensing(pump) ? 'nozzle-is-off-hook' : ''}"
                                  t-on-click="() => this.onPumpCardClick(pump)">
                                 
                                 <!-- MONEDA DE PREPAGO FLOTANTE ENCIMA DEL SURTIDOR -->
@@ -268,8 +268,27 @@
                                 <!-- Pestana superior azul con numero de calle -->
                                 <div class="dispenser-corner-tab"><t t-esc="pump.id"/></div>
                                 
-                                <!-- Silueta lateral de manguera / boquilla negra -->
-                                <div class="dispenser-nozzle-handle"></div>
+                                <!-- Silueta lateral de manguera: Colgada en reposo vs Descolgada en suministro -->
+                                <t t-if="isPumpDispensing(pump)">
+                                    <div class="dispenser-nozzle-unhooked" title="Manguera descolgada - Suministro en curso">
+                                        <svg viewBox="0 0 24 50" width="22" height="46" class="nozzle-unhooked-svg">
+                                            <!-- Manguera flexible negra que cae curvada -->
+                                            <path d="M 3 6 C 18 10, 20 28, 12 38 C 9 42, 6 44, 4 46" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round"/>
+                                            <!-- Boquilla / Pistola dispensadora descolgada inclinada -->
+                                            <g transform="translate(11, 20) rotate(35)">
+                                                <!-- Cuerpo de la pistola -->
+                                                <rect x="0" y="0" width="7" height="14" rx="1.5" fill="#1e293b"/>
+                                                <!-- Caño metálico curvado hacia abajo -->
+                                                <path d="M 3 14 L 3 24 L -2 28" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+                                                <!-- Gatillo -->
+                                                <path d="M -1 4 L -4 7 L -1 9" fill="none" stroke="#475569" stroke-width="1.2"/>
+                                            </g>
+                                        </svg>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="dispenser-nozzle-handle" title="Manguera colgada"></div>
+                                </t>
 
                                 <!-- Cabecera / Display LCD blanco -->
                                 <div class="dispenser-head">
