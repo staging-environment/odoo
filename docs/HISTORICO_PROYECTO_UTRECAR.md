@@ -65,7 +65,6 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
      - 🖨 **TICKET (Imprimir):** Valida la venta emitiendo el ticket impreso.
      - 📄 **FACTURA (NIF/CIF):** Solicita/valida cliente con datos fiscales y emite factura con matrícula.
      - 💾 **GUARDAR (Sin Ticket):** Cobro ágil sin impresión para clientes que no desean recibo.
-     - **VALIDAR COBRO:** Botón principal de validación general.
    - **Distribución de Columnas:** Alineación limpia de métodos de pago (Efectivo / Tarjeta), resumen de líneas, teclado numérico y desglose de importes (Total, Restante, Cambio).
 
 ---

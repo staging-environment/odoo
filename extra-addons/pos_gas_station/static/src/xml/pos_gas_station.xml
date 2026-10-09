@@ -569,12 +569,7 @@
                     </button>
                 </div>
                 
-                <button class="btn-virtus-pay-standard w-100" 
-                         
-                        t-on-click="() => this.validateOrder()">
-                    <i class="fa fa-check-circle me-2"/>
-                    <span>VALIDAR COBRO</span>
-                </button>
+
             </div>
         </xpath>
     </t>

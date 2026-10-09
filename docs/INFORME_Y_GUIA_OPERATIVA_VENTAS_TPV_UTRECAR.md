@@ -29,7 +29,6 @@ Se han implementado mejoras integrales en la interfaz táctil del Punto de Venta
   * **🖨 TICKET (Imprimir):** Valida la venta, registra el cobro e imprime el ticket de caja.
   * **📄 FACTURA (NIF/CIF):** Abre el asistente de cliente si no está seleccionado, exige CIF/NIF y emite la factura con matrícula y envío automático por email.
   * **💾 GUARDAR (Sin Ticket):** Cobro ágil sin consumo de papel para clientes que no desean recibo.
-  * **VALIDAR COBRO:** Botón de validación general estándar.
 * **Corrección de Maquetación:** Se eliminó el botón duplicado de Odoo que solapaba la interfaz, garantizando columnas proporcionadas y limpias.
 
 ### D. Tienda y Búsqueda Multicriterio
@@ -85,7 +84,7 @@ Al pulsar **`COBRAR`**, en la pantalla de pago tiene tres vías:
 * **Para guardar a Crédito / Cuenta de Cliente (Facturación mensual):**
   * Asigne el cliente desde el botón superior **`👤 CLIENTE`**.
   * En la pantalla de cobro, elija como medio de pago **`Cuenta Cliente / Crédito`**.
-  * Pulse **`VALIDAR`** o **`GUARDAR`**. La venta queda guardada en el albarán del cliente para la factura agrupada de fin de mes.
+  * Pulse **`GUARDAR`**. La venta queda guardada en el albarán del cliente para la factura agrupada de fin de mes.
 * **Para dejar un ticket en espera:**
   * En la barra superior, pulse sobre la pestaña de tickets/pedidos para abrir un nuevo ticket en blanco y atender a otro cliente mientras el anterior completa su compra.
 

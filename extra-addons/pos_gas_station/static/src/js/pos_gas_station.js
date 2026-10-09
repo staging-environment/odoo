@@ -3,6 +3,7 @@
 import { Component, useState, onMounted, onWillUnmount } from "@odoo/owl";
 import { ProductScreen } from "@point_of_sale/app/screens/product_screen/product_screen";
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
+import { OrderReceipt } from "@point_of_sale/app/screens/receipt_screen/receipt/order_receipt";
 import { patch } from "@web/core/utils/patch";
 import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { jsonrpc } from "@web/core/network/rpc_service";
@@ -1026,7 +1027,7 @@ patch(PaymentScreen.prototype, {
     setup() {
         super.setup(...arguments);
         onMounted(() => {
-            // Auto-asignar método de pago por defecto (Efectivo) para permitir cobro inmediato sin calculadora
+            // Auto-asignar método de pago por defecto (Efectivo) para permitir cobro inmediato a 1 clic sin calculadora
             if (this.currentOrder && this.currentOrder.get_paymentlines().length === 0 && this.payment_methods_from_config.length > 0) {
                 const defaultPm = this.payment_methods_from_config.find(m => m.is_cash_count || (m.name && m.name.toLowerCase().includes("efectivo")))
                                   || this.payment_methods_from_config[0];
@@ -1035,6 +1036,10 @@ patch(PaymentScreen.prototype, {
                 }
             }
         });
+    },
+
+    get nextScreen() {
+        return "ProductScreen";
     },
 
     ensureOrderPaid() {
@@ -1058,6 +1063,19 @@ patch(PaymentScreen.prototype, {
     async validateVirtusTicket() {
         this.ensureOrderPaid();
         this.currentOrder.set_to_invoice(false);
+        try {
+            await this.printer.print(
+                OrderReceipt,
+                {
+                    data: this.currentOrder.export_for_printing(),
+                    formatCurrency: this.env.utils.formatCurrency,
+                },
+                { webPrintFallback: true }
+            );
+            this.currentOrder._printed = true;
+        } catch (e) {
+            console.debug("Error imprimiendo ticket:", e);
+        }
         await this.validateOrder(false);
     },
 
@@ -1083,5 +1101,17 @@ patch(PaymentScreen.prototype, {
     async validateOrder(isForceValidate) {
         this.ensureOrderPaid();
         await super.validateOrder(...arguments);
+    },
+
+    async afterOrderValidation(suggestToSync = true) {
+        await super.afterOrderValidation(...arguments);
+        // Redirigir de inmediato al TPV de la gasolinera con un pedido nuevo en blanco
+        const order = this.currentOrder;
+        if (order) {
+            this.pos.removeOrder(order);
+            this.pos.add_new_order();
+            this.pos.resetProductScreenSearch?.();
+        }
+        this.pos.showScreen("ProductScreen");
     }
 });
