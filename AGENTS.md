@@ -21,6 +21,18 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
 - **Base de Datos Aseproda:** MariaDB / MySQL 5.5 en puerto `33061` (Contenedor `ddev-utrecar3-db`)
 - **Ruta Bases de Datos Aseproda:** `/home/developer/Projects/utrecardbs`
 
+### ⛽ Servidores Windows de Pista (Acceso SSH Directo 24/7)
+- **E.S. Repsol (Trieste / SE-30 Calonge):**
+  - **IP WireGuard VPN:** `10.8.0.18` (IP Local alternativa: `192.168.8.9`)
+  - **Usuario:** `usuario` (`desktop-qlqikag\usuario`)
+  - **Puerto SSH:** `22` (OpenSSH Windows Service)
+  - **Acceso:** Clave pública RSA directa sin contraseña (`ssh usuario@10.8.0.18`)
+  - **Hardware de Pista:** Surtidores Wayne DART en `COM3` (9600 bps) vía `C:\SDES\SDES.exe`
+  - **Modo de Trabajo:** `C:\SDES\ModoTrabajo.ini` (0=Atendido, 1=Postpago, 2=Prepago)
+  - **Agente Odoo Pista:** `C:\agente_pista_odoo_bridge.py`
+  - **Tarea Programada Windows:** `AgenteOdooRepsol` (gestionada con `schtasks`)
+  - **Documentación detallada:** `docs/ACCESO_REMOTO_PISTA_REPSOL_TRIESTE.md`
+
 ---
 
 ## ⛽ Arquitectura de Pista y Estrategia de Control (IMPORTANTE)
@@ -29,9 +41,12 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
 - **Sin hardware DOMS:** Las estaciones cuentan con **conexión directa** de los surtidores a los puertos serie / concentrador local en el PC de la estación (`SDES.exe` / puertos COM).
 - **Puente en tiempo real:** El script `scripts/agente_pista_odoo_bridge.py` monitoriza en tiempo real los eventos de pista (`dw.log` y base de datos local) y los traslada a Odoo Cloud (`pos_gas_station`).
 
-### 2. Estrategia y Hoja de Ruta Acordada:
-1. **Fase Actual (Prioridad Absoluta):** Afinar al 100% toda la operativa funcional de Odoo (ventas de tienda, combos, cobros, facturación con matrícula/conductor, envío por email, clientes de crédito y arqueos). Mantener el modo puente/espejo estable sin alterar la conexión física de pista.
-2. **Fase Futura Planificada:** Cuando la operativa de Odoo esté completamente afinada y validada en producción, **Odoo asumirá el rol de MÁSTER directo de pista sobre la conexión directa existente**, prescindiendo y apagando definitivamente VirtusTPV.
+### 2. Estrategia y Control MÁSTER:
+1. **Poner Odoo como MÁSTER de Pista:**
+   - Cerrar `VirtusTPVNet.exe` y `EOVGNET.exe` para desactivar el bloqueo Maestro de Aseproda.
+   - Configurar la calle en `C:\SDES\ModoTrabajo.ini` en Modo `0` (Atendido) o `1` (Postpago).
+   - Iniciar el agente con `schtasks /Run /TN AgenteOdooRepsol`.
+   - Odoo asume la lectura directa de `dw.log` y expediciones, sincronizando el TPV Cloud en tiempo real.
 
 ---
 
@@ -64,6 +79,7 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 - `scripts/agente_pista_odoo_bridge.py`: Agente puente en tiempo real entre la pista local (conexión directa) y Odoo Cloud.
 - `scripts/migrate_aseproda_to_odoo.py`: Importador optimizado de clientes y facturas con precarga en memoria y consultas indexadas.
 - `scripts/cleanup_aseproda_test_data.py`: **Herramienta de purga total** para eliminar de forma segura facturas, quants de inventario, proveedores y clientes de prueba, restaurando Odoo a su estado limpio.
+- `docs/ACCESO_REMOTO_PISTA_REPSOL_TRIESTE.md`: Documentación completa de acceso remoto SSH y control de pista en E.S. Repsol.
 - `docs/HISTORICO_PROYECTO_UTRECAR.md`: Histórico técnico completo de cambios, módulos y despliegues.
 - `docs/INFORME_Y_GUIA_OPERATIVA_VENTAS_TPV_UTRECAR.md`: Guía de operativa táctil para el cajero.
 

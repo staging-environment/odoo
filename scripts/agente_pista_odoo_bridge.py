@@ -19,6 +19,18 @@ import xmlrpc.client
 import logging
 from datetime import datetime
 
+# Compatibilidad con consola Windows cp1252
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # ==================== CONFIGURACIÓN ODOO CLOUD ====================
 ODOO_URL = "https://odoo.utrecar.com"
 DB_NAME = "odoo"
@@ -69,14 +81,15 @@ class AgentePistaRepsol:
     def inicializar_calles(self):
         self.pumps = []
         for i in range(1, TOTAL_CALLES + 1):
+            is_test_lane = (i == 1)
             self.pumps.append({
                 "id": i,
                 "name": f"Calle {i}",
                 "fuel": "Gasóleo A / Sin Plomo 95",
                 "amount": 0.0,
                 "liters": 0.0,
-                "status": "atendido",
-                "statusText": "ATENDIDO",
+                "status": "atendido" if is_test_lane else "blocked",
+                "statusText": "ATENDIDO" if is_test_lane else "PREPAGO",
                 "product_id": 56,
                 "price": 1.789,
                 "updated_at": time.time()
@@ -208,11 +221,13 @@ class AgentePistaRepsol:
             p["product_id"] = prod["id"]
             p["updated_at"] = time.time()
 
-            logging.info(f"🎯 VENTA FINALIZADA: Calle {calle} | {prod['name']} | {litros:.2f}L | {importe:.2f}€")
-            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⛽ VENTA FINALIZADA -> Calle {calle}: {prod['name']} | {litros:.2f}L | {importe:.2f}€ -> ¡PENDIENTE DE COBRO EN TPV!")
+            logging.info(f"🎯 VENTA FINALIZADA: Calle {calle} | {prod['name']} | {litros:.2f}L | {importe:.2f}EUR")
+            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⛽ VENTA FINALIZADA -> Calle {calle}: {prod['name']} | {litros:.2f}L | {importe:.2f}EUR -> ¡PENDIENTE DE COBRO EN TPV!")
             self.enviar_estado_a_odoo(forzar=True)
 
     def pintar_tabla_consola(self):
+        if not sys.stdout or not hasattr(sys.stdout, 'isatty') or not sys.stdout.isatty():
+            return
         now = time.time()
         if now - self.ultimo_dibujo < 1.5:
             return
@@ -226,15 +241,14 @@ class AgentePistaRepsol:
         print(f"{'CALLE':<9} | {'ESTADO EN TPV':<22} | {'COMBUSTIBLE':<18} | {'LITROS':<9} | {'TOTAL €':<9}")
         print("-" * 75)
         for p in self.pumps:
-            amt = f"{p['amount']:.2f} €" if p['amount'] > 0 else "-"
+            amt = f"{p['amount']:.2f} EUR" if p['amount'] > 0 else "-"
             lts = f"{p['liters']:.2f} L" if p['liters'] > 0 else "-"
             print(f"Calle {p['id']:<3} | {p['statusText']:<22} | {p['fuel'][:18]:<18} | {lts:<9} | {amt:<9}")
         print("=" * 75)
-        print(f"• Modo actual en pista: {self.modo_estacion_global.upper()} (Sincronizado con VirtusTPV)")
-        print("• En VirtusTPV: [ATENDIDO] ➔ Odoo muestra ATENDIDO (Verde 🔓).")
-        print("• En VirtusTPV: [PREPAGO]  ➔ Odoo muestra PREPAGO (Rojo 🔒).")
-        print("• En VirtusTPV: [POSTPAGO] ➔ Odoo muestra POSTPAGO (Verde 🔓).")
-        print("• Fin de repostaje ➔ Pasa al instante a PENDIENTE DE COBRO con botón naranja.")
+        print(f"* Modo actual en pista: {self.modo_estacion_global.upper()} (Control Directo Odoo)")
+        print("* Calle 1: [MODO ATENDIDO] -> Libre para descolgar y repostar en pista.")
+        print("* Calles 2-8: [MODO PREPAGO] -> Bloqueadas para prueba.")
+        print("* Fin de repostaje -> Pasa al instante a PENDIENTE DE COBRO en Odoo TPV.")
         print("Presiona Ctrl+C para salir.\n")
 
     def iniciar(self):
