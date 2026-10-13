@@ -19,6 +19,15 @@ import xmlrpc.client
 import logging
 from datetime import datetime
 
+# Conexión nativa con API ClienteSDES2 para control de hardware en pista
+try:
+    import clr
+    clr.AddReference(r"C:\Program Files\Aseproda\VirtusTPV Net\ClienteSDESNet.dll")
+    from aseproda.ClienteSDES2 import ClienteSDES2, ObservadorSDES
+    SDES_DISPONIBLE = True
+except Exception as e:
+    SDES_DISPONIBLE = False
+
 # Compatibilidad con consola Windows cp1252
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     try:
@@ -76,7 +85,16 @@ class AgentePistaRepsol:
         self.ultimo_id_expedicion = 0
         self.ultimo_envio_odoo = 0
         self.ultimo_dibujo = 0
-        self.modo_estacion_global = "atendido"  # "atendido", "postpago" o "blocked"
+        self.modo_estacion_global = "blocked"  # Modo por defecto para control Odoo
+        self.sdes_client = None
+        self.last_command_ts = time.time()
+        if SDES_DISPONIBLE:
+            try:
+                obs = ObservadorSDES()
+                self.sdes_client = ClienteSDES2("127.0.0.1", "127.0.0.1", 8777, obs)
+                logging.info("[OK] ClienteSDES2 conectado a SDES en puerto 8777.")
+            except Exception as e:
+                logging.error(f"[!] Error conectando ClienteSDES2: {e}")
         self.inicializar_calles()
 
     def inicializar_calles(self):
@@ -159,6 +177,78 @@ class AgentePistaRepsol:
             )
         except Exception as e:
             logging.warning(f"Error enviando estado a Odoo: {e}")
+
+    def desbloquear_surtidor_hardware(self, calle):
+        if not (1 <= calle <= TOTAL_CALLES):
+            return
+        logging.info(f"⛽ [HARDWARE] Enviando DESBLOQUEO nativo a Calle {calle}...")
+        if self.sdes_client:
+            try:
+                res_modo = self.sdes_client.CambiarModoTrabajo(calle, ClienteSDES2.ModosTrabajo.ATENDIDO)
+                res_desb = self.sdes_client.Desbloquear(calle)
+                logging.info(f"⛽ [HARDWARE] Calle {calle} desbloqueada: modo={res_modo}, desb={res_desb}")
+            except Exception as e:
+                logging.error(f"Error llamando Desbloquear({calle}): {e}")
+        self.actualizar_modotrabajo_ini(calle, 0)
+        self.cambiar_modo_calle(calle, "atendido", "ATENDIDO")
+
+    def bloquear_surtidor_hardware(self, calle):
+        if not (1 <= calle <= TOTAL_CALLES):
+            return
+        logging.info(f"🔒 [HARDWARE] Enviando BLOQUEO nativo a Calle {calle}...")
+        if self.sdes_client:
+            try:
+                res_modo = self.sdes_client.CambiarModoTrabajo(calle, ClienteSDES2.ModosTrabajo.PREPAGO)
+                res_bloq = self.sdes_client.Bloquear(calle)
+                logging.info(f"🔒 [HARDWARE] Calle {calle} bloqueada: modo={res_modo}, bloq={res_bloq}")
+            except Exception as e:
+                logging.error(f"Error llamando Bloquear({calle}): {e}")
+        self.actualizar_modotrabajo_ini(calle, 2)
+        self.cambiar_modo_calle(calle, "blocked", "PREPAGO")
+
+    def actualizar_modotrabajo_ini(self, calle, nuevo_modo):
+        if not os.path.exists(MODO_TRABAJO_INI):
+            return
+        try:
+            with open(MODO_TRABAJO_INI, "r", encoding="latin-1", errors="ignore") as f:
+                lines = f.readlines()
+            new_lines = []
+            for line in lines:
+                parts = line.strip().split("=")
+                if len(parts) == 2 and parts[0].strip() == str(calle):
+                    new_lines.append(f"   {calle}={nuevo_modo}\n")
+                else:
+                    new_lines.append(line)
+            with open(MODO_TRABAJO_INI, "w", encoding="latin-1") as f:
+                f.writelines(new_lines)
+        except Exception as e:
+            logging.debug(f"Error actualizando ModoTrabajo.ini: {e}")
+
+    def procesar_comandos_odoo(self):
+        if not self.uid or not self.models:
+            return
+        try:
+            cmd_key = f"pos_gas_station.pump_command_{CONFIG_ID}"
+            raw = self.models.execute_kw(
+                DB_NAME, self.uid, USER_PASS,
+                'ir.config_parameter', 'get_param',
+                [cmd_key]
+            )
+            if raw:
+                cmd = json.loads(raw)
+                cmd_ts = float(cmd.get("timestamp", 0))
+                if cmd_ts > self.last_command_ts:
+                    self.last_command_ts = cmd_ts
+                    action = cmd.get("action")
+                    pid = int(cmd.get("pump_id", 0))
+                    if action == "authorize":
+                        logging.info(f"🎯 [COMANDO ODOO] Recibida orden de AUTORIZAR Calle {pid}")
+                        self.desbloquear_surtidor_hardware(pid)
+                    elif action == "lock":
+                        logging.info(f"🛑 [COMANDO ODOO] Recibida orden de BLOQUEAR Calle {pid}")
+                        self.bloquear_surtidor_hardware(pid)
+        except Exception as e:
+            logging.debug(f"Error procesando comandos de Odoo: {e}")
 
     def sincronizar_modotrabajo_ini(self):
         if not os.path.exists(MODO_TRABAJO_INI):
@@ -244,6 +334,15 @@ class AgentePistaRepsol:
             p["price"] = precio if precio > 0 else prod["price"]
             p["product_id"] = prod["id"]
             p["updated_at"] = time.time()
+
+            # Bloquear la bomba en hardware para evitar repostajes no autorizados tras colgar
+            if self.sdes_client:
+                try:
+                    self.sdes_client.CambiarModoTrabajo(calle, ClienteSDES2.ModosTrabajo.PREPAGO)
+                    self.sdes_client.Bloquear(calle)
+                except Exception as be:
+                    logging.error(f"Error bloqueando Calle {calle} tras venta: {be}")
+            self.actualizar_modotrabajo_ini(calle, 2)
 
             logging.info(f"🎯 VENTA FINALIZADA: Calle {calle} | {prod['name']} | {litros:.2f}L | {importe:.2f}EUR")
             print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⛽ VENTA FINALIZADA -> Calle {calle}: {prod['name']} | {litros:.2f}L | {importe:.2f}EUR -> ¡PENDIENTE DE COBRO EN TPV!")
@@ -405,6 +504,9 @@ class AgentePistaRepsol:
                             calle = (surtidor % 10) if surtidor > 10 else surtidor
                             self.marcar_calle_completada(calle, litros, importe, precio, producto)
                     last_mysql_check = now
+
+                # 2.4 PROCESAR COMANDOS EN TIEMPO REAL DESDE ODOO TPV
+                self.procesar_comandos_odoo()
 
                 # 2.5 SINCRONIZACIÓN CON ModoTrabajo.ini (Control de modos local)
                 self.sincronizar_modotrabajo_ini()
