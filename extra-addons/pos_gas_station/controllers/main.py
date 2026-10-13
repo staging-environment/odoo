@@ -159,6 +159,22 @@ class PosGasStationController(http.Controller):
         STATION_PUMP_OVERRIDES[cfg][pid] = override_data
 
         _logger.info(f'⛽ [AUTORIZACIÓN PISTA] Config {cfg} | Calle {pid} | Combustible {fuel_name} | {amt}€ / {lts}L')
+
+        # Emitir comando para el agente de pista local en la gasolinera
+        cmd_key = f'pos_gas_station.pump_command_{cfg}'
+        cmd_payload = {
+            'action': 'authorize',
+            'pump_id': pid,
+            'fuel': fuel_name,
+            'amount': amt,
+            'liters': lts,
+            'timestamp': time.time()
+        }
+        try:
+            request.env['ir.config_parameter'].sudo().set_param(cmd_key, json.dumps(cmd_payload))
+        except Exception as e:
+            _logger.error(f'Error guardando comando {cmd_key}: {e}')
+
         return {'status': 'authorized', 'pump_id': pid}
 
     @http.route('/pos_gas_station/cancel_authorize', type='json', auth='public', methods=['POST'], csrf=False, cors='*')
@@ -169,6 +185,19 @@ class PosGasStationController(http.Controller):
             del STATION_PUMP_OVERRIDES[cfg][pid]
 
         _logger.info(f'🛑 [CANCELAR AUTORIZACIÓN] Config {cfg} | Calle {pid}')
+
+        # Emitir comando de bloqueo al agente de pista local
+        cmd_key = f'pos_gas_station.pump_command_{cfg}'
+        cmd_payload = {
+            'action': 'lock',
+            'pump_id': pid,
+            'timestamp': time.time()
+        }
+        try:
+            request.env['ir.config_parameter'].sudo().set_param(cmd_key, json.dumps(cmd_payload))
+        except Exception as e:
+            _logger.error(f'Error guardando comando {cmd_key}: {e}')
+
         return {'status': 'cancelled', 'pump_id': pid}
 
     @http.route('/pos_gas_station/clear_pump', type='json', auth='public', methods=['POST'], csrf=False, cors='*')
