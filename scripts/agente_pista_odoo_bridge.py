@@ -45,6 +45,7 @@ TOTAL_CALLES = 8
 # Archivos SDES de Aseproda
 SDES_LOG_DIR = r"C:\SDES\logs"
 DW_LOG = os.path.join(SDES_LOG_DIR, "dw.log")
+MODO_TRABAJO_INI = os.path.join(r"C:\SDES", "ModoTrabajo.ini")
 
 # Conexión MySQL local Aseproda (Respaldo)
 MYSQL_EXE = r"C:\Program Files\Aseproda\AdministracionCorporativa\mysql.exe"
@@ -158,6 +159,29 @@ class AgentePistaRepsol:
             )
         except Exception as e:
             logging.warning(f"Error enviando estado a Odoo: {e}")
+
+    def sincronizar_modotrabajo_ini(self):
+        if not os.path.exists(MODO_TRABAJO_INI):
+            return
+        try:
+            with open(MODO_TRABAJO_INI, "r", encoding="latin-1", errors="ignore") as f:
+                lines = f.readlines()
+            for line in lines:
+                line = line.strip()
+                if "=" in line and not line.startswith("[") and not line.startswith("//") and not line.startswith("#"):
+                    parts = line.split("=")
+                    if len(parts) == 2 and parts[0].strip().isdigit() and parts[1].strip().isdigit():
+                        calle = int(parts[0].strip())
+                        modo = int(parts[1].strip())
+                        if 1 <= calle <= TOTAL_CALLES:
+                            if modo == 0:
+                                self.cambiar_modo_calle(calle, "atendido", "ATENDIDO")
+                            elif modo == 1:
+                                self.cambiar_modo_calle(calle, "postpago", "POSTPAGO")
+                            elif modo == 2:
+                                self.cambiar_modo_calle(calle, "blocked", "PREPAGO")
+        except Exception as e:
+            logging.debug(f"Error leyendo ModoTrabajo.ini: {e}")
 
     def leer_liberaciones_de_odoo(self):
         """
@@ -381,6 +405,9 @@ class AgentePistaRepsol:
                             calle = (surtidor % 10) if surtidor > 10 else surtidor
                             self.marcar_calle_completada(calle, litros, importe, precio, producto)
                     last_mysql_check = now
+
+                # 2.5 SINCRONIZACIÓN CON ModoTrabajo.ini (Control de modos local)
+                self.sincronizar_modotrabajo_ini()
 
                 # 3. SINCRONIZACIÓN DESDE ODOO (Comprobar si el cajero ha cobrado o liberado calles)
                 self.leer_liberaciones_de_odoo()
