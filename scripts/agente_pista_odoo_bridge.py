@@ -54,11 +54,11 @@ MYSQL_DB = "virtusgesnet"
 
 # Mapeo de Productos Aseproda (Trieste) -> Odoo
 MAPA_COMBUSTIBLES = {
-    "1": {"id": 56, "name": "Gasóleo A", "code": "GA", "price": 1.789},
-    "2": {"id": 57, "name": "Sin Plomo 95", "code": "95", "price": 1.839},
-    "3": {"id": 54, "name": "Diesel Ultimate", "code": "G+", "price": 1.899},
-    "4": {"id": 56, "name": "Gasóleo A", "code": "GA", "price": 1.789},
-    "default": {"id": 56, "name": "Gasóleo A", "code": "GA", "price": 1.789}
+    "1": {"id": 51, "name": "Gasóleo A", "code": "GA", "price": 1.45},
+    "2": {"id": 52, "name": "Sin Plomo 95", "code": "95", "price": 1.55},
+    "3": {"id": 54, "name": "Gasóleo Plus", "code": "G+", "price": 1.55},
+    "4": {"id": 51, "name": "Gasóleo A", "code": "GA", "price": 1.45},
+    "default": {"id": 51, "name": "Gasóleo A", "code": "GA", "price": 1.45}
 }
 
 logging.basicConfig(
@@ -90,8 +90,8 @@ class AgentePistaRepsol:
                 "liters": 0.0,
                 "status": "atendido" if is_test_lane else "blocked",
                 "statusText": "ATENDIDO" if is_test_lane else "PREPAGO",
-                "product_id": 56,
-                "price": 1.789,
+                "product_id": 51,
+                "price": 1.45,
                 "updated_at": time.time()
             })
 
