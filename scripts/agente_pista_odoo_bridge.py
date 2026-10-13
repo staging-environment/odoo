@@ -87,14 +87,9 @@ class AgentePistaRepsol:
         self.ultimo_dibujo = 0
         self.modo_estacion_global = "blocked"  # Modo por defecto para control Odoo
         self.sdes_client = None
+        self.last_sdes_check = 0
         self.last_command_ts = time.time()
-        if SDES_DISPONIBLE:
-            try:
-                obs = ObservadorSDES()
-                self.sdes_client = ClienteSDES2("127.0.0.1", "127.0.0.1", 8777, obs)
-                logging.info("[OK] ClienteSDES2 conectado a SDES en puerto 8777.")
-            except Exception as e:
-                logging.error(f"[!] Error conectando ClienteSDES2: {e}")
+        self.asegurar_conexion_sdes()
         self.inicializar_calles()
 
     def inicializar_calles(self):
@@ -114,19 +109,48 @@ class AgentePistaRepsol:
                 "updated_at": time.time()
             })
 
+    def asegurar_sdes_proceso(self):
+        """Verifica que el concentrador SDES.exe esté corriendo. Si no, lo arranca en background silencioso."""
+        try:
+            res = subprocess.run(["tasklist", "/FI", "IMAGENAME eq SDES.exe"], capture_output=True, text=True)
+            if "SDES.exe" not in res.stdout:
+                logging.info("⚙️ [WATCHDOG] SDES.exe no encontrado en memoria. Arrancando SDES...")
+                sdes_path = r"C:\SDES\SDES.exe"
+                if os.path.exists(sdes_path):
+                    flags = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
+                    subprocess.Popen([sdes_path], cwd=r"C:\SDES", creationflags=flags)
+                    time.sleep(2.0)
+        except Exception as e:
+            logging.debug(f"Error comprobando proceso SDES: {e}")
+
+    def asegurar_conexion_sdes(self):
+        """Asegura la conexión TCP con ClienteSDES2 (puerto 8777). Reintenta automáticamente."""
+        if not SDES_DISPONIBLE:
+            return
+        if self.sdes_client is not None:
+            return
+        self.asegurar_sdes_proceso()
+        try:
+            obs = ObservadorSDES()
+            self.sdes_client = ClienteSDES2("127.0.0.1", "127.0.0.1", 8777, obs)
+            logging.info("[OK] ClienteSDES2 conectado a SDES en puerto 8777.")
+        except Exception as e:
+            self.sdes_client = None
+            logging.debug(f"ClienteSDES2 aún no listo: {e}")
+
     def conectar_odoo(self):
         print(f"[*] Conectando con Odoo Cloud ({ODOO_URL})...")
         try:
             common = xmlrpc.client.ServerProxy(f'{ODOO_URL}/xmlrpc/2/common', allow_none=True)
             self.uid = common.authenticate(DB_NAME, USER_LOGIN, USER_PASS, {})
             if not self.uid:
-                print("[ERROR] Credenciales Odoo incorrectas.")
+                logging.error("[ERROR] Credenciales Odoo incorrectas.")
                 return False
             self.models = xmlrpc.client.ServerProxy(f'{ODOO_URL}/xmlrpc/2/object', allow_none=True)
-            print(f"[OK] Autenticado en Odoo como usuario ID #{self.uid}")
+            logging.info(f"[OK] Autenticado en Odoo como usuario ID #{self.uid}")
             return True
         except Exception as e:
-            print(f"[ERROR] Error al conectar con Odoo: {e}")
+            logging.warning(f"Error al conectar con Odoo: {e}")
             return False
 
     def ejecutar_sql(self, sql):
@@ -182,6 +206,7 @@ class AgentePistaRepsol:
         if not (1 <= calle <= TOTAL_CALLES):
             return
         logging.info(f"⛽ [HARDWARE] Enviando DESBLOQUEO nativo a Calle {calle}...")
+        self.asegurar_conexion_sdes()
         if self.sdes_client:
             try:
                 res_modo = self.sdes_client.CambiarModoTrabajo(calle, ClienteSDES2.ModosTrabajo.ATENDIDO)
@@ -189,6 +214,7 @@ class AgentePistaRepsol:
                 logging.info(f"⛽ [HARDWARE] Calle {calle} desbloqueada: modo={res_modo}, desb={res_desb}")
             except Exception as e:
                 logging.error(f"Error llamando Desbloquear({calle}): {e}")
+                self.sdes_client = None
         self.actualizar_modotrabajo_ini(calle, 0)
         self.cambiar_modo_calle(calle, "atendido", "ATENDIDO")
 
@@ -196,6 +222,7 @@ class AgentePistaRepsol:
         if not (1 <= calle <= TOTAL_CALLES):
             return
         logging.info(f"🔒 [HARDWARE] Enviando BLOQUEO nativo a Calle {calle}...")
+        self.asegurar_conexion_sdes()
         if self.sdes_client:
             try:
                 res_modo = self.sdes_client.CambiarModoTrabajo(calle, ClienteSDES2.ModosTrabajo.PREPAGO)
@@ -203,6 +230,7 @@ class AgentePistaRepsol:
                 logging.info(f"🔒 [HARDWARE] Calle {calle} bloqueada: modo={res_modo}, bloq={res_bloq}")
             except Exception as e:
                 logging.error(f"Error llamando Bloquear({calle}): {e}")
+                self.sdes_client = None
         self.actualizar_modotrabajo_ini(calle, 2)
         self.cambiar_modo_calle(calle, "blocked", "PREPAGO")
 
@@ -342,10 +370,12 @@ class AgentePistaRepsol:
                     self.sdes_client.Bloquear(calle)
                 except Exception as be:
                     logging.error(f"Error bloqueando Calle {calle} tras venta: {be}")
+                    self.sdes_client = None
             self.actualizar_modotrabajo_ini(calle, 2)
 
             logging.info(f"🎯 VENTA FINALIZADA: Calle {calle} | {prod['name']} | {litros:.2f}L | {importe:.2f}EUR")
-            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⛽ VENTA FINALIZADA -> Calle {calle}: {prod['name']} | {litros:.2f}L | {importe:.2f}EUR -> ¡PENDIENTE DE COBRO EN TPV!")
+            if sys.stdout and hasattr(sys.stdout, 'isatty') and sys.stdout.isatty():
+                print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ⛽ VENTA FINALIZADA -> Calle {calle}: {prod['name']} | {litros:.2f}L | {importe:.2f}EUR -> ¡PENDIENTE DE COBRO EN TPV!")
             self.enviar_estado_a_odoo(forzar=True)
 
     def pintar_tabla_consola(self):
@@ -375,18 +405,20 @@ class AgentePistaRepsol:
         print("Presiona Ctrl+C para salir.\n")
 
     def iniciar(self):
-        print("=" * 75)
-        print("   UTRECAR ERP - PUENTE PISTA A ODOO CLOUD (E.S. REPSOL - TRIESTE)")
-        print("=" * 75 + "\n")
+        logging.info("===========================================================================")
+        logging.info("   UTRECAR ERP - PUENTE PISTA A ODOO CLOUD (E.S. REPSOL - TRIESTE)")
+        logging.info("===========================================================================")
 
-        if not self.conectar_odoo():
-            input("\nPresiona Enter para reintentar...")
-            if not self.conectar_odoo():
-                return
+        # Bucle resiliente de conexión con Odoo (sin bloqueos interactivos)
+        intentos = 0
+        while not self.conectar_odoo():
+            intentos += 1
+            logging.warning(f"Esperando conexión con Odoo Cloud ({ODOO_URL})... Reintentando en 5s (#{intentos})")
+            time.sleep(5.0)
 
         self.ultimo_id_expedicion = self.obtener_ultimo_id_expedicion()
-        print(f"[OK] Conectado a base local Aseproda. Último ID expedición: #{self.ultimo_id_expedicion}")
-        print(f"[OK] Inicializando las {TOTAL_CALLES} calles en Odoo Cloud...")
+        logging.info(f"[OK] Conectado a base local Aseproda. Último ID expedición: #{self.ultimo_id_expedicion}")
+        logging.info(f"[OK] Inicializando las {TOTAL_CALLES} calles en Odoo Cloud...")
         
         self.enviar_estado_a_odoo(forzar=True)
         time.sleep(1.0)
@@ -395,9 +427,6 @@ class AgentePistaRepsol:
         dw_handle = None
         
         # 1. Detección exacta de Modos según logs SDES:
-        # Modo=         0 -> ATENDIDO
-        # Modo=         1 -> POSTPAGO
-        # Modo=         2 -> PREPAGO
         re_modotrabajo = re.compile(r"CALLE:MODOTRABAJO>\s*Calle=(\d+)\s+Modo=\s*(\d+)", re.IGNORECASE)
         re_bloqueo = re.compile(r"Calle:(?:BLOQUEO|CERRAR)>\s*Calle=(\d+)", re.IGNORECASE)
         re_desbloqueo = re.compile(r"Calle:DESBLOQUEO\.\s*SOLICITADO>\s*Calle=(\d+)", re.IGNORECASE)
@@ -412,14 +441,31 @@ class AgentePistaRepsol:
             try:
                 dw_handle = open(DW_LOG, "r", encoding="latin-1", errors="ignore")
                 dw_handle.seek(0, os.SEEK_END)
-                print(f"[OK] Monitor dw.log de SDES enganchado en {DW_LOG}")
+                logging.info(f"[OK] Monitor dw.log de SDES enganchado en {DW_LOG}")
             except Exception as e:
-                print(f"[AVISO] No se pudo abrir dw.log: {e}")
+                logging.warning(f"[AVISO] No se pudo abrir dw.log: {e}")
 
         last_mysql_check = 0
 
         try:
             while True:
+                now = time.time()
+
+                # Watchdog periódico de conexión SDES (cada 5s si no está conectado)
+                if now - self.last_sdes_check > 5.0:
+                    self.last_sdes_check = now
+                    if self.sdes_client is None:
+                        self.asegurar_conexion_sdes()
+
+                # Reenganchar dw.log si no estaba abierto al inicio
+                if not dw_handle and os.path.exists(DW_LOG):
+                    try:
+                        dw_handle = open(DW_LOG, "r", encoding="latin-1", errors="ignore")
+                        dw_handle.seek(0, os.SEEK_END)
+                        logging.info(f"[OK] dw.log enganchado dinámicamente en {DW_LOG}")
+                    except Exception:
+                        pass
+
                 # 1. LECTURA EN TIEMPO REAL DESDE dw.log (0 ms de retardo)
                 if dw_handle:
                     line = dw_handle.readline()
@@ -474,19 +520,12 @@ class AgentePistaRepsol:
                             self.marcar_calle_completada(c, litros, importe, precio, prod_cod)
 
                         line = dw_handle.readline()
-                elif os.path.exists(DW_LOG):
-                    try:
-                        dw_handle = open(DW_LOG, "r", encoding="latin-1", errors="ignore")
-                        dw_handle.seek(0, os.SEEK_END)
-                    except Exception:
-                        pass
 
-                # 2. RESPALDO MYSQL (Cada 1.5s comprueba nuevas filas en expediciones)
-                now = time.time()
-                if now - last_mysql_check > 1.5:
+                # 2. RESPALDO VIA BASE DE DATOS LOCAL MYSQL (Cada 1.0 segundos)
+                if now - last_mysql_check > 1.0:
                     sql = f"""
-                    SELECT id, CodigoDeMaquinaExpendedora, NumeroDeContador, CantidadExpedida, Precio, ImporteExpedido, CodigoDeProducto, FechaYHoraDeExpedicion
-                    FROM expediciones
+                    SELECT id, Surtidor, CodigoDeEstacion, Litros, Precio, Importe, CodigoDeArticulo, FechaYHora
+                    FROM expediciones 
                     WHERE CodigoDeEstacion = {CODIGO_ESTACION} AND id > {self.ultimo_id_expedicion}
                     ORDER BY id ASC;
                     """
@@ -521,7 +560,7 @@ class AgentePistaRepsol:
                 time.sleep(0.1)
 
         except KeyboardInterrupt:
-            print("\n[!] Agente detenido por el usuario.")
+            logging.info("[!] Agente detenido por el usuario.")
 
 if __name__ == "__main__":
     agente = AgentePistaRepsol()

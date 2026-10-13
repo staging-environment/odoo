@@ -18,6 +18,8 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
 - **Servidor Cloud:** `https://odoo.utrecar.com`
 - **Usuario SSH:** `root` / `developer`
 - **Dirección IP:** `164.68.101.69`
+- **Ruta Odoo en Cloud:** `/home/developer/Projects/odoo`
+- **Contenedor Odoo en Cloud:** `ddev-odoo-odoo`
 - **Base de Datos Aseproda:** MariaDB / MySQL 5.5 en puerto `33061` (Contenedor `ddev-utrecar3-db`)
 - **Ruta Bases de Datos Aseproda:** `/home/developer/Projects/utrecardbs`
 
@@ -28,25 +30,34 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
   - **Puerto SSH:** `22` (OpenSSH Windows Service)
   - **Acceso:** Clave pública RSA directa sin contraseña (`ssh usuario@10.8.0.18`)
   - **Hardware de Pista:** Surtidores Wayne DART en `COM3` (9600 bps) vía `C:\SDES\SDES.exe`
+  - **Control Nativo por Socket:** `ClienteSDESNet.dll` (puerto TCP `8777`, clase `ClienteSDES2`)
   - **Modo de Trabajo:** `C:\SDES\ModoTrabajo.ini` (0=Atendido, 1=Postpago, 2=Prepago)
   - **Agente Odoo Pista:** `C:\agente_pista_odoo_bridge.py`
-  - **Tarea Programada Windows:** `AgenteOdooRepsol` (gestionada con `schtasks`)
+  - **Arranque Invisible 24/7:**
+    - Tarea programada `AgenteOdooRepsol`: ejecuta `C:\Utrecar\iniciar_agente_odoo.bat` (con `pythonw.exe`) a nivel de arranque del sistema (`BootTrigger`) bajo cuenta `SYSTEM` (Sesión 0, 100% invisible para el cajero).
+    - Tarea programada `RunSDES`: arranca `C:\SDES\arrancar_sdes.bat` a nivel de arranque del sistema (`SYSTEM`).
+    - Desactivado arranque automático de `VirtusTPV` y `Administracion Corporativa` en registro de Windows.
+    - Acceso directo en escritorio: `Odoo TPV - Gasolinera Repsol.lnk` para apertura en modo aplicación de `https://odoo.utrecar.com/pos/ui?config_id=7`.
   - **Documentación detallada:** `docs/ACCESO_REMOTO_PISTA_REPSOL_TRIESTE.md`
 
 ---
 
 ## ⛽ Arquitectura de Pista y Estrategia de Control (IMPORTANTE)
 
-### 1. Conexión Física Actual:
-- **Sin hardware DOMS:** Las estaciones cuentan con **conexión directa** de los surtidores a los puertos serie / concentrador local en el PC de la estación (`SDES.exe` / puertos COM).
-- **Puente en tiempo real:** El script `scripts/agente_pista_odoo_bridge.py` monitoriza en tiempo real los eventos de pista (`dw.log` y base de datos local) y los traslada a Odoo Cloud (`pos_gas_station`).
-
-### 2. Estrategia y Control MÁSTER:
-1. **Poner Odoo como MÁSTER de Pista:**
-   - Cerrar `VirtusTPVNet.exe` y `EOVGNET.exe` para desactivar el bloqueo Maestro de Aseproda.
-   - Configurar la calle en `C:\SDES\ModoTrabajo.ini` en Modo `0` (Atendido) o `1` (Postpago).
-   - Iniciar el agente con `schtasks /Run /TN AgenteOdooRepsol`.
-   - Odoo asume la lectura directa de `dw.log` y expediciones, sincronizando el TPV Cloud en tiempo real.
+### 1. Conexión Física y Protocolo Nativo:
+- **Sin hardware DOMS:** Las estaciones cuentan con **conexión directa** de los surtidores a los puertos serie / concentrador local en el PC de la estación (`SDES.exe` en `COM3` a 9600 bps).
+- **Control MÁSTER en Tiempo Real:** 
+  - Odoo POS asume el rol MÁSTER completo sobre la pista.
+  - El agente `scripts/agente_pista_odoo_bridge.py` se comunica con el servidor local SDES en `127.0.0.1:8777` usando la librería nativa `ClienteSDESNet.dll` vía `pythonnet`.
+  - Permite desbloquear (`Desbloquear(calle)`), bloquear (`Bloquear(calle)`) y cambiar modo de trabajo (`CambiarModoTrabajo(calle, modo)`) de forma inmediata con 0 ms de latencia.
+- **Flujo de Autorizaciones Remotas desde el TPV de Odoo Cloud:**
+  1. En el frontend de Odoo POS (`extra-addons/pos_gas_station`), el cajero pulsa "AUTORIZAR" o selecciona importe/litros.
+  2. El controlador `/pos_gas_station/authorize` emite el comando a través de `ir.config_parameter` (`pos_gas_station.pump_command_7`).
+  3. El agente de pista local captura la orden en milisegundos, invoca `ClienteSDES2.Desbloquear(calle)` y conmuta a `ATENDIDO`.
+  4. El surtidor físico arranca y despacha el combustible.
+  5. Al colgar la manguera, `dw.log` y MySQL detectan el fin de venta; el agente bloquea la manguera (`Bloquear(calle)` / `PREPAGO`) y traslada la venta al TPV de Odoo en estado "PENDIENTE DE COBRO".
+- **Prueba Física Real Confirmada:**
+  - Calle 8 (Diésel) suministró 2.15L (3.85 €) y apareció al instante en pantalla del TPV lista para cobro con un clic.
 
 ---
 
@@ -63,24 +74,20 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 - **`administracioncorporativa`**: Configuración de perfiles, usuarios e informes.
 - **`sii`**: Suministro Inmediato de Información a la AEAT.
 
-### Estructura de Inventario y Almacenes en Odoo:
-- **Almacenes (`stock.warehouse`):**
-  - `E.S. Utrera` (`UTR`)
-  - `E.S. Atalaya` (`ATE`)
-  - `E.S. Rodalabota` (`RO`)
-  - `E.S. Ronda Norte` (`RN`)
-- **Ubicaciones:** Tanques de Gasóleo A (`TK_*_GAS_A`), Sin Plomo 95 (`TK_*_SP95`) y Tienda (`TIENDA_*`).
-- **Existencias inicializadas (`stock.quant`):** Litros y unidades de recuentos físicos aplicados en cada estación.
+### Mapeo de Combustibles (E.S. Repsol / Config ID 7):
+- **Gasóleo A:** ID Odoo `51` (código `GAS_A` / `GA`)
+- **Sin Plomo 95:** ID Odoo `52` (código `SP95` / `95`)
+- **Gasóleo Plus:** ID Odoo `54` (código `GAS_PLUS` / `G+`)
 
 ---
 
 ## 🛠️ Scripts y Herramientas del Proyecto
 
-- `scripts/agente_pista_odoo_bridge.py`: Agente puente en tiempo real entre la pista local (conexión directa) y Odoo Cloud.
+- `scripts/agente_pista_odoo_bridge.py`: Agente puente resiliente 24/7 con integración nativa `ClienteSDES2` y watchdog de reconexión.
 - `scripts/migrate_aseproda_to_odoo.py`: Importador optimizado de clientes y facturas con precarga en memoria y consultas indexadas.
-- `scripts/cleanup_aseproda_test_data.py`: **Herramienta de purga total** para eliminar de forma segura facturas, quants de inventario, proveedores y clientes de prueba, restaurando Odoo a su estado limpio.
-- `docs/ACCESO_REMOTO_PISTA_REPSOL_TRIESTE.md`: Documentación completa de acceso remoto SSH y control de pista en E.S. Repsol.
-- `docs/HISTORICO_PROYECTO_UTRECAR.md`: Histórico técnico completo de cambios, módulos y despliegues.
+- `scripts/cleanup_aseproda_test_data.py`: Herramienta de purga total para datos de prueba.
+- `docs/ACCESO_REMOTO_PISTA_REPSOL_TRIESTE.md`: Documentación exhaustiva de hardware, acceso remoto y despliegue del agente.
+- `docs/HISTORICO_PROYECTO_UTRECAR.md`: Histórico técnico completo de cambios y despliegues.
 - `docs/INFORME_Y_GUIA_OPERATIVA_VENTAS_TPV_UTRECAR.md`: Guía de operativa táctil para el cajero.
 
 ---
