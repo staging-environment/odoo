@@ -1,53 +1,70 @@
-
 /* ==========================================================================
-   MATRIZ DE ROLES Y PERMISOS CORPORATIVA UTRECAR (ESTILO CAPTURA)
+   MATRIZ DE ROLES Y PERMISOS CORPORATIVA UTRECAR (COMPACTA Y CON SCROLL)
    ========================================================================== */
 
+/* CONTENEDOR RAÍZ CON SCROLL VERTICAL FLUIDO */
 .utrecar-matrix-wrapper {
     background: #f8fafc !important;
-    min-height: 100vh !important;
+    height: calc(100vh - 46px) !important;
+    max-height: calc(100vh - 46px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     display: flex !important;
     flex-direction: column !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    box-sizing: border-box !important;
+    padding-bottom: 60px !important;
+    -webkit-overflow-scrolling: touch !important;
 }
 
-/* BARRA SUPERIOR */
+/* ASEGURAR QUE LOS CONTENEDORES PADRE DE ODOO NO BLOQUEEN EL SCROLL */
+.o_action_manager:has(.utrecar-matrix-wrapper),
+.o_content:has(.utrecar-matrix-wrapper) {
+    overflow-y: auto !important;
+    height: 100% !important;
+}
+
+/* BARRA SUPERIOR COMPACTA */
 .matrix-topbar {
     background: #ffffff !important;
-    padding: 16px 28px !important;
+    padding: 10px 24px !important;
     border-bottom: 1.5px solid #e2e8f0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
 }
 
 .topbar-title-box {
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
+    gap: 10px !important;
 }
 
 .matrix-title-icon {
-    font-size: 28px !important;
+    font-size: 22px !important;
 }
 
 .matrix-main-title {
     margin: 0 !important;
-    font-size: 20px !important;
+    font-size: 17px !important;
     font-weight: 800 !important;
     color: #0f172a !important;
+    line-height: 1.2 !important;
 }
 
 .matrix-subtitle {
-    font-size: 12px !important;
+    font-size: 11px !important;
     color: #64748b !important;
 }
 
 .topbar-controls {
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
+    gap: 10px !important;
 }
 
 .matrix-search-box {
@@ -58,23 +75,25 @@
 
 .matrix-search-box .search-icon {
     position: absolute !important;
-    left: 12px !important;
+    left: 10px !important;
+    font-size: 12px !important;
     color: #94a3b8 !important;
 }
 
 .matrix-search-input {
-    padding: 8px 32px 8px 34px !important;
+    padding: 5px 28px 5px 30px !important;
     border: 1.5px solid #cbd5e1 !important;
-    border-radius: 8px !important;
-    font-size: 13px !important;
-    width: 250px !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    width: 220px !important;
+    height: 30px !important;
     outline: none !important;
     transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
 .matrix-search-input:focus {
     border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
 }
 
 .btn-clear-search {
@@ -84,132 +103,137 @@
     border: none !important;
     color: #94a3b8 !important;
     cursor: pointer !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
 }
 
 .btn-matrix-action {
     background: #0f172a !important;
     color: #ffffff !important;
     border: none !important;
-    border-radius: 8px !important;
-    padding: 8px 16px !important;
-    font-size: 13px !important;
+    border-radius: 6px !important;
+    padding: 5px 12px !important;
+    font-size: 12px !important;
     font-weight: 700 !important;
+    height: 30px !important;
     cursor: pointer !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-    transition: background 0.15s ease !important;
+    gap: 5px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
 }
 
 .btn-matrix-action:hover {
     background: #1e293b !important;
 }
 
-/* TABLA DE LA MATRIZ (IDÉNTICA A LA CAPTURA) */
+/* TABLA DE LA MATRIZ: COMPACTA Y SIN ESPACIOS EXCESIVOS */
 .matrix-table-container {
-    padding: 24px 28px !important;
-    flex: 1 !important;
+    padding: 12px 24px 60px 24px !important;
     overflow-x: auto !important;
+    overflow-y: visible !important;
 }
 
 .utrecar-matrix-table {
     width: 100% !important;
     background: #ffffff !important;
     border-collapse: collapse !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     overflow: hidden !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
     border: 1px solid #e2e8f0 !important;
 }
 
-/* CABECERAS DE COLUMNAS */
+/* CABECERAS DE COLUMNAS (ROLES) */
 .header-roles-row th {
-    background: #ffffff !important;
-    padding: 16px 20px !important;
-    font-size: 13px !important;
+    background: #f8fafc !important;
+    padding: 8px 10px !important;
+    font-size: 12px !important;
     font-weight: 800 !important;
     color: #1e293b !important;
-    letter-spacing: 0.5px !important;
-    border-bottom: 2px solid #e2e8f0 !important;
+    letter-spacing: 0.3px !important;
+    border-bottom: 2px solid #cbd5e1 !important;
     text-align: center !important;
+    position: sticky !important;
+    top: 48px !important;
+    z-index: 10 !important;
 }
 
 .col-permission-header {
     text-align: left !important;
-    width: 42% !important;
-    min-width: 320px !important;
-    padding-left: 24px !important;
+    width: 44% !important;
+    min-width: 280px !important;
+    padding-left: 18px !important;
 }
 
 .col-role-header {
     width: 14% !important;
-    min-width: 150px !important;
+    min-width: 130px !important;
 }
 
 .role-header-content {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 3px !important;
 }
 
 .role-title-text {
-    font-size: 13px !important;
+    font-size: 12px !important;
     font-weight: 900 !important;
     color: #0f172a !important;
 }
 
 .btn-role-users-tag {
-    background: #f1f5f9 !important;
+    background: #e2e8f0 !important;
     border: 1px solid #cbd5e1 !important;
-    border-radius: 12px !important;
-    padding: 2px 10px !important;
-    font-size: 11px !important;
+    border-radius: 10px !important;
+    padding: 1px 7px !important;
+    font-size: 10px !important;
     font-weight: 700 !important;
-    color: #475569 !important;
+    color: #334155 !important;
     cursor: pointer !important;
-    transition: background 0.15s ease, color 0.15s ease !important;
+    line-height: 1.2 !important;
 }
 
 .btn-role-users-tag:hover {
-    background: #e2e8f0 !important;
+    background: #cbd5e1 !important;
     color: #0f172a !important;
 }
 
-/* FILAS DE CATEGORÍA CON PUNTO AZUL (●) */
+/* FILAS DE CATEGORÍA CON PUNTO AZUL (●) - ALTURA MUY REDUCIDA */
 .category-header-cell {
-    background: #f8fafc !important;
+    background: #f1f5f9 !important;
     border-top: 2px solid #e2e8f0 !important;
     border-bottom: 1.5px solid #e2e8f0 !important;
-    padding: 10px 24px !important;
+    padding: 5px 16px !important;
 }
 
 .category-title-box {
     display: flex !important;
     align-items: center !important;
-    gap: 10px !important;
+    gap: 8px !important;
 }
 
 .category-blue-dot {
     color: #2563eb !important;
-    font-size: 18px !important;
+    font-size: 14px !important;
     line-height: 1 !important;
 }
 
 .category-name {
-    font-size: 13px !important;
+    font-size: 12px !important;
     font-weight: 900 !important;
     color: #1e3a8a !important;
-    letter-spacing: 0.8px !important;
+    letter-spacing: 0.6px !important;
     text-transform: uppercase !important;
+    line-height: 1.2 !important;
 }
 
-/* FILAS DE PERMISOS */
+/* FILAS DE PERMISOS: MÁRGENES ESTRECHOS Y ULTRA COMPACTOS */
 .permission-item-row {
     border-bottom: 1px solid #f1f5f9 !important;
     transition: background 0.1s ease !important;
+    height: 30px !important;
 }
 
 .permission-item-row:hover {
@@ -217,62 +241,65 @@
 }
 
 .permission-name-cell {
-    padding: 12px 24px !important;
+    padding: 4px 18px !important;
+    vertical-align: middle !important;
 }
 
 .perm-title-row {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    gap: 8px !important;
 }
 
 .perm-name-text {
-    font-size: 13.5px !important;
+    font-size: 12.5px !important;
     font-weight: 600 !important;
-    color: #334155 !important;
+    color: #1e293b !important;
+    line-height: 1.2 !important;
 }
 
 .perm-code-tag {
     font-family: monospace !important;
-    font-size: 10px !important;
+    font-size: 9.5px !important;
     background: #f1f5f9 !important;
     color: #64748b !important;
-    padding: 2px 6px !important;
-    border-radius: 4px !important;
-    opacity: 0.7 !important;
+    padding: 1px 5px !important;
+    border-radius: 3px !important;
+    opacity: 0.8 !important;
 }
 
-/* CELDA CON EL CHECKBOX NARANJA/ÁMBAR IDÉNTICO A LA CAPTURA */
+/* CELDAS DE CHECKBOXES */
 .checkbox-cell {
     text-align: center !important;
     vertical-align: middle !important;
     cursor: pointer !important;
-    padding: 10px 0 !important;
+    padding: 3px 0 !important;
 }
 
 .matrix-checkbox {
-    width: 22px !important;
-    height: 22px !important;
+    width: 19px !important;
+    height: 19px !important;
     margin: 0 auto !important;
-    border-radius: 5px !important;
+    border-radius: 4px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.15s ease !important;
+    transition: all 0.12s ease !important;
     cursor: pointer !important;
     user-select: none !important;
 }
 
 .matrix-checkbox.is-checked {
-    background: #ea580c !important; /* Exact orange from the user's screenshot */
+    background: #ea580c !important;
     border: 1.5px solid #c2410c !important;
     color: #ffffff !important;
-    box-shadow: 0 2px 4px rgba(234, 88, 12, 0.25) !important;
+    box-shadow: 0 1px 3px rgba(234, 88, 12, 0.3) !important;
 }
 
 .matrix-checkbox.is-unchecked {
     background: #ffffff !important;
-    border: 2px solid #cbd5e1 !important;
+    border: 1.5px solid #cbd5e1 !important;
 }
 
 .matrix-checkbox.is-unchecked:hover {
@@ -287,6 +314,8 @@
 
 .check-icon {
     display: block !important;
+    width: 13px !important;
+    height: 13px !important;
 }
 
 /* MODAL DE USUARIOS */
@@ -305,9 +334,9 @@
 
 .matrix-assign-modal {
     background: #ffffff !important;
-    width: 550px !important;
+    width: 520px !important;
     max-width: 90vw !important;
-    border-radius: 12px !important;
+    border-radius: 10px !important;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
     overflow: hidden !important;
     display: flex !important;
@@ -315,7 +344,7 @@
 }
 
 .assign-modal-header {
-    padding: 18px 24px !important;
+    padding: 14px 20px !important;
     background: #f8fafc !important;
     border-bottom: 1px solid #e2e8f0 !important;
     display: flex !important;
@@ -326,32 +355,32 @@
 .btn-close-modal {
     background: none !important;
     border: none !important;
-    font-size: 16px !important;
+    font-size: 15px !important;
     cursor: pointer !important;
     color: #64748b !important;
 }
 
 .assign-modal-body {
-    padding: 16px 24px !important;
-    max-height: 60vh !important;
+    padding: 14px 20px !important;
+    max-height: 55vh !important;
     overflow-y: auto !important;
 }
 
 .users-list-scroll {
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 6px !important;
 }
 
 .user-item-row {
-    padding: 12px 14px !important;
+    padding: 9px 12px !important;
     border: 1.5px solid #e2e8f0 !important;
-    border-radius: 8px !important;
+    border-radius: 6px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     cursor: pointer !important;
-    transition: all 0.15s ease !important;
+    transition: all 0.12s ease !important;
 }
 
 .user-item-row:hover {
@@ -365,17 +394,17 @@
 }
 
 .user-fullname {
-    font-size: 14px !important;
+    font-size: 13px !important;
     color: #0f172a !important;
 }
 
 .user-email {
-    font-size: 12px !important;
+    font-size: 11px !important;
     color: #64748b !important;
 }
 
 .assign-modal-footer {
-    padding: 14px 24px !important;
+    padding: 10px 20px !important;
     background: #f8fafc !important;
     border-top: 1px solid #e2e8f0 !important;
     display: flex !important;
@@ -384,6 +413,6 @@
 
 .matrix-loading-box {
     text-align: center !important;
-    padding: 60px 20px !important;
+    padding: 40px 20px !important;
     color: #64748b !important;
 }
