@@ -267,7 +267,8 @@ class AgentePistaRepsol:
     def inicializar_calles(self):
         self.pumps = []
         for i in range(1, TOTAL_CALLES + 1):
-            is_test_lane = (i == 1)
+            status = self.modo_estacion_global
+            status_txt = "ATENDIDO" if status == "atendido" else "PREPAGO"
             self.pumps.append({
                 "id": i,
                 "name": f"Calle {i}",
@@ -276,8 +277,8 @@ class AgentePistaRepsol:
                 "liters": 0.0,
                 "price": 1.45,
                 "product_id": 51,
-                "status": "atendido" if is_test_lane else "blocked",
-                "statusText": "ATENDIDO" if is_test_lane else "PREPAGO",
+                "status": status,
+                "statusText": status_txt,
                 "updated_at": time.time()
             })
 
@@ -639,6 +640,12 @@ class AgentePistaRepsol:
             time.sleep(5.0)
 
         logging.info(f"[OK] Inicializando las {TOTAL_CALLES} calles en Odoo Cloud...")
+        if self.modo_estacion_global == "blocked" and self.sdes_client and self.sdes_client.is_connected():
+            for i in range(1, TOTAL_CALLES + 1):
+                try:
+                    self.sdes_client.bloquear(i)
+                except Exception:
+                    pass
         self.enviar_estado_a_odoo(forzar=True)
         time.sleep(1.0)
 
