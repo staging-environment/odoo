@@ -865,17 +865,24 @@ export class UtrecarMainScreen extends Component {
     shouldShowPrepayCoin(pump) {
         if (!pump) return false;
 
-        // 1. REGLA ESTRICTA: Solo puede aparecer cuando la manguera ha sido colgada y está lista para cobrar
+        // 1. REGLA ESTRICTA: El símbolo del euro SOLO debe aparecer cuando está en MODO LLENO
+        // y ÚNICAMENTE después de que el cliente cuelgue la manguera (status === 'ready')
         if (pump.status !== "ready") {
             return false;
         }
 
-        // 2. En modalidad prepago NUNCA debe aparecer
+        // 2. En modalidad prepago / prefijado NUNCA debe aparecer
         if (pump.has_prepay) {
             return false;
         }
-        if (this.state.pumpPresets && this.state.pumpPresets[pump.id] && this.state.pumpPresets[pump.id].hasPrepay) {
+        if (pump.preset_amount && pump.preset_amount > 0) {
             return false;
+        }
+        const preset = this.state.pumpPresets && this.state.pumpPresets[pump.id];
+        if (preset) {
+            if (preset.hasPrepay || (preset.amount > 0 && !preset.isLleno)) {
+                return false;
+            }
         }
 
         // 3. Debe tener importe positivo a cobrar en caja
@@ -883,8 +890,9 @@ export class UtrecarMainScreen extends Component {
             return false;
         }
 
-        // 4. Autorizado / Lleno (postpago) completado
-        return true;
+        // 4. Solo en MODO LLENO / POSTPAGO
+        const isModoLleno = pump.is_lleno || Boolean(preset && preset.isLleno) || (!pump.has_prepay && !pump.preset_amount);
+        return Boolean(isModoLleno);
     }
 
 
@@ -1193,6 +1201,7 @@ export class UtrecarMainScreen extends Component {
             targetPump.fuel = fuelName;
             targetPump.preset_amount = presetVal;
             targetPump.has_prepay = isPrepay;
+            targetPump.is_lleno = isLleno;
             if (presetVal > 0) {
                 targetPump.amount = isMoney ? presetVal : 0;
                 targetPump.liters = !isMoney ? presetVal : 0;

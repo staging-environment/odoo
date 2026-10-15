@@ -236,7 +236,7 @@
                                  t-on-click="() => this.onPumpCardClick(pump)">
                                 
                                 <!-- MONEDA DE PREPAGO FLOTANTE ENCIMA DEL SURTIDOR -->
-                                <t t-if="shouldShowPrepayCoin(pump) and pump.status === 'ready'">
+                                <t t-if="shouldShowPrepayCoin(pump) and pump.status === 'ready' and !pump.has_prepay and !pump.preset_amount">
                                     <div class="dispenser-prepay-coin" title="Surtidor con repostaje finalizado (Pendiente de cobro)">
                                         <svg viewBox="0 0 36 36" width="28" height="28" class="prepay-coin-svg">
                                             <defs>
@@ -326,10 +326,9 @@
                                 <!-- Cuerpo inferior: Cobrar si terminado, Suministro si echando, Autorizar para despacho -->
                                 <div class="dispenser-lower-body">
                                     <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
-                                        <button class="btn-virtus-pasar-ticket" t-on-click.stop="() => this.onPumpClick(pump)">
-                                            <div class="icon-up">⬆</div>
-                                            <strong>COBRAR</strong>
-                                        </button>
+                                        <div class="dispenser-padlock-panel ready-orange" title="Repostaje completado (Haga clic en la calle para cobrar)">
+                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
+                                        </div>
                                     </t>
                                     <t t-elif="pump.status === 'dispensing'">
                                         <div class="dispenser-dispensing-panel">

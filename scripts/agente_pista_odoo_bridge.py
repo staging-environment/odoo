@@ -373,14 +373,17 @@ class AgentePistaRepsol:
                 logging.info(f"⛽ [SUMINISTRO EN VIVO] Calle {calle}: {litros:.2f}L | {importe:.2f}€")
         elif is_pte_cobro and is_colgado:
             # Fin de repostaje colgado en pista
-            if local["status"] == "dispensing":
+            if local.get("has_prepay") or local.get("preset_amount", 0) > 0:
+                logging.info(f"🏁 [MANGUERA COLGADA] Calle {calle} era PREPAGO finalizado. Liberando y bloqueando pista...")
+                self.liberar_calle_local(calle)
+            elif local["status"] == "dispensing":
                 local["status"] = "ready"
                 local["statusText"] = "COBRAR"
                 if litros > 0: local["liters"] = round(litros, 2)
                 if importe > 0: local["amount"] = round(importe, 2)
                 local["updated_at"] = time.time()
                 hubo_cambio = True
-                logging.info(f"🏁 [MANGUERA COLGADA] Calle {calle}: Fin repostaje con {local['liters']:.2f}L | {local['amount']:.2f}€")
+                logging.info(f"🏁 [MANGUERA COLGADA] Calle {calle}: Fin repostaje en modo LLENO con {local['liters']:.2f}L | {local['amount']:.2f}€")
 
         if hubo_cambio:
             self.enviar_estado_a_odoo(forzar=True)
@@ -643,7 +646,10 @@ class AgentePistaRepsol:
                                     p["updated_at"] = time.time()
                                     hubo_cambio = True
                             elif is_pte_cobro and is_colgado:
-                                if p["status"] == "dispensing":
+                                if p.get("has_prepay") or p.get("preset_amount", 0) > 0:
+                                    logging.info(f"🏁 Calle {c} era PREPAGO finalizado. Liberando y bloqueando pista...")
+                                    self.liberar_calle_local(c)
+                                elif p["status"] == "dispensing":
                                     p["status"] = "ready"
                                     p["statusText"] = "COBRAR"
                                     if lts > 0: p["liters"] = round(lts, 2)
@@ -672,9 +678,9 @@ class AgentePistaRepsol:
 
             logging.info(f"🎉 [VENTA LISTA] Calle {calle} completó {litros:.2f}L de {prod['name']} por {importe:.2f}€")
 
-            # Si ya estaba pagada en prepago en Odoo, liberar de inmediato
-            if p.get("has_prepay"):
-                logging.info(f"Calle {calle} era prepago completado. Liberando pista...")
+            # Si era prepago (prefijado pagado de antemano), liberar y bloquear de inmediato
+            if p.get("has_prepay") or p.get("preset_amount", 0) > 0:
+                logging.info(f"Calle {calle} era prepago completado. Liberando y bloqueando pista...")
                 self.liberar_calle_local(calle)
             else:
                 p["status"] = "ready"
