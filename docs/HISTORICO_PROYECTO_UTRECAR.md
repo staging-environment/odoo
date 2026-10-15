@@ -78,6 +78,8 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **07/10/2026** | Local & Prod | Implementación de política comercial y crédito en ficha de cliente (`res.partner`) | Bloqueo en TPV y control centralizado en ERP |
 | **07/10/2026** | Local & Prod | Corrección de buscador multicriterio de tienda y selector desplegable de páginas 1-4 | Operativo en TPV |
 | **07/10/2026** | Local & Prod | Rediseño de `PaymentScreenTop` y `PaymentScreenValidate` con botón de retorno y acciones de cobro | Desplegado y verificado en `https://odoo.utrecar.com` |
+| **13/10/2026** | Servidor Pista (`10.8.0.18`) | Configuración de SSH, API nativa `ClienteSDESNet.dll` (TCP 8777) y autostart silencioso 24/7 en Sesión 0 | Pista operada por Odoo POS como MÁSTER; prueba física exitosa en Calle 8 |
+| **15/10/2026** | Prod & Pista | Sincronización bidireccional hardware de cambio de modo global ("PISTA: PREFIJADO / LLENO") y candados individuales por calle | Desplegado en Cloud y en PC Repsol Trieste; persistencia de filestore con volumen `odoo-data` |
 
 ---
 

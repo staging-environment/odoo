@@ -50,12 +50,18 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
   - Odoo POS asume el rol MÁSTER completo sobre la pista.
   - El agente `scripts/agente_pista_odoo_bridge.py` se comunica con el servidor local SDES en `127.0.0.1:8777` usando la librería nativa `ClienteSDESNet.dll` vía `pythonnet`.
   - Permite desbloquear (`Desbloquear(calle)`), bloquear (`Bloquear(calle)`) y cambiar modo de trabajo (`CambiarModoTrabajo(calle, modo)`) de forma inmediata con 0 ms de latencia.
-- **Flujo de Autorizaciones Remotas desde el TPV de Odoo Cloud:**
-  1. En el frontend de Odoo POS (`extra-addons/pos_gas_station`), el cajero pulsa "AUTORIZAR" o selecciona importe/litros.
-  2. El controlador `/pos_gas_station/authorize` emite el comando a través de `ir.config_parameter` (`pos_gas_station.pump_command_7`).
-  3. El agente de pista local captura la orden en milisegundos, invoca `ClienteSDES2.Desbloquear(calle)` y conmuta a `ATENDIDO`.
-  4. El surtidor físico arranca y despacha el combustible.
-  5. Al colgar la manguera, `dw.log` y MySQL detectan el fin de venta; el agente bloquea la manguera (`Bloquear(calle)` / `PREPAGO`) y traslada la venta al TPV de Odoo en estado "PENDIENTE DE COBRO".
+- **Flujo de Control Bidireccional TPV Odoo Cloud ➔ Hardware de Pista:**
+  1. **Control de Modo Global y por Calle:**
+     - El botón *"PISTA: PREFIJADO / Cambiar a Lleno"* en el TPV o el clic directo en el candado de una calle emite orden vía `/pos_gas_station/set_track_mode`.
+     - El agente conmuta en tiempo real el modo en `ModoTrabajo.ini` y en el concentrador SDES (`ClienteSDES2.CambiarModoTrabajo` y `Desbloquear`/`Bloquear`).
+  2. **Autorización Directa:**
+     - En el frontend de Odoo POS (`extra-addons/pos_gas_station`), el cajero pulsa "AUTORIZAR" o selecciona importe/litros.
+     - El controlador `/pos_gas_station/authorize` emite el comando a través de `ir.config_parameter` (`pos_gas_station.pump_command_7`).
+     - El agente de pista local captura la orden en milisegundos, invoca `ClienteSDES2.Desbloquear(calle)` y conmuta a `ATENDIDO`.
+  3. **Suministro en Pista:**
+     - El surtidor físico arranca y despacha el combustible.
+  4. **Fin de Suministro y Cobro:**
+     - Al colgar la manguera, `dw.log` y MySQL detectan el fin de venta; el agente bloquea la manguera (`Bloquear(calle)` / `PREPAGO`) y traslada la venta al TPV de Odoo en estado "PENDIENTE DE COBRO".
 - **Prueba Física Real Confirmada:**
   - Calle 8 (Diésel) suministró 2.15L (3.85 €) y apareció al instante en pantalla del TPV lista para cobro con un clic.
 
