@@ -115,10 +115,17 @@ class PosGasStationController(http.Controller):
 
         for i, pump in enumerate(pumps):
             pid = pump.get('id', i + 1)
-            if pid in overrides:
-                # Copiar override excluyendo campos internos
-                ov = {k: v for k, v in overrides[pid].items() if not k.startswith('_')}
-                pumps[i] = ov
+            # Si el surtidor real ya reporta fin de repostaje (ready) o venta terminada, anular override de inmediato
+            if pump.get('status') == 'ready' or (pump.get('amount', 0) > 0 and pump.get('status') != 'dispensing'):
+                if pid in overrides:
+                    del overrides[pid]
+            elif pid in overrides:
+                # Si han pasado más de 15 segundos y no hay bombeo activo, descartar override
+                if now - overrides[pid].get('_timestamp', now) > 15:
+                    del overrides[pid]
+                else:
+                    ov = {k: v for k, v in overrides[pid].items() if not k.startswith('_')}
+                    pumps[i] = ov
 
         return {
             'status': 'success',
