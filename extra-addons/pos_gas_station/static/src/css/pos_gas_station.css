@@ -3554,3 +3554,16 @@
 .aseproda-dispenser-box.nozzle-is-off-hook {
     box-shadow: 0 0 10px rgba(22, 163, 74, 0.5) !important;
 }
+
+/* CANDADOS CONMUTADORES DE MODO */
+.clickable-padlock {
+    cursor: pointer !important;
+    transition: transform 0.15s ease, filter 0.15s ease !important;
+}
+.clickable-padlock:hover {
+    transform: scale(1.06) !important;
+    filter: brightness(1.1) !important;
+}
+.clickable-padlock:active {
+    transform: scale(0.96) !important;
+}

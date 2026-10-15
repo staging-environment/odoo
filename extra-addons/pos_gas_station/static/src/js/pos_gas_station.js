@@ -519,9 +519,10 @@ export class UtrecarMainScreen extends Component {
                         }
                     });
                     this.state.pumps = data.pumps;
-                    const samplePump = data.pumps.find(p => p.status === "atendido" || p.status === "postpago" || p.status === "blocked" || p.status === "prepago");
-                    if (samplePump) {
-                        this.state.trackMode = (samplePump.status === "atendido" || samplePump.status === "postpago") ? "atendido" : "prepago";
+                    const attendedCount = data.pumps.filter(p => p.status === "atendido" || p.status === "postpago").length;
+                    const blockedCount = data.pumps.filter(p => p.status === "blocked" || p.status === "prepago").length;
+                    if (attendedCount > 0 || blockedCount > 0) {
+                        this.state.trackMode = attendedCount >= blockedCount ? "atendido" : "prepago";
                     }
                 }
             }
@@ -934,12 +935,12 @@ export class UtrecarMainScreen extends Component {
     }
 
     
-    toggleTrackMode() {
+    async toggleTrackMode() {
         const nextMode = this.state.trackMode === "atendido" ? "prepago" : "atendido";
         this.state.trackMode = nextMode;
         localStorage.setItem("utrecar_track_mode", nextMode);
         
-        // Update idle pumps instantly
+        // Update idle pumps instantly in memory
         if (this.state.pumps && Array.isArray(this.state.pumps)) {
             for (const pump of this.state.pumps) {
                 if (pump.status === "idle" || pump.status === "blocked" || pump.status === "atendido") {
@@ -954,6 +955,47 @@ export class UtrecarMainScreen extends Component {
             }
         }
         this.state.orderVersion = Date.now();
+
+        // Enviar orden al backend Odoo y hardware de pista
+        try {
+            await jsonrpc("/pos_gas_station/set_track_mode", {
+                config_id: this.pos.config.id,
+                mode: nextMode
+            });
+        } catch (err) {
+            console.error("Error al sincronizar modo global de pista:", err);
+        }
+    }
+
+    async togglePumpMode(pump, ev) {
+        if (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+        }
+        if (!pump) return;
+        // No conmutar si la pista está en pleno repostaje o pendiente de cobro
+        if (pump.status === "dispensing" || pump.status === "ready") {
+            return;
+        }
+
+        const isCurrentlyOpen = (pump.status === "atendido" || pump.status === "postpago");
+        const nextPumpMode = isCurrentlyOpen ? "prepago" : "atendido";
+
+        // Actualizar visualmente de inmediato
+        pump.status = nextPumpMode === "atendido" ? "atendido" : "blocked";
+        pump.statusText = nextPumpMode === "atendido" ? "LIBRE" : "PREPAGO";
+        this.state.orderVersion = Date.now();
+
+        // Enviar orden al backend Odoo y hardware de pista para esta calle específica
+        try {
+            await jsonrpc("/pos_gas_station/set_track_mode", {
+                config_id: this.pos.config.id,
+                mode: nextPumpMode,
+                pump_id: pump.id
+            });
+        } catch (err) {
+            console.error(`Error al sincronizar modo de Calle ${pump.id}:`, err);
+        }
     }
 
     promptCustomAmount() {

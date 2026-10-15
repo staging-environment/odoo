@@ -275,6 +275,24 @@ class AgentePistaRepsol:
                     elif action == "lock":
                         logging.info(f"🛑 [COMANDO ODOO] Recibida orden de BLOQUEAR Calle {pid}")
                         self.bloquear_surtidor_hardware(pid)
+                    elif action == "set_track_mode":
+                        mode = cmd.get("mode", "prepago")
+                        logging.info(f"🔄 [COMANDO ODOO] Conmutar TODA LA PISTA a modo {mode.upper()}")
+                        for calle in range(1, TOTAL_CALLES + 1):
+                            if mode == "atendido":
+                                self.desbloquear_surtidor_hardware(calle)
+                            else:
+                                self.bloquear_surtidor_hardware(calle)
+                        self.modo_estacion_global = "atendido" if mode == "atendido" else "blocked"
+                        self.enviar_estado_a_odoo(forzar=True)
+                    elif action == "set_pump_mode":
+                        mode = cmd.get("mode", "prepago")
+                        logging.info(f"🔄 [COMANDO ODOO] Conmutar Calle {pid} a modo {mode.upper()}")
+                        if mode == "atendido":
+                            self.desbloquear_surtidor_hardware(pid)
+                        else:
+                            self.bloquear_surtidor_hardware(pid)
+                        self.enviar_estado_a_odoo(forzar=True)
         except Exception as e:
             logging.debug(f"Error procesando comandos de Odoo: {e}")
 

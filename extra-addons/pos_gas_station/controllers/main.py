@@ -236,6 +236,50 @@ class PosGasStationController(http.Controller):
 
         return {'status': 'cleared', 'pump_id': pid}
 
+    @http.route('/pos_gas_station/set_track_mode', type='json', auth='public', methods=['POST'], csrf=False, cors='*')
+    def set_track_mode(self, config_id=None, mode='prepago', pump_id=None, **kw):
+        cfg = int(config_id or 7)
+        pid = int(pump_id) if pump_id else None
+        target_status = 'atendido' if mode == 'atendido' else 'blocked'
+        target_text = 'LIBRE' if mode == 'atendido' else 'PREPAGO'
+
+        # 1. Actualizar estado inmediatamente en ir.config_parameter
+        param_key = f'pos_gas_station.pumps_state_{cfg}'
+        try:
+            status_raw = request.env['ir.config_parameter'].sudo().get_param(param_key)
+            if status_raw:
+                parsed = json.loads(status_raw)
+                p_list = parsed.get('pumps', []) if isinstance(parsed, dict) else parsed
+                for p in p_list:
+                    if pid is None or p.get('id') == pid:
+                        if p.get('status') in ('idle', 'blocked', 'atendido', 'postpago', 'prepago'):
+                            p['status'] = target_status
+                            p['statusText'] = target_text
+                if isinstance(parsed, dict):
+                    parsed['pumps'] = p_list
+                    request.env['ir.config_parameter'].sudo().set_param(param_key, json.dumps(parsed))
+                else:
+                    request.env['ir.config_parameter'].sudo().set_param(param_key, json.dumps(p_list))
+        except Exception as e:
+            _logger.error(f'Error actualizando estado en {param_key}: {e}')
+
+        # 2. Emitir comando de hardware para el agente de pista
+        cmd_key = f'pos_gas_station.pump_command_{cfg}'
+        cmd_payload = {
+            'action': 'set_pump_mode' if pid else 'set_track_mode',
+            'mode': mode,
+            'timestamp': time.time()
+        }
+        if pid:
+            cmd_payload['pump_id'] = pid
+        try:
+            request.env['ir.config_parameter'].sudo().set_param(cmd_key, json.dumps(cmd_payload))
+        except Exception as e:
+            _logger.error(f'Error emitiendo comando {cmd_key}: {e}')
+
+        _logger.info(f'⛽ [MODO PISTA] Config {cfg} | Modo {mode} | Calle {pid or "TODAS"}')
+        return {'status': 'success', 'mode': mode, 'pump_id': pid}
+
     @http.route('/pos_gas_station/set_cashier_name', type='json', auth='user', methods=['POST'], csrf=False)
     def set_cashier_name(self, name=None, user_id=None, **kw):
         if name and name.strip():
