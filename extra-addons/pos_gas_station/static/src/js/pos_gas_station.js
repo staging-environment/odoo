@@ -58,6 +58,20 @@ export class UtrecarMainScreen extends Component {
             selectedModalCategory: null,
             clientSearch: "",
             storeSearch: "",
+                        isShiftOrdersModalOpen: false,
+            shiftOrdersLoading: false,
+            shiftOrders: [],
+            shiftSummary: { total_sales: 0, total_cash: 0, total_bank: 0, orders_count: 0 },
+            selectedShiftOrder: null,
+            shiftActiveTab: 'products',
+            shiftOrderSearch: "",
+            isInvoiceModalOpen: false,
+            invoicePartnerSearch: "",
+            invoicePartnerResults: [],
+            invoiceSelectedPartner: null,
+            invoiceNewPartner: { name: "", vat: "", street: "", city: "", zip: "", email: "", phone: "" },
+            isCreatingPartner: false,
+            invoiceLoading: false,
             pumps: []
         });
 
@@ -757,7 +771,307 @@ export class UtrecarMainScreen extends Component {
     }
 
     openRefundScreen() {
-        this.pos.showScreen("TicketScreen");
+        this.openShiftOrdersModal();
+    }
+
+    async openShiftOrdersModal() {
+        this.state.isShiftOrdersModalOpen = true;
+        this.state.selectedShiftOrder = null;
+        this.state.shiftOrderSearch = "";
+        this.state.shiftOrdersLoading = true;
+        await this.loadShiftOrders();
+    }
+
+    closeShiftOrdersModal() {
+        this.state.isShiftOrdersModalOpen = false;
+        this.state.selectedShiftOrder = null;
+    }
+
+    async loadShiftOrders() {
+        this.state.shiftOrdersLoading = true;
+        try {
+            const sessionId = this.pos.pos_session ? this.pos.pos_session.id : null;
+            const configId = this.pos.config ? this.pos.config.id : null;
+            const res = await this.env.services.rpc("/pos_gas_station/get_shift_orders", {
+                session_id: sessionId,
+                config_id: configId,
+            });
+            if (res && res.status === "success") {
+                this.state.shiftOrders = res.orders || [];
+                this.state.shiftSummary = res.summary || { total_sales: 0, total_cash: 0, total_bank: 0, orders_count: 0 };
+            } else {
+                console.error("Error al cargar pedidos del turno:", res ? res.message : '');
+            }
+        } catch (e) {
+            console.error("Error RPC loadShiftOrders:", e);
+        } finally {
+            this.state.shiftOrdersLoading = false;
+        }
+    }
+
+    get filteredShiftOrders() {
+        if (!this.state.shiftOrders) return [];
+        const q = (this.state.shiftOrderSearch || "").toLowerCase().trim();
+        if (!q) return this.state.shiftOrders;
+        return this.state.shiftOrders.filter(o => 
+            (o.name && o.name.toLowerCase().includes(q)) ||
+            (o.pos_reference && o.pos_reference.toLowerCase().includes(q)) ||
+            (o.partner_name && o.partner_name.toLowerCase().includes(q)) ||
+            (o.partner_vat && o.partner_vat.toLowerCase().includes(q)) ||
+            (o.account_move_name && o.account_move_name.toLowerCase().includes(q)) ||
+            String(o.amount_total).includes(q)
+        );
+    }
+
+    selectShiftOrder(order) {
+        this.state.selectedShiftOrder = order;
+        this.state.shiftActiveTab = 'products';
+    }
+
+    backToShiftOrdersList() {
+        this.state.selectedShiftOrder = null;
+    }
+
+    setShiftTab(tab) {
+        this.state.shiftActiveTab = tab;
+    }
+
+    printShiftOrderTicket(order) {
+        if (!order) return;
+        const comp = order.company || {};
+        const linesHtml = (order.lines || []).map(l => `
+            <tr>
+                <td style="text-align: left; padding: 4px 0;">${l.product_name}</td>
+                <td style="text-align: right; padding: 4px 0;">${Number(l.qty).toFixed(2)}</td>
+                <td style="text-align: right; padding: 4px 0;">${Number(l.price_unit).toFixed(3)} €</td>
+                <td style="text-align: right; padding: 4px 0; font-weight: bold;">${Number(l.price_subtotal_incl).toFixed(2)} €</td>
+            </tr>
+        `).join("");
+
+        const paymentsHtml = (order.payments || []).map(p => `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                <span>${p.name}:</span>
+                <span style="font-weight: bold;">${Number(p.amount).toFixed(2)} €</span>
+            </div>
+        `).join("");
+
+        const clientHtml = order.partner_name ? `
+            <div style="margin-top: 6px; font-size: 11px; border-top: 1px dashed #bbb; padding-top: 4px;">
+                <strong>CLIENTE:</strong> ${order.partner_name}<br/>
+                ${order.partner_vat ? `<strong>CIF/NIF:</strong> ${order.partner_vat}<br/>` : ''}
+                ${order.partner_street ? `${order.partner_street}, ${order.partner_city}<br/>` : ''}
+            </div>
+        ` : '';
+
+        const invoiceHtml = order.is_invoiced ? `
+            <div style="margin-top: 6px; padding: 4px; background: #e8f5e9; border: 1px solid #81c784; text-align: center; font-weight: bold; font-size: 11px; border-radius: 4px;">
+                FACTURA: ${order.account_move_name}
+            </div>
+        ` : '';
+
+        const receiptWindow = window.open("", "_blank", "width=400,height=650");
+        if (!receiptWindow) {
+            alert("Por favor permita las ventanas emergentes en su navegador para imprimir el ticket.");
+            return;
+        }
+
+        receiptWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Ticket ${order.name}</title>
+                <style>
+                    body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 16px; color: #000; }
+                    .header { text-align: center; margin-bottom: 10px; }
+                    .header h2 { margin: 0 0 4px 0; font-size: 15px; font-weight: bold; }
+                    .header p { margin: 1px 0; font-size: 11px; }
+                    .divider { border-bottom: 1px dashed #000; margin: 8px 0; }
+                    .meta { font-size: 11px; margin-bottom: 8px; }
+                    .meta-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                    th { border-bottom: 1px solid #000; padding: 3px 0; font-size: 11px; }
+                    .total-section { margin-top: 8px; font-size: 12px; }
+                    .total-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+                    .grand-total { font-size: 15px; font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 0; margin: 6px 0; }
+                    .footer { text-align: center; margin-top: 15px; font-size: 11px; }
+                    @media print {
+                        body { padding: 0; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>${comp.name || 'ESTACIÓN DE SERVICIO'}</h2>
+                    ${comp.vat ? `<p>CIF: ${comp.vat}</p>` : ''}
+                    ${comp.street ? `<p>${comp.street}</p>` : ''}
+                    ${comp.city ? `<p>${comp.city}</p>` : ''}
+                    ${comp.phone ? `<p>Tel: ${comp.phone}</p>` : ''}
+                </div>
+                <div class="divider"></div>
+                <div class="meta">
+                    <div class="meta-row"><span>Nº TICKET:</span><strong>${order.name}</strong></div>
+                    <div class="meta-row"><span>FECHA:</span><span>${order.date_order}</span></div>
+                    <div class="meta-row"><span>SESIÓN:</span><span>${order.session_name}</span></div>
+                    <div class="meta-row"><span>ATENDIDO POR:</span><span>${order.user_name}</span></div>
+                    <div class="meta-row"><span>REF:</span><span>${order.pos_reference}</span></div>
+                </div>
+                ${clientHtml}
+                ${invoiceHtml}
+                <div class="divider"></div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">DESCRIPCIÓN</th>
+                            <th style="text-align: right;">CANT</th>
+                            <th style="text-align: right;">PRECIO</th>
+                            <th style="text-align: right;">TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${linesHtml}
+                    </tbody>
+                </table>
+                <div class="divider"></div>
+                <div class="total-section">
+                    <div class="total-row"><span>Base Imponible:</span><span>${(order.amount_total - order.amount_tax).toFixed(2)} €</span></div>
+                    <div class="total-row"><span>IVA:</span><span>${Number(order.amount_tax).toFixed(2)} €</span></div>
+                    <div class="total-row grand-total"><span>TOTAL:</span><span>${Number(order.amount_total).toFixed(2)} €</span></div>
+                </div>
+                <div style="margin-top: 6px;">
+                    ${paymentsHtml}
+                </div>
+                <div class="footer">
+                    <p>*** GRACIAS POR SU VISITA ***</p>
+                </div>
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        receiptWindow.document.close();
+    }
+
+    openInvoiceModal(order) {
+        this.state.isInvoiceModalOpen = true;
+        this.state.invoicePartnerSearch = "";
+        this.state.invoicePartnerResults = [];
+        this.state.invoiceSelectedPartner = order.partner_id ? {
+            id: order.partner_id,
+            name: order.partner_name,
+            vat: order.partner_vat,
+            street: order.partner_street,
+            city: order.partner_city,
+            zip: order.partner_zip
+        } : null;
+        this.state.invoiceNewPartner = { name: "", vat: "", street: "", city: "", zip: "", email: "", phone: "" };
+        this.state.isCreatingPartner = !order.partner_id;
+    }
+
+    closeInvoiceModal() {
+        this.state.isInvoiceModalOpen = false;
+        this.state.invoiceSelectedPartner = null;
+        this.state.invoicePartnerResults = [];
+    }
+
+    async onInvoicePartnerSearch(ev) {
+        const query = ev.target.value;
+        this.state.invoicePartnerSearch = query;
+        if (query && query.trim().length >= 2) {
+            try {
+                const res = await this.env.services.rpc("/pos_gas_station/search_partners", { query: query.trim() });
+                if (res && res.status === "success") {
+                    this.state.invoicePartnerResults = res.partners || [];
+                }
+            } catch (e) {
+                console.error("Error search_partners:", e);
+            }
+        } else {
+            this.state.invoicePartnerResults = [];
+        }
+    }
+
+    selectPartnerForInvoice(partner) {
+        this.state.invoiceSelectedPartner = partner;
+        this.state.invoicePartnerResults = [];
+        this.state.invoicePartnerSearch = partner.name + (partner.vat ? ` (${partner.vat})` : "");
+        this.state.isCreatingPartner = false;
+    }
+
+    toggleCreatePartnerMode() {
+        this.state.isCreatingPartner = !this.state.isCreatingPartner;
+        if (this.state.isCreatingPartner) {
+            this.state.invoiceSelectedPartner = null;
+        }
+    }
+
+    async confirmInvoiceOrder() {
+        const order = this.state.selectedShiftOrder;
+        if (!order) return;
+
+        let partnerId = this.state.invoiceSelectedPartner ? this.state.invoiceSelectedPartner.id : null;
+        let partnerData = null;
+
+        if (!partnerId) {
+            const p = this.state.invoiceNewPartner;
+            if (!p.vat || !p.vat.trim()) {
+                alert("Debe indicar el NIF/CIF del cliente para facturar.");
+                return;
+            }
+            if (!p.name || !p.name.trim()) {
+                alert("Debe indicar el nombre o razón social del cliente.");
+                return;
+            }
+            partnerData = { ...p };
+        }
+
+        this.state.invoiceLoading = true;
+        try {
+            const res = await this.env.services.rpc("/pos_gas_station/invoice_order", {
+                order_id: order.id,
+                partner_id: partnerId,
+                partner_data: partnerData
+            });
+
+            if (res && res.status === "success") {
+                order.is_invoiced = true;
+                order.state = 'invoiced';
+                order.account_move_id = res.account_move_id;
+                order.account_move_name = res.account_move_name;
+                order.invoice_url = res.invoice_url;
+                if (partnerData) {
+                    order.partner_name = partnerData.name;
+                    order.partner_vat = partnerData.vat;
+                } else if (this.state.invoiceSelectedPartner) {
+                    order.partner_name = this.state.invoiceSelectedPartner.name;
+                    order.partner_vat = this.state.invoiceSelectedPartner.vat;
+                }
+                this.closeInvoiceModal();
+                alert(`Factura generada con éxito: ${res.account_move_name}`);
+                if (res.invoice_url) {
+                    window.open(res.invoice_url, "_blank");
+                }
+                await this.loadShiftOrders();
+            } else {
+                alert("Error al facturar: " + (res ? res.message : "Error desconocido"));
+            }
+        } catch (e) {
+            console.error("Error confirmInvoiceOrder:", e);
+            alert("Error al comunicarse con el servidor al facturar: " + e.message);
+        } finally {
+            this.state.invoiceLoading = false;
+        }
+    }
+
+    printShiftOrderInvoice(order) {
+        if (!order || !order.invoice_url) {
+            alert("Este pedido aún no tiene factura generada.");
+            return;
+        }
+        window.open(order.invoice_url, "_blank");
     }
 
     goToPayment() {

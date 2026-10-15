@@ -827,7 +827,485 @@
                     </div>
                 </div>
             </t>
-        </div>
+        
+            <!-- ================= MODAL PEDIDOS DEL TURNO ACTIVO (HISTORIAL Y DETALLE) ================= -->
+            <t t-if="state.isShiftOrdersModalOpen">
+                <div class="shift-orders-modal-backdrop" t-on-click.self="() => this.closeShiftOrdersModal()">
+                    <div class="shift-orders-modal-window">
+                        
+                        <!-- 1. VISTA LISTADO DE PEDIDOS DEL TURNO -->
+                        <t t-if="!state.selectedShiftOrder">
+                            <!-- HEADER DEL MODAL -->
+                            <div class="shift-modal-header">
+                                <div class="shift-modal-header-left">
+                                    <button class="shift-btn-back" t-on-click="() => this.closeShiftOrdersModal()">
+                                        <i class="fa fa-arrow-left me-1"/> ⬅ Volver al TPV
+                                    </button>
+                                    <div class="shift-header-titles">
+                                        <h2 class="shift-title">⏱ Pedidos realizados en este turno</h2>
+                                        <span class="shift-subtitle">
+                                            Sesión: <strong t-esc="pos.pos_session ? pos.pos_session.name : ''"/> | 
+                                            TPV: <strong t-esc="pos.config ? pos.config.name : ''"/>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="shift-modal-header-right">
+                                    <button class="shift-btn-refresh" t-on-click="() => this.loadShiftOrders()" title="Refrescar datos">
+                                        <i class="fa fa-refresh me-1"/> Actualizar
+                                    </button>
+                                    <button class="shift-btn-close" t-on-click="() => this.closeShiftOrdersModal()">✖</button>
+                                </div>
+                            </div>
+
+                            <!-- BANNER KPI RESUMEN DE CIERRE DE CAJA -->
+                            <div class="shift-kpi-banner">
+                                <div class="shift-kpi-card kpi-total">
+                                    <div class="kpi-icon">💰</div>
+                                    <div class="kpi-content">
+                                        <span class="kpi-label">TOTAL FACTURADO</span>
+                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_sales.toFixed(2)"/> €</span>
+                                    </div>
+                                </div>
+                                <div class="shift-kpi-card kpi-cash">
+                                    <div class="kpi-icon">💵</div>
+                                    <div class="kpi-content">
+                                        <span class="kpi-label">EFECTIVO EN CAJA</span>
+                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_cash.toFixed(2)"/> €</span>
+                                    </div>
+                                </div>
+                                <div class="shift-kpi-card kpi-bank">
+                                    <div class="kpi-icon">💳</div>
+                                    <div class="kpi-content">
+                                        <span class="kpi-label">TARJETA / BANCO</span>
+                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_bank.toFixed(2)"/> €</span>
+                                    </div>
+                                </div>
+                                <div class="shift-kpi-card kpi-count">
+                                    <div class="kpi-icon">🧾</div>
+                                    <div class="kpi-content">
+                                        <span class="kpi-label">OPERACIONES</span>
+                                        <span class="kpi-val"><t t-esc="state.shiftSummary.orders_count"/></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- BARRA DE BÚSQUEDA Y FILTRADO -->
+                            <div class="shift-search-bar">
+                                <div class="search-input-wrapper">
+                                    <i class="fa fa-search search-icon"/>
+                                    <input type="text" 
+                                           class="shift-search-input" 
+                                           placeholder="Buscar por Nº Pedido, Recibo, Cliente, CIF o importe..." 
+                                           t-model="state.shiftOrderSearch"/>
+                                    <t t-if="state.shiftOrderSearch">
+                                        <button class="search-clear-btn" t-on-click="() => this.state.shiftOrderSearch = ''">✖</button>
+                                    </t>
+                                </div>
+                                <div class="search-stats">
+                                    Mostrando <strong><t t-esc="filteredShiftOrders.length"/></strong> de <strong><t t-esc="state.shiftOrders.length"/></strong> pedidos
+                                </div>
+                            </div>
+
+                            <!-- TABLA DE PEDIDOS -->
+                            <div class="shift-table-wrapper">
+                                <t t-if="state.shiftOrdersLoading">
+                                    <div class="shift-loading-box">
+                                        <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"/>
+                                        <p>Cargando operaciones del turno...</p>
+                                    </div>
+                                </t>
+                                <t t-elif="filteredShiftOrders.length === 0">
+                                    <div class="shift-empty-box">
+                                        <p class="empty-icon">📭</p>
+                                        <p class="empty-text">No se encontraron operaciones finalizadas en este turno.</p>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <table class="shift-orders-table">
+                                        <thead>
+                                            <tr>
+                                                <th>FECHA / HORA</th>
+                                                <th>Nº PEDIDO</th>
+                                                <th>RECIBO</th>
+                                                <th>CLIENTE</th>
+                                                <th>CAJERO</th>
+                                                <th style="text-align: right;">TOTAL</th>
+                                                <th style="text-align: center;">ESTADO</th>
+                                                <th style="text-align: center;">FACTURA</th>
+                                                <th style="text-align: center;">ACCIONES</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="filteredShiftOrders" t-as="ord" t-key="ord.id">
+                                                <tr class="shift-order-row" t-on-click="() => this.selectShiftOrder(ord)">
+                                                    <td class="cell-date"><t t-esc="ord.date_order"/></td>
+                                                    <td class="cell-name"><strong><t t-esc="ord.name"/></strong></td>
+                                                    <td class="cell-ref"><t t-esc="ord.pos_reference"/></td>
+                                                    <td class="cell-partner">
+                                                        <t t-if="ord.partner_name">
+                                                            <strong t-esc="ord.partner_name"/>
+                                                            <small t-if="ord.partner_vat" class="text-muted d-block"><t t-esc="ord.partner_vat"/></small>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span class="text-muted">- Contado -</span>
+                                                        </t>
+                                                    </td>
+                                                    <td class="cell-user"><t t-esc="ord.user_name"/></td>
+                                                    <td class="cell-total"><strong><t t-esc="ord.amount_total.toFixed(2)"/> €</strong></td>
+                                                    <td class="cell-state" style="text-align: center;">
+                                                        <span t-attf-class="badge-state #{ord.state}"><t t-esc="ord.state === 'invoiced' ? 'Facturado' : (ord.state === 'paid' ? 'Pagado' : ord.state)"/></span>
+                                                    </td>
+                                                    <td class="cell-invoice" style="text-align: center;">
+                                                        <t t-if="ord.is_invoiced">
+                                                            <span class="badge-invoice"><i class="fa fa-file-text me-1"/> <t t-esc="ord.account_move_name"/></span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span class="badge-no-invoice">Sin Factura</span>
+                                                        </t>
+                                                    </td>
+                                                    <td class="cell-actions" style="text-align: center;" t-on-click.stop="">
+                                                        <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
+                                                            👁 Ver
+                                                        </button>
+                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord)" title="Imprimir ticket">
+                                                            🖨️ Ticket
+                                                        </button>
+                                                        <t t-if="ord.is_invoiced">
+                                                            <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura PDF">
+                                                                📄 PDF
+                                                            </button>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
+                                                                📄 Facturar
+                                                            </button>
+                                                        </t>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </t>
+                            </div>
+                        </t>
+
+                        <!-- 2. VISTA DETALLE DEL PEDIDO (IDÉNTICO A CAPTURA 2 NATIVA DE ODOO) -->
+                        <t t-else="">
+                            <!-- HEADER DEL DETALLE CON BREADCRUMBS Y ESTADOS -->
+                            <div class="shift-detail-header">
+                                <div class="shift-detail-breadcrumbs">
+                                    <button class="shift-btn-back" t-on-click="() => this.backToShiftOrdersList()">
+                                        <i class="fa fa-arrow-left me-1"/> ⬅ Volver a Pedidos
+                                    </button>
+                                    <div class="breadcrumb-text">
+                                        <span class="text-muted">Pedidos / </span>
+                                        <strong><t t-esc="state.selectedShiftOrder.name"/></strong>
+                                    </div>
+                                </div>
+                                <div class="shift-status-ribbon">
+                                    <span class="ribbon-step">Nuevo</span>
+                                    <span t-attf-class="ribbon-step #{!state.selectedShiftOrder.is_invoiced ? 'active' : 'passed'}">Pagado</span>
+                                    <span t-attf-class="ribbon-step #{state.selectedShiftOrder.is_invoiced ? 'active' : ''}">Publicado</span>
+                                </div>
+                            </div>
+
+                            <!-- BARRA DE ACCIONES SUPERIORES (TICKET, FACTURA) -->
+                            <div class="shift-detail-actions-bar">
+                                <button class="btn-action-primary" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder)">
+                                    <i class="fa fa-print me-1"/> 🖨️ Imprimir Ticket
+                                </button>
+                                <t t-if="state.selectedShiftOrder.is_invoiced">
+                                    <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder)">
+                                        <i class="fa fa-file-pdf-o me-1"/> 🖨️ Imprimir Factura PDF (<t t-esc="state.selectedShiftOrder.account_move_name"/>)
+                                    </button>
+                                </t>
+                                <t t-else="">
+                                    <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">
+                                        <i class="fa fa-file-text-o me-1"/> 📄 Generar Factura (NIF/CIF)
+                                    </button>
+                                </t>
+                            </div>
+
+                            <!-- CONTENEDOR PRINCIPAL CON SCROLL -->
+                            <div class="shift-detail-content-scroll">
+                                <!-- FICHA METADATOS DEL PEDIDO (CAMPOS CLAVE DE ODOO) -->
+                                <div class="shift-detail-card">
+                                    <div class="shift-meta-grid">
+                                        <div class="meta-field-group">
+                                            <div class="meta-row">
+                                                <span class="meta-label">Ref. del pedido</span>
+                                                <span class="meta-value"><strong><t t-esc="state.selectedShiftOrder.name"/></strong></span>
+                                            </div>
+                                            <div class="meta-row">
+                                                <span class="meta-label">Fecha</span>
+                                                <span class="meta-value"><t t-esc="state.selectedShiftOrder.date_order"/></span>
+                                            </div>
+                                            <div class="meta-row">
+                                                <span class="meta-label">Sesión</span>
+                                                <span class="meta-value"><t t-esc="state.selectedShiftOrder.session_name"/></span>
+                                            </div>
+                                            <div class="meta-row">
+                                                <span class="meta-label">Usuario</span>
+                                                <span class="meta-value"><t t-esc="state.selectedShiftOrder.user_name"/></span>
+                                            </div>
+                                        </div>
+                                        <div class="meta-field-group">
+                                            <div class="meta-row">
+                                                <span class="meta-label">Cliente</span>
+                                                <span class="meta-value">
+                                                    <t t-if="state.selectedShiftOrder.partner_name">
+                                                        <strong><t t-esc="state.selectedShiftOrder.partner_name"/></strong>
+                                                        <span t-if="state.selectedShiftOrder.partner_vat" class="ms-1 text-muted">(<t t-esc="state.selectedShiftOrder.partner_vat"/>)</span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="text-muted">Cliente no asignado</span>
+                                                        <button class="btn-link ms-2" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">Asignar</button>
+                                                    </t>
+                                                </span>
+                                            </div>
+                                            <div class="meta-row">
+                                                <span class="meta-label">Posición fiscal</span>
+                                                <span class="meta-value"><t t-esc="state.selectedShiftOrder.fiscal_position"/></span>
+                                            </div>
+                                            <div class="meta-row">
+                                                <span class="meta-label">Nº de Recibo</span>
+                                                <span class="meta-value"><t t-esc="state.selectedShiftOrder.pos_reference"/></span>
+                                            </div>
+                                            <div class="meta-row">
+                                                <span class="meta-label">Factura</span>
+                                                <span class="meta-value">
+                                                    <t t-if="state.selectedShiftOrder.is_invoiced">
+                                                        <strong class="text-success"><t t-esc="state.selectedShiftOrder.account_move_name"/></strong>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="text-muted">No emitida</span>
+                                                    </t>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- PESTAÑAS (PRODUCTOS / PAGOS / INFORMACIÓN ADICIONAL) -->
+                                <div class="shift-tabs-bar">
+                                    <button t-attf-class="shift-tab-btn #{state.shiftActiveTab === 'products' ? 'active' : ''}" 
+                                            t-on-click="() => this.setShiftTab('products')">
+                                        Productos
+                                    </button>
+                                    <button t-attf-class="shift-tab-btn #{state.shiftActiveTab === 'payments' ? 'active' : ''}" 
+                                            t-on-click="() => this.setShiftTab('payments')">
+                                        Pagos
+                                    </button>
+                                    <button t-attf-class="shift-tab-btn #{state.shiftActiveTab === 'extra' ? 'active' : ''}" 
+                                            t-on-click="() => this.setShiftTab('extra')">
+                                        Información adicional
+                                    </button>
+                                </div>
+
+                                <!-- CONTENIDO PESTAÑA 1: PRODUCTOS -->
+                                <t t-if="state.shiftActiveTab === 'products'">
+                                    <div class="shift-tab-content">
+                                        <table class="detail-products-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nombre completo de producto</th>
+                                                    <th>Número de lote/de serie</th>
+                                                    <th style="text-align: right;">Cantidad</th>
+                                                    <th style="text-align: right;">Precio unitario</th>
+                                                    <th style="text-align: right;">Desc.%</th>
+                                                    <th style="text-align: center;">Impuestos</th>
+                                                    <th style="text-align: right;">Subtotal sin impuestos</th>
+                                                    <th style="text-align: right;">Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="state.selectedShiftOrder.lines" t-as="line" t-key="line.id">
+                                                    <tr>
+                                                        <td><strong><t t-esc="line.product_name"/></strong></td>
+                                                        <td class="text-muted"><t t-esc="line.lot_name || ''"/></td>
+                                                        <td style="text-align: right;"><t t-esc="Number(line.qty).toFixed(3)"/></td>
+                                                        <td style="text-align: right;"><t t-esc="Number(line.price_unit).toFixed(2)"/> €</td>
+                                                        <td style="text-align: right;"><t t-esc="Number(line.discount).toFixed(2)"/></td>
+                                                        <td style="text-align: center;"><span class="badge-tax"><t t-esc="line.taxes || '15%'"/></span></td>
+                                                        <td style="text-align: right;"><t t-esc="Number(line.price_subtotal).toFixed(2)"/> €</td>
+                                                        <td style="text-align: right;"><strong><t t-esc="Number(line.price_subtotal_incl).toFixed(2)"/> €</strong></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+
+                                        <!-- CUADRO DE TOTALES A LA DERECHA (IGUAL A ODOO) -->
+                                        <div class="detail-totals-container">
+                                            <div class="detail-totals-box">
+                                                <div class="total-line">
+                                                    <span class="total-label">Impuestos:</span>
+                                                    <span class="total-val"><t t-esc="Number(state.selectedShiftOrder.amount_tax).toFixed(2)"/> €</span>
+                                                </div>
+                                                <div class="total-line main-total">
+                                                    <span class="total-label">Total:</span>
+                                                    <span class="total-val"><strong><t t-esc="Number(state.selectedShiftOrder.amount_total).toFixed(2)"/> €</strong></span>
+                                                </div>
+                                                <div class="total-line">
+                                                    <span class="total-label">Total pagado (con redondeo):</span>
+                                                    <span class="total-val"><strong><t t-esc="Number(state.selectedShiftOrder.amount_paid).toFixed(2)"/> €</strong></span>
+                                                </div>
+                                                <t t-if="state.selectedShiftOrder.margin">
+                                                    <div class="total-line text-muted">
+                                                        <span class="total-label">Margen:</span>
+                                                        <span class="total-val"><t t-esc="Number(state.selectedShiftOrder.margin).toFixed(2)"/> €</span>
+                                                    </div>
+                                                </t>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+
+                                <!-- CONTENIDO PESTAÑA 2: PAGOS -->
+                                <t t-if="state.shiftActiveTab === 'payments'">
+                                    <div class="shift-tab-content">
+                                        <table class="detail-products-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Fecha</th>
+                                                    <th>Método de pago</th>
+                                                    <th style="text-align: right;">Importe</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="state.selectedShiftOrder.payments" t-as="pay" t-key="pay.id">
+                                                    <tr>
+                                                        <td><t t-esc="pay.payment_date"/></td>
+                                                        <td><strong><t t-esc="pay.name"/></strong></td>
+                                                        <td style="text-align: right;"><strong><t t-esc="Number(pay.amount).toFixed(2)"/> €</strong></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </t>
+
+                                <!-- CONTENIDO PESTAÑA 3: INFORMACIÓN ADICIONAL -->
+                                <t t-if="state.shiftActiveTab === 'extra'">
+                                    <div class="shift-tab-content">
+                                        <div class="shift-meta-grid">
+                                            <div class="meta-field-group">
+                                                <div class="meta-row">
+                                                    <span class="meta-label">Empresa</span>
+                                                    <span class="meta-value"><t t-esc="state.selectedShiftOrder.company ? state.selectedShiftOrder.company.name : ''"/></span>
+                                                </div>
+                                                <div class="meta-row">
+                                                    <span class="meta-label">CIF Empresa</span>
+                                                    <span class="meta-value"><t t-esc="state.selectedShiftOrder.company ? state.selectedShiftOrder.company.vat : ''"/></span>
+                                                </div>
+                                                <div class="meta-row">
+                                                    <span class="meta-label">Dirección Empresa</span>
+                                                    <span class="meta-value"><t t-esc="state.selectedShiftOrder.company ? state.selectedShiftOrder.company.street : ''"/></span>
+                                                </div>
+                                            </div>
+                                            <div class="meta-field-group">
+                                                <div class="meta-row">
+                                                    <span class="meta-label">Referencia TPV</span>
+                                                    <span class="meta-value"><t t-esc="state.selectedShiftOrder.pos_reference"/></span>
+                                                </div>
+                                                <div class="meta-row">
+                                                    <span class="meta-label">Asiento Contable</span>
+                                                    <span class="meta-value"><t t-esc="state.selectedShiftOrder.account_move_name || 'Sin asiento directo'"/></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+
+                    </div>
+                </div>
+            </t>
+
+            <!-- ================= MODAL DE EMISIÓN DE FACTURA CON CLIENTE ================= -->
+            <t t-if="state.isInvoiceModalOpen">
+                <div class="invoice-modal-backdrop" t-on-click.self="() => this.closeInvoiceModal()">
+                    <div class="invoice-modal-window">
+                        <div class="invoice-modal-header">
+                            <h3>📄 Emitir Factura Oficial con NIF/CIF</h3>
+                            <button class="shift-btn-close" t-on-click="() => this.closeInvoiceModal()">✖</button>
+                        </div>
+                        <div class="invoice-modal-body">
+                            <p class="invoice-intro">
+                                Pedido: <strong><t t-esc="state.selectedShiftOrder ? state.selectedShiftOrder.name : ''"/></strong> 
+                                (<strong class="text-primary"><t t-esc="state.selectedShiftOrder ? state.selectedShiftOrder.amount_total.toFixed(2) : 0"/> €</strong>)
+                            </p>
+
+                            <!-- MODO BÚSQUEDA DE CLIENTE EXISTENTE -->
+                            <div class="partner-search-box">
+                                <label class="fw-bold mb-1">Buscar Cliente Existente (Nombre o CIF/NIF):</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       placeholder="Escriba al menos 2 letras para buscar..." 
+                                       t-att-value="state.invoicePartnerSearch" 
+                                       t-on-input="(ev) => this.onInvoicePartnerSearch(ev)"/>
+                                
+                                <t t-if="state.invoicePartnerResults.length > 0">
+                                    <div class="partner-results-list">
+                                        <t t-foreach="state.invoicePartnerResults" t-as="p" t-key="p.id">
+                                            <div class="partner-result-item" t-on-click="() => this.selectPartnerForInvoice(p)">
+                                                <div class="fw-bold"><t t-esc="p.name"/></div>
+                                                <small class="text-muted">CIF/NIF: <t t-esc="p.vat || 'Sin NIF'"/> | <t t-esc="p.city || ''"/></small>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                            </div>
+
+                            <div class="text-center my-2 text-muted fw-bold">--- O INTRODUZCA LOS DATOS DIRECTAMENTE ---</div>
+
+                            <!-- FORMULARIO DIRECTO DE DATOS FISCALES -->
+                            <div class="partner-form-grid">
+                                <div class="form-group mb-2">
+                                    <label class="form-label fw-bold">CIF / NIF (*):</label>
+                                    <input type="text" class="form-control" placeholder="Ej: B12345678" t-model="state.invoiceNewPartner.vat"/>
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label class="form-label fw-bold">Nombre o Razón Social (*):</label>
+                                    <input type="text" class="form-control" placeholder="Ej: Transportes García S.L." t-model="state.invoiceNewPartner.name"/>
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label class="form-label">Dirección Fiscal:</label>
+                                    <input type="text" class="form-control" placeholder="Calle, Avenida, Polígono..." t-model="state.invoiceNewPartner.street"/>
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label class="form-label">Población / Ciudad:</label>
+                                    <input type="text" class="form-control" placeholder="Población" t-model="state.invoiceNewPartner.city"/>
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label class="form-label">Código Postal:</label>
+                                    <input type="text" class="form-control" placeholder="C.P." t-model="state.invoiceNewPartner.zip"/>
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label class="form-label">Email (opcional):</label>
+                                    <input type="email" class="form-control" placeholder="correo@empresa.com" t-model="state.invoiceNewPartner.email"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="invoice-modal-footer">
+                            <button class="btn btn-secondary" t-on-click="() => this.closeInvoiceModal()">Cancelar</button>
+                            <button class="btn btn-success fw-bold px-4" 
+                                    t-att-disabled="state.invoiceLoading" 
+                                    t-on-click="() => this.confirmInvoiceOrder()">
+                                <t t-if="state.invoiceLoading">
+                                    <i class="fa fa-spinner fa-spin me-1"/> Facturando...
+                                </t>
+                                <t t-else="">
+                                    <i class="fa fa-check me-1"/> Generar y Descargar Factura
+                                </t>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+</div>
     </t>
 
     <!-- SUSTITUCIÓN COMPLETA DE PRODUCTSCREEN -->

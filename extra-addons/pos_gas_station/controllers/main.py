@@ -4,6 +4,7 @@ from odoo.http import request
 import json
 import logging
 import time
+import pytz
 
 _logger = logging.getLogger(__name__)
 
@@ -561,4 +562,228 @@ class PosGasStationController(http.Controller):
             }
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/open_station: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    # ==================== GESTIÓN DE PEDIDOS DEL TURNO ACTIVO ====================
+    @http.route('/pos_gas_station/get_shift_orders', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_shift_orders(self, session_id=None, config_id=None):
+        try:
+            env = request.env
+            session = None
+            if session_id:
+                session = env['pos.session'].sudo().browse(int(session_id))
+            elif config_id:
+                cfg = env['pos.config'].sudo().browse(int(config_id))
+                session = cfg.current_session_id
+
+            if not session or not session.exists():
+                return {'status': 'error', 'message': 'Sesión no encontrada'}
+
+            orders = env['pos.order'].sudo().search([
+                ('session_id', '=', session.id),
+                ('state', 'in', ['paid', 'done', 'invoiced'])
+            ], order='date_order desc, id desc')
+
+            payments = env['pos.payment'].sudo().search([('session_id', '=', session.id)])
+            total_sales = round(sum(o.amount_total for o in orders), 2)
+
+            total_cash = 0.0
+            total_bank = 0.0
+            for p in payments:
+                method_name = p.payment_method_id.name.lower() if p.payment_method_id else ''
+                is_cash = getattr(p.payment_method_id, 'is_cash_count', False) or 'efectivo' in method_name
+                if is_cash:
+                    total_cash += p.amount
+                else:
+                    total_bank += p.amount
+
+            total_cash = round(total_cash, 2)
+            total_bank = round(total_bank, 2)
+
+            user_tz = pytz.timezone(env.user.tz or 'Europe/Madrid')
+
+            orders_list = []
+            for o in orders:
+                if o.date_order:
+                    try:
+                        local_dt = pytz.utc.localize(o.date_order).astimezone(user_tz)
+                        date_str = local_dt.strftime('%d/%m/%Y %H:%M:%S')
+                    except Exception:
+                        date_str = str(o.date_order)
+                else:
+                    date_str = ''
+
+                lines_data = []
+                for l in o.lines:
+                    taxes_str = ', '.join(l.tax_ids_after_fiscal_position.mapped('name')) if l.tax_ids_after_fiscal_position else ''
+                    lot_str = l.pack_lot_ids[0].lot_name if l.pack_lot_ids else ''
+                    lines_data.append({
+                        'id': l.id,
+                        'product_name': l.product_id.display_name or l.product_id.name or 'Producto',
+                        'lot_name': lot_str,
+                        'qty': round(l.qty, 3),
+                        'price_unit': round(l.price_unit, 4),
+                        'discount': round(l.discount, 2),
+                        'taxes': taxes_str,
+                        'price_subtotal': round(l.price_subtotal, 2),
+                        'price_subtotal_incl': round(l.price_subtotal_incl, 2),
+                    })
+
+                payments_data = []
+                for p in o.payment_ids:
+                    p_date_str = ''
+                    if p.payment_date:
+                        try:
+                            p_dt = pytz.utc.localize(p.payment_date).astimezone(user_tz)
+                            p_date_str = p_dt.strftime('%d/%m/%Y %H:%M:%S')
+                        except Exception:
+                            p_date_str = str(p.payment_date)
+                    payments_data.append({
+                        'id': p.id,
+                        'name': p.payment_method_id.name if p.payment_method_id else 'Pago',
+                        'amount': round(p.amount, 2),
+                        'payment_date': p_date_str,
+                    })
+
+                is_inv = bool(o.account_move)
+                inv_url = f'/report/pdf/account.report_invoice_with_payments/{o.account_move.id}' if is_inv else False
+
+                orders_list.append({
+                    'id': o.id,
+                    'name': o.name,
+                    'pos_reference': o.pos_reference or o.name,
+                    'date_order': date_str,
+                    'session_id': session.id,
+                    'session_name': session.name,
+                    'user_name': o.user_id.name or 'Cajero',
+                    'partner_id': o.partner_id.id if o.partner_id else False,
+                    'partner_name': o.partner_id.name if o.partner_id else False,
+                    'partner_vat': o.partner_id.vat if o.partner_id else '',
+                    'partner_street': o.partner_id.street or '',
+                    'partner_city': o.partner_id.city or '',
+                    'partner_zip': o.partner_id.zip or '',
+                    'partner_phone': o.partner_id.phone or '',
+                    'partner_email': o.partner_id.email or '',
+                    'fiscal_position': o.fiscal_position_id.name if o.fiscal_position_id else 'Posición fiscal ordinaria',
+                    'state': 'invoiced' if is_inv else o.state,
+                    'is_invoiced': is_inv,
+                    'account_move_id': o.account_move.id if is_inv else False,
+                    'account_move_name': o.account_move.name if is_inv else '',
+                    'invoice_url': inv_url,
+                    'amount_total': round(o.amount_total, 2),
+                    'amount_tax': round(o.amount_tax, 2),
+                    'amount_paid': round(o.amount_paid, 2),
+                    'amount_return': round(o.amount_return, 2),
+                    'margin': round(getattr(o, 'margin', 0.0), 2),
+                    'lines': lines_data,
+                    'payments': payments_data,
+                    'company': {
+                        'name': o.company_id.name,
+                        'vat': o.company_id.vat or '',
+                        'street': o.company_id.street or '',
+                        'city': o.company_id.city or '',
+                        'phone': o.company_id.phone or '',
+                    }
+                })
+
+            return {
+                'status': 'success',
+                'session_id': session.id,
+                'session_name': session.name,
+                'summary': {
+                    'total_sales': total_sales,
+                    'total_cash': total_cash,
+                    'total_bank': total_bank,
+                    'orders_count': len(orders_list)
+                },
+                'orders': orders_list
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/get_shift_orders: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/invoice_order', type='json', auth='user', methods=['POST'], csrf=False)
+    def invoice_order(self, order_id, partner_id=None, partner_data=None):
+        try:
+            env = request.env
+            order = env['pos.order'].sudo().browse(int(order_id))
+            if not order.exists():
+                return {'status': 'error', 'message': 'Pedido no encontrado'}
+
+            if order.account_move:
+                return {
+                    'status': 'success',
+                    'already_invoiced': True,
+                    'account_move_id': order.account_move.id,
+                    'account_move_name': order.account_move.name,
+                    'invoice_url': f'/report/pdf/account.report_invoice_with_payments/{order.account_move.id}'
+                }
+
+            partner = None
+            if partner_id:
+                p = env['res.partner'].sudo().browse(int(partner_id))
+                if p.exists():
+                    partner = p
+            elif partner_data and partner_data.get('vat'):
+                vat = str(partner_data['vat']).strip().upper()
+                name = str(partner_data.get('name') or vat).strip()
+                partner = env['res.partner'].sudo().search([('vat', '=', vat)], limit=1)
+                if not partner:
+                    partner = env['res.partner'].sudo().create({
+                        'name': name,
+                        'vat': vat,
+                        'street': partner_data.get('street', '').strip(),
+                        'city': partner_data.get('city', '').strip(),
+                        'zip': partner_data.get('zip', '').strip(),
+                        'email': partner_data.get('email', '').strip(),
+                        'phone': partner_data.get('phone', '').strip(),
+                        'company_id': order.company_id.id,
+                    })
+
+            if partner:
+                order.write({'partner_id': partner.id})
+
+            if not order.partner_id:
+                return {'status': 'error', 'message': 'Se requiere un cliente con NIF/CIF para emitir la factura.'}
+
+            # Generate invoice
+            order.action_pos_order_invoice()
+
+            if not order.account_move:
+                return {'status': 'error', 'message': 'No se pudo generar el asiento contable de factura.'}
+
+            return {
+                'status': 'success',
+                'account_move_id': order.account_move.id,
+                'account_move_name': order.account_move.name,
+                'invoice_url': f'/report/pdf/account.report_invoice_with_payments/{order.account_move.id}'
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/invoice_order: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/search_partners', type='json', auth='user', methods=['POST'], csrf=False)
+    def search_partners(self, query):
+        try:
+            env = request.env
+            q = (query or '').strip()
+            if not q or len(q) < 2:
+                return {'status': 'success', 'partners': []}
+            domain = ['|', ('name', 'ilike', q), ('vat', 'ilike', q)]
+            partners = env['res.partner'].sudo().search(domain, limit=12)
+            results = []
+            for p in partners:
+                results.append({
+                    'id': p.id,
+                    'name': p.name,
+                    'vat': p.vat or '',
+                    'street': p.street or '',
+                    'city': p.city or '',
+                    'zip': p.zip or '',
+                    'phone': p.phone or '',
+                    'email': p.email or ''
+                })
+            return {'status': 'success', 'partners': results}
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/search_partners: %s", e)
             return {'status': 'error', 'message': str(e)}
