@@ -24,7 +24,7 @@
                     </div>
                     <div class="stat-pill stat-pill-active" t-if="state.stats.total_open_sessions > 0">
                         <span class="stat-number">🟢 <t t-esc="state.stats.total_open_sessions"/></span>
-                        <span class="stat-label">En Venta Activa</span>
+                        <span class="stat-label">Turno Activo</span>
                     </div>
                 </div>
 
@@ -117,14 +117,19 @@
                                                         </div>
 
                                                         <div class="station-session-status">
-                                                            <t t-if="st.has_active_session">
+                                                            <t t-if="st.session_state === 'opened'">
                                                                 <span class="badge bg-success py-1 px-2">
-                                                                    <i class="fa fa-circle text-white me-1 blink"/> Sesión Abierta (<t t-esc="st.session_user"/>)
+                                                                    <i class="fa fa-circle text-white me-1 blink"/> Turno Activo (<t t-esc="st.session_user"/>)
+                                                                </span>
+                                                            </t>
+                                                            <t t-elif="st.session_state === 'opening_control'">
+                                                                <span class="badge bg-warning text-dark py-1 px-2">
+                                                                    <i class="fa fa-clock-o me-1"/> Turno en Apertura
                                                                 </span>
                                                             </t>
                                                             <t t-else="">
                                                                 <span class="badge bg-light text-secondary border py-1 px-2">
-                                                                    <i class="fa fa-power-off me-1"/> Cerrada / Lista
+                                                                    <i class="fa fa-power-off me-1"/> Turno Cerrado (Listo)
                                                                 </span>
                                                             </t>
                                                         </div>
@@ -139,10 +144,16 @@
                                                         </t>
                                                     </div>
 
-                                                    <!-- BOTÓN PRINCIPAL DE ACCESO DIRECTO AL TPV -->
+                                                    <!-- BOTÓN PRINCIPAL DE ACCESO DIRECTO / APERTURA DE TURNO -->
                                                     <div class="station-actions-box">
-                                                        <button class="btn btn-primary btn-access-pos" t-on-click="() => this.openStation(st.id)">
-                                                            <i class="fa fa-bolt me-1"/> Entrar al TPV / Pista
+                                                        <button t-attf-class="btn btn-access-pos #{st.has_active_session ? 'btn-session-open' : 'btn-session-closed'}"
+                                                                t-on-click="() => this.openStation(st.id)">
+                                                            <t t-if="st.has_active_session">
+                                                                <i class="fa fa-bolt me-1"/> Continuar Turno / Entrar al TPV
+                                                            </t>
+                                                            <t t-else="">
+                                                                <i class="fa fa-play-circle me-1"/> Abrir Turno y Entrar al TPV
+                                                            </t>
                                                         </button>
 
                                                         <div class="station-sub-actions" t-if="state.isManager">

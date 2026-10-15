@@ -447,6 +447,7 @@ class PosGasStationController(http.Controller):
             user.write(vals)
         return {'status': 'success'}
 
+
     # ==================== DASHBOARD MULTI-EMPRESA / GESTIÓN DE GASOLINERAS ====================
     @http.route('/pos_gas_station/dashboard_data', type='json', auth='user', methods=['POST'], csrf=False)
     def get_gas_station_dashboard_data(self):
@@ -477,7 +478,7 @@ class PosGasStationController(http.Controller):
 
                 active_session = env['pos.session'].sudo().search([
                     ('config_id', '=', st.id),
-                    ('state', '=', 'opened')
+                    ('state', 'in', ['opened', 'opening_control'])
                 ], limit=1)
 
                 if active_session:
@@ -495,8 +496,11 @@ class PosGasStationController(http.Controller):
                 accessible_stations.append({
                     'id': st.id,
                     'name': st.name,
+                    'company_id': c.id,
+                    'company_name': c.name,
                     'pumps_count': pumps_cnt,
                     'has_active_session': bool(active_session),
+                    'session_state': active_session.state if active_session else 'closed',
                     'session_name': active_session.name if active_session else None,
                     'session_user': active_session.user_id.name if active_session else None,
                     'fuels': fuels,
@@ -529,3 +533,26 @@ class PosGasStationController(http.Controller):
                 'total_open_sessions': total_open_sessions
             }
         }
+
+    @http.route('/pos_gas_station/open_station', type='json', auth='user', methods=['POST'], csrf=False)
+    def open_gas_station(self, config_id):
+        try:
+            cfg = request.env['pos.config'].sudo().browse(int(config_id))
+            if not cfg.exists():
+                return {'status': 'error', 'message': 'Punto de venta no encontrado'}
+
+            comp_id = cfg.company_id.id
+            action = cfg.with_user(request.env.user).with_company(cfg.company_id).open_ui()
+            url = action.get('url', f'/pos/ui?config_id={cfg.id}')
+            if 'cids=' not in url:
+                sep = '&' if '?' in url else '?'
+                url = f"{url}{sep}cids={comp_id}"
+
+            return {
+                'status': 'success',
+                'url': url,
+                'action': action,
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/open_station: %s", e)
+            return {'status': 'error', 'message': str(e)}

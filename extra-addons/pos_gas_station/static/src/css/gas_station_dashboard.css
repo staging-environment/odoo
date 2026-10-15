@@ -353,3 +353,24 @@
 .blink {
     animation: blinkAnimation 1.5s infinite ease-in-out;
 }
+.btn-session-open {
+    background: #0284c7 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+}
+
+.btn-session-open:hover {
+    background: #0369a1 !important;
+    border-color: #0369a1 !important;
+}
+
+.btn-session-closed {
+    background: #16a34a !important;
+    border-color: #16a34a !important;
+    color: #ffffff !important;
+}
+
+.btn-session-closed:hover {
+    background: #15803d !important;
+    border-color: #15803d !important;
+}
