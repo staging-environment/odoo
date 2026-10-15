@@ -4,6 +4,7 @@ from odoo import models, fields, api
 ROLE_DEFAULT_GROUPS = {
     'ceo': [
         'base.group_system',
+        'base.group_erp_manager',
         'point_of_sale.group_pos_manager',
     ],
     'gestor': [
@@ -40,18 +41,24 @@ class UtrecarRole(models.Model):
     def auto_link_admin_users(self):
         ceo_role = self.search([('code', '=', 'ceo')], limit=1)
         if ceo_role:
-            admin_group = self.env.ref('base.group_system', raise_if_not_found=False)
-            if admin_group:
+            admin_groups = [
+                self.env.ref('base.group_system', raise_if_not_found=False),
+                self.env.ref('base.group_erp_manager', raise_if_not_found=False),
+            ]
+            group_ids = [g.id for g in admin_groups if g]
+            if group_ids:
                 admins = self.env['res.users'].search([
-                    ('groups_id', 'in', [admin_group.id]),
+                    ('groups_id', 'in', group_ids),
                     ('active', '=', True)
                 ])
                 for adm in admins:
                     if adm.utrecar_role_id != ceo_role:
                         adm.sudo().write({'utrecar_role_id': ceo_role.id})
+                        adm._sync_utrecar_role_groups()
 
     @api.depends('user_ids')
     def _compute_user_count(self):
+        self.auto_link_admin_users()
         for role in self:
             role.user_count = len(role.user_ids)
 
