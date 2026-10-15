@@ -322,6 +322,9 @@
                                             <t t-if="getPumpPresetAmount(pump) > 0">
                                                 AUTORIZADO <t t-esc="getPumpPresetAmount(pump).toFixed(2).replace('.', ',')"/> €
                                             </t>
+                                            <t t-elif="pump.is_lleno || (pump.statusText || '').includes('LLENO')">
+                                                LLENO (POSTPAGO)
+                                            </t>
                                             <t t-else="">
                                                 AUTORIZADO (LLENO)
                                             </t>
@@ -345,7 +348,7 @@
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
                                         </div>
                                     </t>
-                                    <t t-elif="pump.status === 'dispensing'">
+                                    <t t-elif="pump.status === 'dispensing' || (pump.status === 'atendido' &amp;&amp; (pump.statusText || '').includes('LLENO')) || pump.is_lleno">
                                         <div class="dispenser-dispensing-panel">
                                             <span class="dispensing-anim">⛽</span>
                                             <strong>SUMINISTRO</strong>

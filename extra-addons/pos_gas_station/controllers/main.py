@@ -154,12 +154,13 @@ class PosGasStationController(http.Controller):
         is_lleno = (amt == 0 or lts >= 999)
         override_data = {
             'id': pid,
-            'status': 'atendido' if is_lleno else 'dispensing',
+            'status': 'dispensing',
             'statusText': 'LLENO (POSTPAGO)' if is_lleno else f'PREFIJADO {amt:.2f}€',
             'fuel': fuel_name,
             'amount': 0.0 if is_lleno else amt,
             'liters': 0.0 if is_lleno else lts,
             'preset_amount': 0.0 if is_lleno else amt,
+            'is_lleno': is_lleno,
             'price': 1.45 if 'Gasóleo A' in fuel_name else 1.55,
             '_timestamp': time.time()
         }

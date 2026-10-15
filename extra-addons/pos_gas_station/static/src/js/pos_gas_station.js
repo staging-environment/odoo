@@ -1182,7 +1182,7 @@ export class UtrecarMainScreen extends Component {
 
     isPumpDispensing(pump) {
         if (!pump) return false;
-        return pump.status === "dispensing" || pump.statusText === "AUTORIZADO";
+        return pump.status === "dispensing" || pump.statusText === "AUTORIZADO" || (pump.statusText || "").includes("LLENO") || Boolean(pump.is_lleno);
     }
 
     getPumpPresetAmount(pump) {
@@ -1445,7 +1445,7 @@ export class UtrecarMainScreen extends Component {
         };
 
         if (targetPump) {
-            targetPump.status = isLleno ? "atendido" : "dispensing";
+            targetPump.status = "dispensing";
             targetPump.statusText = isLleno ? "LLENO (POSTPAGO)" : "AUTORIZADO";
             targetPump.fuel = fuelName;
             targetPump.preset_amount = presetVal;
