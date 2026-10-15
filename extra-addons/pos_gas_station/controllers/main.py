@@ -152,14 +152,15 @@ class PosGasStationController(http.Controller):
         amt = float(amount or 0)
         lts = float(liters or 0)
 
+        is_lleno = (amt == 0 or lts >= 999)
         override_data = {
             'id': pid,
-            'status': 'dispensing',
-            'statusText': 'AUTORIZADO',
+            'status': 'atendido' if is_lleno else 'dispensing',
+            'statusText': 'LLENO (POSTPAGO)' if is_lleno else f'PREFIJADO {amt:.2f}€',
             'fuel': fuel_name,
-            'amount': amt,
-            'liters': lts,
-            'preset_amount': amt,
+            'amount': 0.0 if is_lleno else amt,
+            'liters': 0.0 if is_lleno else lts,
+            'preset_amount': 0.0 if is_lleno else amt,
             'price': 1.45 if 'Gasóleo A' in fuel_name else 1.55,
             '_timestamp': time.time()
         }
@@ -243,7 +244,7 @@ class PosGasStationController(http.Controller):
                 # Determinar si el modo predominante de la pista es bloqueado (prepago) o libre (atendido)
                 is_mostly_blocked = sum(1 for p in p_list if p.get('status') in ('blocked', 'prepago')) >= (len(p_list) / 2)
                 fallback_status = 'blocked' if is_mostly_blocked else 'idle'
-                fallback_text = 'PREPAGO' if is_mostly_blocked else 'LIBRE'
+                fallback_text = 'SIN PREFIJADO' if is_mostly_blocked else 'ATENDIDO'
 
                 for p in p_list:
                     if p.get('id') == pid:

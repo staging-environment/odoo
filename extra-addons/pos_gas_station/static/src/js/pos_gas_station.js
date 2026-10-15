@@ -603,14 +603,57 @@ export class UtrecarMainScreen extends Component {
         this.state.orderVersion = Date.now();
     }
 
-    deleteSelectedLine() {
+    async resetAndLockPump(pumpId) {
+        const target = this.state.pumps.find(p => p.id === pumpId);
+        if (target) {
+            target.status = "blocked";
+            target.statusText = "SIN PREFIJADO";
+            target.amount = 0;
+            target.liters = 0;
+            target.has_prepay = false;
+            target.preset_amount = 0;
+        }
+        if (this.state.pumpPresets) {
+            delete this.state.pumpPresets[pumpId];
+        }
+        try {
+            await jsonrpc("/pos_gas_station/clear_pump", {
+                config_id: this.configId,
+                pump_id: pumpId
+            });
+        } catch (e) {
+            console.debug("Error al resetear y bloquear bomba:", e);
+        }
+        this.state.orderVersion = Date.now();
+    }
+
+    async deleteSelectedLine() {
         const currentOrder = this.pos.get_order();
-        if (!currentOrder) return;
-        const line = currentOrder.get_selected_orderline();
+        const line = currentOrder ? currentOrder.get_selected_orderline() : null;
         if (line) {
-            this.deleteSpecificLine(line);
-        } else if (this.currentOrderLines.length > 0) {
-            this.deleteSpecificLine(this.currentOrderLines[this.currentOrderLines.length - 1]);
+            await this.deleteSpecificLine(line);
+            return;
+        } else if (this.currentOrderLines && this.currentOrderLines.length > 0) {
+            await this.deleteSpecificLine(this.currentOrderLines[this.currentOrderLines.length - 1]);
+            return;
+        }
+
+        // Si el ticket está vacío pero hay una calle seleccionada o activa que no está bloqueada (Lleno / Suministro / Prepago)
+        let targetPump = null;
+        if (this.state.selectedPumpId) {
+            targetPump = this.state.pumps.find(p => p.id === this.state.selectedPumpId);
+        }
+        if (!targetPump) {
+            const activePumps = this.state.pumps.filter(p => p.status !== "blocked" || p.amount > 0 || p.preset_amount > 0);
+            if (activePumps.length === 1) {
+                targetPump = activePumps[0];
+            }
+        }
+        if (targetPump && (targetPump.status !== "blocked" || targetPump.amount > 0 || targetPump.preset_amount > 0)) {
+            if (confirm(`¿Desea borrar la autorización y bloquear la Calle ${targetPump.id}?`)) {
+                await this.resetAndLockPump(targetPump.id);
+                this.state.selectedPumpId = null;
+            }
         }
     }
 
@@ -618,7 +661,7 @@ export class UtrecarMainScreen extends Component {
         const currentOrder = this.pos.get_order();
         const hasLines = this.currentOrderLines && this.currentOrderLines.length > 0;
         
-        // Identificar qué bombas están implicadas para liberarlas
+        // Identificar qué bombas están implicadas para liberarlas/bloquearlas
         const pumpsToClear = new Set();
         if (hasLines) {
             for (const l of this.currentOrderLines) {
@@ -628,49 +671,34 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
-        // Si la orden no tiene líneas de combustible pero el cajero tiene un surtidor seleccionado
+        // Si hay una bomba seleccionada y NO está bloqueada (está en atendido/lleno, autorizada, suministrando o lista)
         if (this.state.selectedPumpId) {
             const selPump = this.state.pumps.find(p => p.id === this.state.selectedPumpId);
-            if (selPump && (selPump.amount > 0 || selPump.status === 'ready' || selPump.status === 'dispensing' || selPump.has_prepay)) {
+            if (selPump && (selPump.status !== "blocked" || selPump.amount > 0 || selPump.preset_amount > 0)) {
                 pumpsToClear.add(this.state.selectedPumpId);
             }
         } else {
-            // O si hay exactamente un surtidor en pista en estado 'ready' (fin repostaje)
-            const readyPumps = this.state.pumps.filter(p => p.status === 'ready' || p.amount > 0);
-            if (readyPumps.length === 1 && !hasLines) {
-                pumpsToClear.add(readyPumps[0].id);
+            // O si hay alguna bomba en la pista abierta/no bloqueada y el ticket está vacío
+            const activePumps = this.state.pumps.filter(p => p.status !== "blocked" || p.amount > 0);
+            if (activePumps.length === 1 && !hasLines) {
+                pumpsToClear.add(activePumps[0].id);
+            } else if (activePumps.length > 1 && !hasLines) {
+                for (const ap of activePumps) {
+                    pumpsToClear.add(ap.id);
+                }
             }
         }
 
         let confirmMsg = "¿Desea cancelar y vaciar el ticket actual?";
         if (pumpsToClear.size > 0) {
             const listStr = Array.from(pumpsToClear).join(", ");
-            confirmMsg = `¿Desea cancelar y liberar el suministro de la Calle ${listStr}?`;
+            confirmMsg = `¿Desea cancelar y bloquear la Calle ${listStr}?`;
         }
 
         if (confirm(confirmMsg)) {
-            // 1. Liberar todas las bombas involucradas tanto en Odoo como en hardware
+            // 1. Resetear y bloquear todas las bombas detectadas
             for (const pid of pumpsToClear) {
-                const target = this.state.pumps.find(p => p.id === pid);
-                if (target) {
-                    target.status = this.state.trackMode === "atendido" ? "atendido" : "blocked";
-                    target.statusText = this.state.trackMode === "atendido" ? "ATENDIDO" : "SIN PREFIJADO";
-                    target.amount = 0;
-                    target.liters = 0;
-                    target.has_prepay = false;
-                    target.preset_amount = 0;
-                }
-                if (this.state.pumpPresets) {
-                    delete this.state.pumpPresets[pid];
-                }
-                try {
-                    await jsonrpc("/pos_gas_station/clear_pump", {
-                        config_id: this.configId,
-                        pump_id: pid
-                    });
-                } catch (e) {
-                    console.debug("Error liberando bomba tras cancelar:", e);
-                }
+                await this.resetAndLockPump(pid);
             }
 
             // 2. Vaciar las líneas del ticket
@@ -939,24 +967,8 @@ export class UtrecarMainScreen extends Component {
     async cancelPumpAuthorization(pump) {
         this.closeCancelModal();
         const pumpId = pump ? pump.id : this.state.selectedPumpId;
-        const target = this.state.pumps.find(p => p.id === pumpId);
-        if (target) {
-            target.status = "idle";
-            target.statusText = "LIBRE";
-            target.amount = 0;
-            target.liters = 0;
-            target.preset_amount = 0;
-        }
-        if (this.state.pumpPresets) {
-            delete this.state.pumpPresets[pumpId];
-        }
-        try {
-            await jsonrpc("/pos_gas_station/cancel_authorize", {
-                config_id: this.configId,
-                pump_id: pumpId
-            });
-        } catch (e) {
-            console.debug("Cancel authorization orden enviada:", e);
+        if (pumpId) {
+            await this.resetAndLockPump(pumpId);
         }
         this.state.orderVersion = Date.now();
     }
@@ -976,8 +988,8 @@ export class UtrecarMainScreen extends Component {
             this.onPumpClick(pump);
             return;
         }
-        // Si está suministrando activamente: abrir ventana de cancelación
-        if (pump.status === 'dispensing') {
+        // Si está suministrando activamente o autorizada a Lleno/Postpago: abrir ventana de cancelación
+        if (pump.status === 'dispensing' || (pump.status === 'atendido' && (pump.statusText || '').includes('LLENO'))) {
             this.openCancelModal(pump);
             return;
         }
@@ -1165,15 +1177,19 @@ export class UtrecarMainScreen extends Component {
             isMoney: isMoney
         };
 
+        const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
         if (targetPump) {
-            targetPump.status = "dispensing";
-            targetPump.statusText = "AUTORIZADO";
+            targetPump.status = isLleno ? "atendido" : "dispensing";
+            targetPump.statusText = isLleno ? "LLENO (POSTPAGO)" : "AUTORIZADO";
             targetPump.fuel = fuelName;
             targetPump.preset_amount = presetVal;
-            targetPump.has_prepay = Boolean(presetVal > 0 || this.state.trackMode === "prepago");
+            targetPump.has_prepay = Boolean(presetVal > 0 && this.state.trackMode === "prepago");
             if (presetVal > 0) {
                 targetPump.amount = isMoney ? presetVal : 0;
                 targetPump.liters = !isMoney ? presetVal : 0;
+            } else {
+                targetPump.amount = 0;
+                targetPump.liters = 0;
             }
         }
 
@@ -1251,7 +1267,8 @@ export class UtrecarMainScreen extends Component {
             console.debug("Orden de autorización enviada:", e);
         }
 
-        this.clearPreset();
+        this.state.presetValue = 0;
+        this.state.selectedPumpId = pumpId;
     }
 
     async onSecurityDepositClick() {
