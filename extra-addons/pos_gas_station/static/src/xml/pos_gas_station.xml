@@ -43,6 +43,9 @@
                         <div class="station-mini-label">
                             <t t-esc="state.stationName"/>
                         </div>
+                        <button class="btn-topbar-close-turn" t-on-click="() => this.openCloseSessionPopup()" title="Cerrar turno y realizar arqueo de caja">
+                            <i class="fa fa-sign-out me-1"/> CERRAR TURNO
+                        </button>
                     </div>
 
                     <!-- TABLA PRINCIPAL DE LÍNEAS DE VENTA -->

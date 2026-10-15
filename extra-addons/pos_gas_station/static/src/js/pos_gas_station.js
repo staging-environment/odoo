@@ -7,12 +7,15 @@ import { OrderReceipt } from "@point_of_sale/app/screens/receipt_screen/receipt/
 import { patch } from "@web/core/utils/patch";
 import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { jsonrpc } from "@web/core/network/rpc_service";
+import { useService } from "@web/core/utils/hooks";
+import { ClosePosPopup } from "@point_of_sale/app/navbar/closing_popup/closing_popup";
 
 export class UtrecarMainScreen extends Component {
     static template = "pos_gas_station.UtrecarMainScreen";
 
     setup() {
         this.pos = usePos();
+        this.popup = useService("popup");
         
         const urlParams = new URLSearchParams(window.location.search);
         this.configId = parseInt(urlParams.get("config_id")) || (this.pos.config ? this.pos.config.id : 2);
@@ -930,6 +933,19 @@ export class UtrecarMainScreen extends Component {
         const isModoLleno = pump.is_lleno || Boolean(preset && preset.isLleno) || (!pump.has_prepay && !pump.preset_amount);
         return Boolean(isModoLleno);
     }
+
+    async openCloseSessionPopup() {
+        try {
+            const info = await this.pos.getClosePosInfo();
+            this.popup.add(ClosePosPopup, { ...info });
+        } catch (e) {
+            console.debug("Aviso abriendo ClosePosPopup, ejecutando closePos:", e);
+            if (this.pos.closePos) {
+                await this.pos.closePos();
+            }
+        }
+    }
+
     savePendingSales() {
         try {
             localStorage.setItem(`pos_gas_station_pending_sales_${this.configId}`, JSON.stringify(this.pos.pendingSales || {}));

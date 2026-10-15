@@ -3887,3 +3887,29 @@
 .aseproda-dispenser-box.status-ready .dispenser-lower-body {
     background: #eab308 !important;
 }
+
+/* BOTÓN DIRECTO DE CERRAR TURNO EN LA CABECERA */
+.btn-topbar-close-turn {
+    margin-left: 14px !important;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    padding: 0 12px !important;
+    height: 30px !important;
+    border: 1px solid #991b1b !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3) !important;
+    transition: transform 0.15s ease, background 0.15s ease !important;
+}
+
+.btn-topbar-close-turn:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important;
+    transform: scale(1.05) !important;
+}
