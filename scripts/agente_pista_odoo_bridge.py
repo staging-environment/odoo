@@ -371,19 +371,6 @@ class AgentePistaRepsol:
                 local["updated_at"] = time.time()
                 hubo_cambio = True
                 logging.info(f"⛽ [SUMINISTRO EN VIVO] Calle {calle}: {litros:.2f}L | {importe:.2f}€")
-        elif is_pte_cobro and is_colgado:
-            # Fin de repostaje colgado en pista
-            if local.get("has_prepay") or local.get("preset_amount", 0) > 0:
-                logging.info(f"🏁 [MANGUERA COLGADA] Calle {calle} era PREPAGO finalizado. Liberando y bloqueando pista...")
-                self.liberar_calle_local(calle)
-            elif local["status"] == "dispensing":
-                local["status"] = "ready"
-                local["statusText"] = "COBRAR"
-                if litros > 0: local["liters"] = round(litros, 2)
-                if importe > 0: local["amount"] = round(importe, 2)
-                local["updated_at"] = time.time()
-                hubo_cambio = True
-                logging.info(f"🏁 [MANGUERA COLGADA] Calle {calle}: Fin repostaje en modo LLENO con {local['liters']:.2f}L | {local['amount']:.2f}€")
 
         if hubo_cambio:
             self.enviar_estado_a_odoo(forzar=True)
@@ -643,17 +630,6 @@ class AgentePistaRepsol:
                                     p["statusText"] = f"SUMINISTRO {lts:.2f}L" if lts > 0 else "SUMINISTRO"
                                     p["liters"] = round(lts, 2)
                                     p["amount"] = round(imp, 2)
-                                    p["updated_at"] = time.time()
-                                    hubo_cambio = True
-                            elif is_pte_cobro and is_colgado:
-                                if p.get("has_prepay") or p.get("preset_amount", 0) > 0:
-                                    logging.info(f"🏁 Calle {c} era PREPAGO finalizado. Liberando y bloqueando pista...")
-                                    self.liberar_calle_local(c)
-                                elif p["status"] == "dispensing":
-                                    p["status"] = "ready"
-                                    p["statusText"] = "COBRAR"
-                                    if lts > 0: p["liters"] = round(lts, 2)
-                                    if imp > 0: p["amount"] = round(imp, 2)
                                     p["updated_at"] = time.time()
                                     hubo_cambio = True
                             break
