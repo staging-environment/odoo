@@ -81,6 +81,7 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **13/10/2026** | Servidor Pista (`10.8.0.18`) | Configuración de SSH, API nativa `ClienteSDESNet.dll` (TCP 8777) y autostart silencioso 24/7 en Sesión 0 | Pista operada por Odoo POS como MÁSTER; prueba física exitosa en Calle 8 |
 | **15/10/2026** | Prod & Pista | Sincronización bidireccional hardware de cambio de modo global ("PISTA: PREFIJADO / LLENO") y candados individuales por calle | Desplegado en Cloud y en PC Repsol Trieste; persistencia de filestore con volumen `odoo-data` |
 | **15/10/2026** | Prod & Pista | Corrección de ciclo de cobro y liberación de pista: corte de prefijado por hardware vía SDES Prefijar() y liberación instantánea tras cobrar en TPV | Verificado físicamente con corte exacto en 1.00 € y reseteo a 0.00 € / PREPAGO tras cobro |
+| **15/10/2026** | Prod & Pista | Suministro en tiempo real vía SDES ObtenerEstado() (litros/importe en vivo) y liberación de pista al pulsar 'Cancelar' o 'BORRAR' en TPV | Desplegado en Cloud y en PC Repsol Trieste |
 
 ---
 

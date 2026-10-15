@@ -407,13 +407,20 @@ class AgentePistaRepsol:
         if 1 <= calle <= TOTAL_CALLES:
             local = self.pumps[calle - 1]
             status_txt = "PREPAGO" if self.modo_estacion_global == "blocked" else ("ATENDIDO" if self.modo_estacion_global == "atendido" else "POSTPAGO")
-            logging.info(f"Calle {calle} reseteada tras cobro -> {status_txt}")
+            logging.info(f"Calle {calle} reseteada tras cobro/cancelación -> {status_txt}")
             local["status"] = self.modo_estacion_global
             local["statusText"] = status_txt
             local["amount"] = 0.0
             local["liters"] = 0.0
             local["fuel"] = "Gasóleo A / Sin Plomo 95"
             local["updated_at"] = time.time()
+            if self.sdes_client:
+                try:
+                    from System import UInt16
+                    res_cob = self.sdes_client.Cobrar(UInt16(calle))
+                    logging.info(f"✅ [HARDWARE] Cobrar(calle={calle}) -> {res_cob}")
+                except Exception as e:
+                    logging.debug(f"Aviso en Cobrar hardware calle {calle}: {e}")
             if self.modo_estacion_global == "blocked":
                 self.bloquear_surtidor_hardware(calle)
             self.enviar_estado_a_odoo(forzar=True)
@@ -430,6 +437,58 @@ class AgentePistaRepsol:
                     p["liters"] = 0.0
                     p["updated_at"] = time.time()
                     self.enviar_estado_a_odoo(forzar=True)
+
+    def sincronizar_estados_hardware_sdes(self):
+        """Lee el estado en vivo de SDES (TCP 8777) para actualizar litros e importes en tiempo real durante el suministro"""
+        if not self.sdes_client:
+            return
+        try:
+            res = self.sdes_client.ObtenerEstado()
+            if not res or not res.estados:
+                return
+            hubo_cambio = False
+            for est in res.estados:
+                calle = int(est.numero)
+                if not (1 <= calle <= TOTAL_CALLES):
+                    continue
+                p = self.pumps[calle - 1]
+
+                # 1. Si está suministrando activamente en la manguera (Litros en tiempo real)
+                if est.estaSuministrando:
+                    litros = round(float(est.litrosEnServicio), 2)
+                    importe = round(float(est.importeEnServicio), 2)
+                    precio = round(float(est.precioEnServicio), 3)
+                    prod_cod = int(est.productoEnServicio)
+                    if prod_cod > 0:
+                        prod = MAPA_COMBUSTIBLES.get(str(prod_cod), MAPA_COMBUSTIBLES["default"])
+                        p["fuel"] = prod["name"]
+                        p["product_id"] = prod["id"]
+
+                    if p["status"] != "dispensing" or abs(p["liters"] - litros) >= 0.01 or abs(p["amount"] - importe) >= 0.01:
+                        p["status"] = "dispensing"
+                        p["statusText"] = "SUMINISTRO"
+                        p["liters"] = litros
+                        p["amount"] = importe
+                        if precio > 0:
+                            p["price"] = precio
+                        p["updated_at"] = time.time()
+                        hubo_cambio = True
+
+                # 2. Si ha finalizado y el surtidor está pendiente de cobro en hardware
+                elif est.estaPteCobro:
+                    litros = round(float(est.litrosEnServicio), 3)
+                    importe = round(float(est.importeEnServicio), 2)
+                    precio = round(float(est.precioEnServicio), 3)
+                    prod_cod = int(est.productoEnServicio)
+                    if p["status"] != "ready" and importe > 0:
+                        logging.info(f"🏁 [FIN REPOSTAJE SDES] Calle {calle}: {litros}L | {importe}€")
+                        self.marcar_calle_completada(calle, litros, importe, precio, prod_cod)
+                        hubo_cambio = True
+
+            if hubo_cambio:
+                self.enviar_estado_a_odoo(forzar=True)
+        except Exception as e:
+            logging.debug(f"Error en sincronizar_estados_hardware_sdes: {e}")
 
     def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto):
         if 1 <= calle <= TOTAL_CALLES:
@@ -603,7 +662,10 @@ class AgentePistaRepsol:
 
                         line = dw_handle.readline()
 
-                # 2. RESPALDO VIA BASE DE DATOS LOCAL MYSQL (Cada 1.0 segundos)
+                # 2. SINCRONIZACIÓN EN TIEMPO REAL DESDE SDES (LITROS Y SUMINISTRO EN VIVO)
+                self.sincronizar_estados_hardware_sdes()
+
+                # 2.1 RESPALDO VIA BASE DE DATOS LOCAL MYSQL (Cada 1.0 segundos)
                 if now - last_mysql_check > 1.0:
                     sql = f"""
                     SELECT id, Surtidor, CodigoDeEstacion, Litros, Precio, Importe, CodigoDeArticulo, FechaYHora

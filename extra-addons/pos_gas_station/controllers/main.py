@@ -115,8 +115,8 @@ class PosGasStationController(http.Controller):
 
         for i, pump in enumerate(pumps):
             pid = pump.get('id', i + 1)
-            # Si el surtidor real ya reporta fin de repostaje (ready) o venta terminada, anular override de inmediato
-            if pump.get('status') == 'ready' or (pump.get('amount', 0) > 0 and pump.get('status') != 'dispensing'):
+            # Si el surtidor real ya reporta fin de repostaje (ready) o suministro en vivo con litros, anular override de inmediato
+            if pump.get('status') == 'ready' or (pump.get('amount', 0) > 0 and pump.get('status') != 'dispensing') or (pump.get('status') == 'dispensing' and pump.get('liters', 0) > 0):
                 if pid in overrides:
                     del overrides[pid]
             elif pid in overrides:
@@ -193,10 +193,29 @@ class PosGasStationController(http.Controller):
 
         _logger.info(f'🛑 [CANCELAR AUTORIZACIÓN] Config {cfg} | Calle {pid}')
 
-        # Emitir comando de bloqueo al agente de pista local
+        # Reseteo en pumps_state
+        param_key = f'pos_gas_station.pumps_state_{cfg}'
+        try:
+            status_raw = request.env['ir.config_parameter'].sudo().get_param(param_key)
+            if status_raw:
+                data = json.loads(status_raw)
+                pumps = data.get('pumps', []) if isinstance(data, dict) else data
+                for p in pumps:
+                    if p.get('id') == pid:
+                        fallback_status = 'atendido' if data.get('modo_estacion') == 'atendido' else 'blocked'
+                        p['status'] = fallback_status
+                        p['amount'] = 0.0
+                        p['liters'] = 0.0
+                        p['statusText'] = 'SIN PREFIJADO' if fallback_status == 'blocked' else 'ATENDIDO'
+                        p['updated_at'] = time.time()
+                request.env['ir.config_parameter'].sudo().set_param(param_key, json.dumps(data))
+        except Exception as e:
+            _logger.error(f'Error resetting pump state in cancel_authorize: {e}')
+
+        # Emitir comando de liberación/bloqueo al agente de pista local
         cmd_key = f'pos_gas_station.pump_command_{cfg}'
         cmd_payload = {
-            'action': 'lock',
+            'action': 'clear_pump',
             'pump_id': pid,
             'timestamp': time.time()
         }

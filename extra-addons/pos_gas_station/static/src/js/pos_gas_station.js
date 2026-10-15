@@ -90,7 +90,7 @@ export class UtrecarMainScreen extends Component {
                         this.state.orderVersion = v;
                     }
                 }
-            }, 800);
+            }, 500);
             window.addEventListener("keydown", this.onGlobalKeyDown);
             window.addEventListener("click", this.onGlobalClick);
         });
@@ -558,6 +558,30 @@ export class UtrecarMainScreen extends Component {
         const currentOrder = this.pos.get_order();
         if (!currentOrder || !line) return;
 
+        const pumpId = line.pump_id;
+        if (pumpId) {
+            const target = this.state.pumps.find(p => p.id === pumpId);
+            if (target) {
+                target.status = this.state.trackMode === "atendido" ? "atendido" : "blocked";
+                target.statusText = this.state.trackMode === "atendido" ? "ATENDIDO" : "SIN PREFIJADO";
+                target.amount = 0;
+                target.liters = 0;
+                target.has_prepay = false;
+                target.preset_amount = 0;
+            }
+            if (this.state.pumpPresets) {
+                delete this.state.pumpPresets[pumpId];
+            }
+            try {
+                jsonrpc("/pos_gas_station/clear_pump", {
+                    config_id: this.configId,
+                    pump_id: pumpId
+                }).catch(e => console.debug("Liberar bomba tras borrar linea:", e));
+            } catch (e) {
+                console.debug("Error al liberar bomba:", e);
+            }
+        }
+
         try {
             if (typeof currentOrder.remove_orderline === "function") {
                 currentOrder.remove_orderline(line);
@@ -590,20 +614,80 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
-    clearCurrentOrder() {
+    async clearCurrentOrder() {
         const currentOrder = this.pos.get_order();
-        if (currentOrder && confirm("¿Desea cancelar y vaciar el ticket actual?")) {
-            try {
-                const lines = [...this.currentOrderLines];
-                for (const l of lines) {
-                    this.deleteSpecificLine(l);
+        const hasLines = this.currentOrderLines && this.currentOrderLines.length > 0;
+        
+        // Identificar qué bombas están implicadas para liberarlas
+        const pumpsToClear = new Set();
+        if (hasLines) {
+            for (const l of this.currentOrderLines) {
+                if (l.pump_id) {
+                    pumpsToClear.add(l.pump_id);
                 }
-                currentOrder.set_note?.("");
-            } catch (e) {
-                console.debug("Error al vaciar orden:", e);
+            }
+        }
+
+        // Si la orden no tiene líneas de combustible pero el cajero tiene un surtidor seleccionado
+        if (this.state.selectedPumpId) {
+            const selPump = this.state.pumps.find(p => p.id === this.state.selectedPumpId);
+            if (selPump && (selPump.amount > 0 || selPump.status === 'ready' || selPump.status === 'dispensing' || selPump.has_prepay)) {
+                pumpsToClear.add(this.state.selectedPumpId);
+            }
+        } else {
+            // O si hay exactamente un surtidor en pista en estado 'ready' (fin repostaje)
+            const readyPumps = this.state.pumps.filter(p => p.status === 'ready' || p.amount > 0);
+            if (readyPumps.length === 1 && !hasLines) {
+                pumpsToClear.add(readyPumps[0].id);
+            }
+        }
+
+        let confirmMsg = "¿Desea cancelar y vaciar el ticket actual?";
+        if (pumpsToClear.size > 0) {
+            const listStr = Array.from(pumpsToClear).join(", ");
+            confirmMsg = `¿Desea cancelar y liberar el suministro de la Calle ${listStr}?`;
+        }
+
+        if (confirm(confirmMsg)) {
+            // 1. Liberar todas las bombas involucradas tanto en Odoo como en hardware
+            for (const pid of pumpsToClear) {
+                const target = this.state.pumps.find(p => p.id === pid);
+                if (target) {
+                    target.status = this.state.trackMode === "atendido" ? "atendido" : "blocked";
+                    target.statusText = this.state.trackMode === "atendido" ? "ATENDIDO" : "SIN PREFIJADO";
+                    target.amount = 0;
+                    target.liters = 0;
+                    target.has_prepay = false;
+                    target.preset_amount = 0;
+                }
+                if (this.state.pumpPresets) {
+                    delete this.state.pumpPresets[pid];
+                }
+                try {
+                    await jsonrpc("/pos_gas_station/clear_pump", {
+                        config_id: this.configId,
+                        pump_id: pid
+                    });
+                } catch (e) {
+                    console.debug("Error liberando bomba tras cancelar:", e);
+                }
+            }
+
+            // 2. Vaciar las líneas del ticket
+            if (currentOrder) {
+                try {
+                    const lines = [...this.currentOrderLines];
+                    for (const l of lines) {
+                        this.deleteSpecificLine(l);
+                    }
+                    currentOrder.set_note?.("");
+                } catch (e) {
+                    console.debug("Error al vaciar orden:", e);
+                }
             }
             this.state.vehiclePlate = "";
             this.state.selectedLineId = null;
+            this.state.selectedPumpId = null;
             this.state.orderVersion = Date.now();
         }
     }
