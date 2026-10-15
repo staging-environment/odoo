@@ -452,3 +452,123 @@
     padding: 30px 20px !important;
     color: #64748b !important;
 }
+
+/* FILTROS CONTEXTUALES SUPERIORES MULTI-EMPRESA / MULTI-TIENDA */
+.topbar-filters-box {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.filter-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+}
+
+.filter-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+    margin: 0 !important;
+}
+
+.matrix-select {
+    padding: 3px 8px !important;
+    font-size: 11.5px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    outline: none !important;
+    cursor: pointer !important;
+}
+
+.matrix-select:focus {
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15) !important;
+}
+
+/* GESTIÓN MULTI-TIENDA EN MODAL DE ASIGNACIÓN */
+.user-card-item {
+    display: flex !important;
+    flex-direction: column !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    padding: 6px 10px !important;
+    background: #ffffff !important;
+    gap: 6px !important;
+    transition: all 0.15s ease !important;
+}
+
+.user-card-item:hover {
+    border-color: #cbd5e1 !important;
+}
+
+.user-card-item .user-item-row {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+.user-stations-box {
+    padding: 6px 8px !important;
+    background: #f8fafc !important;
+    border-radius: 5px !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+.stations-box-title {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+    display: block !important;
+    margin-bottom: 5px !important;
+}
+
+.station-pills-list {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+}
+
+.station-pill {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    padding: 2px 8px !important;
+    border-radius: 12px !important;
+    cursor: pointer !important;
+    border: 1px solid !important;
+    transition: all 0.12s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.station-pill-active {
+    background: #0284c7 !important;
+    color: #ffffff !important;
+    border-color: #0284c7 !important;
+}
+
+.station-pill-active:hover {
+    background: #0369a1 !important;
+}
+
+.station-pill-inactive {
+    background: #ffffff !important;
+    color: #64748b !important;
+    border-color: #cbd5e1 !important;
+}
+
+.station-pill-inactive:hover {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+}
+
+.stations-hint-text {
+    font-size: 9.5px !important;
+    color: #94a3b8 !important;
+    display: block !important;
+    margin-top: 4px !important;
+    font-style: italic !important;
+}

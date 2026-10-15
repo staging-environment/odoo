@@ -1,34 +1,50 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- VISTA FORMULARIO PARA ASIGNACIÓN DE ROL A USUARIO -->
+    <!-- VISTA FORMULARIO PARA ASIGNACION DE ROL Y TIENDAS A USUARIO -->
     <record id="view_users_form_inherit_utrecar_role" model="ir.ui.view">
         <field name="name">res.users.form.inherit.utrecar.role</field>
         <field name="model">res.users</field>
         <field name="inherit_id" ref="base.view_users_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='login']" position="after">
-                <group string="Perfil UTRECAR">
+                <group string="Perfil y Acceso UTRECAR">
                     <field name="utrecar_role_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="pos_config_ids" widget="many2many_tags" options="{'no_create': True}" placeholder="Dejar vacio para acceso a todas las tiendas de la empresa"/>
                 </group>
             </xpath>
         </field>
     </record>
 
-    <!-- VISTA ÁRBOL DE ROLES -->
+    <!-- VISTA FORMULARIO POS CONFIG PARA USUARIOS AUTORIZADOS -->
+    <record id="view_pos_config_form_inherit_allowed_users" model="ir.ui.view">
+        <field name="name">pos.config.form.inherit.allowed.users</field>
+        <field name="model">pos.config</field>
+        <field name="inherit_id" ref="point_of_sale.pos_config_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Usuarios y Cajeros Asignados">
+                    <field name="allowed_user_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- VISTA ARBOL DE ROLES -->
     <record id="view_utrecar_role_tree" model="ir.ui.view">
         <field name="name">utrecar.role.tree</field>
         <field name="model">utrecar.role</field>
         <field name="arch" type="xml">
-            <tree string="Roles de Usuario">
+            <tree string="Roles UTRECAR">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="code"/>
-                <field name="user_count" string="Usuarios Asignados"/>
+                <field name="user_count" string="Usuarios"/>
+                <field name="color" widget="color"/>
             </tree>
         </field>
     </record>
 
-    <!-- VISTA FORMULARIO DE ROLES CON ASIGNACIÓN DIRECTA DE USUARIOS -->
+    <!-- VISTA FORMULARIO DE ROLES CON ASIGNACION DIRECTA DE USUARIOS -->
     <record id="view_utrecar_role_form" model="ir.ui.view">
         <field name="name">utrecar.role.form</field>
         <field name="model">utrecar.role</field>
@@ -49,16 +65,14 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Usuarios con este Rol" name="users">
+                        <page string="Usuarios Asignados" name="assigned_users">
                             <field name="user_ids">
                                 <tree>
                                     <field name="name"/>
                                     <field name="login"/>
+                                    <field name="pos_config_ids" widget="many2many_tags" string="Tiendas Asignadas"/>
                                 </tree>
                             </field>
-                        </page>
-                        <page string="Permisos Concedidos" name="permissions">
-                            <field name="permission_ids" widget="many2many_tags"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -66,30 +80,57 @@
         </field>
     </record>
 
-    <!-- CLIENT ACTION PARA LA MATRIZ VISUAL INTERACTIVA -->
+    <!-- ACCIÓN DE CLIENTE PARA LA MATRIZ OWL -->
     <record id="action_utrecar_permission_matrix" model="ir.actions.client">
         <field name="name">Matriz de Roles y Permisos</field>
         <field name="tag">utrecar_permission_matrix</field>
     </record>
 
-    <!-- 1. MENÚ DIRECTO EN LA BARRA SUPERIOR MORADA DE PUNTO DE VENTA -->
-    <menuitem id="menu_utrecar_permission_matrix_topbar"
-              name="Matriz de Permisos"
-              parent="point_of_sale.menu_point_root"
+    <!-- 1. APLICACION DIRECTA EN EL MENU PRINCIPAL DE ODOO (APP SWITCHER) -->
+    <menuitem id="menu_utrecar_permission_root"
+              name="Roles y Permisos"
               action="action_utrecar_permission_matrix"
-              sequence="99"/>
+              web_icon="pos_gas_station,static/description/icon.png"
+              sequence="12"/>
 
-    <!-- 2. MENÚ DENTRO DEL DESPLEGABLE CONFIGURACIÓN DE PUNTO DE VENTA -->
-    <menuitem id="menu_utrecar_permission_matrix"
-              name="Matriz de Permisos"
-              parent="point_of_sale.menu_point_config_product"
-              action="action_utrecar_permission_matrix"
-              sequence="90"/>
-
-    <!-- MENÚ EN CONFIGURACIÓN GENERAL / AJUSTES -->
+    <!-- 2. MENU EN AJUSTES > USUARIOS Y COMPANIAS -->
     <menuitem id="menu_utrecar_permission_matrix_settings"
               name="Matriz de Permisos UTRECAR"
               parent="base.menu_users"
               action="action_utrecar_permission_matrix"
               sequence="15"/>
+
+    <!-- ACCION DISPATCHER INTELIGENTE DE ENTRADA AL PUNTO DE VENTA -->
+    <record id="action_pos_entry_dispatcher" model="ir.actions.server">
+        <field name="name">Entrada Punto de Venta</field>
+        <field name="model_id" ref="point_of_sale.model_pos_config"/>
+        <field name="state">code</field>
+        <field name="code">
+action = model.action_entry_pos()
+        </field>
+    </record>
+
+    <!-- SOBREESCRIBIR ACCION DEL MENU PRINCIPAL DE PUNTO DE VENTA -->
+    <record id="point_of_sale.menu_point_root" model="ir.ui.menu">
+        <field name="action" ref="action_pos_entry_dispatcher"/>
+    </record>
+    <record id="point_of_sale.menu_pos_dashboard" model="ir.ui.menu">
+        <field name="action" ref="action_pos_entry_dispatcher"/>
+    </record>
+
+    <!-- REGLA DE REGISTRO PARA RESTRINGIR TIENDAS POR USUARIO -->
+    <record id="rule_pos_config_user_allowed" model="ir.rule">
+        <field name="name">POS Config: Tiendas Asignadas a Empleado</field>
+        <field name="model_id" ref="point_of_sale.model_pos_config"/>
+        <field name="domain_force">['|', ('allowed_user_ids', '=', False), ('allowed_user_ids', 'in', [user.id])]</field>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_user'))]"/>
+    </record>
+
+    <!-- REGLA PARA QUE LOS GESTORES Y ADMINISTRADORES VEAN TODAS LAS TIENDAS -->
+    <record id="rule_pos_config_manager_all" model="ir.rule">
+        <field name="name">POS Config: Todas las Tiendas para Gestores</field>
+        <field name="model_id" ref="point_of_sale.model_pos_config"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_manager'))]"/>
+    </record>
 </odoo>

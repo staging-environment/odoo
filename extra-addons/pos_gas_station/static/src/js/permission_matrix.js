@@ -1,4 +1,4 @@
-/** @odoo-module **/
+﻿/** @odoo-module **/
 
 import { Component, useState, onMounted } from "@odoo/owl";
 import { registry } from "@web/core/registry";
@@ -16,6 +16,10 @@ export class UtrecarPermissionMatrix extends Component {
             categories: [],
             matrix: {},
             users: [],
+            companies: [],
+            stations: [],
+            selectedCompanyId: "all",
+            selectedStationId: "all",
             searchTerm: "",
             selectedCategoryFilter: "all",
             showUserAssignModal: false,
@@ -37,6 +41,8 @@ export class UtrecarPermissionMatrix extends Component {
                 this.state.categories = data.categories;
                 this.state.matrix = data.matrix;
                 this.state.users = data.users;
+                this.state.companies = data.companies || [];
+                this.state.stations = data.stations || [];
             }
         } catch (e) {
             console.error("Error cargando matriz de permisos:", e);
@@ -81,6 +87,16 @@ export class UtrecarPermissionMatrix extends Component {
         }
     }
 
+    get filteredStations() {
+        if (this.state.selectedCompanyId === "all") {
+            return this.state.stations;
+        }
+        const compId = parseInt(this.state.selectedCompanyId);
+        return this.state.stations.filter(st => {
+            return !st.company_id || st.company_id[0] === compId;
+        });
+    }
+
     get filteredCategories() {
         const query = (this.state.searchTerm || "").toLowerCase().trim();
         const catFilter = this.state.selectedCategoryFilter;
@@ -90,7 +106,7 @@ export class UtrecarPermissionMatrix extends Component {
             .map(cat => {
                 const perms = cat.permissions.filter(p => {
                     if (!query) return true;
-                    return p.name.toLowerCase().includes(query) || (p.code && p.code.toLowerCase().includes(query));
+                    return p.name.toLowerCase().includes(query);
                 });
                 return { ...cat, permissions: perms };
             })
@@ -121,6 +137,30 @@ export class UtrecarPermissionMatrix extends Component {
         } catch (e) {
             console.error("Error asignando rol:", e);
             this.notification.add("Error al asignar rol", { type: "danger" });
+        }
+    }
+
+    async toggleUserStation(user, stationId, ev) {
+        if (ev) ev.stopPropagation();
+        const currentList = Array.isArray(user.pos_config_ids) ? [...user.pos_config_ids] : [];
+        const idx = currentList.indexOf(stationId);
+        if (idx >= 0) {
+            currentList.splice(idx, 1);
+        } else {
+            currentList.push(stationId);
+        }
+
+        try {
+            await jsonrpc("/utrecar/permission_matrix/assign_user", {
+                user_id: user.id,
+                pos_config_ids: currentList
+            });
+            user.pos_config_ids = currentList;
+            await this.loadMatrixData();
+            this.notification.add(`Tiendas actualizadas para ${user.name}`, { type: "success" });
+        } catch (e) {
+            console.error("Error asignando tienda a usuario:", e);
+            this.notification.add("Error al actualizar tiendas del usuario", { type: "danger" });
         }
     }
 }

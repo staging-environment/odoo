@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
 
     <t t-name="pos_gas_station.UtrecarPermissionMatrix" owl="1">
@@ -13,8 +13,30 @@
                     </div>
                 </div>
 
+                <!-- SELECTORES CONTEXTUALES MULTI-EMPRESA Y MULTI-TIENDA -->
+                <div class="topbar-filters-box">
+                    <div class="filter-group">
+                        <label class="filter-label"><i class="fa fa-building me-1"/> Empresa:</label>
+                        <select class="matrix-select" t-model="state.selectedCompanyId">
+                            <option value="all">Todas las Empresas</option>
+                            <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                                <option t-att-value="comp.id"><t t-esc="comp.name"/></option>
+                            </t>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label"><i class="fa fa-tint me-1"/> Tienda / Pista:</label>
+                        <select class="matrix-select" t-model="state.selectedStationId">
+                            <option value="all">Todas las Tiendas</option>
+                            <t t-foreach="filteredStations" t-as="st" t-key="st.id">
+                                <option t-att-value="st.id"><t t-esc="st.name"/></option>
+                            </t>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="topbar-controls">
-                    <!-- Búsqueda rápida de permiso -->
+                    <!-- Búsqueda rápida de permiso por nombre humano -->
                     <div class="matrix-search-box">
                         <i class="fa fa-search search-icon"/>
                         <input type="text" 
@@ -60,7 +82,7 @@
                         </thead>
                         <tbody>
                             <t t-foreach="filteredCategories" t-as="cat" t-key="cat.id">
-                                <!-- FILA DE SEPARADOR DE CATEGORÍA CON PUNTO AZUL (IDÉNTICO A CAPTURA) -->
+                                <!-- FILA DE SEPARADOR DE CATEGORÍA CON PUNTO AZUL -->
                                 <tr class="category-header-row">
                                     <td t-att-colspan="state.roles.length + 1" class="category-header-cell">
                                         <div class="category-title-box">
@@ -70,13 +92,12 @@
                                     </td>
                                 </tr>
 
-                                <!-- FILAS DE PERMISOS CON CHECKBOXES -->
+                                <!-- FILAS DE PERMISOS (SOLO NOMBRE HUMANO, SIN CÓDIGO TÉCNICO) -->
                                 <t t-foreach="cat.permissions" t-as="perm" t-key="perm.id">
                                     <tr class="permission-item-row">
                                         <td class="permission-name-cell">
                                             <div class="perm-title-row">
                                                 <span class="perm-name-text"><t t-esc="perm.name"/></span>
-                                                <span class="perm-code-tag"><t t-esc="perm.code"/></span>
                                             </div>
                                         </td>
                                         <t t-foreach="state.roles" t-as="role" t-key="role.id">
@@ -98,32 +119,51 @@
                 </t>
             </div>
 
-            <!-- MODAL DE ASIGNACIÓN DE USUARIOS A ESTE ROL -->
+            <!-- MODAL DE ASIGNACIÓN DE USUARIOS Y TIENDAS -->
             <t t-if="state.showUserAssignModal and state.assignModalRole">
                 <div class="matrix-modal-backdrop" t-on-click="() => this.closeUserAssign()">
                     <div class="matrix-assign-modal" t-on-click.stop="">
                         <div class="assign-modal-header">
                             <div>
                                 <h4 class="mb-1">Asignar Usuarios a: <strong><t t-esc="state.assignModalRole.name"/></strong></h4>
-                                <span class="text-muted small">Marque los usuarios que deben pertenecer a este rol</span>
+                                <span class="text-muted small">Configure usuarios asignados a este rol y sus tiendas autorizadas</span>
                             </div>
                             <button class="btn-close-modal" t-on-click="() => this.closeUserAssign()">✖</button>
                         </div>
                         <div class="assign-modal-body">
                             <div class="users-list-scroll">
                                 <t t-foreach="state.users" t-as="u" t-key="u.id">
-                                    <div class="user-item-row" t-on-click="() => this.toggleUserRole(u, state.assignModalRole.id)">
-                                        <div class="user-info">
-                                            <strong class="user-fullname"><t t-esc="u.name"/></strong>
-                                            <span class="user-email"><t t-esc="u.login"/></span>
+                                    <div class="user-card-item">
+                                        <div class="user-item-row" t-on-click="() => this.toggleUserRole(u, state.assignModalRole.id)">
+                                            <div class="user-info">
+                                                <strong class="user-fullname"><t t-esc="u.name"/></strong>
+                                                <span class="user-email"><t t-esc="u.login"/></span>
+                                            </div>
+                                            <div class="user-status-pill">
+                                                <t t-if="u.role_id === state.assignModalRole.id">
+                                                    <span class="badge bg-success">Asignado a este Rol ✔</span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge bg-light text-dark"><t t-esc="u.role_name"/></span>
+                                                </t>
+                                            </div>
                                         </div>
-                                        <div class="user-status-pill">
-                                            <t t-if="u.role_id === state.assignModalRole.id">
-                                                <span class="badge bg-success">Asignado a este Rol ✔</span>
-                                            </t>
-                                            <t t-else="">
-                                                <span class="badge bg-light text-dark"><t t-esc="u.role_name"/></span>
-                                            </t>
+
+                                        <!-- ASIGNACIÓN DE TIENDAS / PUNTOS DE VENTA SI ESTÁ ASIGNADO AL ROL -->
+                                        <div t-if="u.role_id === state.assignModalRole.id" class="user-stations-box" t-on-click.stop="">
+                                            <span class="stations-box-title"><i class="fa fa-map-marker me-1"/> Tiendas Autorizadas:</span>
+                                            <div class="station-pills-list">
+                                                <t t-foreach="state.stations" t-as="st" t-key="st.id">
+                                                    <button t-attf-class="station-pill #{u.pos_config_ids and u.pos_config_ids.includes(st.id) ? 'station-pill-active' : 'station-pill-inactive'}"
+                                                            t-on-click="(ev) => this.toggleUserStation(u, st.id, ev)">
+                                                        <i t-attf-class="fa #{u.pos_config_ids and u.pos_config_ids.includes(st.id) ? 'fa-check-circle' : 'fa-circle-o'} me-1"/>
+                                                        <t t-esc="st.name"/>
+                                                    </button>
+                                                </t>
+                                            </div>
+                                            <span t-if="!u.pos_config_ids or u.pos_config_ids.length === 0" class="stations-hint-text">
+                                                * Acceso a todas las tiendas de su empresa
+                                            </span>
                                         </div>
                                     </div>
                                 </t>

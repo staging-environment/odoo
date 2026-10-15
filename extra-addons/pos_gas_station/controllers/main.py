@@ -344,7 +344,10 @@ class PosGasStationController(http.Controller):
         roles = env['utrecar.role'].search([])
         categories = env['utrecar.permission.category'].search([])
         permissions = env['utrecar.permission'].search([])
+        env['utrecar.role'].auto_link_admin_users()
         users = env['res.users'].search([('active', '=', True)], order='name')
+        companies = env['res.company'].search_read([], ['id', 'name'])
+        stations = env['pos.config'].search_read([], ['id', 'name', 'company_id'])
 
         roles_data = [{
             'id': r.id,
@@ -395,8 +398,12 @@ class PosGasStationController(http.Controller):
             'id': u.id,
             'name': u.name,
             'login': u.login,
+            'company_id': u.company_id.id if u.company_id else False,
+            'company_name': u.company_id.name if u.company_id else '',
             'role_id': u.utrecar_role_id.id if u.utrecar_role_id else False,
-            'role_name': u.utrecar_role_id.name if u.utrecar_role_id else 'Sin Rol'
+            'role_name': u.utrecar_role_id.name if u.utrecar_role_id else 'Sin Rol',
+            'pos_config_ids': u.pos_config_ids.ids if hasattr(u, 'pos_config_ids') else [],
+            'pos_config_names': [p.name for p in u.pos_config_ids] if hasattr(u, 'pos_config_ids') else []
         } for u in users]
 
         return {
@@ -404,7 +411,9 @@ class PosGasStationController(http.Controller):
             'roles': roles_data,
             'categories': sorted_categories,
             'matrix': matrix_state,
-            'users': users_data
+            'users': users_data,
+            'companies': companies,
+            'stations': stations
         }
 
     @http.route('/utrecar/permission_matrix/toggle', type='json', auth='user', methods=['POST'], csrf=False)
@@ -423,12 +432,17 @@ class PosGasStationController(http.Controller):
         return {'status': 'success', 'granted': bool(granted)}
 
     @http.route('/utrecar/permission_matrix/assign_user', type='json', auth='user', methods=['POST'], csrf=False)
-    def assign_user_role(self, user_id, role_id):
+    def assign_user_role(self, user_id, role_id=None, pos_config_ids=None):
         env = request.env
         user = env['res.users'].browse(int(user_id))
         if not user.exists():
             return {'status': 'error', 'message': 'Usuario no encontrado'}
 
-        r_id = int(role_id) if role_id else False
-        user.write({'utrecar_role_id': r_id})
+        vals = {}
+        if role_id is not None:
+            vals['utrecar_role_id'] = int(role_id) if role_id else False
+        if pos_config_ids is not None:
+            vals['pos_config_ids'] = [(6, 0, [int(pid) for pid in pos_config_ids])]
+        if vals:
+            user.write(vals)
         return {'status': 'success'}
