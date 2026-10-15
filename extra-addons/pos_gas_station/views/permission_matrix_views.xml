@@ -107,47 +107,35 @@
               sequence="1"/>
 
     <!-- SUBMENÚS VISIBLES EN LA BARRA SUPERIOR DE LA HERRAMIENTA -->
-    <menuitem id="menu_gas_station_sub_dashboard"
-              name="Estaciones por Empresa"
-              parent="menu_gas_station_root"
-              action="action_gas_station_dashboard"
-              sequence="1"/>
-
     <menuitem id="menu_gas_station_sub_matrix"
               name="Matriz de Permisos"
               parent="menu_gas_station_root"
               action="action_utrecar_permission_matrix"
-              sequence="2"/>
+              sequence="1"/>
 
     <menuitem id="menu_gas_station_sub_products"
               name="Productos"
               parent="menu_gas_station_root"
               action="point_of_sale.product_template_action_pos_product"
-              sequence="3"/>
+              sequence="2"/>
 
     <menuitem id="menu_gas_station_sub_orders"
               name="Pedidos"
               parent="menu_gas_station_root"
               action="point_of_sale.action_pos_pos_form"
-              sequence="4"/>
+              sequence="3"/>
 
     <menuitem id="menu_gas_station_sub_reports"
               name="Informes"
               parent="menu_gas_station_root"
               action="point_of_sale.action_report_pos_order_all"
-              sequence="5"/>
+              sequence="4"/>
 
     <menuitem id="menu_gas_station_sub_companies"
-              name="Empresas y Logos"
+              name="Empresas y estaciones de servicio"
               parent="menu_gas_station_root"
               action="base.action_res_company_form"
-              sequence="6"/>
-
-    <menuitem id="menu_gas_station_sub_config"
-              name="Configuración TPV"
-              parent="menu_gas_station_root"
-              action="point_of_sale.action_pos_config_kanban"
-              sequence="7"/>
+              sequence="5"/>
 
     <!-- MENÚ EN AJUSTES > USUARIOS Y COMPANIAS -->
     <menuitem id="menu_utrecar_permission_matrix_settings"
