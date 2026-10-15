@@ -237,7 +237,7 @@
                         <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
                             <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
                             
-                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''} #{isPumpDispensing(pump) ? 'nozzle-is-off-hook' : ''}"
+                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{shouldShowPrepayCoin(pump) ? 'has-uncollected-coin' : ''} #{state.selectedPumpId === pump.id ? 'is-selected' : ''} #{isPumpDispensing(pump) ? 'nozzle-is-off-hook' : ''}"
                                  t-on-click="() => this.onPumpCardClick(pump)">
                                 
                                 <!-- MONEDA FLOTANTE CON BADGE NUMÉRICO DE COBROS PENDIENTES -->

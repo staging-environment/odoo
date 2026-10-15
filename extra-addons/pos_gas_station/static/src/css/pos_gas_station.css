@@ -555,17 +555,20 @@
 }
 
 /* 3. ESTADO READY / FIN REPOSTAJE (NARANJA ASEPRODA) */
-.aseproda-dispenser-box.status-ready {
-    border-color: #ea580c !important;
-    background: #fff7ed !important;
-    box-shadow: 0 0 8px rgba(234, 88, 12, 0.4) !important;
+.aseproda-dispenser-box.status-ready,
+.aseproda-dispenser-box.has-uncollected-coin {
+    border-color: #ca8a04 !important;
+    background: #fefce8 !important;
+    box-shadow: 0 0 14px rgba(234, 179, 8, 0.55) !important;
 }
-.aseproda-dispenser-box.status-ready .dispenser-corner-tab {
-    background: #ea580c !important;
-    color: #ffffff !important;
+.aseproda-dispenser-box.status-ready .dispenser-corner-tab,
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-corner-tab {
+    background: #eab308 !important;
+    color: #000000 !important;
 }
-.aseproda-dispenser-box.status-ready .dispenser-lower-body {
-    background: #ea580c !important;
+.aseproda-dispenser-box.status-ready .dispenser-lower-body,
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-lower-body {
+    background: #eab308 !important;
 }
 .aseproda-dispenser-box.status-ready .lcd-status-bar {
     background: #9a3412 !important;
@@ -2096,11 +2099,13 @@
 }
 
 /* Estado Ready / Cobrar */
-.aseproda-dispenser-box.status-ready {
-    border-color: #ea580c !important;
+.aseproda-dispenser-box.status-ready,
+.aseproda-dispenser-box.has-uncollected-coin {
+    border-color: #ca8a04 !important;
 }
-.aseproda-dispenser-box.status-ready .dispenser-lower-body {
-    background: #ea580c !important;
+.aseproda-dispenser-box.status-ready .dispenser-lower-body,
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-lower-body {
+    background: #eab308 !important;
 }
 
 /* ------------------------------------------------------------
@@ -2370,11 +2375,13 @@
     background: #16a34a !important;
 }
 
-.aseproda-dispenser-box.status-ready {
-    border-color: #ea580c !important;
+.aseproda-dispenser-box.status-ready,
+.aseproda-dispenser-box.has-uncollected-coin {
+    border-color: #ca8a04 !important;
 }
-.aseproda-dispenser-box.status-ready .dispenser-lower-body {
-    background: #ea580c !important;
+.aseproda-dispenser-box.status-ready .dispenser-lower-body,
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-lower-body {
+    background: #eab308 !important;
 }
 
 /* CUADRANTE DERECHO: TECLADO Y BILLETES REALES */
@@ -2605,18 +2612,24 @@
     background: #dc2626 !important;
 }
 
-/* 3. MODO READY / PENDIENTE COBRO (NARANJA VIRTUSTPV) */
-.aseproda-dispenser-box.status-ready {
-    border-color: #ea580c !important;
+/* 3. MODO READY / PENDIENTE COBRO (AMARILLO VIRTUSTPV CUANDO HAY MONEDA) */
+.aseproda-dispenser-box.status-ready,
+.aseproda-dispenser-box.has-uncollected-coin {
+    border-color: #ca8a04 !important;
+    background: #fefce8 !important;
+    box-shadow: 0 0 14px rgba(234, 179, 8, 0.55) !important;
 }
 
-.aseproda-dispenser-box.status-ready .dispenser-corner-tab {
-    background: #ea580c !important;
-    color: #ffffff !important;
+.aseproda-dispenser-box.status-ready .dispenser-corner-tab,
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-corner-tab {
+    background: #eab308 !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
 }
 
-.aseproda-dispenser-box.status-ready .dispenser-lower-body {
-    background: #ea580c !important;
+.aseproda-dispenser-box.status-ready .dispenser-lower-body,
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-lower-body {
+    background: #eab308 !important;
 }
 
 /* 4. MODO DISPENSING / SUMINISTRANDO EN VIVO */
@@ -3851,4 +3864,26 @@
     padding: 40px 20px !important;
     color: #64748b !important;
     font-size: 15px !important;
+}
+
+/* ==========================================================================
+   COLOR AMARILLO OFICIAL CUANDO HAY MONEDA SIN COBRAR (PRIORIDAD MÁXIMA)
+   ========================================================================== */
+.aseproda-dispenser-box.has-uncollected-coin,
+.aseproda-dispenser-box.status-ready {
+    border: 3px solid #ca8a04 !important;
+    background: #fefce8 !important;
+    box-shadow: 0 0 16px rgba(234, 179, 8, 0.6) !important;
+}
+
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-corner-tab,
+.aseproda-dispenser-box.status-ready .dispenser-corner-tab {
+    background: #eab308 !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
+}
+
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-lower-body,
+.aseproda-dispenser-box.status-ready .dispenser-lower-body {
+    background: #eab308 !important;
 }
