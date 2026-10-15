@@ -466,26 +466,47 @@ class AgentePistaRepsol:
                 logging.info(f"⛽ [HARDWARE LIBRE NATIVO] Enviando DESBLOQUEO LIBRE (LLENO) a Calle {calle}...")
                 self.sdes_client.cambiar_modo_trabajo(calle, 0)
                 res_desb = self.sdes_client.desbloquear(calle)
-                self.cambiar_modo_calle(calle, "atendido", "LLENO (POSTPAGO)")
+                self.cambiar_modo_calle(calle, "dispensing", "LLENO (POSTPAGO)")
                 self.pumps[calle - 1]["has_prepay"] = False
+                self.pumps[calle - 1]["is_lleno"] = True
                 logging.info(f"⛽ [HARDWARE NATIVO] Calle {calle} libre desbloqueada -> {res_desb}")
 
         except Exception as e:
             logging.error(f"Error autorizando hardware en Calle {calle}: {e}")
 
     def desbloquear_surtidor_hardware(self, calle):
-        self.autorizar_surtidor_hardware(calle, importe=0.0)
+        if not (1 <= calle <= TOTAL_CALLES):
+            return
+        logging.info(f"⛽ [HARDWARE NATIVO] Enviando DESBLOQUEO LIBRE (ATENDIDO) a Calle {calle}...")
+        self.asegurar_conexion_hardware()
+        if self.sdes_client and self.sdes_client.is_connected():
+            try:
+                self.sdes_client.cambiar_modo_trabajo(calle, 0)
+                res_desb = self.sdes_client.desbloquear(calle)
+                self.cambiar_modo_calle(calle, "atendido", "LIBRE")
+                self.pumps[calle - 1]["has_prepay"] = False
+                self.pumps[calle - 1]["is_lleno"] = False
+                self.pumps[calle - 1]["amount"] = 0.0
+                self.pumps[calle - 1]["liters"] = 0.0
+                logging.info(f"⛽ [HARDWARE NATIVO] Desbloquear(calle={calle}) -> {res_desb}")
+            except Exception as e:
+                logging.error(f"Error desbloqueando hardware en Calle {calle}: {e}")
 
     def bloquear_surtidor_hardware(self, calle):
         if not (1 <= calle <= TOTAL_CALLES):
             return
-        logging.info(f"🔒 [HARDWARE NATIVO] Enviando BLOQUEO nativo a Calle {calle}...")
+        logging.info(f"🔒 [HARDWARE NATIVO] Enviando BLOQUEO (PREPAGO) a Calle {calle}...")
         self.asegurar_conexion_hardware()
         if self.sdes_client and self.sdes_client.is_connected():
             try:
                 self.sdes_client.prefijar(calle, 0, 0.0)
                 self.sdes_client.cambiar_modo_trabajo(calle, 2)
                 res_bloq = self.sdes_client.bloquear(calle)
+                self.cambiar_modo_calle(calle, "blocked", "PREPAGO")
+                self.pumps[calle - 1]["has_prepay"] = False
+                self.pumps[calle - 1]["is_lleno"] = False
+                self.pumps[calle - 1]["amount"] = 0.0
+                self.pumps[calle - 1]["liters"] = 0.0
                 logging.info(f"🔒 [HARDWARE NATIVO] Bloquear(calle={calle}) -> {res_bloq}")
             except Exception as e:
                 logging.error(f"Error bloqueando hardware en Calle {calle}: {e}")
@@ -518,32 +539,42 @@ class AgentePistaRepsol:
                     elif action == "unlock":
                         self.desbloquear_surtidor_hardware(pid)
                         self.cambiar_modo_calle(pid, "atendido", "ATENDIDO")
-                    elif action in ("set_mode", "set_pump_mode"):
+                    elif action in ("set_global_mode", "set_track_mode"):
                         mode = cmd.get("mode")
-                        if mode == "atendido":
-                            self.modo_estacion_global = "atendido"
-                            if pid and 1 <= pid <= TOTAL_CALLES:
-                                self.desbloquear_surtidor_hardware(pid)
-                                self.cambiar_modo_calle(pid, "atendido", "ATENDIDO")
-                        else:
-                            self.modo_estacion_global = "blocked"
-                            if pid and 1 <= pid <= TOTAL_CALLES:
-                                self.bloquear_surtidor_hardware(pid)
-                                self.cambiar_modo_calle(pid, "blocked", "PREPAGO")
-                    elif action == "set_global_mode":
-                        mode = cmd.get("mode")
-                        self.modo_estacion_global = mode
-                        status_str = "atendido" if mode == "atendido" else "blocked"
-                        status_txt = "ATENDIDO" if mode == "atendido" else "PREPAGO"
-                        logging.info(f"🔄 [CAMBIO GLOBAL MODO] Estableciendo toda la pista en {status_txt}")
+                        is_atendido = mode in ("atendido", "lleno", "postpago")
+                        self.modo_estacion_global = "atendido" if is_atendido else "blocked"
+                        status_str = "atendido" if is_atendido else "blocked"
+                        status_txt = "LIBRE" if is_atendido else "PREPAGO"
+                        logging.info(f"🔄 [CAMBIO GLOBAL MODO] Estableciendo toda la pista en {status_txt} ({self.modo_estacion_global})")
                         for i in range(1, TOTAL_CALLES + 1):
-                            if self.pumps[i-1]["status"] != "ready":
-                                self.cambiar_modo_calle(i, status_str, status_txt)
-                                if mode == "atendido":
+                            if self.pumps[i-1]["status"] not in ("ready", "dispensing"):
+                                self.pumps[i-1]["status"] = status_str
+                                self.pumps[i-1]["statusText"] = status_txt
+                                self.pumps[i-1]["amount"] = 0.0
+                                self.pumps[i-1]["liters"] = 0.0
+                                self.pumps[i-1]["updated_at"] = time.time()
+                                if is_atendido:
                                     self.desbloquear_surtidor_hardware(i)
                                 else:
                                     self.bloquear_surtidor_hardware(i)
                         self.enviar_estado_a_odoo(forzar=True)
+                    elif action in ("set_mode", "set_pump_mode"):
+                        mode = cmd.get("mode")
+                        is_atendido = mode in ("atendido", "lleno", "postpago")
+                        status_str = "atendido" if is_atendido else "blocked"
+                        status_txt = "LIBRE" if is_atendido else "PREPAGO"
+                        if pid and 1 <= pid <= TOTAL_CALLES:
+                            if self.pumps[pid-1]["status"] not in ("ready", "dispensing"):
+                                self.pumps[pid-1]["status"] = status_str
+                                self.pumps[pid-1]["statusText"] = status_txt
+                                self.pumps[pid-1]["amount"] = 0.0
+                                self.pumps[pid-1]["liters"] = 0.0
+                                self.pumps[pid-1]["updated_at"] = time.time()
+                                if is_atendido:
+                                    self.desbloquear_surtidor_hardware(pid)
+                                else:
+                                    self.bloquear_surtidor_hardware(pid)
+                                self.enviar_estado_a_odoo(forzar=True)
                     elif action == "clear_pump":
                         logging.info(f"✅ [COMANDO ODOO] Recibida orden de LIBERAR/COBRAR Calle {pid}")
                         self.liberar_calle_local(pid)
@@ -612,55 +643,8 @@ class AgentePistaRepsol:
                     self.enviar_estado_a_odoo(forzar=True)
 
     def sincronizar_estados_hardware_sdes(self):
-        """Sincroniza en tiempo real los estados de pista desde el hardware vía socket directo"""
-        if not self.sdes_client or not self.sdes_client.is_connected():
-            return
-        try:
-            payload = self.sdes_client.obtener_estado_raw()
-            if not payload or len(payload) < 20:
-                return
-
-            hubo_cambio = False
-            for c in range(1, TOTAL_CALLES + 1):
-                pattern = struct.pack(">H", c)
-                idx = 0
-                while True:
-                    idx = payload.find(pattern, idx)
-                    if idx == -1:
-                        break
-                    if idx + 24 <= len(payload):
-                        flags = struct.unpack_from(">H", payload, idx + 2)[0]
-                        if (flags & 0xFF00) in (0x0200, 0x0100, 0x0000):
-                            cod_err, prod_pref = struct.unpack_from(">HH", payload, idx + 4)
-                            imp_pref, imp_serv, lts_serv = struct.unpack_from(">III", payload, idx + 8)
-                            prod_serv = struct.unpack_from(">H", payload, idx + 20)[0] if idx + 22 <= len(payload) else 0
-
-                            p = self.pumps[c - 1]
-                            
-                            is_colgado = bool(flags & 0x0001)
-                            is_pte_cobro = bool(flags & 0x0002)
-                            is_bloqueado = bool(flags & 0x0004)
-                            is_prefijado = bool(flags & 0x0008)
-                            is_suministrando = bool(flags & 0x0010)
-
-                            lts = lts_serv / 100.0
-                            imp = imp_serv / 100.0
-
-                            if is_suministrando:
-                                if p["status"] != "dispensing" or abs(p["liters"] - lts) > 0.05 or abs(p["amount"] - imp) > 0.05:
-                                    p["status"] = "dispensing"
-                                    p["statusText"] = f"SUMINISTRO {lts:.2f}L" if lts > 0 else "SUMINISTRO"
-                                    p["liters"] = round(lts, 2)
-                                    p["amount"] = round(imp, 2)
-                                    p["updated_at"] = time.time()
-                                    hubo_cambio = True
-                            break
-                    idx += 2
-
-            if hubo_cambio:
-                self.enviar_estado_a_odoo(forzar=True)
-        except Exception as e:
-            logging.debug(f"Error en sincronizar_estados_hardware_sdes: {e}")
+        """Los cambios de estado se gestionan de forma limpia por eventos asíncronos push (MSG_CAMBIO_INFO) sin lecturas ciegas de bytes"""
+        pass
 
     def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto):
         if 1 <= calle <= TOTAL_CALLES:
