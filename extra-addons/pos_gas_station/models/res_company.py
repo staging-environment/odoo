@@ -18,7 +18,7 @@ class ResCompany(models.Model):
     @api.depends('pos_config_ids')
     def _compute_pos_config_count(self):
         for company in self:
-            company.pos_config_count = len(company.pos_config_ids)
+            company.pos_config_count = self.env['pos.config'].sudo().search_count([('company_id', '=', company.id)])
 
     def action_view_gas_stations(self):
         self.ensure_one()

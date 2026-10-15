@@ -16,6 +16,7 @@
     'data': [
         'security/ir.model.access.csv',
         'data/permission_matrix_data.xml',
+        'data/pos_security_rules.xml',
         'views/permission_matrix_views.xml',
         'views/res_company_views.xml',
     ],

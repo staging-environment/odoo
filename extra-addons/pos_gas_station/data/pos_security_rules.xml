@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="point_of_sale.rule_pos_config_multi_company" model="ir.rule">
+        <field name="domain_force">['|', ('company_id', '=', False), '|', ('company_id', 'in', company_ids), ('company_id', 'in', user.company_ids.ids)]</field>
+    </record>
+</odoo>

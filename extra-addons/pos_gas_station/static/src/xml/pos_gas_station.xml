@@ -389,33 +389,36 @@
                         </button>
                     </div>
 
-                    <div class="virtus-keypad-matrix">
-                        <div class="matrix-bills-grid">
-                            <t t-if="state.mode === 'money'">
-                                <button class="matrix-bill-btn bill-img-tile bill-1e" t-on-click="() => this.addPreset(1)"></button>
-                                <button class="matrix-bill-btn bill-img-tile bill-5e" t-on-click="() => this.addPreset(5)"></button>
-                                <button class="matrix-bill-btn bill-img-tile bill-10e" t-on-click="() => this.addPreset(10)"></button>
-                                <button class="matrix-bill-btn bill-img-tile bill-20e" t-on-click="() => this.addPreset(20)"></button>
-                                <button class="matrix-bill-btn bill-img-tile bill-50e" t-on-click="() => this.addPreset(50)"></button>
-                                <button class="matrix-bill-btn bill-img-tile bill-100e" t-on-click="() => this.addPreset(100)"></button>
-                            </t>
-                            <t t-else="">
-                                <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(1)">1 L</button>
-                                <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(5)">5 L</button>
-                                <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(10)">10 L</button>
-                                <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(20)">20 L</button>
-                                <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(50)">50 L</button>
-                                <button class="matrix-bill-btn liter-tile liter-full-tile" t-on-click="() => this.addPreset(999)">⛽ LLENO</button>
-                            </t>
-                        </div>
+                    <!-- 1. BLOQUE DE BILLETES Y MONEDA EN REJILLA 3x2 -->
+                    <div class="virtus-keypad-bills">
+                        <t t-if="state.mode === 'money'">
+                            <button class="matrix-bill-btn bill-img-tile bill-1e" t-on-click="() => this.addPreset(1)" title="1 Euro"></button>
+                            <button class="matrix-bill-btn bill-img-tile bill-5e" t-on-click="() => this.addPreset(5)" title="5 Euros"></button>
+                            <button class="matrix-bill-btn bill-img-tile bill-10e" t-on-click="() => this.addPreset(10)" title="10 Euros"></button>
+                            <button class="matrix-bill-btn bill-img-tile bill-20e" t-on-click="() => this.addPreset(20)" title="20 Euros"></button>
+                            <button class="matrix-bill-btn bill-img-tile bill-50e" t-on-click="() => this.addPreset(50)" title="50 Euros"></button>
+                            <button class="matrix-bill-btn bill-img-tile bill-100e" t-on-click="() => this.addPreset(100)" title="100 Euros"></button>
+                        </t>
+                        <t t-else="">
+                            <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(1)">1 L</button>
+                            <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(5)">5 L</button>
+                            <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(10)">10 L</button>
+                            <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(20)">20 L</button>
+                            <button class="matrix-bill-btn liter-tile" t-on-click="() => this.addPreset(50)">50 L</button>
+                            <button class="matrix-bill-btn liter-tile liter-full-tile" t-on-click="() => this.addPreset(999)">⛽ LLENO</button>
+                        </t>
+                    </div>
 
-                        <div class="matrix-fuels-grid">
-                            <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
-                                <button t-attf-class="fuel-matrix-btn fuel-#{fuel.class} #{state.selectedFuel === fuel.code ? 'active' : ''}" 
-                                        t-on-click="() => this.selectFuel(fuel.code)" 
-                                        t-esc="fuel.code"/>
-                            </t>
-                        </div>
+                    <!-- 2. SELECTOR DE COMBUSTIBLE EN FILA HORIZONTAL DEDICADA AL 100% -->
+                    <div class="virtus-keypad-fuels">
+                        <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
+                            <button t-attf-class="btn-fuel-item fuel-#{fuel.class} #{state.selectedFuel === fuel.code ? 'active' : ''}" 
+                                    t-on-click="() => this.selectFuel(fuel.code)"
+                                    t-att-title="fuel.name">
+                                <strong><t t-esc="fuel.code"/></strong>
+                                <span><t t-esc="fuel.name"/></span>
+                            </button>
+                        </t>
                     </div>
 
                     <div class="virtus-action-row">
