@@ -62,6 +62,7 @@ logging.basicConfig(
 # ==============================================================================
 class PurePythonSdesClient:
     VERSION = 2
+    MSG_SUBSCRIBIR = 1
     MSG_DESBLOQUEO = 3
     MSG_BLOQUEO = 4
     MSG_PREFIJADO = 5
@@ -70,10 +71,11 @@ class PurePythonSdesClient:
     MSG_ESTADO = 13
     MSG_CAMBIO_INFO = 14
     MSG_NUEVA_OP = 15
-    MSG_SUBSCRIBIR = 18
+    MSG_PULSO = 18
 
     PARAM_INT16 = 1
     PARAM_INT32 = 2
+    PARAM_BYTE = 3
 
     def __init__(self, host="127.0.0.1", port=SDES_PORT, on_operacion_cb=None, on_cambio_cb=None):
         self.host = host
@@ -89,11 +91,19 @@ class PurePythonSdesClient:
     def connect(self):
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.settimeout(5.0)
+            self.sock.settimeout(10.0)
             self.sock.connect((self.host, self.port))
             self.running = True
+
+            # Iniciar hilo de lectura continua
             t_reader = threading.Thread(target=self._socket_reader_loop, daemon=True)
             t_reader.start()
+
+            # Iniciar hilo de latido / ping periódico (mantiene conexión viva 24/7)
+            t_heartbeat = threading.Thread(target=self._heartbeat_loop, daemon=True)
+            t_heartbeat.start()
+
+            # Suscribirse a eventos de pista (Tipo 1)
             self._send_raw(self.MSG_SUBSCRIBIR, [], wait_resp=False)
             logging.info(f"✅ [DRIVER NATIVO] Conexión TCP socket establecida con el hardware en {self.host}:{self.port}")
             return True
@@ -111,6 +121,22 @@ class PurePythonSdesClient:
             self.seq_id = (self.seq_id + 1) & 0xFFFF
             return self.seq_id
 
+    def _heartbeat_loop(self):
+        while self.running:
+            time.sleep(5.0)
+            if not self.running or not self.sock:
+                break
+            try:
+                pkt_id = self._next_id()
+                ping_header = struct.pack(">HHHBB I", self.VERSION, pkt_id, self.MSG_PULSO, 0, 0, 0)
+                with self.lock:
+                    if self.sock and self.running:
+                        self.sock.sendall(ping_header)
+            except Exception as e:
+                logging.debug(f"Aviso en heartbeat socket: {e}")
+                self.running = False
+                break
+
     def _send_raw(self, msg_type, params, wait_resp=True, timeout=3.0):
         if not self.is_connected():
             return None
@@ -121,6 +147,8 @@ class PurePythonSdesClient:
                 param_bytes.extend(struct.pack(">HH", self.PARAM_INT16, int(pval) & 0xFFFF))
             elif ptype == self.PARAM_INT32:
                 param_bytes.extend(struct.pack(">HI", self.PARAM_INT32, int(pval) & 0xFFFFFFFF))
+            elif ptype == self.PARAM_BYTE:
+                param_bytes.extend(struct.pack(">HB", self.PARAM_BYTE, int(pval) & 0xFF))
 
         num_params = len(params)
         payload_len = len(param_bytes)
@@ -132,7 +160,9 @@ class PurePythonSdesClient:
             self.pending_responses[packet_id] = {"event": event, "resp": None}
 
         try:
-            self.sock.sendall(header + param_bytes)
+            with self.lock:
+                if self.sock and self.running:
+                    self.sock.sendall(header + param_bytes)
         except Exception as e:
             logging.error(f"Error enviando comando socket {msg_type}: {e}")
             self.pending_responses.pop(packet_id, None)
@@ -153,7 +183,7 @@ class PurePythonSdesClient:
         while self.running:
             try:
                 header_raw = self._recv_exact(12)
-                if not header_raw:
+                if not header_raw or len(header_raw) < 12:
                     break
                 version, pkt_id, msg_type, is_resp, num_params, payload_len = struct.unpack(">HHHBB I", header_raw)
                 payload = self._recv_exact(payload_len) if payload_len > 0 else b""
@@ -168,11 +198,42 @@ class PurePythonSdesClient:
                         }
                         self.pending_responses[pkt_id]["event"].set()
                 else:
-                    if msg_type == self.MSG_NUEVA_OP and self.on_operacion_cb:
-                        self.on_operacion_cb(payload)
-                    elif msg_type == self.MSG_CAMBIO_INFO and self.on_cambio_cb:
-                        self.on_cambio_cb(payload)
-            except Exception:
+                    if msg_type == self.MSG_NUEVA_OP:
+                        # Enviar inmediatamente el ACK requerido por SDES para liberar la cola
+                        try:
+                            ack_hdr = struct.pack(">HHHBB I", self.VERSION, pkt_id, self.MSG_NUEVA_OP, 1, 1, 3)
+                            ack_pay = struct.pack(">HB", self.PARAM_BYTE, 0)
+                            with self.lock:
+                                if self.sock and self.running:
+                                    self.sock.sendall(ack_hdr + ack_pay)
+                        except Exception as e:
+                            logging.debug(f"Aviso enviando ACK nueva op: {e}")
+
+                        # Decodificar datos de la venta completada
+                        try:
+                            if len(payload) >= 24 and self.on_operacion_cb:
+                                op_id = struct.unpack_from(">I", payload, 2)[0]
+                                rest = payload[20:]
+                                calle, manguera, prod, precio, tanque = struct.unpack_from(">HHHHH", rest, 0)
+                                lts, imp, imp_pref = struct.unpack_from(">III", rest, 10)
+                                self.on_operacion_cb(calle, lts / 100.0, imp / 100.0, precio / 1000.0, prod)
+                        except Exception as e:
+                            logging.error(f"Error decodificando MSG_NUEVA_OP: {e}")
+
+                    elif msg_type == self.MSG_CAMBIO_INFO:
+                        try:
+                            if len(payload) >= 24 and self.on_cambio_cb:
+                                ptype, calle, flags, cod_err, prod_pref = struct.unpack_from(">HHHHH", payload, 0)
+                                imp_pref, imp_serv, lts_serv = struct.unpack_from(">III", payload, 10)
+                                prod_serv = struct.unpack_from(">H", payload, 22)[0] if len(payload) >= 24 else 0
+                                is_sum = bool(flags & 0x0010)
+                                is_pte = bool(flags & 0x0002)
+                                is_col = bool(flags & 0x0001)
+                                self.on_cambio_cb(calle, is_sum, is_pte, is_col, lts_serv / 100.0, imp_serv / 100.0, prod_serv)
+                        except Exception as e:
+                            logging.error(f"Error decodificando MSG_CAMBIO_INFO: {e}")
+            except Exception as e:
+                logging.debug(f"Conexión de lectura cerrada: {e}")
                 break
         self.running = False
 
@@ -279,6 +340,7 @@ class AgentePistaRepsol:
                 "product_id": 51,
                 "status": status,
                 "statusText": status_txt,
+                "has_prepay": False,
                 "updated_at": time.time()
             })
 
@@ -293,16 +355,39 @@ class AgentePistaRepsol:
             else:
                 logging.warning("[AVISO] No se pudo conectar con el hardware en TCP 8777.")
 
-    def _on_nueva_operacion_socket(self, payload):
-        """Procesa evento instantáneo de nueva operación finalizada recibido por el socket"""
-        try:
-            self.sincronizar_estados_hardware_sdes()
-        except Exception as e:
-            logging.debug(f"Aviso decodificando operacion socket: {e}")
+    def _on_cambio_estado_socket(self, calle, is_suministrando, is_pte_cobro, is_colgado, litros, importe, prod_code):
+        """Procesa cambio de estado en vivo con litros e importe en tiempo real"""
+        if not (1 <= calle <= TOTAL_CALLES):
+            return
+        local = self.pumps[calle - 1]
+        hubo_cambio = False
 
-    def _on_cambio_estado_socket(self, payload):
-        """Procesa cambio de estado en vivo de cualquier surtidor"""
-        self.sincronizar_estados_hardware_sdes()
+        if is_suministrando:
+            if local["status"] != "dispensing" or abs(local["liters"] - litros) > 0.05 or abs(local["amount"] - importe) > 0.05:
+                local["status"] = "dispensing"
+                local["statusText"] = f"SUMINISTRO {litros:.2f}L" if litros > 0 else "SUMINISTRO"
+                local["liters"] = round(litros, 2)
+                local["amount"] = round(importe, 2)
+                local["updated_at"] = time.time()
+                hubo_cambio = True
+                logging.info(f"⛽ [SUMINISTRO EN VIVO] Calle {calle}: {litros:.2f}L | {importe:.2f}€")
+        elif is_pte_cobro and is_colgado:
+            # Fin de repostaje colgado en pista
+            if local["status"] == "dispensing":
+                local["status"] = "ready"
+                local["statusText"] = "COBRAR"
+                if litros > 0: local["liters"] = round(litros, 2)
+                if importe > 0: local["amount"] = round(importe, 2)
+                local["updated_at"] = time.time()
+                hubo_cambio = True
+                logging.info(f"🏁 [MANGUERA COLGADA] Calle {calle}: Fin repostaje con {local['liters']:.2f}L | {local['amount']:.2f}€")
+
+        if hubo_cambio:
+            self.enviar_estado_a_odoo(forzar=True)
+
+    def _on_nueva_operacion_socket(self, calle, litros, importe, precio, cod_producto):
+        """Procesa evento instantáneo de nueva operación finalizada recibido por el socket"""
+        self.marcar_calle_completada(calle, litros, importe, precio, cod_producto)
 
     def conectar_odoo(self):
         try:
@@ -384,12 +469,14 @@ class AgentePistaRepsol:
                 logging.info(f"🎯 [HARDWARE NATIVO] prefijar(calle={calle}, prod=0, {imp}€) -> {res_pref_gen}")
 
                 self.cambiar_modo_calle(calle, "dispensing", f"PREFIJADO {imp:.2f}€")
+                self.pumps[calle - 1]["has_prepay"] = True
             else:
                 # Suministro LIBRE (LLENO)
                 logging.info(f"⛽ [HARDWARE LIBRE NATIVO] Enviando DESBLOQUEO LIBRE (LLENO) a Calle {calle}...")
                 self.sdes_client.cambiar_modo_trabajo(calle, 0)
                 res_desb = self.sdes_client.desbloquear(calle)
-                self.cambiar_modo_calle(calle, "atendido", "ATENDIDO")
+                self.cambiar_modo_calle(calle, "atendido", "LLENO (POSTPAGO)")
+                self.pumps[calle - 1]["has_prepay"] = False
                 logging.info(f"⛽ [HARDWARE NATIVO] Calle {calle} libre desbloqueada -> {res_desb}")
 
         except Exception as e:
@@ -440,16 +527,16 @@ class AgentePistaRepsol:
                     elif action == "unlock":
                         self.desbloquear_surtidor_hardware(pid)
                         self.cambiar_modo_calle(pid, "atendido", "ATENDIDO")
-                    elif action == "set_mode":
+                    elif action in ("set_mode", "set_pump_mode"):
                         mode = cmd.get("mode")
                         if mode == "atendido":
                             self.modo_estacion_global = "atendido"
-                            if 1 <= pid <= TOTAL_CALLES:
+                            if pid and 1 <= pid <= TOTAL_CALLES:
                                 self.desbloquear_surtidor_hardware(pid)
                                 self.cambiar_modo_calle(pid, "atendido", "ATENDIDO")
                         else:
                             self.modo_estacion_global = "blocked"
-                            if 1 <= pid <= TOTAL_CALLES:
+                            if pid and 1 <= pid <= TOTAL_CALLES:
                                 self.bloquear_surtidor_hardware(pid)
                                 self.cambiar_modo_calle(pid, "blocked", "PREPAGO")
                     elif action == "set_global_mode":
@@ -487,10 +574,12 @@ class AgentePistaRepsol:
                     pid = op.get("id")
                     if 1 <= pid <= TOTAL_CALLES:
                         local = self.pumps[pid - 1]
-                        if local["status"] == "ready":
-                            if op.get("amount", 0) == 0 or op.get("status") in ("idle", "blocked", "atendido"):
-                                if time.time() - local.get("updated_at", 0) > 1.0:
-                                    logging.info(f"Calle {pid} cobrada en Odoo. Volviendo al modo activo.")
+                        # Si en Odoo la calle ya está cobrada (importe 0 o estado bloqueado)
+                        # mientras que en hardware sigue en dispensing o ready
+                        if local["status"] in ("ready", "dispensing"):
+                            if op.get("amount", 0) == 0 or op.get("status") in ("idle", "blocked"):
+                                if time.time() - local.get("updated_at", 0) > 1.5:
+                                    logging.info(f"Calle {pid} cobrada en Odoo. Volviendo al modo bloqueado...")
                                     self.liberar_calle_local(pid)
         except Exception as e:
             logging.debug(f"Error leyendo liberaciones de Odoo: {e}")
@@ -504,6 +593,7 @@ class AgentePistaRepsol:
             local["statusText"] = status_txt
             local["amount"] = 0.0
             local["liters"] = 0.0
+            local["has_prepay"] = False
             local["fuel"] = "Gasóleo A / Sin Plomo 95"
             local["updated_at"] = time.time()
             if self.sdes_client and self.sdes_client.is_connected():
@@ -545,27 +635,40 @@ class AgentePistaRepsol:
                     idx = payload.find(pattern, idx)
                     if idx == -1:
                         break
-                    if idx + 4 <= len(payload):
+                    if idx + 24 <= len(payload):
                         flags = struct.unpack_from(">H", payload, idx + 2)[0]
                         if (flags & 0xFF00) in (0x0200, 0x0100, 0x0000):
+                            cod_err, prod_pref = struct.unpack_from(">HH", payload, idx + 4)
+                            imp_pref, imp_serv, lts_serv = struct.unpack_from(">III", payload, idx + 8)
+                            prod_serv = struct.unpack_from(">H", payload, idx + 20)[0] if idx + 22 <= len(payload) else 0
+
                             p = self.pumps[c - 1]
                             
-                            # Bit 0x08: suministrando
-                            esta_suministrando = bool(flags & 0x0008)
-                            # Bit 0x01: pendiente de cobro / completado
-                            esta_pte_cobro = bool(flags & 0x0001)
+                            is_colgado = bool(flags & 0x0001)
+                            is_pte_cobro = bool(flags & 0x0002)
+                            is_bloqueado = bool(flags & 0x0004)
+                            is_prefijado = bool(flags & 0x0008)
+                            is_suministrando = bool(flags & 0x0010)
 
-                            if esta_suministrando:
-                                if p["status"] != "dispensing":
+                            lts = lts_serv / 100.0
+                            imp = imp_serv / 100.0
+
+                            if is_suministrando:
+                                if p["status"] != "dispensing" or abs(p["liters"] - lts) > 0.05 or abs(p["amount"] - imp) > 0.05:
                                     p["status"] = "dispensing"
-                                    p["statusText"] = "SUMINISTRO"
+                                    p["statusText"] = f"SUMINISTRO {lts:.2f}L" if lts > 0 else "SUMINISTRO"
+                                    p["liters"] = round(lts, 2)
+                                    p["amount"] = round(imp, 2)
                                     p["updated_at"] = time.time()
                                     hubo_cambio = True
-                            elif esta_pte_cobro and p["status"] != "ready" and p["amount"] > 0:
-                                p["status"] = "ready"
-                                p["statusText"] = "PENDIENTE DE COBRO"
-                                p["updated_at"] = time.time()
-                                hubo_cambio = True
+                            elif is_pte_cobro and is_colgado:
+                                if p["status"] == "dispensing":
+                                    p["status"] = "ready"
+                                    p["statusText"] = "COBRAR"
+                                    if lts > 0: p["liters"] = round(lts, 2)
+                                    if imp > 0: p["amount"] = round(imp, 2)
+                                    p["updated_at"] = time.time()
+                                    hubo_cambio = True
                             break
                     idx += 2
 
@@ -579,8 +682,6 @@ class AgentePistaRepsol:
             p = self.pumps[calle - 1]
             prod = MAPA_COMBUSTIBLES.get(str(cod_producto), MAPA_COMBUSTIBLES["default"])
             
-            p["status"] = "ready"
-            p["statusText"] = "PENDIENTE DE COBRO"
             p["fuel"] = prod["name"]
             p["amount"] = round(importe, 2)
             p["liters"] = round(litros, 3)
@@ -588,14 +689,21 @@ class AgentePistaRepsol:
             p["product_id"] = prod["id"]
             p["updated_at"] = time.time()
 
-            if self.sdes_client and self.sdes_client.is_connected():
-                try:
-                    self.sdes_client.bloquear(calle)
-                except Exception:
-                    pass
-
             logging.info(f"🎉 [VENTA LISTA] Calle {calle} completó {litros:.2f}L de {prod['name']} por {importe:.2f}€")
-            self.enviar_estado_a_odoo(forzar=True)
+
+            # Si ya estaba pagada en prepago en Odoo, liberar de inmediato
+            if p.get("has_prepay"):
+                logging.info(f"Calle {calle} era prepago completado. Liberando pista...")
+                self.liberar_calle_local(calle)
+            else:
+                p["status"] = "ready"
+                p["statusText"] = "COBRAR"
+                if self.sdes_client and self.sdes_client.is_connected():
+                    try:
+                        self.sdes_client.bloquear(calle)
+                    except Exception:
+                        pass
+                self.enviar_estado_a_odoo(forzar=True)
 
     def pintar_tabla_consola(self):
         now = time.time()
@@ -618,20 +726,15 @@ class AgentePistaRepsol:
             "------------------------------------------------------------------"
         ]
         for p in self.pumps:
-            c = p["id"]
-            st = p["status"]
-            txt = iconos_modo.get(st, st)
-            imp = f"{p['amount']:.2f} €"
-            lts = f"{p['liters']:.2f} L"
-            comb = p["fuel"]
-            lineas.append(f" {c:2d}   | {txt:17s} | {imp:8s} | {lts:7s} | {comb}")
-        
-        print("\n".join(lineas), flush=True)
+            st = iconos_modo.get(p["status"], p["status"])
+            lineas.append(f"  {p['id']:<3} | {st:<17} | {p['amount']:>6.2f} €   | {p['liters']:>5.2f} L  | {p['fuel']}")
+        print("\n".join(lineas))
 
-    def iniciar(self):
-        logging.info("===========================================================================")
-        logging.info("   UTRECAR ERP - PUENTE PISTA NATIVO 100% PYTHON (SIN DEPENDENCIAS)")
-        logging.info("===========================================================================")
+    def ejecutar(self):
+        logging.info("=" * 60)
+        logging.info("  AGENTE PUENTE DE PISTA ODOO CLOUD (E.S. REPSOL - TRIESTE)")
+        logging.info("  Driver nativo socket 127.0.0.1:8777 (100% independiente de Aseproda)")
+        logging.info("=" * 60)
 
         intentos = 0
         while not self.conectar_odoo():
@@ -643,40 +746,42 @@ class AgentePistaRepsol:
         if self.modo_estacion_global == "blocked" and self.sdes_client and self.sdes_client.is_connected():
             for i in range(1, TOTAL_CALLES + 1):
                 try:
+                    self.sdes_client.cobrar(i)
                     self.sdes_client.bloquear(i)
                 except Exception:
                     pass
+
         self.enviar_estado_a_odoo(forzar=True)
-        time.sleep(1.0)
+        logging.info("[OK] Bucle principal de sincronización arrancado.")
 
-        try:
-            while True:
-                now = time.time()
+        while True:
+            try:
+                # 1. Asegurar socket hardware vivo
+                self.asegurar_conexion_hardware()
 
-                # Watchdog periódico de conexión física con el socket hardware (cada 5s)
-                if now - self.last_sdes_check > 5.0:
-                    self.last_sdes_check = now
-                    if self.sdes_client is None or not self.sdes_client.is_connected():
-                        self.asegurar_conexion_hardware()
-
-                # 1. SINCRONIZACIÓN EN TIEMPO REAL DESDE EL HARDWARE VIA SOCKET NATIVO
+                # 2. Sincronizar estado en tiempo real (litros en vivo)
                 self.sincronizar_estados_hardware_sdes()
 
-                # 2. PROCESAR COMANDOS EN TIEMPO REAL DESDE ODOO TPV
+                # 3. Procesar comandos inmediatos emitidos desde el TPV Odoo
                 self.procesar_comandos_odoo()
 
-                # 3. SINCRONIZACIÓN DESDE ODOO (Comprobar si el cajero ha cobrado o liberado calles)
+                # 4. Comprobar si el cajero ha cobrado algún surtidor en Odoo
                 self.leer_liberaciones_de_odoo()
 
-                # 4. ENVÍO PERIÓDICO Y PINTADO DE CONSOLA
+                # 5. Publicar estado a Odoo periódicamente
                 self.enviar_estado_a_odoo()
+
+                # 6. Mostrar tabla de monitoreo en consola
                 self.pintar_tabla_consola()
 
-                time.sleep(0.1)
-
-        except KeyboardInterrupt:
-            logging.info("[!] Agente detenido por el usuario.")
+                time.sleep(0.2)
+            except KeyboardInterrupt:
+                logging.info("\nDeteniendo Agente Puente...")
+                break
+            except Exception as e:
+                logging.error(f"Error inesperado en bucle principal: {e}")
+                time.sleep(1.0)
 
 if __name__ == "__main__":
     agente = AgentePistaRepsol()
-    agente.iniciar()
+    agente.ejecutar()

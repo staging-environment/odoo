@@ -115,13 +115,12 @@ class PosGasStationController(http.Controller):
 
         for i, pump in enumerate(pumps):
             pid = pump.get('id', i + 1)
-            # Si el surtidor real ya reporta fin de repostaje (ready) o suministro en vivo con litros, anular override de inmediato
-            if pump.get('status') == 'ready' or (pump.get('amount', 0) > 0 and pump.get('status') != 'dispensing') or (pump.get('status') == 'dispensing' and pump.get('liters', 0) > 0):
+            # Si el surtidor real ya reporta fin de repostaje (ready), suministro activo en pista, o se ha bloqueado, anular override de inmediato
+            if pump.get('status') in ('ready', 'dispensing') or (pump.get('status') == 'blocked' and now - overrides.get(pid, {}).get('_timestamp', now) > 2.0):
                 if pid in overrides:
                     del overrides[pid]
             elif pid in overrides:
-                # Si han pasado más de 15 segundos y no hay bombeo activo, descartar override
-                if now - overrides[pid].get('_timestamp', now) > 15:
+                if now - overrides[pid].get('_timestamp', now) > 20:
                     del overrides[pid]
                 else:
                     ov = {k: v for k, v in overrides[pid].items() if not k.startswith('_')}

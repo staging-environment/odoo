@@ -1497,9 +1497,25 @@ patch(PaymentScreen.prototype, {
     },
 
     async afterOrderValidation(suggestToSync = true) {
+        const order = this.currentOrder;
+        if (order) {
+            const lines = order.get_orderlines ? order.get_orderlines() : [];
+            for (const l of lines) {
+                if (l.pump_id) {
+                    try {
+                        await jsonrpc("/pos_gas_station/clear_pump", {
+                            config_id: this.pos.config.id,
+                            pump_id: l.pump_id
+                        });
+                    } catch (e) {
+                        console.debug("Aviso al limpiar bomba tras validar orden:", e);
+                    }
+                }
+            }
+        }
+
         await super.afterOrderValidation(...arguments);
         // Redirigir de inmediato al TPV de la gasolinera con un pedido nuevo en blanco
-        const order = this.currentOrder;
         if (order) {
             this.pos.removeOrder(order);
             this.pos.add_new_order();

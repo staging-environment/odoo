@@ -85,6 +85,7 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **15/10/2026** | Pista (`10.8.0.18`) | Desacoplamiento total de librerías Aseproda: desarrollo de driver socket TCP nativo en Python puro (`PurePythonSdesClient`), eliminando `ClienteSDESNet.dll`, `clr`, `.NET` y MySQL | 100% operativo y probado en vivo (Consumo RAM reducido de 68MB a 26MB) |
 | **15/10/2026** | Prod & TPV | Corrección visual y funcional de autorización a Lleno (Postpago): eliminación de parpadeo de texto en tarjeta de surtidor y habilitación de bloqueo por hardware inmediato mediante botones 'BORRAR' y 'Cancelar' sin necesidad de ticket previo | Desplegado y verificado en Cloud y TPV |
 | **15/10/2026** | Prod & TPV | Corrección de apertura de modal de surtidor: eliminación del interceptor de clic en el panel inferior del candado para permitir que cualquier clic en la tarjeta abra limpiamente la ventana flotante de autorización | Desplegado y verificado en Cloud |
+| **15/10/2026** | Prod & Pista | Suministro en tiempo real y protocolo bidireccional SDES: decodificación nativa de MSG_CAMBIO_INFO (14) con litros/importe en vivo, ACK automático de MSG_NUEVA_OP (15), latido continuo MSG_PULSO (18) y liberación automática de hardware tras validar cobro en TPV | Desplegado en Cloud y en PC Repsol Trieste |
 
 ---
 
