@@ -82,6 +82,7 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **15/10/2026** | Prod & Pista | Sincronización bidireccional hardware de cambio de modo global ("PISTA: PREFIJADO / LLENO") y candados individuales por calle | Desplegado en Cloud y en PC Repsol Trieste; persistencia de filestore con volumen `odoo-data` |
 | **15/10/2026** | Prod & Pista | Corrección de ciclo de cobro y liberación de pista: corte de prefijado por hardware vía SDES Prefijar() y liberación instantánea tras cobrar en TPV | Verificado físicamente con corte exacto en 1.00 € y reseteo a 0.00 € / PREPAGO tras cobro |
 | **15/10/2026** | Prod & Pista | Suministro en tiempo real vía SDES ObtenerEstado() (litros/importe en vivo) y liberación de pista al pulsar 'Cancelar' o 'BORRAR' en TPV | Desplegado en Cloud y en PC Repsol Trieste |
+| **15/10/2026** | Pista (`10.8.0.18`) | Desacoplamiento total de librerías Aseproda: desarrollo de driver socket TCP nativo en Python puro (`PurePythonSdesClient`), eliminando `ClienteSDESNet.dll`, `clr`, `.NET` y MySQL | 100% operativo y probado en vivo (Consumo RAM reducido de 68MB a 26MB) |
 
 ---
 
