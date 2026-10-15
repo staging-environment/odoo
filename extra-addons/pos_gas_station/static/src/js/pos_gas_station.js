@@ -613,9 +613,17 @@ export class UtrecarMainScreen extends Component {
             target.liters = 0;
             target.has_prepay = false;
             target.preset_amount = 0;
+            target.is_lleno = false;
         }
         if (this.state.pumpPresets) {
             delete this.state.pumpPresets[pumpId];
+        }
+        const currentOrder = this.pos.get_order();
+        if (currentOrder) {
+            const line = currentOrder.get_orderlines().find(l => l.pump_id === pumpId || (l.customerNote && l.customerNote.includes(`Calle ${pumpId}`)));
+            if (line) {
+                currentOrder.remove_orderline(line);
+            }
         }
         try {
             await jsonrpc("/pos_gas_station/clear_pump", {
@@ -942,6 +950,10 @@ export class UtrecarMainScreen extends Component {
 
     getPumpPresetAmount(pump) {
         if (!pump) return 0;
+        // Si la pista está bloqueada o sin prefijado activo, el importe es estrictamente 0
+        if (pump.status === "blocked" || pump.status === "idle" || (pump.statusText || "").includes("SIN PREFIJADO")) {
+            return 0;
+        }
         if (pump.preset_amount && pump.preset_amount > 0) return pump.preset_amount;
         if (this.state.pumpPresets && this.state.pumpPresets[pump.id]) {
             return this.state.pumpPresets[pump.id].amount || 0;

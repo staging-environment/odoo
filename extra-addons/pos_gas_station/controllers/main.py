@@ -251,6 +251,8 @@ class PosGasStationController(http.Controller):
                         p['statusText'] = fallback_text
                         p['amount'] = 0.0
                         p['liters'] = 0.0
+                        p['preset_amount'] = 0.0
+                        p['has_prepay'] = False
                         
                 if isinstance(parsed, dict):
                     parsed['pumps'] = p_list

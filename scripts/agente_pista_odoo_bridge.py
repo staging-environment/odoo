@@ -564,6 +564,7 @@ class AgentePistaRepsol:
             local["statusText"] = status_txt
             local["amount"] = 0.0
             local["liters"] = 0.0
+            local["preset_amount"] = 0.0
             local["has_prepay"] = False
             local["fuel"] = "Gasóleo A / Sin Plomo 95"
             local["updated_at"] = time.time()
