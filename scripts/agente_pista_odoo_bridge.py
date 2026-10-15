@@ -344,6 +344,9 @@ class AgentePistaRepsol:
                         else:
                             self.bloquear_surtidor_hardware(pid)
                         self.enviar_estado_a_odoo(forzar=True)
+                    elif action == "clear_pump":
+                        logging.info(f"✅ [COMANDO ODOO] Recibida orden de LIBERAR/COBRAR Calle {pid}")
+                        self.liberar_calle_local(pid)
         except Exception as e:
             logging.debug(f"Error procesando comandos de Odoo: {e}")
 
@@ -391,19 +394,29 @@ class AgentePistaRepsol:
                     pid = op.get("id")
                     if 1 <= pid <= TOTAL_CALLES:
                         local = self.pumps[pid - 1]
-                        if op.get("status") == "idle" and local["status"] == "ready":
-                            if time.time() - local.get("updated_at", 0) > 1.5:
-                                status_txt = "PREPAGO" if self.modo_estacion_global == "blocked" else ("ATENDIDO" if self.modo_estacion_global == "atendido" else "POSTPAGO")
-                                logging.info(f"Calle {pid} cobrada en Odoo. Volviendo al modo activo ({status_txt}).")
-                                local["status"] = self.modo_estacion_global
-                                local["statusText"] = status_txt
-                                local["amount"] = 0.0
-                                local["liters"] = 0.0
-                                local["fuel"] = "Gasóleo A / Sin Plomo 95"
-                                local["updated_at"] = time.time()
-                                self.enviar_estado_a_odoo(forzar=True)
+                        if local["status"] == "ready":
+                            # Si en Odoo el importe ya es 0 o el estado no es ready (ha sido cobrada/liberada):
+                            if op.get("amount", 0) == 0 or op.get("status") in ("idle", "blocked", "atendido"):
+                                if time.time() - local.get("updated_at", 0) > 1.0:
+                                    logging.info(f"Calle {pid} cobrada en Odoo. Volviendo al modo activo.")
+                                    self.liberar_calle_local(pid)
         except Exception as e:
             logging.debug(f"Error leyendo liberaciones de Odoo: {e}")
+
+    def liberar_calle_local(self, calle):
+        if 1 <= calle <= TOTAL_CALLES:
+            local = self.pumps[calle - 1]
+            status_txt = "PREPAGO" if self.modo_estacion_global == "blocked" else ("ATENDIDO" if self.modo_estacion_global == "atendido" else "POSTPAGO")
+            logging.info(f"Calle {calle} reseteada tras cobro -> {status_txt}")
+            local["status"] = self.modo_estacion_global
+            local["statusText"] = status_txt
+            local["amount"] = 0.0
+            local["liters"] = 0.0
+            local["fuel"] = "Gasóleo A / Sin Plomo 95"
+            local["updated_at"] = time.time()
+            if self.modo_estacion_global == "blocked":
+                self.bloquear_surtidor_hardware(calle)
+            self.enviar_estado_a_odoo(forzar=True)
 
     def cambiar_modo_calle(self, calle, status, status_text):
         """Actualiza el modo de una calle (Atendido / Prepago / Postpago) respetando ventas listas"""

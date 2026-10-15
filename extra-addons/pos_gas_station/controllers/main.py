@@ -241,6 +241,18 @@ class PosGasStationController(http.Controller):
         except Exception as e:
             _logger.error(f'Error resetting pump in {param_key}: {e}')
 
+        # Emitir orden de liberación al hardware de pista local
+        cmd_key = f'pos_gas_station.pump_command_{cfg}'
+        cmd_payload = {
+            'action': 'clear_pump',
+            'pump_id': pid,
+            'timestamp': time.time()
+        }
+        try:
+            request.env['ir.config_parameter'].sudo().set_param(cmd_key, json.dumps(cmd_payload))
+        except Exception as e:
+            _logger.error(f'Error guardando comando {cmd_key}: {e}')
+
         return {'status': 'cleared', 'pump_id': pid}
 
     @http.route('/pos_gas_station/set_track_mode', type='json', auth='public', methods=['POST'], csrf=False, cors='*')
