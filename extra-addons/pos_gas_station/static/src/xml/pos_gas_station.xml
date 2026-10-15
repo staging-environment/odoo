@@ -236,7 +236,7 @@
                                  t-on-click="() => this.onPumpCardClick(pump)">
                                 
                                 <!-- MONEDA DE PREPAGO FLOTANTE ENCIMA DEL SURTIDOR -->
-                                <t t-if="shouldShowPrepayCoin(pump)">
+                                <t t-if="shouldShowPrepayCoin(pump) and pump.status === 'ready'">
                                     <div class="dispenser-prepay-coin" title="Surtidor con repostaje finalizado (Pendiente de cobro)">
                                         <svg viewBox="0 0 36 36" width="28" height="28" class="prepay-coin-svg">
                                             <defs>

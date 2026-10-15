@@ -865,25 +865,26 @@ export class UtrecarMainScreen extends Component {
     shouldShowPrepayCoin(pump) {
         if (!pump) return false;
 
-        // 1. En la modalidad de prepago NO tiene sentido y NUNCA debe aparecer
-        if (pump.has_prepay) return false;
-        const preset = this.state.pumpPresets && this.state.pumpPresets[pump.id];
-        if (preset && preset.hasPrepay) return false;
-
-        // 2. Solo debe aparecer DESPUÉS de que se cuelgue la manguera (nunca mientras está suministrando)
-        if (this.isPumpDispensing(pump) || pump.status === "dispensing") {
+        // 1. REGLA ESTRICTA: Solo puede aparecer cuando la manguera ha sido colgada y está lista para cobrar
+        if (pump.status !== "ready") {
             return false;
         }
 
-        // 3. En estados de reposo o bloqueado sin repostaje pendiente no aparece
-        if (pump.status === "blocked" || pump.status === "idle") {
+        // 2. En modalidad prepago NUNCA debe aparecer
+        if (pump.has_prepay) {
+            return false;
+        }
+        if (this.state.pumpPresets && this.state.pumpPresets[pump.id] && this.state.pumpPresets[pump.id].hasPrepay) {
             return false;
         }
 
-        // 4. Modalidad Autorizado o Lleno: SOLO después de que se cuelgue la manguera
-        // Cuando ha finalizado el repostaje y está pendiente de cobro en TPV
-        const isPostpayReady = pump.status === "ready" || (pump.amount > 0 && pump.status !== "dispensing" && pump.status !== "blocked");
-        return Boolean(isPostpayReady);
+        // 3. Debe tener importe positivo a cobrar en caja
+        if (!pump.amount || pump.amount <= 0) {
+            return false;
+        }
+
+        // 4. Autorizado / Lleno (postpago) completado
+        return true;
     }
 
 

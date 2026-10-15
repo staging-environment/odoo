@@ -469,6 +469,7 @@ class AgentePistaRepsol:
                 logging.info(f"🎯 [HARDWARE NATIVO] prefijar(calle={calle}, prod=0, {imp}€) -> {res_pref_gen}")
 
                 self.cambiar_modo_calle(calle, "dispensing", f"PREFIJADO {imp:.2f}€")
+                self.pumps[calle - 1]["preset_amount"] = imp
                 self.pumps[calle - 1]["has_prepay"] = True
             else:
                 # Suministro LIBRE (LLENO)
@@ -560,29 +561,9 @@ class AgentePistaRepsol:
             logging.debug(f"Error procesando comandos de Odoo: {e}")
 
     def leer_liberaciones_de_odoo(self):
-        try:
-            param_key = f'pos_gas_station.pumps_state_{CONFIG_ID}'
-            raw = self.models.execute_kw(
-                DB_NAME, self.uid, USER_PASS,
-                'ir.config_parameter', 'get_param',
-                [param_key]
-            )
-            if raw:
-                parsed = json.loads(raw)
-                odoo_pumps = parsed.get("pumps", []) if isinstance(parsed, dict) else parsed
-                for op in odoo_pumps:
-                    pid = op.get("id")
-                    if 1 <= pid <= TOTAL_CALLES:
-                        local = self.pumps[pid - 1]
-                        # Si en Odoo la calle ya está cobrada (importe 0 o estado bloqueado)
-                        # mientras que en hardware sigue en dispensing o ready
-                        if local["status"] in ("ready", "dispensing"):
-                            if op.get("amount", 0) == 0 or op.get("status") in ("idle", "blocked"):
-                                if time.time() - local.get("updated_at", 0) > 1.5:
-                                    logging.info(f"Calle {pid} cobrada en Odoo. Volviendo al modo bloqueado...")
-                                    self.liberar_calle_local(pid)
-        except Exception as e:
-            logging.debug(f"Error leyendo liberaciones de Odoo: {e}")
+        # Las liberaciones se gestionan exclusivamente vía comandos explícitos de Odoo ('clear_pump')
+        # No sobreescribir ni cerrar autorizaciones pendientes de repostaje
+        pass
 
     def liberar_calle_local(self, calle):
         if 1 <= calle <= TOTAL_CALLES:
