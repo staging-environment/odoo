@@ -72,7 +72,14 @@
         <field name="tag">utrecar_permission_matrix</field>
     </record>
 
-    <!-- MENÚ EN PUNTO DE VENTA -->
+    <!-- 1. MENÚ DIRECTO EN LA BARRA SUPERIOR MORADA DE PUNTO DE VENTA -->
+    <menuitem id="menu_utrecar_permission_matrix_topbar"
+              name="Matriz de Permisos"
+              parent="point_of_sale.menu_point_root"
+              action="action_utrecar_permission_matrix"
+              sequence="99"/>
+
+    <!-- 2. MENÚ DENTRO DEL DESPLEGABLE CONFIGURACIÓN DE PUNTO DE VENTA -->
     <menuitem id="menu_utrecar_permission_matrix"
               name="Matriz de Permisos"
               parent="point_of_sale.menu_point_config_product"
