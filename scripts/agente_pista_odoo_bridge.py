@@ -202,21 +202,63 @@ class AgentePistaRepsol:
         except Exception as e:
             logging.warning(f"Error enviando estado a Odoo: {e}")
 
-    def desbloquear_surtidor_hardware(self, calle):
+    def autorizar_surtidor_hardware(self, calle, importe=0.0, litros=0.0, combustible=""):
         if not (1 <= calle <= TOTAL_CALLES):
             return
-        logging.info(f"⛽ [HARDWARE] Enviando DESBLOQUEO nativo a Calle {calle}...")
+
         self.asegurar_conexion_sdes()
-        if self.sdes_client:
-            try:
+        if not self.sdes_client:
+            logging.error(f"No hay conexión con ClienteSDES2 para autorizar Calle {calle}")
+            return
+
+        # Mapeo de producto del concentrador SDES (ConcentradorDW.ini):
+        # 1 = Gasóleo A, 2 = Sin Plomo 95, 3 = Gasóleo B, 4 = Diesel Ultimate / Plus
+        cod_prod = 0
+        comb_upper = (combustible or "").upper()
+        if "95" in comb_upper or "PLOMO" in comb_upper:
+            cod_prod = 2
+        elif "PLUS" in comb_upper or "ULTIMATE" in comb_upper or "G+" in comb_upper:
+            cod_prod = 4
+        elif " B" in comb_upper or "AGR" in comb_upper:
+            cod_prod = 3
+        elif "GASOIL" in comb_upper or "GASÓLEO" in comb_upper or "DIESEL" in comb_upper or "GA" in comb_upper:
+            cod_prod = 1
+
+        try:
+            from System import UInt16, Double
+
+            if importe and float(importe) > 0:
+                imp = float(importe)
+                logging.info(f"🎯 [HARDWARE PREFIJADO] Fijando límite de {imp:.2f} € en Calle {calle} (Producto: {cod_prod})...")
+                
+                # Para prefijar con corte de válvula exacto, la calle debe permanecer en PREPAGO (Modo 2)
+                self.sdes_client.CambiarModoTrabajo(calle, ClienteSDES2.ModosTrabajo.PREPAGO)
+                self.actualizar_modotrabajo_ini(calle, 2)
+                
+                # 1. Prefijar para el producto específico si se conoce
+                if cod_prod > 0:
+                    res_pref = self.sdes_client.Prefijar(UInt16(calle), UInt16(cod_prod), Double(imp))
+                    logging.info(f"🎯 [HARDWARE] Prefijar(calle={calle}, prod={cod_prod}, {imp}€) -> {res_pref}")
+                
+                # 2. Prefijar a nivel general (0) para garantizar que cualquier manguera corte a ese importe
+                res_pref_gen = self.sdes_client.Prefijar(UInt16(calle), UInt16(0), Double(imp))
+                logging.info(f"🎯 [HARDWARE] Prefijar(calle={calle}, prod=0, {imp}€) -> {res_pref_gen}")
+
+                self.cambiar_modo_calle(calle, "dispensing", f"PREFIJADO {imp:.2f}€")
+            else:
+                # Suministro LIBRE (LLENO)
+                logging.info(f"⛽ [HARDWARE LIBRE] Enviando DESBLOQUEO LIBRE (LLENO) a Calle {calle}...")
                 res_modo = self.sdes_client.CambiarModoTrabajo(calle, ClienteSDES2.ModosTrabajo.ATENDIDO)
                 res_desb = self.sdes_client.Desbloquear(calle)
-                logging.info(f"⛽ [HARDWARE] Calle {calle} desbloqueada: modo={res_modo}, desb={res_desb}")
-            except Exception as e:
-                logging.error(f"Error llamando Desbloquear({calle}): {e}")
-                self.sdes_client = None
-        self.actualizar_modotrabajo_ini(calle, 0)
-        self.cambiar_modo_calle(calle, "atendido", "ATENDIDO")
+                self.actualizar_modotrabajo_ini(calle, 0)
+                self.cambiar_modo_calle(calle, "atendido", "ATENDIDO")
+                logging.info(f"⛽ [HARDWARE] Calle {calle} libre desbloqueada: modo={res_modo}, desb={res_desb}")
+
+        except Exception as e:
+            logging.error(f"Error autorizando hardware en Calle {calle}: {e}")
+
+    def desbloquear_surtidor_hardware(self, calle):
+        self.autorizar_surtidor_hardware(calle, importe=0.0)
 
     def bloquear_surtidor_hardware(self, calle):
         if not (1 <= calle <= TOTAL_CALLES):
@@ -225,6 +267,12 @@ class AgentePistaRepsol:
         self.asegurar_conexion_sdes()
         if self.sdes_client:
             try:
+                from System import UInt16, Double
+                # Anular cualquier prefijado previo
+                try:
+                    self.sdes_client.Prefijar(UInt16(calle), UInt16(0), Double(0.0))
+                except:
+                    pass
                 res_modo = self.sdes_client.CambiarModoTrabajo(calle, ClienteSDES2.ModosTrabajo.PREPAGO)
                 res_bloq = self.sdes_client.Bloquear(calle)
                 logging.info(f"🔒 [HARDWARE] Calle {calle} bloqueada: modo={res_modo}, bloq={res_bloq}")
@@ -270,8 +318,11 @@ class AgentePistaRepsol:
                     action = cmd.get("action")
                     pid = int(cmd.get("pump_id", 0))
                     if action == "authorize":
-                        logging.info(f"🎯 [COMANDO ODOO] Recibida orden de AUTORIZAR Calle {pid}")
-                        self.desbloquear_surtidor_hardware(pid)
+                        amt = float(cmd.get("amount", 0.0))
+                        fuel = str(cmd.get("fuel", ""))
+                        lts = float(cmd.get("liters", 0.0))
+                        logging.info(f"🎯 [COMANDO ODOO] Recibida orden de AUTORIZAR Calle {pid} | Importe: {amt}€ | Combustible: {fuel}")
+                        self.autorizar_surtidor_hardware(pid, importe=amt, litros=lts, combustible=fuel)
                     elif action == "lock":
                         logging.info(f"🛑 [COMANDO ODOO] Recibida orden de BLOQUEAR Calle {pid}")
                         self.bloquear_surtidor_hardware(pid)
