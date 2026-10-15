@@ -112,8 +112,8 @@ export class UtrecarMainScreen extends Component {
                 this.fetchPumpsStatus();
                 const ord = this.pos.get_order();
                 if (ord) {
-                    const linesCount = ord.get_orderlines?.()?.length || ord.orderlines?.length || 0;
-                    const totalAmt = ord.get_total_with_tax?.() || 0;
+                    const linesCount = (ord.get_orderlines ? (ord.get_orderlines() ? ord.get_orderlines().length : 0) : 0) || (ord.orderlines ? ord.orderlines.length : 0) || 0;
+                    const totalAmt = (ord.get_total_with_tax ? ord.get_total_with_tax() : 0) || 0;
                     const v = linesCount * 1000 + totalAmt;
                     if (this.state.orderVersion !== v) {
                         this.state.orderVersion = v;
@@ -566,7 +566,7 @@ export class UtrecarMainScreen extends Component {
         this.state.vehiclePlate = plate;
         const currentOrder = this.getOrCreateOrder();
         if (currentOrder) {
-            currentOrder.set_note?.(plate ? `Matrícula: ${plate}` : "");
+            if (currentOrder.set_note) currentOrder.set_note(plate ? `Matrícula: ${plate}` : "");
         }
     }
 
@@ -758,7 +758,7 @@ export class UtrecarMainScreen extends Component {
                     for (const l of lines) {
                         this.deleteSpecificLine(l);
                     }
-                    currentOrder.set_note?.("");
+                    if (currentOrder.set_note) currentOrder.set_note("");
                 } catch (e) {
                     console.debug("Error al vaciar orden:", e);
                 }
@@ -1204,7 +1204,7 @@ export class UtrecarMainScreen extends Component {
                 }
             });
             if (this.state.vehiclePlate) {
-                currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
+                if (currentOrder.set_note) currentOrder.set_note(`Matrícula: ${this.state.vehiclePlate}`);
             }
             this.state.orderVersion = Date.now();
         }
@@ -1445,7 +1445,7 @@ export class UtrecarMainScreen extends Component {
 
         if (sale.vehiclePlate) {
             this.state.vehiclePlate = sale.vehiclePlate;
-            currentOrder.set_note?.(`Matrícula: ${sale.vehiclePlate}`);
+            if (currentOrder.set_note) currentOrder.set_note(`Matrícula: ${sale.vehiclePlate}`);
         }
 
         this.state.orderVersion = Date.now();
@@ -1459,7 +1459,7 @@ export class UtrecarMainScreen extends Component {
         if (!product || !qty || qty <= 0) return targetTotal;
         const currentOrder = order || this.getOrCreateOrder();
         const taxesIds = product.taxes_id || [];
-        const productTaxes = this.pos.get_taxes_after_fp(taxesIds, currentOrder?.fiscal_position);
+        const productTaxes = this.pos.get_taxes_after_fp(taxesIds, (currentOrder ? currentOrder.fiscal_position : null));
 
         if (!productTaxes || productTaxes.length === 0) {
             return targetTotal / qty;
@@ -1831,7 +1831,7 @@ export class UtrecarMainScreen extends Component {
                     }
 
                     const plateInfo = this.state.vehiclePlate ? `Matrícula: ${this.state.vehiclePlate} | ` : "";
-                    currentOrder.set_note?.(`${plateInfo}Calle ${pumpId} [Prepago: ${presetVal} ${isMoney ? '€' : 'L'}]`);
+                    if (currentOrder.set_note) currentOrder.set_note(`${plateInfo}Calle ${pumpId} [Prepago: ${presetVal} ${isMoney ? '€' : 'L'}]`);
                     this.state.orderVersion = Date.now();
                 }
             }
@@ -1931,7 +1931,7 @@ export class UtrecarMainScreen extends Component {
                     }
                 }
                 if (this.state.vehiclePlate) {
-                    currentOrder.set_note?.(`Matrícula: ${this.state.vehiclePlate}`);
+                    if (currentOrder.set_note) currentOrder.set_note(`Matrícula: ${this.state.vehiclePlate}`);
                 }
 
                 pump.status = "idle";
@@ -2115,7 +2115,7 @@ patch(PaymentScreen.prototype, {
         if (order) {
             this.pos.removeOrder(order);
             this.pos.add_new_order();
-            this.pos.resetProductScreenSearch?.();
+            if (this.pos.resetProductScreenSearch) { this.pos.resetProductScreenSearch(); };
         }
         this.pos.showScreen("ProductScreen");
     }
