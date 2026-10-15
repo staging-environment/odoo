@@ -85,10 +85,21 @@
                                     </div>
 
                                     <div class="company-header-tools" t-if="state.isManager">
-                                        <button class="btn btn-sm btn-light border btn-edit-company" 
+                                        <button class="btn btn-sm btn-outline-primary me-2" 
+                                                t-on-click="() => this.openNewStation(comp.id)" 
+                                                title="Crear nueva estación en esta empresa">
+                                            <i class="fa fa-plus me-1"/> Nueva Estación
+                                        </button>
+                                        <button class="btn btn-sm btn-light border btn-edit-company me-2" 
                                                 t-on-click="() => this.openCompany(comp.id)" 
-                                                title="Configurar datos de la empresa y subir logo">
-                                            <i class="fa fa-pencil me-1"/> Configurar Logo y Datos
+                                                title="Configurar datos de la empresa y ver sus estaciones">
+                                            <i class="fa fa-pencil me-1"/> Editar Empresa
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                t-if="comp.stations_count === 0"
+                                                t-on-click="() => this.deleteCompany(comp)" 
+                                                title="Eliminar empresa vacía">
+                                            <i class="fa fa-trash me-1"/> Borrar
                                         </button>
                                     </div>
                                 </div>
@@ -162,6 +173,9 @@
                                                             </button>
                                                             <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.openConfig(st.id)" title="Ajustes de esta estación">
                                                                 <i class="fa fa-sliders"/> Ajustes
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-danger" t-on-click="() => this.deleteStation(st)" title="Eliminar estación">
+                                                                <i class="fa fa-trash"/> Borrar
                                                             </button>
                                                         </div>
                                                     </div>

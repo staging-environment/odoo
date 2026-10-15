@@ -109,6 +109,59 @@ export class GasStationDashboard extends Component {
             target: "current"
         });
     }
+
+    async deleteStation(st) {
+        if (!confirm(`¿Está seguro de que desea eliminar la estación "${st.name}"?`)) {
+            return;
+        }
+        this.state.loading = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/delete_station", { config_id: st.id });
+            if (res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                await this.loadDashboardData();
+            } else {
+                this.state.loading = false;
+                alert(res.message || "No se puede eliminar la estación.");
+            }
+        } catch (e) {
+            this.state.loading = false;
+            console.error("Error deleting station:", e);
+            alert("Error al comunicarse con el servidor al eliminar la estación.");
+        }
+    }
+
+    async deleteCompany(comp) {
+        if (!confirm(`¿Está seguro de que desea eliminar la empresa "${comp.name}"?`)) {
+            return;
+        }
+        this.state.loading = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/delete_company", { company_id: comp.id });
+            if (res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                await this.loadDashboardData();
+            } else {
+                this.state.loading = false;
+                alert(res.message || "No se puede eliminar la empresa.");
+            }
+        } catch (e) {
+            this.state.loading = false;
+            console.error("Error deleting company:", e);
+            alert("Error al comunicarse con el servidor al eliminar la empresa.");
+        }
+    }
+
+    openNewStation(companyId) {
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: "Nueva Estación de Servicio",
+            res_model: "pos.config",
+            views: [[false, "form"]],
+            context: { default_company_id: companyId },
+            target: "current"
+        });
+    }
 }
 
 registry.category("actions").add("gas_station_dashboard", GasStationDashboard);

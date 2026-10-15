@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, api, fields
+from odoo import models, api, fields, _
+from odoo.exceptions import UserError
 import pytz
 
 class PosConfig(models.Model):
@@ -28,3 +29,20 @@ class PosConfig(models.Model):
             else:
                 pos_config.last_session_closing_cash = 0.0
                 pos_config.last_session_closing_date = False
+
+    def unlink(self):
+        for config in self:
+            orders_count = self.env['pos.order'].sudo().search_count([('config_id', '=', config.id)])
+            if orders_count > 0:
+                raise UserError(_(
+                    'No se puede eliminar la estación "%s" porque contiene %s pedidos/tickets de venta registrados. '
+                    'Para garantizar la trazabilidad contable no es posible borrarla.'
+                ) % (config.name, orders_count))
+            empty_sessions = self.env['pos.session'].sudo().search([('config_id', '=', config.id)])
+            for s in empty_sessions:
+                s_orders = self.env['pos.order'].sudo().search_count([('session_id', '=', s.id)])
+                if s_orders == 0:
+                    if s.state == 'opening_control':
+                        s.write({'state': 'closed'})
+                    s.unlink()
+        return super(PosConfig, self).unlink()

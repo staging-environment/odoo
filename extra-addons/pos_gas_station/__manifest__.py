@@ -17,6 +17,7 @@
         'security/ir.model.access.csv',
         'data/permission_matrix_data.xml',
         'views/permission_matrix_views.xml',
+        'views/res_company_views.xml',
     ],
     'assets': {
         'point_of_sale._assets_pos': [

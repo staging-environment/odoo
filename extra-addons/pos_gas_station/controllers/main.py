@@ -810,3 +810,71 @@ class PosGasStationController(http.Controller):
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/search_partners: %s", e)
             return {'status': 'error', 'message': str(e)}
+
+
+    @http.route('/pos_gas_station/delete_station', type='json', auth='user', methods=['POST'], csrf=False)
+    def delete_station(self, config_id):
+        try:
+            env = request.env
+            config = env['pos.config'].sudo().browse(int(config_id))
+            if not config.exists():
+                return {'status': 'error', 'message': 'La estación no existe.'}
+
+            orders_count = env['pos.order'].sudo().search_count([('config_id', '=', config.id)])
+            if orders_count > 0:
+                return {
+                    'status': 'error',
+                    'message': f'No se puede eliminar la estación "{config.name}" porque contiene {orders_count} pedidos/tickets de venta registrados. Por motivos de seguridad contable y trazabilidad no es posible borrarla.'
+                }
+
+            # If sessions exist without orders, close and remove them
+            sessions = env['pos.session'].sudo().search([('config_id', '=', config.id)])
+            for s in sessions:
+                s_orders = env['pos.order'].sudo().search_count([('session_id', '=', s.id)])
+                if s_orders == 0:
+                    if s.state in ['opened', 'opening_control']:
+                        s.write({'state': 'closed'})
+                    s.unlink()
+
+            name = config.name
+            config.unlink()
+            return {'status': 'success', 'message': f'Estación "{name}" eliminada correctamente.'}
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/delete_station: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/delete_company', type='json', auth='user', methods=['POST'], csrf=False)
+    def delete_company(self, company_id):
+        try:
+            env = request.env
+            comp = env['res.company'].sudo().browse(int(company_id))
+            if not comp.exists():
+                return {'status': 'error', 'message': 'La empresa no existe.'}
+
+            stations_count = env['pos.config'].sudo().search_count([('company_id', '=', comp.id)])
+            if stations_count > 0:
+                return {
+                    'status': 'error',
+                    'message': f'No se puede eliminar la empresa "{comp.name}" porque contiene {stations_count} estación(es) asociada(s). Elimine primero las estaciones.'
+                }
+
+            orders_count = env['pos.order'].sudo().search_count([('company_id', '=', comp.id)])
+            if orders_count > 0:
+                return {
+                    'status': 'error',
+                    'message': f'No se puede eliminar la empresa "{comp.name}" porque contiene {orders_count} tickets de venta asociados.'
+                }
+
+            moves_count = env['account.move'].sudo().search_count([('company_id', '=', comp.id)])
+            if moves_count > 0:
+                return {
+                    'status': 'error',
+                    'message': f'No se puede eliminar la empresa "{comp.name}" porque contiene {moves_count} asientos o facturas contables.'
+                }
+
+            name = comp.name
+            comp.unlink()
+            return {'status': 'success', 'message': f'Empresa "{name}" eliminada correctamente.'}
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/delete_company: %s", e)
+            return {'status': 'error', 'message': str(e)}
