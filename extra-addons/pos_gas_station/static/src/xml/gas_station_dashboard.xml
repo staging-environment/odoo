@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="pos_gas_station.GasStationDashboard" owl="1">
+        <div class="gas-station-dashboard-wrapper">
+            <!-- CABECERA SUPERIOR DEL DASHBOARD -->
+            <div class="dashboard-topbar">
+                <div class="topbar-left">
+                    <div class="dashboard-header-icon">⛽</div>
+                    <div>
+                        <h2 class="dashboard-title">Gestión de Gasolineras</h2>
+                        <span class="dashboard-subtitle">Control Multi-Empresa de Estaciones y Pistas de Suministro</span>
+                    </div>
+                </div>
+
+                <div class="topbar-stats">
+                    <div class="stat-pill">
+                        <span class="stat-number"><t t-esc="state.stats.total_companies"/></span>
+                        <span class="stat-label">Empresas</span>
+                    </div>
+                    <div class="stat-pill">
+                        <span class="stat-number"><t t-esc="state.stats.total_stations"/></span>
+                        <span class="stat-label">Estaciones</span>
+                    </div>
+                    <div class="stat-pill stat-pill-active" t-if="state.stats.total_open_sessions > 0">
+                        <span class="stat-number">🟢 <t t-esc="state.stats.total_open_sessions"/></span>
+                        <span class="stat-label">En Venta Activa</span>
+                    </div>
+                </div>
+
+                <div class="topbar-actions">
+                    <button class="btn btn-outline-primary btn-sm me-2" t-on-click="() => this.openNewCompany()" t-if="state.isManager">
+                        <i class="fa fa-plus me-1"/> Nueva Empresa
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm me-2" t-on-click="() => this.openMatrix()" title="Matriz de Roles y Permisos">
+                        <i class="fa fa-shield me-1"/> Roles y Permisos
+                    </button>
+                    <button class="btn btn-primary btn-sm" t-on-click="() => this.loadDashboardData()" title="Actualizar datos">
+                        <i class="fa fa-refresh me-1"/> Actualizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- CONTENEDOR PRINCIPAL: CAJAS DE EMPRESAS Y SUS ESTACIONES -->
+            <div class="dashboard-content-scroll">
+                <t t-if="state.loading">
+                    <div class="dashboard-loading-box">
+                        <i class="fa fa-circle-o-notch fa-spin fa-3x text-primary mb-3"/>
+                        <p>Cargando empresas y estaciones autorizadas...</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="companies-grid">
+                        <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                            <div class="company-card-box">
+                                <!-- CABECERA DE LA CAJA DE EMPRESA -->
+                                <div class="company-card-header">
+                                    <div class="company-brand-area">
+                                        <!-- LOGO DE LA EMPRESA O MONOGRAMA -->
+                                        <div class="company-logo-container" t-on-click="() => this.openCompany(comp.id)" title="Haga clic para editar empresa o cambiar logo">
+                                            <t t-if="comp.has_logo">
+                                                <img t-att-src="comp.logo_url" class="company-real-logo" t-att-alt="comp.name"/>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="company-fallback-logo">
+                                                    <i class="fa fa-building-o"/>
+                                                </div>
+                                            </t>
+                                        </div>
+                                        <div class="company-titles">
+                                            <div class="company-name-row">
+                                                <h3 class="company-name-text" t-on-click="() => this.openCompany(comp.id)">
+                                                    <t t-esc="comp.name"/>
+                                                </h3>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                                    <t t-esc="comp.stations_count"/> <t t-if="comp.stations_count === 1">Estación</t><t t-else="">Estaciones</t>
+                                                </span>
+                                            </div>
+                                            <div class="company-meta-row">
+                                                <span t-if="comp.vat" class="company-vat"><i class="fa fa-id-card-o me-1"/> <t t-esc="comp.vat"/></span>
+                                                <span t-if="comp.city" class="company-city"><i class="fa fa-map-marker me-1"/> <t t-esc="comp.city"/></span>
+                                                <span t-if="comp.phone" class="company-phone"><i class="fa fa-phone me-1"/> <t t-esc="comp.phone"/></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="company-header-tools" t-if="state.isManager">
+                                        <button class="btn btn-sm btn-light border btn-edit-company" 
+                                                t-on-click="() => this.openCompany(comp.id)" 
+                                                title="Configurar datos de la empresa y subir logo">
+                                            <i class="fa fa-pencil me-1"/> Configurar Logo y Datos
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- CUERPO DE LA CAJA DE EMPRESA: GRILLA DE ESTACIONES -->
+                                <div class="company-stations-body">
+                                    <t t-if="comp.stations.length === 0">
+                                        <div class="no-stations-alert">
+                                            <i class="fa fa-info-circle me-2 text-muted"/>
+                                            <span>No hay estaciones registradas o asignadas para esta empresa según sus permisos.</span>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="stations-cards-grid">
+                                            <t t-foreach="comp.stations" t-as="st" t-key="st.id">
+                                                <div class="station-card">
+                                                    <div class="station-card-top">
+                                                        <div class="station-icon-title">
+                                                            <span class="station-fuel-pump-icon">⛽</span>
+                                                            <div>
+                                                                <h4 class="station-title-text"><t t-esc="st.name"/></h4>
+                                                                <span class="station-pumps-badge">
+                                                                    <i class="fa fa-tachometer me-1"/> <t t-esc="st.pumps_count"/> Surtidores
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="station-session-status">
+                                                            <t t-if="st.has_active_session">
+                                                                <span class="badge bg-success py-1 px-2">
+                                                                    <i class="fa fa-circle text-white me-1 blink"/> Sesión Abierta (<t t-esc="st.session_user"/>)
+                                                                </span>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <span class="badge bg-light text-secondary border py-1 px-2">
+                                                                    <i class="fa fa-power-off me-1"/> Cerrada / Lista
+                                                                </span>
+                                                            </t>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- COMBUSTIBLES DISPONIBLES EN LA ESTACIÓN -->
+                                                    <div class="station-fuels-pills">
+                                                        <t t-foreach="st.fuels" t-as="fuel" t-key="fuel.code">
+                                                            <span class="fuel-mini-pill" t-attf-class="fuel-mini-pill fuel-code-#{fuel.code.toLowerCase()}">
+                                                                <t t-esc="fuel.name"/>
+                                                            </span>
+                                                        </t>
+                                                    </div>
+
+                                                    <!-- BOTÓN PRINCIPAL DE ACCESO DIRECTO AL TPV -->
+                                                    <div class="station-actions-box">
+                                                        <button class="btn btn-primary btn-access-pos" t-on-click="() => this.openStation(st.id)">
+                                                            <i class="fa fa-bolt me-1"/> Entrar al TPV / Pista
+                                                        </button>
+
+                                                        <div class="station-sub-actions" t-if="state.isManager">
+                                                            <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.openOrders(st.id)" title="Ver Pedidos y Ventas de esta estación">
+                                                                <i class="fa fa-shopping-cart"/> Pedidos
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.openConfig(st.id)" title="Ajustes de esta estación">
+                                                                <i class="fa fa-sliders"/> Ajustes
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+
+</templates>

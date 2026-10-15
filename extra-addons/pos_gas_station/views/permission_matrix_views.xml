@@ -87,35 +87,79 @@
         <field name="view_mode">tree,form</field>
     </record>
 
+    <!-- ACCION CLIENTE: MATRIZ DE PERMISOS -->
     <record id="action_utrecar_permission_matrix" model="ir.actions.client">
         <field name="name">Matriz de Roles y Permisos</field>
         <field name="tag">utrecar_permission_matrix</field>
     </record>
 
-    <!-- 1. APLICACION DIRECTA EN EL MENU PRINCIPAL DE ODOO (APP SWITCHER) -->
-    <menuitem id="menu_utrecar_permission_root"
-              name="Roles y Permisos"
-              web_icon="pos_gas_station,static/description/icon.png"
-              sequence="12"/>
+    <!-- ACCION CLIENTE: DASHBOARD VISUAL DE GASOLINERAS POR EMPRESA -->
+    <record id="action_gas_station_dashboard" model="ir.actions.client">
+        <field name="name">Gestión de gasolineras</field>
+        <field name="tag">gas_station_dashboard</field>
+    </record>
 
-    <menuitem id="menu_utrecar_permission_matrix_child"
-              name="Matriz de Permisos"
-              parent="menu_utrecar_permission_root"
-              action="action_utrecar_permission_matrix"
+    <!-- 1. APLICACIÓN PRINCIPAL #1 DE ODOO (SUSTITUYE A CONVERSACIONES COMO HOME) -->
+    <menuitem id="menu_gas_station_root"
+              name="Gestión de gasolineras"
+              action="action_gas_station_dashboard"
+              web_icon="pos_gas_station,static/description/icon.png"
               sequence="1"/>
 
-    <menuitem id="menu_utrecar_roles_child"
-              name="Configuración de Roles"
-              parent="menu_utrecar_permission_root"
-              action="action_utrecar_role"
+    <!-- SUBMENÚS VISIBLES EN LA BARRA SUPERIOR DE LA HERRAMIENTA -->
+    <menuitem id="menu_gas_station_sub_dashboard"
+              name="Estaciones por Empresa"
+              parent="menu_gas_station_root"
+              action="action_gas_station_dashboard"
+              sequence="1"/>
+
+    <menuitem id="menu_gas_station_sub_matrix"
+              name="Matriz de Permisos"
+              parent="menu_gas_station_root"
+              action="action_utrecar_permission_matrix"
               sequence="2"/>
 
-    <!-- 2. MENU EN AJUSTES > USUARIOS Y COMPANIAS -->
+    <menuitem id="menu_gas_station_sub_products"
+              name="Productos"
+              parent="menu_gas_station_root"
+              action="point_of_sale.product_template_action"
+              sequence="3"/>
+
+    <menuitem id="menu_gas_station_sub_orders"
+              name="Pedidos"
+              parent="menu_gas_station_root"
+              action="point_of_sale.action_pos_pos_form"
+              sequence="4"/>
+
+    <menuitem id="menu_gas_station_sub_reports"
+              name="Informes"
+              parent="menu_gas_station_root"
+              action="point_of_sale.action_report_pos_order_all"
+              sequence="5"/>
+
+    <menuitem id="menu_gas_station_sub_companies"
+              name="Empresas y Logos"
+              parent="menu_gas_station_root"
+              action="base.action_res_company_form"
+              sequence="6"/>
+
+    <menuitem id="menu_gas_station_sub_config"
+              name="Configuración TPV"
+              parent="menu_gas_station_root"
+              action="point_of_sale.action_pos_config_kanban"
+              sequence="7"/>
+
+    <!-- MENÚ EN AJUSTES > USUARIOS Y COMPANIAS -->
     <menuitem id="menu_utrecar_permission_matrix_settings"
               name="Matriz de Permisos UTRECAR"
               parent="base.menu_users"
               action="action_utrecar_permission_matrix"
               sequence="15"/>
+
+    <!-- RELEGAR CONVERSACIONES AL FINAL PARA QUE NO SEA EL DEFAULT -->
+    <record id="mail.menu_root_discuss" model="ir.ui.menu">
+        <field name="sequence">999</field>
+    </record>
 
     <!-- ACCION DISPATCHER INTELIGENTE DE ENTRADA AL PUNTO DE VENTA -->
     <record id="action_pos_entry_dispatcher" model="ir.actions.server">

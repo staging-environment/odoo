@@ -1,6 +1,6 @@
 {
     'name': 'POS Gas Station Integration',
-    'version': '17.0.2.5.0',
+    'version': '17.0.2.6.0',
     'category': 'Point of Sale',
     'summary': 'Control táctil de gasolinera en tiempo real y compatibilidad con VirtusTPV',
     'description': """
@@ -10,8 +10,9 @@
         - Catálogo de tienda y pistolas lectoras de código de barras
         - Matrícula y vehículos asociados
         - Matriz Visual de Roles y Permisos (Sistema y TPV)
+        - Dashboard Multi-Empresa de Estaciones de Servicio
     """,
-    'depends': ['point_of_sale'],
+    'depends': ['point_of_sale', 'mail'],
     'data': [
         'security/ir.model.access.csv',
         'data/permission_matrix_data.xml',
@@ -27,6 +28,9 @@
             'pos_gas_station/static/src/css/permission_matrix.css',
             'pos_gas_station/static/src/js/permission_matrix.js',
             'pos_gas_station/static/src/xml/permission_matrix.xml',
+            'pos_gas_station/static/src/css/gas_station_dashboard.css',
+            'pos_gas_station/static/src/js/gas_station_dashboard.js',
+            'pos_gas_station/static/src/xml/gas_station_dashboard.xml',
         ],
     },
     'installable': True,

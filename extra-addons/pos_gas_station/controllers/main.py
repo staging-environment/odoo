@@ -446,3 +446,86 @@ class PosGasStationController(http.Controller):
         if vals:
             user.write(vals)
         return {'status': 'success'}
+
+    # ==================== DASHBOARD MULTI-EMPRESA / GESTIÓN DE GASOLINERAS ====================
+    @http.route('/pos_gas_station/dashboard_data', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_gas_station_dashboard_data(self):
+        env = request.env
+        user = env.user
+        is_manager = user.has_group('point_of_sale.group_pos_manager') or user._is_admin()
+
+        companies = user.company_ids
+        if not companies:
+            companies = env['res.company'].search([])
+
+        companies_data = []
+        total_stations = 0
+        total_open_sessions = 0
+
+        for c in companies:
+            domain = [('company_id', '=', c.id)]
+            all_stations = env['pos.config'].sudo().search(domain)
+
+            accessible_stations = []
+            for st in all_stations:
+                has_access = is_manager
+                if not has_access:
+                    has_access = (user.id in st.allowed_user_ids.ids) or (st.id in user.pos_config_ids.ids)
+
+                if not has_access:
+                    continue
+
+                active_session = env['pos.session'].sudo().search([
+                    ('config_id', '=', st.id),
+                    ('state', '=', 'opened')
+                ], limit=1)
+
+                if active_session:
+                    total_open_sessions += 1
+
+                pumps_cnt = 8 if ('ronda norte' in st.name.lower() or 'repsol' in st.name.lower()) else 4
+
+                fuels = [
+                    {'code': 'GA', 'name': 'Gasóleo A'},
+                    {'code': '95', 'name': 'Sin Plomo 95'}
+                ]
+                if 'repsol' in st.name.lower():
+                    fuels.append({'code': 'G+', 'name': 'Gasóleo Plus'})
+
+                accessible_stations.append({
+                    'id': st.id,
+                    'name': st.name,
+                    'pumps_count': pumps_cnt,
+                    'has_active_session': bool(active_session),
+                    'session_name': active_session.name if active_session else None,
+                    'session_user': active_session.user_id.name if active_session else None,
+                    'fuels': fuels,
+                })
+
+            total_stations += len(accessible_stations)
+            has_logo = bool(c.logo)
+
+            companies_data.append({
+                'id': c.id,
+                'name': c.name,
+                'vat': c.vat or '',
+                'city': c.city or '',
+                'street': c.street or '',
+                'phone': c.phone or '',
+                'has_logo': has_logo,
+                'logo_url': f'/web/image?model=res.company&id={c.id}&field=logo' if has_logo else None,
+                'stations': accessible_stations,
+                'stations_count': len(accessible_stations)
+            })
+
+        return {
+            'status': 'success',
+            'is_manager': is_manager,
+            'user_name': user.name,
+            'companies': companies_data,
+            'stats': {
+                'total_companies': len(companies_data),
+                'total_stations': total_stations,
+                'total_open_sessions': total_open_sessions
+            }
+        }

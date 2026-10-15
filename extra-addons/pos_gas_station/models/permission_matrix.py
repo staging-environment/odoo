@@ -39,6 +39,8 @@ class UtrecarRole(models.Model):
 
     @api.model
     def auto_link_admin_users(self):
+        home_action = self.env.ref('pos_gas_station.action_gas_station_dashboard', raise_if_not_found=False)
+        all_companies = self.env['res.company'].search([])
         ceo_role = self.search([('code', '=', 'ceo')], limit=1)
         if ceo_role:
             admin_groups = [
@@ -52,9 +54,23 @@ class UtrecarRole(models.Model):
                     ('active', '=', True)
                 ])
                 for adm in admins:
+                    vals = {}
                     if adm.utrecar_role_id != ceo_role:
-                        adm.sudo().write({'utrecar_role_id': ceo_role.id})
-                        adm._sync_utrecar_role_groups()
+                        vals['utrecar_role_id'] = ceo_role.id
+                    if home_action and adm.action_id != home_action:
+                        vals['action_id'] = home_action.id
+                    missing_comps = all_companies - adm.company_ids
+                    if missing_comps:
+                        vals['company_ids'] = [(4, cid) for cid in missing_comps.ids]
+                    if vals:
+                        adm.sudo().write(vals)
+                    adm._sync_utrecar_role_groups()
+
+        # Set default home_action for active users
+        if home_action:
+            active_users = self.env['res.users'].search([('active', '=', True), ('action_id', '!=', home_action.id)])
+            for u in active_users:
+                u.sudo().write({'action_id': home_action.id})
 
     @api.depends('user_ids')
     def _compute_user_count(self):
