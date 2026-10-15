@@ -12,8 +12,13 @@ services:
     volumes:
       - ../extra-addons:/mnt/extra-addons
       - ../config/odoo.conf:/etc/odoo/odoo.conf
+      - odoo-data:/var/lib/odoo
     depends_on:
       - db
     labels:
       com.ddev.site-name: ${DDEV_SITENAME}
       com.ddev.approot: ${DDEV_APPROOT}
+
+volumes:
+  odoo-data:
+    name: odoo-data
