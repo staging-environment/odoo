@@ -87,6 +87,11 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 
 ---
 
+## ⚠️ PRINCIPIO ARQUITECTÓNICO CRÍTICO: INDEPENDENCIA TOTAL DE ASEPRODA
+- **Objetivo estratégico**: Eliminar completamente cualquier dependencia de software, librerías, bases de datos o archivos propietarios de Aseproda (`VirtusTPV`, `ClienteSDESNet.dll`, `SDES.exe`, `virtusgesnet` MySQL, `dw.log`, `ModoTrabajo.ini`).
+- **Desarrollo 100% Propio**: Toda la lógica, drivers, interfaces de comunicación TCP/Serial, protocolos de pista y pantallas de TPV deben ser código nativo propio dentro del repositorio de Odoo (Python, JavaScript OWL y sockets estándar).
+- **Transición**: Cualquier protocolo o estructura de datos que se use temporalmente para hablar con el hardware debe ser internalizado mediante drivers nativos en Python puro para que cuando se desinstale Aseproda del equipo de pista, el sistema continúe funcionando de forma autónoma.
+
 ## 🛠️ Scripts y Herramientas del Proyecto
 
 - `scripts/agente_pista_odoo_bridge.py`: Agente puente resiliente 24/7 con integración nativa `ClienteSDES2` y watchdog de reconexión.
