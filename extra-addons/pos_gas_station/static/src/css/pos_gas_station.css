@@ -3567,3 +3567,288 @@
 .clickable-padlock:active {
     transform: scale(0.96) !important;
 }
+
+/* ==========================================================================
+   COBROS PENDIENTES POR CALLE (MODAL Y BADGE NUMÉRICO)
+   ========================================================================== */
+
+.dispenser-coin-container {
+    position: absolute !important;
+    top: -14px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 35 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: transform 0.15s ease !important;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5)) !important;
+}
+
+.dispenser-coin-container:hover {
+    transform: translateX(-50%) scale(1.15) !important;
+}
+
+.dispenser-coin-container .dispenser-prepay-coin {
+    position: static !important;
+    transform: none !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+.coin-pending-count-badge {
+    position: absolute !important;
+    top: -4px !important;
+    right: -10px !important;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    min-width: 19px !important;
+    height: 19px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4) !important;
+    border: 2px solid #ffffff !important;
+    padding: 0 4px !important;
+    animation: badge-pulse 2s infinite !important;
+}
+
+@keyframes badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+}
+
+.btn-park-sale {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    font-size: 11px !important;
+    letter-spacing: 0.5px !important;
+    border: 1px solid #075985 !important;
+    border-radius: 6px !important;
+    padding: 0 10px !important;
+    height: 38px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+}
+
+.btn-park-sale:hover {
+    background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.25) !important;
+}
+
+/* MODAL DE COBROS PENDIENTES */
+.utrecar-pending-sales-modal {
+    width: 620px !important;
+    max-width: 95vw !important;
+    background: #ffffff !important;
+    border-radius: 14px !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    animation: modal-fade-in 0.2s ease-out !important;
+}
+
+.pending-modal-header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #ffffff !important;
+    padding: 16px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.pending-modal-header .modal-title {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+}
+
+.pending-count-tag {
+    background: #f59e0b !important;
+    color: #000000 !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    padding: 2px 8px !important;
+    border-radius: 10px !important;
+    margin-left: 6px !important;
+}
+
+.pending-modal-body {
+    padding: 20px !important;
+    max-height: 65vh !important;
+    overflow-y: auto !important;
+    background: #f8fafc !important;
+}
+
+.pending-sales-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+}
+
+.pending-sale-card {
+    background: #ffffff !important;
+    border: 1.5px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    padding: 14px !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    transition: transform 0.15s ease, border-color 0.15s ease !important;
+}
+
+.pending-sale-card:hover {
+    border-color: #3b82f6 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1) !important;
+}
+
+.sale-card-topbar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    color: #64748b !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding-bottom: 8px !important;
+}
+
+.sale-time {
+    font-weight: 700 !important;
+    color: #1e293b !important;
+}
+
+.sale-id-tag {
+    background: #f1f5f9 !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-family: monospace !important;
+}
+
+.sale-plate-tag {
+    background: #dbeafe !important;
+    color: #1e40af !important;
+    font-weight: 700 !important;
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+}
+
+.sale-badge-lleno {
+    margin-left: auto !important;
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    font-weight: 800 !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+}
+
+.sale-card-items {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+}
+
+.sale-item-line {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    font-size: 14px !important;
+    padding: 4px 6px !important;
+    border-radius: 4px !important;
+}
+
+.sale-item-line.fuel-item {
+    background: #f8fafc !important;
+    border-left: 3px solid #0284c7 !important;
+}
+
+.sale-item-line.store-item {
+    border-left: 3px solid #10b981 !important;
+}
+
+.item-name {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    color: #1e293b !important;
+}
+
+.item-details {
+    color: #64748b !important;
+    font-size: 12px !important;
+    font-weight: normal !important;
+}
+
+.sale-card-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-top: 1px solid #f1f5f9 !important;
+    padding-top: 10px !important;
+    margin-top: 4px !important;
+}
+
+.sale-total-box {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.total-label {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: #64748b !important;
+    letter-spacing: 0.5px !important;
+}
+
+.total-val {
+    font-size: 20px !important;
+    font-weight: 900 !important;
+    color: #0f172a !important;
+}
+
+.btn-pay-pending-sale {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    padding: 10px 18px !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.btn-pay-pending-sale:hover {
+    transform: scale(1.03) !important;
+    box-shadow: 0 6px 14px rgba(22, 163, 74, 0.5) !important;
+}
+
+.pending-modal-footer {
+    padding: 12px 20px !important;
+    background: #f1f5f9 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+
+.pending-empty-state {
+    text-align: center !important;
+    padding: 40px 20px !important;
+    color: #64748b !important;
+    font-size: 15px !important;
+}

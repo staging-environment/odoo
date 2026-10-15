@@ -98,6 +98,11 @@
                             <button class="tool-btn btn-trash-red" title="Borrar línea seleccionada" t-on-click="() => this.deleteSelectedLine()">
                                 🗑 BORRAR
                             </button>
+                            <t t-if="hasPumpLineInCurrentOrder()">
+                                <button class="tool-btn btn-park-sale" title="Aparcar venta en la monedita de la calle y reabrir la pista para el siguiente cliente" t-on-click="() => this.parkCurrentPumpSale()">
+                                    🅿 DEJAR PENDIENTE
+                                </button>
+                            </t>
                             <button class="tool-btn btn-history" title="Historial de turno / Devoluciones" t-on-click="() => this.openRefundScreen()">
                                 ⏱ Historial
                             </button>
@@ -235,28 +240,35 @@
                             <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{state.selectedPumpId === pump.id ? 'is-selected' : ''} #{isPumpDispensing(pump) ? 'nozzle-is-off-hook' : ''}"
                                  t-on-click="() => this.onPumpCardClick(pump)">
                                 
-                                <!-- MONEDA DE PREPAGO FLOTANTE ENCIMA DEL SURTIDOR -->
-                                <t t-if="shouldShowPrepayCoin(pump) and pump.status === 'ready' and !pump.has_prepay and !pump.preset_amount">
-                                    <div class="dispenser-prepay-coin" title="Surtidor con repostaje finalizado (Pendiente de cobro)">
-                                        <svg viewBox="0 0 36 36" width="28" height="28" class="prepay-coin-svg">
-                                            <defs>
-                                                <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                    <stop offset="0%" stop-color="#fef08a"/>
-                                                    <stop offset="35%" stop-color="#eab308"/>
-                                                    <stop offset="70%" stop-color="#ca8a04"/>
-                                                    <stop offset="100%" stop-color="#854d0e"/>
-                                                </linearGradient>
-                                                <linearGradient id="innerGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                    <stop offset="0%" stop-color="#fffbeb"/>
-                                                    <stop offset="50%" stop-color="#fde047"/>
-                                                    <stop offset="100%" stop-color="#d97706"/>
-                                                </linearGradient>
-                                            </defs>
-                                            <circle cx="18" cy="18" r="16" fill="url(#goldGradient)" stroke="#713f12" stroke-width="1"/>
-                                            <circle cx="18" cy="18" r="13" fill="url(#innerGold)" stroke="#a16207" stroke-width="0.8"/>
-                                            <circle cx="18" cy="18" r="11" fill="none" stroke="#ca8a04" stroke-width="0.6" stroke-dasharray="1.5 1"/>
-                                            <text x="18" y="23" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="900" fill="#451a03" text-anchor="middle">€</text>
-                                        </svg>
+                                <!-- MONEDA FLOTANTE CON BADGE NUMÉRICO DE COBROS PENDIENTES -->
+                                <t t-if="shouldShowPrepayCoin(pump)">
+                                    <div class="dispenser-coin-container" t-on-click.stop="() => this.onCoinBadgeClick(pump)" title="Haga clic para ver los cobros pendientes de esta calle">
+                                        <div class="dispenser-prepay-coin">
+                                            <svg viewBox="0 0 36 36" width="28" height="28" class="prepay-coin-svg">
+                                                <defs>
+                                                    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                        <stop offset="0%" stop-color="#fef08a"/>
+                                                        <stop offset="35%" stop-color="#eab308"/>
+                                                        <stop offset="70%" stop-color="#ca8a04"/>
+                                                        <stop offset="100%" stop-color="#854d0e"/>
+                                                    </linearGradient>
+                                                    <linearGradient id="innerGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                        <stop offset="0%" stop-color="#fffbeb"/>
+                                                        <stop offset="50%" stop-color="#fde047"/>
+                                                        <stop offset="100%" stop-color="#d97706"/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <circle cx="18" cy="18" r="16" fill="url(#goldGradient)" stroke="#713f12" stroke-width="1"/>
+                                                <circle cx="18" cy="18" r="13" fill="url(#innerGold)" stroke="#a16207" stroke-width="0.8"/>
+                                                <circle cx="18" cy="18" r="11" fill="none" stroke="#ca8a04" stroke-width="0.6" stroke-dasharray="1.5 1"/>
+                                                <text x="18" y="23" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="900" fill="#451a03" text-anchor="middle">€</text>
+                                            </svg>
+                                        </div>
+                                        <t t-if="getPumpPendingSalesCount(pump) > 0">
+                                            <span class="coin-pending-count-badge">
+                                                <t t-esc="getPumpPendingSalesCount(pump)"/>
+                                            </span>
+                                        </t>
                                     </div>
                                 </t>
                                 <!-- Pestana superior azul con numero de calle -->
@@ -723,6 +735,92 @@
                 </div>
             </t>
 
+    <!-- ============================================================ -->
+            <!-- MODAL FLOTANTE DE COBROS PENDIENTES POR CALLE (MODO LLENO)   -->
+            <!-- ============================================================ -->
+            <t t-if="state.isPendingSalesModalOpen and state.pendingModalPump">
+                <div class="utrecar-modal-backdrop" t-on-click="() => this.closePendingSalesModal()">
+                    <div class="utrecar-pending-sales-modal" t-on-click.stop="">
+                        <div class="pending-modal-header">
+                            <div class="modal-title">
+                                <span class="coin-icon-mini">🪙</span>
+                                <span>CALLE <t t-esc="state.pendingModalPump.id"/> - COBROS PENDIENTES</span>
+                                <span class="pending-count-tag"><t t-esc="getPumpPendingSales(state.pendingModalPump.id).length"/> pendientes</span>
+                            </div>
+                            <button class="btn-modal-close" t-on-click="() => this.closePendingSalesModal()">✖</button>
+                        </div>
+
+                        <div class="pending-modal-body">
+                            <t t-if="getPumpPendingSales(state.pendingModalPump.id).length === 0">
+                                <div class="pending-empty-state">
+                                    <i class="fa fa-check-circle fa-3x text-success mb-2 d-block"/>
+                                    <p>No hay cobros pendientes acumulados para la Calle <t t-esc="state.pendingModalPump.id"/>.</p>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="pending-sales-list">
+                                    <t t-foreach="getPumpPendingSales(state.pendingModalPump.id)" t-as="sale" t-key="sale.id">
+                                        <div class="pending-sale-card">
+                                            <div class="sale-card-topbar">
+                                                <span class="sale-time"><i class="fa fa-clock-o me-1"/> <t t-esc="sale.timeStr"/></span>
+                                                <span class="sale-id-tag">Ref: <t t-esc="sale.id.slice(-6)"/></span>
+                                                <t t-if="sale.vehiclePlate">
+                                                    <span class="sale-plate-tag">🚗 <t t-esc="sale.vehiclePlate"/></span>
+                                                </t>
+                                                <span class="sale-badge-lleno">Modo Lleno</span>
+                                            </div>
+                                            
+                                            <div class="sale-card-items">
+                                                <!-- Línea de Combustible -->
+                                                <div class="sale-item-line fuel-item" t-if="sale.fuel">
+                                                    <div class="item-name">
+                                                        <span class="item-icon">⛽</span>
+                                                        <strong><t t-esc="sale.fuel.name"/></strong>
+                                                        <span class="item-details">(<t t-esc="sale.fuel.liters.toFixed(2)"/> L x <t t-esc="sale.fuel.price.toFixed(3)"/> €/L)</span>
+                                                    </div>
+                                                    <div class="item-amount font-weight-bold text-primary">
+                                                        <t t-esc="sale.fuel.amount.toFixed(2)"/> €
+                                                    </div>
+                                                </div>
+
+                                                <!-- Artículos de Tienda si los hay -->
+                                                <t t-if="sale.storeLines and sale.storeLines.length > 0">
+                                                    <t t-foreach="sale.storeLines" t-as="item" t-key="item.name">
+                                                        <div class="sale-item-line store-item">
+                                                            <div class="item-name">
+                                                                <span class="item-icon">🛒</span>
+                                                                <span><t t-esc="item.name"/></span>
+                                                                <span class="item-details" t-if="item.qty > 1">(x<t t-esc="item.qty"/>)</span>
+                                                            </div>
+                                                            <div class="item-amount">
+                                                                <t t-esc="item.amount.toFixed(2)"/> €
+                                                            </div>
+                                                        </div>
+                                                    </t>
+                                                </t>
+                                            </div>
+
+                                            <div class="sale-card-footer">
+                                                <div class="sale-total-box">
+                                                    <span class="total-label">TOTAL A COBRAR:</span>
+                                                    <span class="total-val"><t t-esc="sale.totalAmount.toFixed(2)"/> €</span>
+                                                </div>
+                                                <button class="btn-pay-pending-sale" t-on-click="() => this.checkoutPendingSale(sale)">
+                                                    <i class="fa fa-credit-card me-1"/> COBRAR ESTA VENTA ➜
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
+                        </div>
+
+                        <div class="pending-modal-footer">
+                            <button class="btn-secondary" t-on-click="() => this.closePendingSalesModal()">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            </t>
         </div>
     </t>
 
@@ -801,4 +899,6 @@
         </xpath>
     </t>
 
+
+            
 </templates>

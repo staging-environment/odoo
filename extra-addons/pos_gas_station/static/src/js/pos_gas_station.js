@@ -17,7 +17,19 @@ export class UtrecarMainScreen extends Component {
         const urlParams = new URLSearchParams(window.location.search);
         this.configId = parseInt(urlParams.get("config_id")) || (this.pos.config ? this.pos.config.id : 2);
         
+        // Cargar cobros pendientes por calle desde almacenamiento persistente
+        if (!this.pos.pendingSales) {
+            try {
+                const saved = localStorage.getItem(`pos_gas_station_pending_sales_${this.configId}`);
+                this.pos.pendingSales = saved ? JSON.parse(saved) : {};
+            } catch (e) {
+                this.pos.pendingSales = {};
+            }
+        }
+
         this.state = useState({
+            isPendingSalesModalOpen: false,
+            pendingModalPump: null,
             stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
             vehiclePlate: "",
             selectedPumpId: null,
@@ -873,8 +885,12 @@ export class UtrecarMainScreen extends Component {
     shouldShowPrepayCoin(pump) {
         if (!pump) return false;
 
-        // 1. REGLA ESTRICTA: El símbolo del euro SOLO debe aparecer cuando está en MODO LLENO
-        // y ÚNICAMENTE después de que el cliente cuelgue la manguera (status === 'ready')
+        // Si la calle tiene cobros pendientes aparcados en su monedita (badge numérico > 0), SIEMPRE mostrarla
+        if (this.getPumpPendingSalesCount(pump) > 0) {
+            return true;
+        }
+
+        // 1. REGLA ESTRICTA: En modo lleno sin aparcar, solo cuando la manguera se cuelga (ready)
         if (pump.status !== "ready") {
             return false;
         }
@@ -902,6 +918,199 @@ export class UtrecarMainScreen extends Component {
         const isModoLleno = pump.is_lleno || Boolean(preset && preset.isLleno) || (!pump.has_prepay && !pump.preset_amount);
         return Boolean(isModoLleno);
     }
+    savePendingSales() {
+        try {
+            localStorage.setItem(`pos_gas_station_pending_sales_${this.configId}`, JSON.stringify(this.pos.pendingSales || {}));
+        } catch (e) {
+            console.debug("Error guardando pendingSales:", e);
+        }
+    }
+
+    getPumpPendingSalesCount(pump) {
+        if (!pump) return 0;
+        return (this.pos.pendingSales && this.pos.pendingSales[pump.id]) ? this.pos.pendingSales[pump.id].length : 0;
+    }
+
+    getPumpPendingSales(pumpId) {
+        return (this.pos.pendingSales && this.pos.pendingSales[pumpId]) ? this.pos.pendingSales[pumpId] : [];
+    }
+
+    hasPumpLineInCurrentOrder() {
+        const order = this.pos.get_order();
+        if (!order) return false;
+        const lines = order.get_orderlines ? order.get_orderlines() : [];
+        return lines.some(l => l.pump_id);
+    }
+
+    onCoinBadgeClick(pump) {
+        if (this.getPumpPendingSalesCount(pump) > 0) {
+            this.openPendingSalesModal(pump);
+        } else if (pump.status === "ready") {
+            this.onPumpCardClick(pump);
+        }
+    }
+
+    openPendingSalesModal(pump) {
+        this.state.pendingModalPump = pump;
+        this.state.isPendingSalesModalOpen = true;
+    }
+
+    closePendingSalesModal() {
+        this.state.isPendingSalesModalOpen = false;
+        this.state.pendingModalPump = null;
+    }
+
+    async parkCurrentPumpSale() {
+        const order = this.pos.get_order();
+        if (!order) return;
+        const lines = order.get_orderlines ? order.get_orderlines() : [];
+        const pumpLine = lines.find(l => l.pump_id);
+        if (!pumpLine) {
+            alert("No hay ningún repostaje de calle en el ticket actual para dejar pendiente.");
+            return;
+        }
+        const pumpId = pumpLine.pump_id;
+        const targetPump = this.state.pumps.find(p => p.id === pumpId);
+
+        let fuelInfo = null;
+        const storeItems = [];
+        let total = 0;
+
+        for (const l of lines) {
+            const lPrice = l.get_display_price ? l.get_display_price() : (l.price * l.quantity);
+            total += lPrice;
+            if (l.pump_id === pumpId) {
+                fuelInfo = {
+                    name: l.product.display_name,
+                    liters: l.get_quantity ? l.get_quantity() : 1,
+                    price: l.fuel_display_price || (l.get_unit_price ? l.get_unit_price() : 0),
+                    amount: lPrice,
+                    productId: l.product.id
+                };
+            } else {
+                storeItems.push({
+                    name: l.product.display_name,
+                    qty: l.get_quantity ? l.get_quantity() : 1,
+                    price: l.get_unit_price ? l.get_unit_price() : l.price,
+                    amount: lPrice,
+                    productId: l.product.id
+                });
+            }
+        }
+
+        const pendingSale = {
+            id: "sale_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+            pumpId: pumpId,
+            timestamp: Date.now(),
+            timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            fuel: fuelInfo,
+            storeLines: storeItems,
+            totalAmount: total,
+            vehiclePlate: this.state.vehiclePlate || ""
+        };
+
+        if (!this.pos.pendingSales) {
+            this.pos.pendingSales = {};
+        }
+        if (!this.pos.pendingSales[pumpId]) {
+            this.pos.pendingSales[pumpId] = [];
+        }
+        this.pos.pendingSales[pumpId].push(pendingSale);
+        this.savePendingSales();
+
+        // Liberar y reabrir la calle en pista para el siguiente cliente
+        try {
+            await jsonrpc("/pos_gas_station/clear_pump", {
+                config_id: this.configId,
+                pump_id: pumpId
+            });
+        } catch (e) {
+            console.debug("Error liberando calle tras aparcar venta:", e);
+        }
+
+        if (targetPump) {
+            targetPump.status = "atendido";
+            targetPump.statusText = "LLENO (LIBRE)";
+            targetPump.amount = 0;
+            targetPump.liters = 0;
+            targetPump.preset_amount = 0;
+            targetPump.has_prepay = false;
+        }
+
+        // Dejar el ticket activo en blanco para atender a otro cliente
+        this.pos.removeOrder(order);
+        this.pos.add_new_order();
+        this.state.selectedLineId = null;
+        this.state.vehiclePlate = "";
+        this.state.orderVersion = Date.now();
+    }
+
+    async checkoutPendingSale(sale) {
+        this.closePendingSalesModal();
+        let currentOrder = this.pos.get_order();
+        if (!currentOrder || (this.currentOrderLines && this.currentOrderLines.length > 0)) {
+            currentOrder = this.pos.add_new_order();
+        }
+
+        currentOrder.pending_sale_id = sale.id;
+        currentOrder.pending_pump_id = sale.pumpId;
+
+        // 1. Añadir combustible
+        if (sale.fuel) {
+            const product = this.pos.db.get_product_by_id(sale.fuel.productId) || this.findFuelProduct(sale.fuel.name);
+            if (product) {
+                const targetTotal = sale.fuel.amount;
+                const qty = sale.fuel.liters;
+                const unitPrice = this.getNetPriceForTargetTotal ? this.getNetPriceForTargetTotal(product, targetTotal, qty, currentOrder) : (sale.fuel.price || product.lst_price);
+                await currentOrder.add_product(product, {
+                    quantity: qty,
+                    price: unitPrice,
+                    extras: {
+                        price_manually_set: true,
+                        pump_id: sale.pumpId,
+                        fuel_display_price: sale.fuel.price,
+                        customerNote: `Calle ${sale.pumpId} - ${sale.fuel.name} (${sale.fuel.liters.toFixed(2)}L)`
+                    }
+                });
+                const activeLine = currentOrder.get_last_orderline();
+                if (activeLine) {
+                    activeLine.pump_id = sale.pumpId;
+                    activeLine.fuel_display_price = sale.fuel.price;
+                    if (targetTotal > 0) {
+                        const currentDisp = activeLine.get_display_price ? activeLine.get_display_price() : (activeLine.price * activeLine.quantity);
+                        const diff = Math.round((targetTotal - currentDisp) * 100) / 100;
+                        if (Math.abs(diff) >= 0.01) {
+                            const curQty = activeLine.get_quantity() || 1;
+                            activeLine.set_unit_price(activeLine.get_unit_price() + (diff / curQty));
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Añadir artículos de tienda si los había
+        if (sale.storeLines && sale.storeLines.length > 0) {
+            for (const item of sale.storeLines) {
+                const stProd = this.pos.db.get_product_by_id(item.productId);
+                if (stProd) {
+                    await currentOrder.add_product(stProd, {
+                        quantity: item.qty,
+                        price: item.price
+                    });
+                }
+            }
+        }
+
+        if (sale.vehiclePlate) {
+            this.state.vehiclePlate = sale.vehiclePlate;
+            currentOrder.set_note?.(`Matrícula: ${sale.vehiclePlate}`);
+        }
+
+        this.state.orderVersion = Date.now();
+        // Redirigir de inmediato a la pantalla de cobro
+        this.pos.showScreen("PaymentScreen");
+    }
+
 
 
     getNetPriceForTargetTotal(product, targetTotal, qty, order = null) {
@@ -1540,6 +1749,20 @@ patch(PaymentScreen.prototype, {
                     } catch (e) {
                         console.debug("Aviso al limpiar bomba tras validar orden:", e);
                     }
+                }
+            }
+
+            // Si este pedido correspondía a un cobro pendiente de la monedita de la calle, restarlo/eliminarlo
+            if (order.pending_sale_id && order.pending_pump_id && this.pos.pendingSales) {
+                const pid = order.pending_pump_id;
+                if (this.pos.pendingSales[pid]) {
+                    this.pos.pendingSales[pid] = this.pos.pendingSales[pid].filter(s => s.id !== order.pending_sale_id);
+                    if (this.pos.pendingSales[pid].length === 0) {
+                        delete this.pos.pendingSales[pid];
+                    }
+                    try {
+                        localStorage.setItem(`pos_gas_station_pending_sales_${this.pos.config.id}`, JSON.stringify(this.pos.pendingSales));
+                    } catch (e) {}
                 }
             }
         }

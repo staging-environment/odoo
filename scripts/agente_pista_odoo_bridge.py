@@ -550,10 +550,29 @@ class AgentePistaRepsol:
         except Exception as e:
             logging.debug(f"Error procesando comandos de Odoo: {e}")
 
+    def comprobar_simulacion_local(self):
+        sim_path = "C:\\Utrecar\\simular_venta.json"
+        if os.path.exists(sim_path):
+            try:
+                with open(sim_path, "r") as f:
+                    data = json.load(f)
+                os.remove(sim_path)
+                calle = data.get("calle", 8)
+                litros = float(data.get("litros", 24.24))
+                importe = float(data.get("importe", 40.0))
+                precio = float(data.get("precio", 1.65))
+                prod = int(data.get("cod_producto", 2))
+                estado = data.get("estado", "ready")
+                logging.info(f"🧪 [SIMULACIÓN LOCAL] Recibida simulación para Calle {calle}: {estado} ({importe}€ / {litros}L)")
+                if estado == "dispensing":
+                    self._on_cambio_estado_socket(calle, True, False, False, litros, importe, prod)
+                else:
+                    self.marcar_calle_completada(calle, litros, importe, precio, prod)
+            except Exception as e:
+                logging.error(f"Error procesando simulación: {e}")
+
     def leer_liberaciones_de_odoo(self):
-        # Las liberaciones se gestionan exclusivamente vía comandos explícitos de Odoo ('clear_pump')
-        # No sobreescribir ni cerrar autorizaciones pendientes de repostaje
-        pass
+        self.comprobar_simulacion_local()
 
     def liberar_calle_local(self, calle):
         if 1 <= calle <= TOTAL_CALLES:
