@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 from odoo import models, fields, api
 
 ROLE_DEFAULT_GROUPS = {

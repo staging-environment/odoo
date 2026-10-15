@@ -1,4 +1,4 @@
-﻿{
+{
     'name': 'POS Gas Station Integration',
     'version': '17.0.2.5.0',
     'category': 'Point of Sale',

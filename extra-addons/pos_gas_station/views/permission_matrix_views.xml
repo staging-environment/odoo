@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- VISTA FORMULARIO PARA ASIGNACION DE ROL Y TIENDAS A USUARIO -->
     <record id="view_users_form_inherit_utrecar_role" model="ir.ui.view">
