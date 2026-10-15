@@ -1407,7 +1407,8 @@ export class UtrecarMainScreen extends Component {
     }
 
     authorizePreset(targetPumpId = null) {
-        const targetId = targetPumpId || this.state.selectedPumpId || 1;
+        const targetId = targetPumpId || this.state.selectedPumpId;
+        if (!targetId) return;
         const pump = this.state.pumps.find(p => p.id === targetId);
         if (pump) {
             this.openAuthorizeModal(pump);

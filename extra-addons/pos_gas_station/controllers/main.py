@@ -307,7 +307,7 @@ class PosGasStationController(http.Controller):
         # 2. Emitir comando de hardware para el agente de pista
         cmd_key = f'pos_gas_station.pump_command_{cfg}'
         cmd_payload = {
-            'action': 'set_pump_mode' if pid else 'set_track_mode',
+            'action': 'set_pump_mode' if pid else 'set_global_mode',
             'mode': mode,
             'timestamp': time.time()
         }
