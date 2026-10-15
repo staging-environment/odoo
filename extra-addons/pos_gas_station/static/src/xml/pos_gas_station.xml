@@ -338,12 +338,12 @@
                                         </div>
                                     </t>
                                     <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || (pump.status === 'idle' &amp;&amp; state.trackMode === 'atendido')">
-                                        <div class="dispenser-padlock-panel atendido-green clickable-padlock" t-on-click.stop="(ev) => this.togglePumpMode(pump, ev)" title="Pista LIBRE en modo Atendido/Lleno. Haga clic en el candado para BLOQUEAR en Prepago">
+                                        <div class="dispenser-padlock-panel atendido-green" title="Pista LIBRE en modo Atendido/Lleno">
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔓" />
                                         </div>
                                     </t>
                                     <t t-else="">
-                                        <div class="dispenser-padlock-panel blocked-red clickable-padlock" t-on-click.stop="(ev) => this.togglePumpMode(pump, ev)" title="Pista BLOQUEADA en Prepago. Haga clic en el candado para ABRIR en Atendido/Lleno">
+                                        <div class="dispenser-padlock-panel blocked-red" title="Pista BLOQUEADA en Prepago (Haga clic para autorizar)">
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
                                         </div>
                                     </t>
