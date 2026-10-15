@@ -122,7 +122,7 @@
     <menuitem id="menu_gas_station_sub_products"
               name="Productos"
               parent="menu_gas_station_root"
-              action="point_of_sale.product_template_action"
+              action="point_of_sale.product_template_action_pos_product"
               sequence="3"/>
 
     <menuitem id="menu_gas_station_sub_orders"
