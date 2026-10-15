@@ -99,18 +99,18 @@
                                 ▌▌█║▌
                             </button>
                             <button class="tool-btn btn-trash-red" title="Borrar línea seleccionada" t-on-click="() => this.deleteSelectedLine()">
-                                🗑 BORRAR
+                                🗑 Borrar linea
                             </button>
                             <t t-if="hasPumpLineInCurrentOrder()">
                                 <button class="tool-btn btn-park-sale" title="Aparcar venta en la monedita de la calle y reabrir la pista para el siguiente cliente" t-on-click="() => this.parkCurrentPumpSale()">
                                     🅿 DEJAR PENDIENTE
                                 </button>
                             </t>
-                            <button class="tool-btn btn-history" title="Historial de turno / Devoluciones" t-on-click="() => this.openRefundScreen()">
-                                ⏱ Historial
+                            <button class="tool-btn btn-cancel-order" title="Cancelar ticket" t-on-click="() => this.clearCurrentOrder()">
+                                ✖ Cancelar ticket
                             </button>
-                            <button class="tool-btn btn-cancel-order" title="Cancelar venta" t-on-click="() => this.clearCurrentOrder()">
-                                ✖ Cancelar
+                            <button class="tool-btn btn-history" title="Pedidos realizados en este turno" t-on-click="() => this.openRefundScreen()">
+                                ⏱ Pedidos realizados en este turno
                             </button>
                         </div>
                         <div class="tools-total-box" t-on-click="() => this.goToPayment()" title="Haga clic aquí para cobrar el ticket">
