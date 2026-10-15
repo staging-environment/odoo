@@ -879,21 +879,21 @@
                                     <div class="kpi-icon">💰</div>
                                     <div class="kpi-content">
                                         <span class="kpi-label">TOTAL FACTURADO</span>
-                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_sales.toFixed(2)"/> €</span>
+                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_sales_str || state.shiftSummary.total_sales"/> €</span>
                                     </div>
                                 </div>
                                 <div class="shift-kpi-card kpi-cash">
                                     <div class="kpi-icon">💵</div>
                                     <div class="kpi-content">
                                         <span class="kpi-label">EFECTIVO EN CAJA</span>
-                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_cash.toFixed(2)"/> €</span>
+                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_cash_str || state.shiftSummary.total_cash"/> €</span>
                                     </div>
                                 </div>
                                 <div class="shift-kpi-card kpi-bank">
                                     <div class="kpi-icon">💳</div>
                                     <div class="kpi-content">
                                         <span class="kpi-label">TARJETA / BANCO</span>
-                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_bank.toFixed(2)"/> €</span>
+                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_bank_str || state.shiftSummary.total_bank"/> €</span>
                                     </div>
                                 </div>
                                 <div class="shift-kpi-card kpi-count">
@@ -967,7 +967,7 @@
                                                         </t>
                                                     </td>
                                                     <td class="cell-user"><t t-esc="ord.user_name"/></td>
-                                                    <td class="cell-total"><strong><t t-esc="ord.amount_total.toFixed(2)"/> €</strong></td>
+                                                    <td class="cell-total"><strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong></td>
                                                     <td class="cell-state" style="text-align: center;">
                                                         <span t-attf-class="badge-state #{ord.state}"><t t-esc="ord.state === 'invoiced' ? 'Facturado' : (ord.state === 'paid' ? 'Pagado' : ord.state)"/></span>
                                                     </td>
@@ -1139,12 +1139,12 @@
                                                     <tr>
                                                         <td><strong><t t-esc="line.product_name"/></strong></td>
                                                         <td class="text-muted"><t t-esc="line.lot_name || ''"/></td>
-                                                        <td style="text-align: right;"><t t-esc="Number(line.qty).toFixed(3)"/></td>
-                                                        <td style="text-align: right;"><t t-esc="Number(line.price_unit).toFixed(2)"/> €</td>
-                                                        <td style="text-align: right;"><t t-esc="Number(line.discount).toFixed(2)"/></td>
+                                                        <td style="text-align: right;"><t t-esc="line.qty_str || line.qty"/></td>
+                                                        <td style="text-align: right;"><t t-esc="line.price_unit_str || line.price_unit"/> €</td>
+                                                        <td style="text-align: right;"><t t-esc="line.discount_str || line.discount"/></td>
                                                         <td style="text-align: center;"><span class="badge-tax"><t t-esc="line.taxes || '15%'"/></span></td>
-                                                        <td style="text-align: right;"><t t-esc="Number(line.price_subtotal).toFixed(2)"/> €</td>
-                                                        <td style="text-align: right;"><strong><t t-esc="Number(line.price_subtotal_incl).toFixed(2)"/> €</strong></td>
+                                                        <td style="text-align: right;"><t t-esc="line.price_subtotal_str || line.price_subtotal"/> €</td>
+                                                        <td style="text-align: right;"><strong><t t-esc="line.price_subtotal_incl_str || line.price_subtotal_incl"/> €</strong></td>
                                                     </tr>
                                                 </t>
                                             </tbody>
@@ -1155,20 +1155,20 @@
                                             <div class="detail-totals-box">
                                                 <div class="total-line">
                                                     <span class="total-label">Impuestos:</span>
-                                                    <span class="total-val"><t t-esc="Number(state.selectedShiftOrder.amount_tax).toFixed(2)"/> €</span>
+                                                    <span class="total-val"><t t-esc="state.selectedShiftOrder.amount_tax_str || state.selectedShiftOrder.amount_tax"/> €</span>
                                                 </div>
                                                 <div class="total-line main-total">
                                                     <span class="total-label">Total:</span>
-                                                    <span class="total-val"><strong><t t-esc="Number(state.selectedShiftOrder.amount_total).toFixed(2)"/> €</strong></span>
+                                                    <span class="total-val"><strong><t t-esc="state.selectedShiftOrder.amount_total_str || state.selectedShiftOrder.amount_total"/> €</strong></span>
                                                 </div>
                                                 <div class="total-line">
                                                     <span class="total-label">Total pagado (con redondeo):</span>
-                                                    <span class="total-val"><strong><t t-esc="Number(state.selectedShiftOrder.amount_paid).toFixed(2)"/> €</strong></span>
+                                                    <span class="total-val"><strong><t t-esc="state.selectedShiftOrder.amount_paid_str || state.selectedShiftOrder.amount_paid"/> €</strong></span>
                                                 </div>
                                                 <t t-if="state.selectedShiftOrder.margin">
                                                     <div class="total-line text-muted">
                                                         <span class="total-label">Margen:</span>
-                                                        <span class="total-val"><t t-esc="Number(state.selectedShiftOrder.margin).toFixed(2)"/> €</span>
+                                                        <span class="total-val"><t t-esc="state.selectedShiftOrder.margin_str || state.selectedShiftOrder.margin"/> €</span>
                                                     </div>
                                                 </t>
                                             </div>
@@ -1192,7 +1192,7 @@
                                                     <tr>
                                                         <td><t t-esc="pay.payment_date"/></td>
                                                         <td><strong><t t-esc="pay.name"/></strong></td>
-                                                        <td style="text-align: right;"><strong><t t-esc="Number(pay.amount).toFixed(2)"/> €</strong></td>
+                                                        <td style="text-align: right;"><strong><t t-esc="pay.amount_str || pay.amount"/> €</strong></td>
                                                     </tr>
                                                 </t>
                                             </tbody>
@@ -1249,7 +1249,7 @@
                         <div class="invoice-modal-body">
                             <p class="invoice-intro">
                                 Pedido: <strong><t t-esc="state.selectedShiftOrder ? state.selectedShiftOrder.name : ''"/></strong> 
-                                (<strong class="text-primary"><t t-esc="state.selectedShiftOrder ? state.selectedShiftOrder.amount_total.toFixed(2) : 0"/> €</strong>)
+                                (<strong class="text-primary"><t t-esc="state.selectedShiftOrder ? (state.selectedShiftOrder.amount_total_str || state.selectedShiftOrder.amount_total) : 0"/> €</strong>)
                             </p>
 
                             <!-- MODO BÚSQUEDA DE CLIENTE EXISTENTE -->

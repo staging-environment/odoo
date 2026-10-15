@@ -629,11 +629,16 @@ class PosGasStationController(http.Controller):
                         'product_name': l.product_id.display_name or l.product_id.name or 'Producto',
                         'lot_name': lot_str,
                         'qty': round(l.qty, 3),
+                        'qty_str': f"{l.qty:.3f}",
                         'price_unit': round(l.price_unit, 4),
+                        'price_unit_str': f"{l.price_unit:.2f}",
                         'discount': round(l.discount, 2),
+                        'discount_str': f"{l.discount:.2f}",
                         'taxes': taxes_str,
                         'price_subtotal': round(l.price_subtotal, 2),
+                        'price_subtotal_str': f"{l.price_subtotal:.2f}",
                         'price_subtotal_incl': round(l.price_subtotal_incl, 2),
+                        'price_subtotal_incl_str': f"{l.price_subtotal_incl:.2f}",
                     })
 
                 payments_data = []
@@ -649,6 +654,7 @@ class PosGasStationController(http.Controller):
                         'id': p.id,
                         'name': p.payment_method_id.name if p.payment_method_id else 'Pago',
                         'amount': round(p.amount, 2),
+                        'amount_str': f"{p.amount:.2f}",
                         'payment_date': p_date_str,
                     })
 
@@ -678,10 +684,14 @@ class PosGasStationController(http.Controller):
                     'account_move_name': o.account_move.name if is_inv else '',
                     'invoice_url': inv_url,
                     'amount_total': round(o.amount_total, 2),
+                    'amount_total_str': f"{o.amount_total:.2f}",
                     'amount_tax': round(o.amount_tax, 2),
+                    'amount_tax_str': f"{o.amount_tax:.2f}",
                     'amount_paid': round(o.amount_paid, 2),
+                    'amount_paid_str': f"{o.amount_paid:.2f}",
                     'amount_return': round(o.amount_return, 2),
                     'margin': round(getattr(o, 'margin', 0.0), 2),
+                    'margin_str': f"{getattr(o, 'margin', 0.0):.2f}",
                     'lines': lines_data,
                     'payments': payments_data,
                     'company': {
@@ -702,8 +712,11 @@ class PosGasStationController(http.Controller):
                 'prev_session_name': prev_session.name if prev_session else False,
                 'summary': {
                     'total_sales': total_sales,
+                    'total_sales_str': f"{total_sales:.2f}",
                     'total_cash': total_cash,
+                    'total_cash_str': f"{total_cash:.2f}",
                     'total_bank': total_bank,
+                    'total_bank_str': f"{total_bank:.2f}",
                     'orders_count': len(orders_list)
                 },
                 'orders': orders_list
