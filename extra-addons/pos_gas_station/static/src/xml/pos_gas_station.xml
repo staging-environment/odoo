@@ -348,15 +348,10 @@
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
                                         </div>
                                     </t>
-                                    <t t-elif="pump.status === 'dispensing' || (pump.status === 'atendido' &amp;&amp; (pump.statusText || '').includes('LLENO')) || pump.is_lleno">
+                                    <t t-elif="pump.status === 'dispensing' || pump.status === 'atendido' || pump.status === 'postpago' || pump.is_lleno || state.trackMode === 'atendido' || (pump.statusText || '').includes('LLENO')">
                                         <div class="dispenser-dispensing-panel">
                                             <span class="dispensing-anim">⛽</span>
                                             <strong>SUMINISTRO</strong>
-                                        </div>
-                                    </t>
-                                    <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || (pump.status === 'idle' &amp;&amp; state.trackMode === 'atendido')">
-                                        <div class="dispenser-padlock-panel atendido-green" title="Pista LIBRE en modo Atendido/Lleno">
-                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔓" />
                                         </div>
                                     </t>
                                     <t t-else="">

@@ -477,15 +477,15 @@ class AgentePistaRepsol:
     def desbloquear_surtidor_hardware(self, calle):
         if not (1 <= calle <= TOTAL_CALLES):
             return
-        logging.info(f"⛽ [HARDWARE NATIVO] Enviando DESBLOQUEO LIBRE (ATENDIDO) a Calle {calle}...")
+        logging.info(f"⛽ [HARDWARE NATIVO] Enviando DESBLOQUEO LIBRE (LLENO) a Calle {calle}...")
         self.asegurar_conexion_hardware()
         if self.sdes_client and self.sdes_client.is_connected():
             try:
                 self.sdes_client.cambiar_modo_trabajo(calle, 0)
                 res_desb = self.sdes_client.desbloquear(calle)
-                self.cambiar_modo_calle(calle, "atendido", "LIBRE")
+                self.cambiar_modo_calle(calle, "dispensing", "LLENO (POSTPAGO)")
                 self.pumps[calle - 1]["has_prepay"] = False
-                self.pumps[calle - 1]["is_lleno"] = False
+                self.pumps[calle - 1]["is_lleno"] = True
                 self.pumps[calle - 1]["amount"] = 0.0
                 self.pumps[calle - 1]["liters"] = 0.0
                 logging.info(f"⛽ [HARDWARE NATIVO] Desbloquear(calle={calle}) -> {res_desb}")
@@ -543,16 +543,11 @@ class AgentePistaRepsol:
                         mode = cmd.get("mode")
                         is_atendido = mode in ("atendido", "lleno", "postpago")
                         self.modo_estacion_global = "atendido" if is_atendido else "blocked"
-                        status_str = "atendido" if is_atendido else "blocked"
-                        status_txt = "LIBRE" if is_atendido else "PREPAGO"
+                        status_str = "dispensing" if is_atendido else "blocked"
+                        status_txt = "LLENO (POSTPAGO)" if is_atendido else "PREPAGO"
                         logging.info(f"🔄 [CAMBIO GLOBAL MODO] Estableciendo toda la pista en {status_txt} ({self.modo_estacion_global})")
                         for i in range(1, TOTAL_CALLES + 1):
-                            if self.pumps[i-1]["status"] not in ("ready", "dispensing"):
-                                self.pumps[i-1]["status"] = status_str
-                                self.pumps[i-1]["statusText"] = status_txt
-                                self.pumps[i-1]["amount"] = 0.0
-                                self.pumps[i-1]["liters"] = 0.0
-                                self.pumps[i-1]["updated_at"] = time.time()
+                            if self.pumps[i-1]["status"] != "ready":
                                 if is_atendido:
                                     self.desbloquear_surtidor_hardware(i)
                                 else:

@@ -1182,6 +1182,10 @@ export class UtrecarMainScreen extends Component {
 
     isPumpDispensing(pump) {
         if (!pump) return false;
+        if (pump.status === "ready" || this.shouldShowPrepayCoin(pump)) return false;
+        if (this.state.trackMode === "atendido" || pump.status === "atendido" || pump.status === "postpago") {
+            return true;
+        }
         return pump.status === "dispensing" || pump.statusText === "AUTORIZADO" || (pump.statusText || "").includes("LLENO") || Boolean(pump.is_lleno);
     }
 
@@ -1251,7 +1255,7 @@ export class UtrecarMainScreen extends Component {
             return;
         }
         // Si está suministrando activamente o autorizada a Lleno/Postpago: abrir ventana de cancelación
-        if (pump.status === 'dispensing' || (pump.status === 'atendido' && (pump.statusText || '').includes('LLENO'))) {
+        if (pump.status === 'dispensing' || (pump.status === 'atendido' && (pump.statusText || '').includes('LLENO')) || pump.is_lleno || this.state.trackMode === 'atendido') {
             this.openCancelModal(pump);
             return;
         }
@@ -1301,13 +1305,16 @@ export class UtrecarMainScreen extends Component {
         // Update idle pumps instantly in memory
         if (this.state.pumps && Array.isArray(this.state.pumps)) {
             for (const pump of this.state.pumps) {
-                if (pump.status === "idle" || pump.status === "blocked" || pump.status === "atendido") {
+                if (pump.status !== "ready" && !this.shouldShowPrepayCoin(pump)) {
                     if (nextMode === "atendido") {
-                        pump.status = "atendido";
-                        pump.statusText = "LIBRE";
+                        pump.status = "dispensing";
+                        pump.statusText = "LLENO (POSTPAGO)";
+                        pump.is_lleno = true;
                     } else {
                         pump.status = "blocked";
                         pump.statusText = "PREPAGO";
+                        pump.is_lleno = false;
+                        pump.preset_amount = 0;
                     }
                 }
             }

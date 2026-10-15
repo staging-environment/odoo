@@ -281,8 +281,9 @@ class PosGasStationController(http.Controller):
     def set_track_mode(self, config_id=None, mode='prepago', pump_id=None, **kw):
         cfg = int(config_id or 7)
         pid = int(pump_id) if pump_id else None
-        target_status = 'atendido' if mode == 'atendido' else 'blocked'
-        target_text = 'LIBRE' if mode == 'atendido' else 'PREPAGO'
+        target_status = 'dispensing' if mode == 'atendido' else 'blocked'
+        target_text = 'LLENO (POSTPAGO)' if mode == 'atendido' else 'PREPAGO'
+        is_lleno = (mode == 'atendido')
 
         # 1. Actualizar estado inmediatamente en ir.config_parameter
         param_key = f'pos_gas_station.pumps_state_{cfg}'
@@ -293,9 +294,12 @@ class PosGasStationController(http.Controller):
                 p_list = parsed.get('pumps', []) if isinstance(parsed, dict) else parsed
                 for p in p_list:
                     if pid is None or p.get('id') == pid:
-                        if p.get('status') in ('idle', 'blocked', 'atendido', 'postpago', 'prepago'):
+                        if p.get('status') not in ('ready',):
                             p['status'] = target_status
                             p['statusText'] = target_text
+                            p['is_lleno'] = is_lleno
+                            if not is_lleno:
+                                p['preset_amount'] = 0.0
                 if isinstance(parsed, dict):
                     parsed['pumps'] = p_list
                     request.env['ir.config_parameter'].sudo().set_param(param_key, json.dumps(parsed))
