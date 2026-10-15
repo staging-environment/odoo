@@ -596,12 +596,12 @@ export class UtrecarMainScreen extends Component {
         }
 
         try {
-            if (typeof currentOrder.remove_orderline === "function") {
-                currentOrder.remove_orderline(line);
+            if (typeof currentOrder.removeOrderline === "function") {
+                currentOrder.removeOrderline(line);
             } else if (typeof currentOrder._unlink_order_line === "function") {
                 currentOrder._unlink_order_line(line);
-            } else if (typeof currentOrder.removeOrderline === "function") {
-                currentOrder.removeOrderline(line);
+            } else if (typeof currentOrder.remove_orderline === "function") {
+                currentOrder.remove_orderline(line);
             }
         } catch (e) {
             try {
@@ -634,7 +634,19 @@ export class UtrecarMainScreen extends Component {
         if (currentOrder) {
             const line = currentOrder.get_orderlines().find(l => l.pump_id === pumpId || (l.customerNote && l.customerNote.includes(`Calle ${pumpId}`)));
             if (line) {
-                currentOrder.remove_orderline(line);
+                try {
+                    if (typeof currentOrder.removeOrderline === "function") {
+                        currentOrder.removeOrderline(line);
+                    } else if (typeof currentOrder._unlink_order_line === "function") {
+                        currentOrder._unlink_order_line(line);
+                    } else if (typeof currentOrder.remove_orderline === "function") {
+                        currentOrder.remove_orderline(line);
+                    } else if (typeof line.delete === "function") {
+                        line.delete();
+                    }
+                } catch (e) {
+                    console.debug("Error eliminando linea de pedido:", e);
+                }
             }
         }
         try {
