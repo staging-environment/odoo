@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="pos_gas_station.UtrecarPermissionMatrix" owl="1">
+        <div class="utrecar-matrix-wrapper">
+            <!-- CABECERA SUPERIOR DE LA MATRIZ -->
+            <div class="matrix-topbar">
+                <div class="topbar-title-box">
+                    <span class="matrix-title-icon">🛡️</span>
+                    <div>
+                        <h2 class="matrix-main-title">Matriz de Roles y Permisos</h2>
+                        <span class="matrix-subtitle">Control de accesos y seguridad corporativa UTRECAR</span>
+                    </div>
+                </div>
+
+                <div class="topbar-controls">
+                    <!-- Búsqueda rápida de permiso -->
+                    <div class="matrix-search-box">
+                        <i class="fa fa-search search-icon"/>
+                        <input type="text" 
+                               class="matrix-search-input" 
+                               placeholder="Buscar permiso..." 
+                               t-model="state.searchTerm"/>
+                        <button t-if="state.searchTerm" class="btn-clear-search" t-on-click="() => state.searchTerm = ''">✖</button>
+                    </div>
+
+                    <!-- Botón de refresco -->
+                    <button class="btn-matrix-action" t-on-click="() => this.loadMatrixData()" title="Recargar matriz">
+                        <i class="fa fa-refresh me-1"/> Actualizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- CUERPO PRINCIPAL / TABLA DE MATRIZ -->
+            <div class="matrix-table-container">
+                <t t-if="state.loading">
+                    <div class="matrix-loading-box">
+                        <i class="fa fa-circle-o-notch fa-spin fa-3x text-primary mb-3"/>
+                        <p>Cargando matriz de permisos corporativa...</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <table class="utrecar-matrix-table">
+                        <thead>
+                            <tr class="header-roles-row">
+                                <th class="col-permission-header">PERMISO</th>
+                                <t t-foreach="state.roles" t-as="role" t-key="role.id">
+                                    <th class="col-role-header">
+                                        <div class="role-header-content">
+                                            <span class="role-title-text"><t t-esc="role.name"/></span>
+                                            <button class="btn-role-users-tag" 
+                                                    t-on-click="() => this.openUserAssign(role)"
+                                                    title="Gestionar usuarios asignados a este rol">
+                                                <i class="fa fa-users me-1"/> <t t-esc="role.user_count"/> usuarios
+                                            </button>
+                                        </div>
+                                    </th>
+                                </t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="filteredCategories" t-as="cat" t-key="cat.id">
+                                <!-- FILA DE SEPARADOR DE CATEGORÍA CON PUNTO AZUL (IDÉNTICO A CAPTURA) -->
+                                <tr class="category-header-row">
+                                    <td t-att-colspan="state.roles.length + 1" class="category-header-cell">
+                                        <div class="category-title-box">
+                                            <span class="category-blue-dot">●</span>
+                                            <span class="category-name"><t t-esc="cat.name"/></span>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- FILAS DE PERMISOS CON CHECKBOXES -->
+                                <t t-foreach="cat.permissions" t-as="perm" t-key="perm.id">
+                                    <tr class="permission-item-row">
+                                        <td class="permission-name-cell">
+                                            <div class="perm-title-row">
+                                                <span class="perm-name-text"><t t-esc="perm.name"/></span>
+                                                <span class="perm-code-tag"><t t-esc="perm.code"/></span>
+                                            </div>
+                                        </td>
+                                        <t t-foreach="state.roles" t-as="role" t-key="role.id">
+                                            <td class="checkbox-cell" t-on-click="() => this.togglePermission(perm.id, role.id)">
+                                                <div t-attf-class="matrix-checkbox #{isPermissionGranted(perm.id, role.id) ? 'is-checked' : 'is-unchecked'} #{state.savingCell === perm.id + '_' + role.id ? 'is-saving' : ''}">
+                                                    <t t-if="isPermissionGranted(perm.id, role.id)">
+                                                        <svg viewBox="0 0 24 24" width="16" height="16" class="check-icon">
+                                                            <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                                                        </svg>
+                                                    </t>
+                                                </div>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                </t>
+                            </t>
+                        </tbody>
+                    </table>
+                </t>
+            </div>
+
+            <!-- MODAL DE ASIGNACIÓN DE USUARIOS A ESTE ROL -->
+            <t t-if="state.showUserAssignModal and state.assignModalRole">
+                <div class="matrix-modal-backdrop" t-on-click="() => this.closeUserAssign()">
+                    <div class="matrix-assign-modal" t-on-click.stop="">
+                        <div class="assign-modal-header">
+                            <div>
+                                <h4 class="mb-1">Asignar Usuarios a: <strong><t t-esc="state.assignModalRole.name"/></strong></h4>
+                                <span class="text-muted small">Marque los usuarios que deben pertenecer a este rol</span>
+                            </div>
+                            <button class="btn-close-modal" t-on-click="() => this.closeUserAssign()">✖</button>
+                        </div>
+                        <div class="assign-modal-body">
+                            <div class="users-list-scroll">
+                                <t t-foreach="state.users" t-as="u" t-key="u.id">
+                                    <div class="user-item-row" t-on-click="() => this.toggleUserRole(u, state.assignModalRole.id)">
+                                        <div class="user-info">
+                                            <strong class="user-fullname"><t t-esc="u.name"/></strong>
+                                            <span class="user-email"><t t-esc="u.login"/></span>
+                                        </div>
+                                        <div class="user-status-pill">
+                                            <t t-if="u.role_id === state.assignModalRole.id">
+                                                <span class="badge bg-success">Asignado a este Rol ✔</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="badge bg-light text-dark"><t t-esc="u.role_name"/></span>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                        <div class="assign-modal-footer">
+                            <button class="btn btn-primary px-4" t-on-click="() => this.closeUserAssign()">Listo / Aceptar</button>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

@@ -1,0 +1,389 @@
+
+/* ==========================================================================
+   MATRIZ DE ROLES Y PERMISOS CORPORATIVA UTRECAR (ESTILO CAPTURA)
+   ========================================================================== */
+
+.utrecar-matrix-wrapper {
+    background: #f8fafc !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+/* BARRA SUPERIOR */
+.matrix-topbar {
+    background: #ffffff !important;
+    padding: 16px 28px !important;
+    border-bottom: 1.5px solid #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.topbar-title-box {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.matrix-title-icon {
+    font-size: 28px !important;
+}
+
+.matrix-main-title {
+    margin: 0 !important;
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+}
+
+.matrix-subtitle {
+    font-size: 12px !important;
+    color: #64748b !important;
+}
+
+.topbar-controls {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.matrix-search-box {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.matrix-search-box .search-icon {
+    position: absolute !important;
+    left: 12px !important;
+    color: #94a3b8 !important;
+}
+
+.matrix-search-input {
+    padding: 8px 32px 8px 34px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    width: 250px !important;
+    outline: none !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.matrix-search-input:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
+.btn-clear-search {
+    position: absolute !important;
+    right: 8px !important;
+    background: none !important;
+    border: none !important;
+    color: #94a3b8 !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+}
+
+.btn-matrix-action {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    transition: background 0.15s ease !important;
+}
+
+.btn-matrix-action:hover {
+    background: #1e293b !important;
+}
+
+/* TABLA DE LA MATRIZ (IDÉNTICA A LA CAPTURA) */
+.matrix-table-container {
+    padding: 24px 28px !important;
+    flex: 1 !important;
+    overflow-x: auto !important;
+}
+
+.utrecar-matrix-table {
+    width: 100% !important;
+    background: #ffffff !important;
+    border-collapse: collapse !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+/* CABECERAS DE COLUMNAS */
+.header-roles-row th {
+    background: #ffffff !important;
+    padding: 16px 20px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: #1e293b !important;
+    letter-spacing: 0.5px !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    text-align: center !important;
+}
+
+.col-permission-header {
+    text-align: left !important;
+    width: 42% !important;
+    min-width: 320px !important;
+    padding-left: 24px !important;
+}
+
+.col-role-header {
+    width: 14% !important;
+    min-width: 150px !important;
+}
+
+.role-header-content {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.role-title-text {
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    color: #0f172a !important;
+}
+
+.btn-role-users-tag {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    padding: 2px 10px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+}
+
+.btn-role-users-tag:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* FILAS DE CATEGORÍA CON PUNTO AZUL (●) */
+.category-header-cell {
+    background: #f8fafc !important;
+    border-top: 2px solid #e2e8f0 !important;
+    border-bottom: 1.5px solid #e2e8f0 !important;
+    padding: 10px 24px !important;
+}
+
+.category-title-box {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.category-blue-dot {
+    color: #2563eb !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+}
+
+.category-name {
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    color: #1e3a8a !important;
+    letter-spacing: 0.8px !important;
+    text-transform: uppercase !important;
+}
+
+/* FILAS DE PERMISOS */
+.permission-item-row {
+    border-bottom: 1px solid #f1f5f9 !important;
+    transition: background 0.1s ease !important;
+}
+
+.permission-item-row:hover {
+    background: #f8fafc !important;
+}
+
+.permission-name-cell {
+    padding: 12px 24px !important;
+}
+
+.perm-title-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.perm-name-text {
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+}
+
+.perm-code-tag {
+    font-family: monospace !important;
+    font-size: 10px !important;
+    background: #f1f5f9 !important;
+    color: #64748b !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    opacity: 0.7 !important;
+}
+
+/* CELDA CON EL CHECKBOX NARANJA/ÁMBAR IDÉNTICO A LA CAPTURA */
+.checkbox-cell {
+    text-align: center !important;
+    vertical-align: middle !important;
+    cursor: pointer !important;
+    padding: 10px 0 !important;
+}
+
+.matrix-checkbox {
+    width: 22px !important;
+    height: 22px !important;
+    margin: 0 auto !important;
+    border-radius: 5px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.15s ease !important;
+    cursor: pointer !important;
+    user-select: none !important;
+}
+
+.matrix-checkbox.is-checked {
+    background: #ea580c !important; /* Exact orange from the user's screenshot */
+    border: 1.5px solid #c2410c !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 4px rgba(234, 88, 12, 0.25) !important;
+}
+
+.matrix-checkbox.is-unchecked {
+    background: #ffffff !important;
+    border: 2px solid #cbd5e1 !important;
+}
+
+.matrix-checkbox.is-unchecked:hover {
+    border-color: #ea580c !important;
+    background: #fff7ed !important;
+}
+
+.matrix-checkbox.is-saving {
+    opacity: 0.5 !important;
+    transform: scale(0.9) !important;
+}
+
+.check-icon {
+    display: block !important;
+}
+
+/* MODAL DE USUARIOS */
+.matrix-modal-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 9999 !important;
+}
+
+.matrix-assign-modal {
+    background: #ffffff !important;
+    width: 550px !important;
+    max-width: 90vw !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.assign-modal-header {
+    padding: 18px 24px !important;
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.btn-close-modal {
+    background: none !important;
+    border: none !important;
+    font-size: 16px !important;
+    cursor: pointer !important;
+    color: #64748b !important;
+}
+
+.assign-modal-body {
+    padding: 16px 24px !important;
+    max-height: 60vh !important;
+    overflow-y: auto !important;
+}
+
+.users-list-scroll {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.user-item-row {
+    padding: 12px 14px !important;
+    border: 1.5px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+.user-item-row:hover {
+    border-color: #3b82f6 !important;
+    background: #eff6ff !important;
+}
+
+.user-info {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.user-fullname {
+    font-size: 14px !important;
+    color: #0f172a !important;
+}
+
+.user-email {
+    font-size: 12px !important;
+    color: #64748b !important;
+}
+
+.assign-modal-footer {
+    padding: 14px 24px !important;
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+
+.matrix-loading-box {
+    text-align: center !important;
+    padding: 60px 20px !important;
+    color: #64748b !important;
+}

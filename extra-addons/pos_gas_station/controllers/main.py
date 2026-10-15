@@ -336,3 +336,99 @@ class PosGasStationController(http.Controller):
                 target_user.partner_id.sudo().write({'name': name.strip()})
             return {'status': 'success', 'name': name.strip()}
         return {'status': 'error'}
+
+    # ==================== MATRIZ VISUAL DE ROLES Y PERMISOS ====================
+    @http.route('/utrecar/permission_matrix/data', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_permission_matrix_data(self):
+        env = request.env
+        roles = env['utrecar.role'].search([])
+        categories = env['utrecar.permission.category'].search([])
+        permissions = env['utrecar.permission'].search([])
+        users = env['res.users'].search([('active', '=', True)], order='name')
+
+        roles_data = [{
+            'id': r.id,
+            'name': r.name,
+            'code': r.code,
+            'color': r.color,
+            'user_count': r.user_count,
+            'users': [{'id': u.id, 'name': u.name, 'login': u.login} for u in r.user_ids]
+        } for r in roles]
+
+        cat_dict = {}
+        for c in categories:
+            cat_dict[c.id] = {
+                'id': c.id,
+                'name': c.name,
+                'code': c.code,
+                'sequence': c.sequence,
+                'permissions': []
+            }
+
+        matrix_state = {} # perm_id -> {role_id -> bool}
+
+        for p in permissions:
+            cat_id = p.category_id.id
+            if cat_id not in cat_dict:
+                cat_dict[cat_id] = {
+                    'id': cat_id,
+                    'name': p.category_id.name,
+                    'code': p.category_id.code,
+                    'sequence': p.category_sequence,
+                    'permissions': []
+                }
+            cat_dict[cat_id]['permissions'].append({
+                'id': p.id,
+                'name': p.name,
+                'code': p.code,
+                'sequence': p.sequence
+            })
+
+            role_ids = set(p.role_ids.ids)
+            matrix_state[p.id] = {r.id: (r.id in role_ids) for r in roles}
+
+        sorted_categories = sorted(cat_dict.values(), key=lambda x: x['sequence'])
+        for cat in sorted_categories:
+            cat['permissions'] = sorted(cat['permissions'], key=lambda x: x['sequence'])
+
+        users_data = [{
+            'id': u.id,
+            'name': u.name,
+            'login': u.login,
+            'role_id': u.utrecar_role_id.id if u.utrecar_role_id else False,
+            'role_name': u.utrecar_role_id.name if u.utrecar_role_id else 'Sin Rol'
+        } for u in users]
+
+        return {
+            'status': 'success',
+            'roles': roles_data,
+            'categories': sorted_categories,
+            'matrix': matrix_state,
+            'users': users_data
+        }
+
+    @http.route('/utrecar/permission_matrix/toggle', type='json', auth='user', methods=['POST'], csrf=False)
+    def toggle_permission_matrix(self, role_id, permission_id, granted):
+        env = request.env
+        role = env['utrecar.role'].browse(int(role_id))
+        permission = env['utrecar.permission'].browse(int(permission_id))
+        if not role.exists() or not permission.exists():
+            return {'status': 'error', 'message': 'Rol o permiso no encontrado'}
+
+        if granted:
+            role.write({'permission_ids': [(4, permission.id)]})
+        else:
+            role.write({'permission_ids': [(3, permission.id)]})
+
+        return {'status': 'success', 'granted': bool(granted)}
+
+    @http.route('/utrecar/permission_matrix/assign_user', type='json', auth='user', methods=['POST'], csrf=False)
+    def assign_user_role(self, user_id, role_id):
+        env = request.env
+        user = env['res.users'].browse(int(user_id))
+        if not user.exists():
+            return {'status': 'error', 'message': 'Usuario no encontrado'}
+
+        r_id = int(role_id) if role_id else False
+        user.write({'utrecar_role_id': r_id})
+        return {'status': 'success'}

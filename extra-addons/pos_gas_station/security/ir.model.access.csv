@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_utrecar_role_user,utrecar.role.user,model_utrecar_role,base.group_user,1,0,0,0
+access_utrecar_role_manager,utrecar.role.manager,model_utrecar_role,base.group_system,1,1,1,1
+access_utrecar_role_pos_manager,utrecar.role.pos_manager,model_utrecar_role,point_of_sale.group_pos_manager,1,1,1,1
+access_utrecar_category_user,utrecar.permission.category.user,model_utrecar_permission_category,base.group_user,1,0,0,0
+access_utrecar_category_manager,utrecar.permission.category.manager,model_utrecar_permission_category,base.group_system,1,1,1,1
+access_utrecar_category_pos_manager,utrecar.permission.category.pos_manager,model_utrecar_permission_category,point_of_sale.group_pos_manager,1,1,1,1
+access_utrecar_permission_user,utrecar.permission.user,model_utrecar_permission,base.group_user,1,0,0,0
+access_utrecar_permission_manager,utrecar.permission.manager,model_utrecar_permission,base.group_system,1,1,1,1
+access_utrecar_permission_pos_manager,utrecar.permission.pos_manager,model_utrecar_permission,point_of_sale.group_pos_manager,1,1,1,1

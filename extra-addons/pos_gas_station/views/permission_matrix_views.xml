@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- VISTA FORMULARIO PARA ASIGNACIÓN DE ROL A USUARIO -->
+    <record id="view_users_form_inherit_utrecar_role" model="ir.ui.view">
+        <field name="name">res.users.form.inherit.utrecar.role</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='login']" position="after">
+                <group string="Perfil UTRECAR">
+                    <field name="utrecar_role_id" options="{'no_create': True, 'no_open': True}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- VISTA ÁRBOL DE ROLES -->
+    <record id="view_utrecar_role_tree" model="ir.ui.view">
+        <field name="name">utrecar.role.tree</field>
+        <field name="model">utrecar.role</field>
+        <field name="arch" type="xml">
+            <tree string="Roles de Usuario">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="user_count" string="Usuarios Asignados"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- VISTA FORMULARIO DE ROLES CON ASIGNACIÓN DIRECTA DE USUARIOS -->
+    <record id="view_utrecar_role_form" model="ir.ui.view">
+        <field name="name">utrecar.role.form</field>
+        <field name="model">utrecar.role</field>
+        <field name="arch" type="xml">
+            <form string="Rol de Usuario">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Nombre del Rol"/>
+                        <h1><field name="name" placeholder="Ej: Gestor de Gasolinera"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="color" widget="color"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Usuarios con este Rol" name="users">
+                            <field name="user_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="login"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Permisos Concedidos" name="permissions">
+                            <field name="permission_ids" widget="many2many_tags"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- CLIENT ACTION PARA LA MATRIZ VISUAL INTERACTIVA -->
+    <record id="action_utrecar_permission_matrix" model="ir.actions.client">
+        <field name="name">Matriz de Roles y Permisos</field>
+        <field name="tag">utrecar_permission_matrix</field>
+    </record>
+
+    <!-- MENÚ EN PUNTO DE VENTA -->
+    <menuitem id="menu_utrecar_permission_matrix"
+              name="Matriz de Permisos"
+              parent="point_of_sale.menu_point_config_product"
+              action="action_utrecar_permission_matrix"
+              sequence="90"/>
+
+    <!-- MENÚ EN CONFIGURACIÓN GENERAL / AJUSTES -->
+    <menuitem id="menu_utrecar_permission_matrix_settings"
+              name="Matriz de Permisos UTRECAR"
+              parent="base.menu_users"
+              action="action_utrecar_permission_matrix"
+              sequence="15"/>
+</odoo>
