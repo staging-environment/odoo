@@ -507,13 +507,14 @@ export class UtrecarMainScreen extends Component {
                 if (data.pumps && Array.isArray(data.pumps)) {
                     data.pumps.forEach(p => {
                         if (this.state.pumpPresets && this.state.pumpPresets[p.id]) {
+                            const presetInfo = this.state.pumpPresets[p.id];
                             if (p.status === "dispensing" || p.status === "ready") {
-                                p.preset_amount = this.state.pumpPresets[p.id].amount;
-                                p.has_prepay = true;
+                                p.preset_amount = presetInfo.amount;
+                                p.has_prepay = Boolean(presetInfo.hasPrepay);
                                 if (!p.fuel || p.fuel === "N/A") {
-                                    p.fuel = this.state.pumpPresets[p.id].fuel;
+                                    p.fuel = presetInfo.fuel;
                                 }
-                            } else if (p.status === "idle" || p.status === "ready") {
+                            } else if (p.status === "idle" || p.status === "blocked") {
                                 delete this.state.pumpPresets[p.id];
                             }
                         }
@@ -863,23 +864,26 @@ export class UtrecarMainScreen extends Component {
 
     shouldShowPrepayCoin(pump) {
         if (!pump) return false;
-        if (pump.status === "idle" && (!pump.amount || pump.amount === 0)) return false;
-        if (pump.status === "blocked") return false;
 
-        const isPrepago = this.state.trackMode === "prepago" || Boolean(pump.has_prepay);
-        const hasPreset = Boolean((pump.preset_amount && pump.preset_amount > 0) || (this.state.pumpPresets && this.state.pumpPresets[pump.id] && this.state.pumpPresets[pump.id].amount > 0));
+        // 1. En la modalidad de prepago NO tiene sentido y NUNCA debe aparecer
+        if (pump.has_prepay) return false;
+        const preset = this.state.pumpPresets && this.state.pumpPresets[pump.id];
+        if (preset && preset.hasPrepay) return false;
 
-        // 1. Cuando se prefija una cantidad en prepago, encima del surtidor sale la moneda durante el suministro
-        if (pump.status === "dispensing" && isPrepago && hasPreset) {
-            return true;
+        // 2. Solo debe aparecer DESPUÉS de que se cuelgue la manguera (nunca mientras está suministrando)
+        if (this.isPumpDispensing(pump) || pump.status === "dispensing") {
+            return false;
         }
 
-        // 2. Mientras no se cobre el dinero del surtidor (fin de consumo / pendiente de cobro)
-        if (pump.status === "ready" || (pump.amount > 0 && pump.status !== "dispensing")) {
-            return true;
+        // 3. En estados de reposo o bloqueado sin repostaje pendiente no aparece
+        if (pump.status === "blocked" || pump.status === "idle") {
+            return false;
         }
 
-        return false;
+        // 4. Modalidad Autorizado o Lleno: SOLO después de que se cuelgue la manguera
+        // Cuando ha finalizado el repostaje y está pendiente de cobro en TPV
+        const isPostpayReady = pump.status === "ready" || (pump.amount > 0 && pump.status !== "dispensing" && pump.status !== "blocked");
+        return Boolean(isPostpayReady);
     }
 
 
@@ -1167,6 +1171,9 @@ export class UtrecarMainScreen extends Component {
         const isMoney = this.state.mode === "money";
         const presetVal = this.state.presetValue;
 
+        const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
+        const isPrepay = Boolean(presetVal > 0 && this.state.trackMode === "prepago");
+
         if (!this.state.pumpPresets) {
             this.state.pumpPresets = {};
         }
@@ -1174,16 +1181,17 @@ export class UtrecarMainScreen extends Component {
             amount: presetVal,
             fuel: fuelName,
             code: fuelCode,
-            isMoney: isMoney
+            isMoney: isMoney,
+            hasPrepay: isPrepay,
+            isLleno: isLleno
         };
 
-        const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
         if (targetPump) {
             targetPump.status = isLleno ? "atendido" : "dispensing";
             targetPump.statusText = isLleno ? "LLENO (POSTPAGO)" : "AUTORIZADO";
             targetPump.fuel = fuelName;
             targetPump.preset_amount = presetVal;
-            targetPump.has_prepay = Boolean(presetVal > 0 && this.state.trackMode === "prepago");
+            targetPump.has_prepay = isPrepay;
             if (presetVal > 0) {
                 targetPump.amount = isMoney ? presetVal : 0;
                 targetPump.liters = !isMoney ? presetVal : 0;

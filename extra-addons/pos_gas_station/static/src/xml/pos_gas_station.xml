@@ -237,7 +237,7 @@
                                 
                                 <!-- MONEDA DE PREPAGO FLOTANTE ENCIMA DEL SURTIDOR -->
                                 <t t-if="shouldShowPrepayCoin(pump)">
-                                    <div class="dispenser-prepay-coin" title="Surtidor en Prepago / Pendiente de cobro">
+                                    <div class="dispenser-prepay-coin" title="Surtidor con repostaje finalizado (Pendiente de cobro)">
                                         <svg viewBox="0 0 36 36" width="28" height="28" class="prepay-coin-svg">
                                             <defs>
                                                 <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
