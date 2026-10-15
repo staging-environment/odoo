@@ -567,6 +567,8 @@ class AgentePistaRepsol:
                 if estado == "dispensing":
                     self._on_cambio_estado_socket(calle, True, False, False, litros, importe, prod)
                 else:
+                    self.pumps[calle - 1]["has_prepay"] = False
+                    self.pumps[calle - 1]["preset_amount"] = 0.0
                     self.marcar_calle_completada(calle, litros, importe, precio, prod)
             except Exception as e:
                 logging.error(f"Error procesando simulación: {e}")
