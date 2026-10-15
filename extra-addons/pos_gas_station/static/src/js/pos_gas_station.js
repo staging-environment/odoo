@@ -60,6 +60,8 @@ export class UtrecarMainScreen extends Component {
             storeSearch: "",
                         isShiftOrdersModalOpen: false,
             shiftOrdersLoading: false,
+            shiftViewSessionId: null,
+            shiftSessionInfo: { currentId: null, currentName: '', prevId: null, prevName: '', activeState: 'current' },
             shiftOrders: [],
             shiftSummary: { total_sales: 0, total_cash: 0, total_bank: 0, orders_count: 0 },
             selectedShiftOrder: null,
@@ -787,18 +789,29 @@ export class UtrecarMainScreen extends Component {
         this.state.selectedShiftOrder = null;
     }
 
-    async loadShiftOrders() {
+    async loadShiftOrders(targetSessionId = null) {
         this.state.shiftOrdersLoading = true;
         try {
-            const sessionId = this.pos.pos_session ? this.pos.pos_session.id : null;
+            const currentSessionId = this.pos.pos_session ? this.pos.pos_session.id : null;
             const configId = this.pos.config ? this.pos.config.id : null;
+            const sid = targetSessionId || this.state.shiftViewSessionId || currentSessionId;
             const res = await this.env.services.rpc("/pos_gas_station/get_shift_orders", {
-                session_id: sessionId,
+                session_id: sid,
                 config_id: configId,
             });
             if (res && res.status === "success") {
                 this.state.shiftOrders = res.orders || [];
                 this.state.shiftSummary = res.summary || { total_sales: 0, total_cash: 0, total_bank: 0, orders_count: 0 };
+                this.state.shiftViewSessionId = res.session_id;
+                this.state.shiftSessionInfo = {
+                    currentId: currentSessionId,
+                    currentName: this.pos.pos_session ? this.pos.pos_session.name : `Sesión ${currentSessionId}`,
+                    viewId: res.session_id,
+                    viewName: res.session_name,
+                    prevId: res.prev_session_id,
+                    prevName: res.prev_session_name,
+                    isCurrent: (!targetSessionId && !this.state.shiftViewSessionId) || (res.session_id === currentSessionId)
+                };
             } else {
                 console.error("Error al cargar pedidos del turno:", res ? res.message : '');
             }
@@ -807,6 +820,12 @@ export class UtrecarMainScreen extends Component {
         } finally {
             this.state.shiftOrdersLoading = false;
         }
+    }
+
+    async switchShiftSession(targetId) {
+        this.state.shiftViewSessionId = targetId;
+        this.state.selectedShiftOrder = null;
+        await this.loadShiftOrders(targetId);
     }
 
     get filteredShiftOrders() {

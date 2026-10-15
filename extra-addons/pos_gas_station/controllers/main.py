@@ -579,6 +579,13 @@ class PosGasStationController(http.Controller):
             if not session or not session.exists():
                 return {'status': 'error', 'message': 'Sesión no encontrada'}
 
+            # Find previous session for quick switching if needed
+            prev_session = env['pos.session'].sudo().search([
+                ('config_id', '=', session.config_id.id),
+                ('id', '<', session.id),
+                ('state', '=', 'closed')
+            ], order='id desc', limit=1)
+
             orders = env['pos.order'].sudo().search([
                 ('session_id', '=', session.id),
                 ('state', 'in', ['paid', 'done', 'invoiced'])
@@ -690,6 +697,9 @@ class PosGasStationController(http.Controller):
                 'status': 'success',
                 'session_id': session.id,
                 'session_name': session.name,
+                'session_state': session.state,
+                'prev_session_id': prev_session.id if prev_session else False,
+                'prev_session_name': prev_session.name if prev_session else False,
                 'summary': {
                     'total_sales': total_sales,
                     'total_cash': total_cash,

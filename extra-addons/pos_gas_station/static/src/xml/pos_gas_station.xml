@@ -842,9 +842,25 @@
                                         <i class="fa fa-arrow-left me-1"/> ⬅ Volver al TPV
                                     </button>
                                     <div class="shift-header-titles">
-                                        <h2 class="shift-title">⏱ Pedidos realizados en este turno</h2>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <h2 class="shift-title">⏱ Pedidos realizados en este turno</h2>
+                                            <t t-if="state.shiftSessionInfo.prevId">
+                                                <div class="shift-session-switcher">
+                                                    <button t-attf-class="btn-shift-pill #{state.shiftSessionInfo.isCurrent ? 'active' : ''}" 
+                                                            t-on-click="() => this.switchShiftSession(state.shiftSessionInfo.currentId)"
+                                                            title="Ver operaciones del turno actual en curso">
+                                                        🟢 Turno Activo (<t t-esc="state.shiftSessionInfo.currentName"/>)
+                                                    </button>
+                                                    <button t-attf-class="btn-shift-pill #{!state.shiftSessionInfo.isCurrent ? 'active' : ''}" 
+                                                            t-on-click="() => this.switchShiftSession(state.shiftSessionInfo.prevId)"
+                                                            title="Ver operaciones del turno anterior recién cerrado">
+                                                        📁 Turno Anterior (<t t-esc="state.shiftSessionInfo.prevName"/>)
+                                                    </button>
+                                                </div>
+                                            </t>
+                                        </div>
                                         <span class="shift-subtitle">
-                                            Sesión: <strong t-esc="pos.pos_session ? pos.pos_session.name : ''"/> | 
+                                            Viendo Sesión: <strong t-esc="state.shiftSessionInfo.viewName || (pos.pos_session ? pos.pos_session.name : '')"/> | 
                                             TPV: <strong t-esc="pos.config ? pos.config.name : ''"/>
                                         </span>
                                     </div>
