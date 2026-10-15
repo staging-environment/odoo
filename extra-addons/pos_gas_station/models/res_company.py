@@ -31,6 +31,13 @@ class ResCompany(models.Model):
             'context': {'default_company_id': self.id},
         }
 
+    def action_return_to_gas_station_dashboard(self):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'gas_station_dashboard',
+            'target': 'main',
+        }
+
     def unlink(self):
         for company in self:
             if company.pos_config_ids:

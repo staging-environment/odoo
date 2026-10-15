@@ -46,3 +46,20 @@ class PosConfig(models.Model):
                         s.write({'state': 'closed'})
                     s.unlink()
         return super(PosConfig, self).unlink()
+
+    def action_open_station_form(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'pos.config',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_return_to_gas_station_dashboard(self):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'gas_station_dashboard',
+            'target': 'main',
+        }
