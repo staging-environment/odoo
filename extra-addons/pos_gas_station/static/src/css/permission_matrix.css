@@ -1,72 +1,70 @@
 /* ==========================================================================
-   MATRIZ DE ROLES Y PERMISOS CORPORATIVA UTRECAR (COMPACTA Y CON SCROLL)
+   MATRIZ DE ROLES Y PERMISOS CORPORATIVA UTRECAR (ULTRA-COMPACTA Y CON SCROLL)
    ========================================================================== */
 
-/* CONTENEDOR RAÍZ CON SCROLL VERTICAL FLUIDO */
-.utrecar-matrix-wrapper {
-    background: #f8fafc !important;
-    height: calc(100vh - 46px) !important;
-    max-height: calc(100vh - 46px) !important;
-    min-height: 0 !important;
-    flex: 1 1 auto !important;
-    overflow-y: scroll !important;
-    overflow-x: hidden !important;
+.o_content:has(.utrecar-matrix-wrapper),
+.o_client_action:has(.utrecar-matrix-wrapper),
+.o_action_manager:has(.utrecar-matrix-wrapper) {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-    box-sizing: border-box !important;
-    padding-bottom: 80px !important;
-    -webkit-overflow-scrolling: touch !important;
 }
 
-/* ASEGURAR QUE LOS CONTENEDORES PADRE DE ODOO NO BLOQUEEN EL SCROLL */
-.o_action_manager:has(.utrecar-matrix-wrapper),
-.o_content:has(.utrecar-matrix-wrapper) {
-    overflow-y: auto !important;
+.utrecar-matrix-wrapper {
+    background: #f8fafc !important;
     height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif !important;
 }
 
-/* BARRA SUPERIOR COMPACTA */
 .matrix-topbar {
+    flex: 0 0 auto !important;
     background: #ffffff !important;
-    padding: 10px 24px !important;
-    border-bottom: 1.5px solid #e2e8f0 !important;
+    padding: 6px 16px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
-    position: sticky !important;
-    top: 0 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
     z-index: 20 !important;
 }
 
 .topbar-title-box {
     display: flex !important;
     align-items: center !important;
-    gap: 10px !important;
+    gap: 8px !important;
 }
 
 .matrix-title-icon {
-    font-size: 22px !important;
+    font-size: 16px !important;
 }
 
 .matrix-main-title {
     margin: 0 !important;
-    font-size: 17px !important;
+    font-size: 14px !important;
     font-weight: 800 !important;
     color: #0f172a !important;
-    line-height: 1.2 !important;
+    line-height: 1.1 !important;
 }
 
 .matrix-subtitle {
-    font-size: 11px !important;
+    font-size: 10px !important;
     color: #64748b !important;
 }
 
 .topbar-controls {
     display: flex !important;
     align-items: center !important;
-    gap: 10px !important;
+    gap: 8px !important;
 }
 
 .matrix-search-box {
@@ -77,110 +75,130 @@
 
 .matrix-search-box .search-icon {
     position: absolute !important;
-    left: 10px !important;
-    font-size: 12px !important;
+    left: 8px !important;
+    font-size: 11px !important;
     color: #94a3b8 !important;
 }
 
 .matrix-search-input {
-    padding: 5px 28px 5px 30px !important;
-    border: 1.5px solid #cbd5e1 !important;
-    border-radius: 6px !important;
-    font-size: 12px !important;
-    width: 220px !important;
-    height: 30px !important;
+    padding: 2px 20px 2px 24px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    width: 190px !important;
+    height: 26px !important;
     outline: none !important;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
 .matrix-search-input:focus {
     border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
 }
 
 .btn-clear-search {
     position: absolute !important;
-    right: 8px !important;
+    right: 5px !important;
     background: none !important;
     border: none !important;
     color: #94a3b8 !important;
     cursor: pointer !important;
-    font-size: 11px !important;
+    font-size: 10px !important;
 }
 
 .btn-matrix-action {
     background: #0f172a !important;
     color: #ffffff !important;
     border: none !important;
-    border-radius: 6px !important;
-    padding: 5px 12px !important;
-    font-size: 12px !important;
+    border-radius: 4px !important;
+    padding: 3px 9px !important;
+    font-size: 11px !important;
     font-weight: 700 !important;
-    height: 30px !important;
+    height: 26px !important;
     cursor: pointer !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 5px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    gap: 4px !important;
 }
 
 .btn-matrix-action:hover {
     background: #1e293b !important;
 }
 
-/* TABLA DE LA MATRIZ: COMPACTA Y SIN ESPACIOS EXCESIVOS */
+/* AREA DE SCROLL DE LA TABLA (CONTENEDOR CON SCROLL FORZADO Y FLUIDO) */
 .matrix-table-container {
-    padding: 12px 24px 60px 24px !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: calc(100vh - 86px) !important;
+    max-height: calc(100vh - 86px) !important;
+    overflow-y: scroll !important;
     overflow-x: auto !important;
-    overflow-y: visible !important;
+    padding: 4px 10px 50px 10px !important;
+    -webkit-overflow-scrolling: touch !important;
+    box-sizing: border-box !important;
 }
 
+.matrix-table-container::-webkit-scrollbar {
+    width: 8px !important;
+    height: 8px !important;
+}
+.matrix-table-container::-webkit-scrollbar-track {
+    background: #f1f5f9 !important;
+}
+.matrix-table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1 !important;
+    border-radius: 4px !important;
+}
+.matrix-table-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8 !important;
+}
+
+/* TABLA ULTRA-COMPACTA */
 .utrecar-matrix-table {
     width: 100% !important;
     background: #ffffff !important;
-    border-collapse: collapse !important;
-    border-radius: 8px !important;
-    overflow: hidden !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border-radius: 5px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
     border: 1px solid #e2e8f0 !important;
+    table-layout: fixed !important;
 }
 
-/* CABECERAS DE COLUMNAS (ROLES) */
 .header-roles-row th {
     background: #f8fafc !important;
-    padding: 8px 10px !important;
-    font-size: 12px !important;
+    padding: 4px 6px !important;
+    font-size: 10.5px !important;
     font-weight: 800 !important;
     color: #1e293b !important;
     letter-spacing: 0.3px !important;
     border-bottom: 2px solid #cbd5e1 !important;
     text-align: center !important;
     position: sticky !important;
-    top: 48px !important;
+    top: 0 !important;
     z-index: 10 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
 
 .col-permission-header {
     text-align: left !important;
     width: 44% !important;
-    min-width: 280px !important;
-    padding-left: 18px !important;
+    min-width: 240px !important;
+    padding-left: 10px !important;
 }
 
 .col-role-header {
     width: 14% !important;
-    min-width: 130px !important;
+    min-width: 95px !important;
 }
 
 .role-header-content {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    gap: 3px !important;
+    gap: 1px !important;
 }
 
 .role-title-text {
-    font-size: 12px !important;
+    font-size: 10.5px !important;
     font-weight: 900 !important;
     color: #0f172a !important;
 }
@@ -188,9 +206,9 @@
 .btn-role-users-tag {
     background: #e2e8f0 !important;
     border: 1px solid #cbd5e1 !important;
-    border-radius: 10px !important;
-    padding: 1px 7px !important;
-    font-size: 10px !important;
+    border-radius: 6px !important;
+    padding: 0px 4px !important;
+    font-size: 8.5px !important;
     font-weight: 700 !important;
     color: #334155 !important;
     cursor: pointer !important;
@@ -202,40 +220,45 @@
     color: #0f172a !important;
 }
 
-/* FILAS DE CATEGORÍA CON PUNTO AZUL (●) - ALTURA MUY REDUCIDA */
+/* FILAS DE CATEGORIA CON PUNTO AZUL (●) - ALTURA MINIMA */
+.category-header-row td,
 .category-header-cell {
     background: #f1f5f9 !important;
-    border-top: 2px solid #e2e8f0 !important;
-    border-bottom: 1.5px solid #e2e8f0 !important;
-    padding: 5px 16px !important;
+    border-top: 1.5px solid #e2e8f0 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 2px 10px !important;
+    height: 20px !important;
+    line-height: 1 !important;
 }
 
 .category-title-box {
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
+    gap: 5px !important;
 }
 
 .category-blue-dot {
     color: #2563eb !important;
-    font-size: 14px !important;
+    font-size: 10px !important;
     line-height: 1 !important;
 }
 
 .category-name {
-    font-size: 12px !important;
-    font-weight: 900 !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
     color: #1e3a8a !important;
-    letter-spacing: 0.6px !important;
+    letter-spacing: 0.5px !important;
     text-transform: uppercase !important;
-    line-height: 1.2 !important;
+    line-height: 1 !important;
 }
 
-/* FILAS DE PERMISOS: MÁRGENES ESTRECHOS Y ULTRA COMPACTOS */
+/* FILAS DE PERMISOS: ULTRA COMPACTAS Y MARGENES MINIMOS */
 .permission-item-row {
     border-bottom: 1px solid #f1f5f9 !important;
-    transition: background 0.1s ease !important;
-    height: 30px !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 24px !important;
+    transition: background 0.08s ease !important;
 }
 
 .permission-item-row:hover {
@@ -243,32 +266,41 @@
 }
 
 .permission-name-cell {
-    padding: 4px 18px !important;
+    padding: 1px 10px !important;
     vertical-align: middle !important;
+    height: 22px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
 }
 
 .perm-title-row {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 8px !important;
+    gap: 6px !important;
+    margin: 0 !important;
+    line-height: 1.1 !important;
 }
 
 .perm-name-text {
-    font-size: 12.5px !important;
+    font-size: 10.5px !important;
     font-weight: 600 !important;
     color: #1e293b !important;
-    line-height: 1.2 !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 .perm-code-tag {
     font-family: monospace !important;
-    font-size: 9.5px !important;
+    font-size: 8px !important;
     background: #f1f5f9 !important;
     color: #64748b !important;
-    padding: 1px 5px !important;
-    border-radius: 3px !important;
-    opacity: 0.8 !important;
+    padding: 0px 3px !important;
+    border-radius: 2px !important;
+    opacity: 0.75 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
 }
 
 /* CELDAS DE CHECKBOXES */
@@ -276,18 +308,20 @@
     text-align: center !important;
     vertical-align: middle !important;
     cursor: pointer !important;
-    padding: 3px 0 !important;
+    padding: 1px 0 !important;
+    height: 22px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
 }
 
 .matrix-checkbox {
-    width: 19px !important;
-    height: 19px !important;
+    width: 15px !important;
+    height: 15px !important;
     margin: 0 auto !important;
-    border-radius: 4px !important;
+    border-radius: 3px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.12s ease !important;
+    transition: all 0.1s ease !important;
     cursor: pointer !important;
     user-select: none !important;
 }
@@ -296,7 +330,7 @@
     background: #ea580c !important;
     border: 1.5px solid #c2410c !important;
     color: #ffffff !important;
-    box-shadow: 0 1px 3px rgba(234, 88, 12, 0.3) !important;
+    box-shadow: 0 1px 2px rgba(234, 88, 12, 0.25) !important;
 }
 
 .matrix-checkbox.is-unchecked {
@@ -316,8 +350,8 @@
 
 .check-icon {
     display: block !important;
-    width: 13px !important;
-    height: 13px !important;
+    width: 10px !important;
+    height: 10px !important;
 }
 
 /* MODAL DE USUARIOS */
@@ -336,9 +370,9 @@
 
 .matrix-assign-modal {
     background: #ffffff !important;
-    width: 520px !important;
+    width: 480px !important;
     max-width: 90vw !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
     overflow: hidden !important;
     display: flex !important;
@@ -346,7 +380,7 @@
 }
 
 .assign-modal-header {
-    padding: 14px 20px !important;
+    padding: 10px 16px !important;
     background: #f8fafc !important;
     border-bottom: 1px solid #e2e8f0 !important;
     display: flex !important;
@@ -357,13 +391,13 @@
 .btn-close-modal {
     background: none !important;
     border: none !important;
-    font-size: 15px !important;
+    font-size: 14px !important;
     cursor: pointer !important;
     color: #64748b !important;
 }
 
 .assign-modal-body {
-    padding: 14px 20px !important;
+    padding: 10px 16px !important;
     max-height: 55vh !important;
     overflow-y: auto !important;
 }
@@ -371,18 +405,18 @@
 .users-list-scroll {
     display: flex !important;
     flex-direction: column !important;
-    gap: 6px !important;
+    gap: 5px !important;
 }
 
 .user-item-row {
-    padding: 9px 12px !important;
+    padding: 6px 10px !important;
     border: 1.5px solid #e2e8f0 !important;
-    border-radius: 6px !important;
+    border-radius: 5px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     cursor: pointer !important;
-    transition: all 0.12s ease !important;
+    transition: all 0.1s ease !important;
 }
 
 .user-item-row:hover {
@@ -396,17 +430,17 @@
 }
 
 .user-fullname {
-    font-size: 13px !important;
+    font-size: 11.5px !important;
     color: #0f172a !important;
 }
 
 .user-email {
-    font-size: 11px !important;
+    font-size: 10px !important;
     color: #64748b !important;
 }
 
 .assign-modal-footer {
-    padding: 10px 20px !important;
+    padding: 8px 16px !important;
     background: #f8fafc !important;
     border-top: 1px solid #e2e8f0 !important;
     display: flex !important;
@@ -415,6 +449,6 @@
 
 .matrix-loading-box {
     text-align: center !important;
-    padding: 40px 20px !important;
+    padding: 30px 20px !important;
     color: #64748b !important;
 }
