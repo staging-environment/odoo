@@ -543,6 +543,11 @@ class PosGasStationController(http.Controller):
 
             comp_id = cfg.company_id.id
             action = cfg.with_user(request.env.user).with_company(cfg.company_id).open_ui()
+            session = cfg.current_session_id
+            if session and session.state == 'opening_control':
+                session.action_pos_session_open()
+                if session.state == 'opening_control':
+                    session.write({'state': 'opened'})
             url = action.get('url', f'/pos/ui?config_id={cfg.id}')
             if 'cids=' not in url:
                 sep = '&' if '?' in url else '?'
