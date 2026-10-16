@@ -70,10 +70,12 @@ export class GasStationDashboard extends Component {
     openCompany(companyId) {
         this.actionService.doAction({
             type: "ir.actions.act_window",
+            name: "Ficha de Empresa",
             res_model: "res.company",
             res_id: companyId,
             views: [[false, "form"]],
-            target: "current"
+            target: "current",
+            context: { create: false }
         });
     }
 

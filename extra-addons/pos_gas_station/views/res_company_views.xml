@@ -7,6 +7,16 @@
         <field name="inherit_id" ref="base.view_company_form"/>
         <field name="priority">30</field>
         <field name="arch" type="xml">
+            <!-- Deshabilitar creación de nuevas empresas desde esta ficha y añadir clases de ancho completo -->
+            <xpath expr="//form" position="attributes">
+                <attribute name="create">false</attribute>
+                <attribute name="class">o_company_fullwidth_form</attribute>
+            </xpath>
+
+            <xpath expr="//sheet" position="attributes">
+                <attribute name="class">o_company_fullwidth_sheet</attribute>
+            </xpath>
+
             <!-- Botón Volver a Gestión de Gasolineras -->
             <xpath expr="//sheet" position="before">
                 <header>
@@ -17,14 +27,9 @@
                 </header>
             </xpath>
 
-            <!-- Smart Button en la caja superior de la empresa -->
-            <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
-                <button name="action_view_gas_stations"
-                        type="object"
-                        class="oe_stat_button"
-                        icon="fa-tachometer">
-                    <field name="pos_config_count" widget="statinfo" string="Estaciones"/>
-                </button>
+            <!-- Ocultar caja superior de botones (Estaciones/Ramas) ya que las estaciones están en su pestaña dedicada -->
+            <xpath expr="//div[hasclass('oe_button_box')]" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
 
             <!-- 1. Quitar el bloque lateral derecho (Chatter / Enviar mensaje / Historial) -->
@@ -46,7 +51,12 @@
                 <field name="country_id" string="País" placeholder="Seleccione país" options="{'no_open': True, 'no_create': True}"/>
             </xpath>
 
-            <!-- Pestaña de Estaciones en el formulario de la Empresa -->
+            <!-- Ocultar pestaña innecesaria de Ramas (Branches) -->
+            <xpath expr="//page[@name='branches']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Pestaña de Estaciones en el formulario de la Empresa a ancho completo -->
             <xpath expr="//notebook" position="inside">
                 <page string="Estaciones de Servicio / TPVs" name="gas_stations_tab">
                     <field name="pos_config_ids" context="{'default_company_id': id}">

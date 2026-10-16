@@ -374,3 +374,36 @@
     background: #15803d !important;
     border-color: #15803d !important;
 }
+
+/* ==========================================================================
+   FICHA DE EMPRESA: APROVECHAR EL 100% DEL ANCHO DE PANTALLA
+   ========================================================================== */
+.o_form_view.o_company_fullwidth_form,
+.o_form_view:has(.o_company_fullwidth_sheet) {
+    width: 100% !important;
+}
+
+.o_form_view.o_company_fullwidth_form .o_form_sheet_bg,
+.o_form_view:has(.o_company_fullwidth_sheet) .o_form_sheet_bg {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+}
+
+.o_form_view.o_company_fullwidth_form .o_form_sheet,
+.o_company_fullwidth_sheet {
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.o_company_fullwidth_sheet .o_notebook {
+    width: 100% !important;
+}
+
+.o_company_fullwidth_sheet .o_group {
+    width: 100% !important;
+}
