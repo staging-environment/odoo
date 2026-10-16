@@ -14,11 +14,55 @@ class ResCompany(models.Model):
         string='Nº Estaciones',
         compute='_compute_pos_config_count'
     )
+    company_address = fields.Char(
+        string='Dirección',
+        compute='_compute_company_address'
+    )
+    station_employee_count = fields.Integer(
+        string='Nº Empleados en Estaciones',
+        compute='_compute_station_employee_count'
+    )
 
     @api.depends('pos_config_ids')
     def _compute_pos_config_count(self):
         for company in self:
             company.pos_config_count = self.env['pos.config'].sudo().search_count([('company_id', '=', company.id)])
+
+    @api.depends('partner_id.street', 'partner_id.street2', 'partner_id.city', 'partner_id.state_id', 'partner_id.zip')
+    def _compute_company_address(self):
+        for company in self:
+            partner = company.partner_id
+            if partner:
+                parts = []
+                if partner.street:
+                    parts.append(partner.street)
+                if partner.street2:
+                    parts.append(partner.street2)
+                loc = []
+                if partner.zip:
+                    loc.append(partner.zip)
+                if partner.city:
+                    loc.append(partner.city)
+                if partner.state_id:
+                    loc.append(partner.state_id.name)
+                if loc:
+                    parts.append(" ".join(loc))
+                company.company_address = ", ".join(parts) if parts else '-'
+            else:
+                company.company_address = '-'
+
+    @api.depends('pos_config_ids')
+    def _compute_station_employee_count(self):
+        for company in self:
+            stations = company.pos_config_ids
+            if not stations:
+                company.station_employee_count = 0
+                continue
+            sessions = self.env['pos.session'].sudo().search([('config_id', 'in', stations.ids)])
+            session_users = sessions.mapped('user_id').filtered(lambda u: u.active)
+            assigned_users = self.env['res.users'].sudo().search([('pos_config_ids', 'in', stations.ids)]).filtered(lambda u: u.active)
+            employees = (session_users | assigned_users).filtered(lambda u: u.id != self.env.ref('base.user_root').id)
+            company.station_employee_count = len(employees)
 
     def action_view_gas_stations(self):
         self.ensure_one()
