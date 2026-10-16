@@ -32,19 +32,77 @@ class PosConfig(models.Model):
 
     def unlink(self):
         for config in self:
-            orders_count = self.env['pos.order'].sudo().search_count([('config_id', '=', config.id)])
-            if orders_count > 0:
+            associated_records = []
+
+            # 1. Turnos y Sesiones del TPV (pos.session)
+            sessions = self.env['pos.session'].sudo().search([('config_id', '=', config.id)])
+            if sessions:
+                active_sessions = sessions.filtered(lambda s: s.state in ['opened', 'opening_control'])
+                if active_sessions:
+                    cashiers = ", ".join(set(active_sessions.mapped('user_id.name')))
+                    associated_records.append(
+                        _("• %d turno(s)/sesión(es) de caja (¡Turno actualmente ABIERTO por: %s!)") % (len(sessions), cashiers)
+                    )
+                else:
+                    associated_records.append(
+                        _("• %d turno(s)/sesión(es) de caja registrados") % len(sessions)
+                    )
+
+            # 2. Tickets y Pedidos de venta (pos.order)
+            orders = self.env['pos.order'].sudo().search([('config_id', '=', config.id)])
+            if orders:
+                associated_records.append(
+                    _("• %d tickets y pedidos de venta") % len(orders)
+                )
+
+                # 3. Facturas vinculadas (account.move)
+                invoices = orders.mapped('account_move').filtered(lambda m: m.exists())
+                if invoices:
+                    associated_records.append(
+                        _("• %d facturas oficiales asociadas a las ventas del TPV") % len(invoices)
+                    )
+
+                # 4. Pagos registrados (pos.payment)
+                payments_count = self.env['pos.payment'].sudo().search_count([('pos_order_id', 'in', orders.ids)])
+                if payments_count:
+                    associated_records.append(
+                        _("• %d transacciones de cobro / pagos registrados") % payments_count
+                    )
+
+            # 5. Empleados y Usuarios autorizados asignados a este TPV
+            assigned_users = self.env['res.users'].sudo().search([('pos_config_ids', 'in', [config.id])])
+            if assigned_users:
+                user_names = ", ".join(assigned_users.mapped('name'))
+                associated_records.append(
+                    _("• %d usuarios/empleados autorizados con acceso asignado (%s)") % (len(assigned_users), user_names)
+                )
+
+            if hasattr(config, 'basic_employee_ids') and config.basic_employee_ids:
+                emp_names = ", ".join(config.basic_employee_ids.mapped('name'))
+                associated_records.append(
+                    _("• %d empleados asignados en control de presencia (%s)") % (len(config.basic_employee_ids), emp_names)
+                )
+
+            # 6. Albaranes o Movimientos de existencias (stock.picking)
+            if hasattr(self.env['stock.picking'], 'pos_session_id') and sessions:
+                pickings_count = self.env['stock.picking'].sudo().search_count([('pos_session_id', 'in', sessions.ids)])
+                if pickings_count:
+                    associated_records.append(
+                        _("• %d albaranes de salida / movimientos de stock de pista") % pickings_count
+                    )
+
+            if associated_records:
+                details = "\n".join(associated_records)
                 raise UserError(_(
-                    'No se puede eliminar la estación "%s" porque contiene %s pedidos/tickets de venta registrados. '
-                    'Para garantizar la trazabilidad contable no es posible borrarla.'
-                ) % (config.name, orders_count))
-            empty_sessions = self.env['pos.session'].sudo().search([('config_id', '=', config.id)])
-            for s in empty_sessions:
-                s_orders = self.env['pos.order'].sudo().search_count([('session_id', '=', s.id)])
-                if s_orders == 0:
-                    if s.state == 'opening_control':
-                        s.write({'state': 'closed'})
-                    s.unlink()
+                    'No se puede eliminar la estación de servicio "%(name)s" porque contiene registros asociados en el sistema:\n\n'
+                    '%(details)s\n\n'
+                    'Para mantener la trazabilidad y la integridad con el core de Odoo, debe eliminar o desvincular '
+                    'previamente todos los registros vinculados antes de poder borrar la estación.'
+                ) % {
+                    'name': config.name,
+                    'details': details,
+                })
+
         return super(PosConfig, self).unlink()
 
     def action_open_station_form(self):

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import http
+from odoo.exceptions import UserError
 from odoo.http import request
 import json
 import logging
@@ -820,25 +821,12 @@ class PosGasStationController(http.Controller):
             if not config.exists():
                 return {'status': 'error', 'message': 'La estación no existe.'}
 
-            orders_count = env['pos.order'].sudo().search_count([('config_id', '=', config.id)])
-            if orders_count > 0:
-                return {
-                    'status': 'error',
-                    'message': f'No se puede eliminar la estación "{config.name}" porque contiene {orders_count} pedidos/tickets de venta registrados. Por motivos de seguridad contable y trazabilidad no es posible borrarla.'
-                }
-
-            # If sessions exist without orders, close and remove them
-            sessions = env['pos.session'].sudo().search([('config_id', '=', config.id)])
-            for s in sessions:
-                s_orders = env['pos.order'].sudo().search_count([('session_id', '=', s.id)])
-                if s_orders == 0:
-                    if s.state in ['opened', 'opening_control']:
-                        s.write({'state': 'closed'})
-                    s.unlink()
-
             name = config.name
+            # config.unlink() ejecuta la validación exhaustiva de trazabilidad e integridad del modelo
             config.unlink()
             return {'status': 'success', 'message': f'Estación "{name}" eliminada correctamente.'}
+        except UserError as ue:
+            return {'status': 'error', 'message': ue.args[0] if ue.args else str(ue)}
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/delete_station: %s", e)
             return {'status': 'error', 'message': str(e)}
