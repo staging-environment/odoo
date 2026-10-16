@@ -117,3 +117,14 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 ## 🔗 Repositorio Git
 - **URL HTTPS:** `https://github.com/staging-environment/odoo`
 - **URL SSH:** `git@github.com:staging-environment/odoo.git`
+
+---
+
+## 🚀 Flujo Obligatorio de Commit y Despliegue en Producción
+**Regla crítica para cualquier cambio de código en este repositorio:**
+Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempre debe commitear, hacer push a `origin/main` y desplegar automáticamente en producción**:
+1. `git add <archivos>` y `git commit -m "..."`
+2. `git push origin main`
+3. Despliegue en servidor Cloud:
+   - `ssh utrecar-dev "cd /home/developer/Projects/odoo && git pull origin main && docker restart ddev-odoo-odoo"`
+   - Verificar logs: `ssh utrecar-dev "docker logs --tail 15 ddev-odoo-odoo"`
