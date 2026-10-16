@@ -64,6 +64,16 @@ class ResCompany(models.Model):
             employees = (session_users | assigned_users).filtered(lambda u: u.id != self.env.ref('base.user_root').id)
             company.station_employee_count = len(employees)
 
+    def action_open_company_form(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'res.company',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     def action_view_gas_stations(self):
         self.ensure_one()
         return {
