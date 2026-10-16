@@ -184,13 +184,26 @@ registry.category("actions").add("gas_station_dashboard", GasStationDashboard);
 patch(ListRenderer.prototype, {
     setup() {
         super.setup(...arguments);
-        if (this.props.list && this.props.list.resModel === "res.company") {
-            onMounted(() => {
+        onMounted(() => {
+            this._setupCompanyObserver();
+        });
+        onPatched(() => {
+            if (this.props.list && this.props.list.resModel === "res.company") {
+                this._applyCompanyListViewCustom();
+            }
+        });
+    },
+    _setupCompanyObserver() {
+        if (!this.props.list || this.props.list.resModel !== "res.company") {
+            return;
+        }
+        this._applyCompanyListViewCustom();
+        const root = this.rootRef && this.rootRef.el;
+        if (root && !this._companyObserver) {
+            this._companyObserver = new MutationObserver(() => {
                 this._applyCompanyListViewCustom();
             });
-            onPatched(() => {
-                this._applyCompanyListViewCustom();
-            });
+            this._companyObserver.observe(root, { childList: true, subtree: true });
         }
     },
     _applyCompanyListViewCustom() {
@@ -217,7 +230,7 @@ patch(ListRenderer.prototype, {
             if (theadRow && !theadRow.querySelector(".o_company_edit_th")) {
                 const th = document.createElement("th");
                 th.className = "o_company_edit_th text-center";
-                th.style.width = "100px";
+                th.style.width = "90px";
                 th.innerText = "Acción";
                 theadRow.appendChild(th);
             }
