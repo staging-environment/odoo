@@ -1,6 +1,8 @@
 /** @odoo-module **/
 
-import { Component, useState, onMounted } from "@odoo/owl";
+import { Component, useState, onMounted, onPatched } from "@odoo/owl";
+import { patch } from "@web/core/utils/patch";
+import { ListRenderer } from "@web/views/list/list_renderer";
 import { registry } from "@web/core/registry";
 import { jsonrpc } from "@web/core/network/rpc_service";
 import { useService } from "@web/core/utils/hooks";
@@ -177,3 +179,42 @@ export class GasStationDashboard extends Component {
 }
 
 registry.category("actions").add("gas_station_dashboard", GasStationDashboard);
+
+// Botón 'Nueva Empresa' inmediatamente debajo del listado de empresas
+patch(ListRenderer.prototype, {
+    setup() {
+        super.setup(...arguments);
+        if (this.props.list && this.props.list.resModel === "res.company") {
+            onMounted(() => {
+                this._renderCompanyAddButton();
+            });
+            onPatched(() => {
+                this._renderCompanyAddButton();
+            });
+        }
+    },
+    _renderCompanyAddButton() {
+        if (!this.props.list || this.props.list.resModel !== "res.company") {
+            return;
+        }
+        const root = this.rootRef && this.rootRef.el;
+        if (!root) {
+            return;
+        }
+        let bar = root.querySelector(".o_company_list_bottom_bar");
+        if (!bar) {
+            bar = document.createElement("div");
+            bar.className = "o_company_list_bottom_bar";
+            bar.innerHTML = '<button type="button" class="btn btn-primary fw-bold px-3 py-2"><i class="fa fa-plus me-1"></i> Nueva Empresa</button>';
+            const btn = bar.querySelector("button");
+            btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (this.props.onAdd) {
+                    this.props.onAdd();
+                }
+            });
+            root.appendChild(bar);
+        }
+    }
+});
