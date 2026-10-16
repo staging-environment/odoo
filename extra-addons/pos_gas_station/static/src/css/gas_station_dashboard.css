@@ -423,14 +423,27 @@
     display: none !important;
 }
 
-
-/* Botón Nueva Empresa inmediatamente debajo de la tabla */
-.o_company_list_under_table {
-    padding: 12px 16px !important;
-    display: inline-block !important;
+/* Evitar que el renderizador se expanda al 100% de la ventana empujando el botón al footer */
+.o_list_view:has(.o_company_tree_view) .o_content {
+    display: block !important;
+    height: auto !important;
 }
 
-.o_company_list_under_table .btn-primary {
+.o_list_view:has(.o_company_tree_view) .o_list_renderer {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    max-height: none !important;
+}
+
+/* Botón colocado inmediatamente al pie de las filas de la tabla */
+.o_company_list_bottom_bar {
+    padding: 14px 18px !important;
+    display: block !important;
+    background: transparent !important;
+    border-top: none !important;
+}
+
+.o_company_list_bottom_bar .btn-primary {
     background: #0284c7 !important;
     border-color: #0284c7 !important;
     font-size: 13px !important;
@@ -441,7 +454,7 @@
     transition: all 0.15s ease !important;
 }
 
-.o_company_list_under_table .btn-primary:hover {
+.o_company_list_bottom_bar .btn-primary:hover {
     background: #0369a1 !important;
     border-color: #0369a1 !important;
     transform: translateY(-1px) !important;
