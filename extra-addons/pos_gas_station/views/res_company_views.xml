@@ -5,7 +5,7 @@
         <field name="name">res.company.form.inherit.gas.stations</field>
         <field name="model">res.company</field>
         <field name="inherit_id" ref="base.view_company_form"/>
-        <field name="priority">20</field>
+        <field name="priority">30</field>
         <field name="arch" type="xml">
             <!-- Botón Volver a Gestión de Gasolineras -->
             <xpath expr="//sheet" position="before">
@@ -16,6 +16,7 @@
                             class="btn-secondary"/>
                 </header>
             </xpath>
+
             <!-- Smart Button en la caja superior de la empresa -->
             <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
                 <button name="action_view_gas_stations"
@@ -25,6 +26,26 @@
                     <field name="pos_config_count" widget="statinfo" string="Estaciones"/>
                 </button>
             </xpath>
+
+            <!-- 1. Quitar el bloque lateral derecho (Chatter / Enviar mensaje / Historial) -->
+            <xpath expr="//div[hasclass('oe_chatter')]" position="replace"/>
+
+            <!-- 2. Ocultar el ID de la compañía (company_registry) -->
+            <xpath expr="//field[@name='company_registry']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- 3. Sustituir el bloque compacto de dirección por campos con sus labels claros e individuales -->
+            <xpath expr="//label[@for='street']" position="replace"/>
+            <xpath expr="//div[hasclass('o_address_format')]" position="replace">
+                <field name="street" string="Dirección" placeholder="Calle, Avenida, Polígono..."/>
+                <field name="street2" string="Dirección 2" placeholder="Edificio, Piso, Puerta..."/>
+                <field name="city" string="Localidad" placeholder="Ciudad o Municipio"/>
+                <field name="state_id" string="Provincia" placeholder="Seleccione provincia" options="{'no_open': True, 'no_create': True}"/>
+                <field name="zip" string="Código Postal" placeholder="Ej: 41710"/>
+                <field name="country_id" string="País" placeholder="Seleccione país" options="{'no_open': True, 'no_create': True}"/>
+            </xpath>
+
             <!-- Pestaña de Estaciones en el formulario de la Empresa -->
             <xpath expr="//notebook" position="inside">
                 <page string="Estaciones de Servicio / TPVs" name="gas_stations_tab">
