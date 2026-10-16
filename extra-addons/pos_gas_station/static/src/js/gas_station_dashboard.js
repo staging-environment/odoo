@@ -186,20 +186,24 @@ patch(ListRenderer.prototype, {
         super.setup(...arguments);
         if (this.props.list && this.props.list.resModel === "res.company") {
             onMounted(() => {
-                this._renderCompanyAddButton();
+                this._applyCompanyListViewCustom();
             });
             onPatched(() => {
-                this._renderCompanyAddButton();
+                this._applyCompanyListViewCustom();
             });
         }
     },
-    _renderCompanyAddButton() {
+    _applyCompanyListViewCustom() {
         if (!this.props.list || this.props.list.resModel !== "res.company") {
             return;
         }
         const root = this.rootRef && this.rootRef.el;
         if (!root) {
             return;
+        }
+        const controller = root.closest(".o_list_view");
+        if (controller) {
+            controller.classList.add("o_company_list_view_custom");
         }
         let bar = root.querySelector(".o_company_list_bottom_bar");
         if (!bar) {
