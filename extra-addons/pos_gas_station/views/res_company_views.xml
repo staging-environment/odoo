@@ -60,14 +60,15 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Estaciones de Servicio / TPVs" name="gas_stations_tab">
                     <field name="pos_config_ids" context="{'default_company_id': id}">
-                        <tree string="Estaciones de Servicio de la Empresa" create="true" delete="true">
-                            <field name="name" string="Nombre de la Estación"/>
+                        <tree string="Estaciones de Servicio de la Empresa" create="true" delete="true" no_open="1">
+                            <field name="station_link_html" widget="html" string="Estación de Servicio"/>
                             <field name="current_session_state" string="Estado del Turno" widget="badge" 
                                    decoration-success="current_session_state == 'opened'" 
                                    decoration-warning="current_session_state == 'opening_control'"/>
                             <field name="current_user_id" string="Cajero Activo"/>
-                            <button name="action_open_station_form" string="Ajustes / Editar" type="object" icon="fa-sliders" class="btn-secondary"/>
-                            <button name="open_ui" string="Entrar al TPV" type="object" icon="fa-desktop" class="btn-primary"/>
+                            <field name="station_users_summary" string="Personal y Roles Asignados"/>
+                            <button name="action_open_station_form" string="Ficha Completa de la Estación" type="object" icon="fa-arrow-circle-right" class="btn-primary fw-bold"/>
+                            <button name="open_ui" string="Entrar al TPV" type="object" icon="fa-desktop" class="btn-secondary"/>
                         </tree>
                     </field>
                 </page>
@@ -75,7 +76,7 @@
         </field>
     </record>
 
-    <!-- Extensión de pos.config (Ajustes de estación) con Botón Volver -->
+    <!-- Extensión de pos.config (Ficha Completa de Estación) con Botón Volver y Grupo de Información -->
     <record id="view_pos_config_form_inherit_return_btn" model="ir.ui.view">
         <field name="name">pos.config.form.inherit.return.btn</field>
         <field name="model">pos.config</field>
@@ -84,15 +85,41 @@
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="before">
                 <header>
+                    <button name="action_return_to_company"
+                            type="object"
+                            string="← Volver a la Empresa"
+                            class="btn-secondary"
+                            invisible="not company_id"/>
                     <button name="action_return_to_gas_station_dashboard"
                             type="object"
                             string="← Volver a Gestión de gasolineras"
                             class="btn-secondary"/>
+                    <button name="open_ui"
+                            type="object"
+                            string="🖥 Entrar al TPV / Abrir Turno"
+                            class="btn-primary fw-bold"/>
                 </header>
+            </xpath>
+            <xpath expr="//div[@id='title']" position="after">
+                <group class="mt-2 mb-3">
+                    <group string="Información de la Estación">
+                        <field name="company_id" string="Empresa Propietaria" options="{'no_open': True, 'no_create': True}"/>
+                        <field name="current_session_state" string="Estado del Turno" widget="badge" 
+                               decoration-success="current_session_state == 'opened'" 
+                               decoration-warning="current_session_state == 'opening_control'"/>
+                        <field name="current_user_id" string="Cajero / Empleado Activo"/>
+                    </group>
+                    <group string="Último Turno y Arqueo">
+                        <field name="last_session_closing_date" string="Fecha Último Cierre"/>
+                        <field name="last_session_closing_cash" string="Saldo de Cierre / Arqueo" widget="monetary"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                </group>
             </xpath>
         </field>
     </record>
-<!-- Extensión del listado (tree) de res.company -->
+
+    <!-- Extensión del listado (tree) de res.company -->
     <record id="view_company_tree_inherit_gas_stations" model="ir.ui.view">
         <field name="name">res.company.tree.inherit.gas.stations</field>
         <field name="model">res.company</field>

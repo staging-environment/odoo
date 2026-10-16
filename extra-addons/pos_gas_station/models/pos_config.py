@@ -108,11 +108,15 @@ class PosConfig(models.Model):
     def action_open_station_form(self):
         self.ensure_one()
         return {
+            'name': f"Estación de Servicio: {self.name}",
             'type': 'ir.actions.act_window',
             'res_model': 'pos.config',
             'res_id': self.id,
             'view_mode': 'form',
             'target': 'current',
+            'context': {
+                'default_company_id': self.company_id.id if self.company_id else False,
+            }
         }
 
     def action_return_to_gas_station_dashboard(self):

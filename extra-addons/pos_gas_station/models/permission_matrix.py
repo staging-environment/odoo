@@ -7,10 +7,19 @@ ROLE_DEFAULT_GROUPS = {
         'base.group_erp_manager',
         'point_of_sale.group_pos_manager',
     ],
+    'manager': [
+        'point_of_sale.group_pos_manager',
+    ],
     'gestor': [
         'point_of_sale.group_pos_manager',
     ],
+    'employee': [
+        'point_of_sale.group_pos_user',
+    ],
     'empleado': [
+        'point_of_sale.group_pos_user',
+    ],
+    'admin_hr': [
         'point_of_sale.group_pos_user',
     ],
     'admin_rrhh': [
@@ -117,6 +126,52 @@ class PosConfig(models.Model):
         'user_id',
         string='Usuarios de Pista Autorizados'
     )
+    station_users_summary = fields.Char(
+        string='Personal y Roles Asignados',
+        compute='_compute_station_users_summary'
+    )
+    station_link_html = fields.Html(
+        string='Estación de Servicio',
+        compute='_compute_station_link_html',
+        sanitize=False
+    )
+
+    @api.depends('name')
+    def _compute_station_link_html(self):
+        for config in self:
+            config.station_link_html = f'<a href="#id={config.id}&amp;model=pos.config&amp;view_type=form" class="fw-bold text-decoration-none" style="color: #0284c7; font-size: 0.95rem;"><i class="fa fa-gas-pump me-1 text-danger"></i> {config.name}</a>'
+
+    @api.depends('allowed_user_ids', 'allowed_user_ids.name', 'allowed_user_ids.utrecar_role_id')
+    def _compute_station_users_summary(self):
+        for config in self:
+            if not config.allowed_user_ids:
+                config.station_users_summary = 'Acceso General (Sin restricción)'
+            else:
+                parts = []
+                for u in config.allowed_user_ids:
+                    role_str = u.utrecar_role_id.name if u.utrecar_role_id else 'Sin Rol'
+                    parts.append(f"{u.name} ({role_str})")
+                config.station_users_summary = ", ".join(parts)
+
+    def action_return_to_company(self):
+        self.ensure_one()
+        if not self.company_id:
+            return self.action_return_to_gas_station_dashboard()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.company_id.name,
+            'res_model': 'res.company',
+            'res_id': self.company_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_open_permission_matrix(self):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'utrecar_permission_matrix',
+            'target': 'current',
+        }
 
     @api.model
     def action_entry_pos(self):
@@ -151,6 +206,51 @@ class ResUsers(models.Model):
         'pos_config_id',
         string='Estaciones / Tiendas Autorizadas'
     )
+    role_badge_html = fields.Html(
+        string='Rol Asignado',
+        compute='_compute_role_badge_html',
+        sanitize=False
+    )
+    permission_badges_html = fields.Html(
+        string='Permisos Efectivos Otorgados',
+        compute='_compute_permission_badges_html',
+        sanitize=False
+    )
+
+    @api.depends('utrecar_role_id', 'utrecar_role_id.name', 'utrecar_role_id.color')
+    def _compute_role_badge_html(self):
+        for user in self:
+            if user.utrecar_role_id:
+                color = user.utrecar_role_id.color or '#0284c7'
+                name = user.utrecar_role_id.name
+                user.role_badge_html = f'<span class="badge text-white px-2 py-1 fw-bold" style="background-color: {color}; font-size: 0.85rem;"><i class="fa fa-shield me-1"></i> {name}</span>'
+            else:
+                user.role_badge_html = '<span class="badge text-bg-secondary px-2 py-1">Sin Rol</span>'
+
+    @api.depends('utrecar_role_id', 'utrecar_role_id.permission_ids', 'utrecar_role_id.name', 'utrecar_role_id.color')
+    def _compute_permission_badges_html(self):
+        for user in self:
+            if not user.utrecar_role_id:
+                user.permission_badges_html = '<span class="badge text-bg-warning text-dark"><i class="fa fa-exclamation-triangle me-1"></i> Sin rol asignado</span>'
+                continue
+            perms = user.utrecar_role_id.permission_ids
+            if not perms:
+                user.permission_badges_html = '<span class="badge text-bg-secondary">Sin permisos activos</span>'
+                continue
+
+            badges = []
+            role_code = user.utrecar_role_id.code
+            if role_code == 'ceo' or len(perms) >= 25:
+                badges.append(f'<span class="badge text-bg-primary fw-bold me-1 mb-1" style="font-size: 0.8rem;"><i class="fa fa-star me-1"></i> Acceso Total ({len(perms)} permisos)</span>')
+                key_perms = perms.filtered(lambda p: any(k in p.name.lower() for k in ['tpv', 'pista', 'precios', 'surtidor', 'cierre', 'arqueo', 'factura', 'descuento']))
+                for p in key_perms[:4]:
+                    badges.append(f'<span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.75rem;">{p.name}</span>')
+                if len(perms) > 5:
+                    badges.append(f'<span class="badge bg-light text-muted border me-1 mb-1" style="font-size: 0.75rem;">+{len(perms) - 5} más</span>')
+            else:
+                for p in perms:
+                    badges.append(f'<span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.75rem; font-weight: 500;"><i class="fa fa-check text-success me-1"></i> {p.name}</span>')
+            user.permission_badges_html = "".join(badges)
 
     def _sync_utrecar_role_groups(self):
         for user in self:

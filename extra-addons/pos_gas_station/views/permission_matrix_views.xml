@@ -15,16 +15,40 @@
         </field>
     </record>
 
-    <!-- VISTA FORMULARIO POS CONFIG PARA USUARIOS AUTORIZADOS -->
+    <!-- VISTA FORMULARIO POS CONFIG PARA PERSONAL Y PERMISOS AUTORIZADOS -->
     <record id="view_pos_config_form_inherit_allowed_users" model="ir.ui.view">
         <field name="name">pos.config.form.inherit.allowed.users</field>
         <field name="model">pos.config</field>
         <field name="inherit_id" ref="point_of_sale.pos_config_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="inside">
-                <group string="Usuarios y Cajeros Asignados">
-                    <field name="allowed_user_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                </group>
+                <div class="mt-4 mb-3 p-3 bg-light rounded border">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h4 class="fw-bold mb-1" style="color: #0f172a;">
+                                <i class="fa fa-users me-2 text-primary"></i> Personal, Empleados y Permisos Autorizados en esta Estación
+                            </h4>
+                            <p class="text-muted small mb-0">
+                                Empleados asignados a operar en esta estación. En función del Rol en la Matriz de Permisos, las facultades de cobro, precios y restricciones en el TPV se aplican de forma inmediata.
+                            </p>
+                        </div>
+                        <div>
+                            <button name="action_open_permission_matrix"
+                                    type="object"
+                                    string="🛡 Abrir Matriz de Permisos"
+                                    class="btn btn-sm btn-outline-primary fw-bold shadow-sm"/>
+                        </div>
+                    </div>
+                    <field name="allowed_user_ids" options="{'no_create': True}">
+                        <tree string="Personal Autorizado en esta Estación" no_open="1">
+                            <field name="name" string="Empleado / Usuario"/>
+                            <field name="login" string="Usuario de Acceso / Email"/>
+                            <field name="role_badge_html" widget="html" string="Rol Asignado"/>
+                            <field name="permission_badges_html" widget="html" string="Permisos Efectivos Concedidos"/>
+                            <field name="active" widget="boolean_toggle" string="Activo"/>
+                        </tree>
+                    </field>
+                </div>
             </xpath>
         </field>
     </record>
