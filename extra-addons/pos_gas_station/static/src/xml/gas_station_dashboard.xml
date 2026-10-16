@@ -168,9 +168,6 @@
                                                         </button>
 
                                                         <div class="station-sub-actions" t-if="state.isManager">
-                                                            <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.openOrders(st.id)" title="Ver Pedidos y Ventas de esta estación">
-                                                                <i class="fa fa-shopping-cart"/> Pedidos
-                                                            </button>
                                                             <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.openConfig(st.id)" title="Ajustes de esta estación">
                                                                 <i class="fa fa-sliders"/> Ajustes
                                                             </button>

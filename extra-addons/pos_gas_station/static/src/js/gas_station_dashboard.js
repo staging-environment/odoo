@@ -90,16 +90,6 @@ export class GasStationDashboard extends Component {
         this.actionService.doAction("pos_gas_station.action_utrecar_permission_matrix");
     }
 
-    openOrders(stationId) {
-        this.actionService.doAction({
-            type: "ir.actions.act_window",
-            name: "Pedidos del TPV",
-            res_model: "pos.order",
-            domain: [["config_id", "=", stationId]],
-            views: [[false, "tree"], [false, "form"]],
-            target: "current"
-        });
-    }
 
     openConfig(stationId) {
         this.actionService.doAction({
