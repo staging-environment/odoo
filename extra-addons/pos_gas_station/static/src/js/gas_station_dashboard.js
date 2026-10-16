@@ -201,9 +201,13 @@ patch(ListRenderer.prototype, {
         if (!root) {
             return;
         }
-        const controller = root.closest(".o_list_view");
-        if (controller) {
-            controller.classList.add("o_company_list_view_custom");
+        const view = root.closest(".o_view_controller") || root.closest(".o_action_manager") || document.querySelector(".o_action_manager");
+        if (view) {
+            view.classList.add("o_company_list_view_custom");
+        }
+        const cp = (view && view.querySelector(".o_control_panel")) || document.querySelector(".o_control_panel");
+        if (cp) {
+            cp.classList.add("o_company_control_panel_custom");
         }
         let bar = root.querySelector(".o_company_list_bottom_bar");
         if (!bar) {
