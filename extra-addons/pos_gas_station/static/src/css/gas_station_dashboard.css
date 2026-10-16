@@ -407,3 +407,44 @@
 .o_company_fullwidth_sheet .o_group {
     width: 100% !important;
 }
+
+/* ==========================================================================
+   LISTADO DE EMPRESAS: OCULTAR BREADCRUMB, ENGRANAJE Y BOTÓN SUPERIOR
+   ========================================================================== */
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_breadcrumb,
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_control_panel_breadcrumbs_actions,
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_control_panel_main_buttons,
+.o_view_controller:has(.o_company_tree_view) .o_control_panel .o_breadcrumb,
+.o_view_controller:has(.o_company_tree_view) .o_control_panel .o_control_panel_breadcrumbs_actions,
+.o_view_controller:has(.o_company_tree_view) .o_control_panel .o_control_panel_main_buttons,
+.o_action_manager:has(.o_company_tree_view) .o_control_panel .o_breadcrumb,
+.o_action_manager:has(.o_company_tree_view) .o_control_panel .o_control_panel_breadcrumbs_actions,
+.o_action_manager:has(.o_company_tree_view) .o_control_panel .o_control_panel_main_buttons {
+    display: none !important;
+}
+
+/* Barra inferior con el botón Nueva Empresa debajo del listado */
+.o_company_list_bottom_bar {
+    padding: 16px 20px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.o_company_list_bottom_bar .btn-primary {
+    background: #0284c7 !important;
+    border-color: #0284c7 !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    padding: 8px 18px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25) !important;
+    transition: all 0.15s ease !important;
+}
+
+.o_company_list_bottom_bar .btn-primary:hover {
+    background: #0369a1 !important;
+    border-color: #0369a1 !important;
+    transform: translateY(-1px) !important;
+}

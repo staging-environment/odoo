@@ -99,6 +99,10 @@
         <field name="inherit_id" ref="base.view_company_tree"/>
         <field name="priority">20</field>
         <field name="arch" type="xml">
+            <xpath expr="//tree" position="attributes">
+                <attribute name="class">o_company_tree_view</attribute>
+            </xpath>
+
             <!-- 1. Ocultar columnas Contacto y Ramas que no tienen sentido en este flujo -->
             <xpath expr="//field[@name='partner_id']" position="attributes">
                 <attribute name="column_invisible">True</attribute>
@@ -107,9 +111,10 @@
                 <attribute name="column_invisible">True</attribute>
             </xpath>
 
-            <!-- 2. Añadir Dirección, Nº Estaciones Asociadas y Nº Empleados Asociados -->
+            <!-- 2. Añadir Dirección, Teléfono, Nº Estaciones Asociadas y Nº Empleados Asociados -->
             <xpath expr="//field[@name='name']" position="after">
                 <field name="company_address" string="Dirección"/>
+                <field name="phone" string="Teléfono"/>
                 <field name="pos_config_count" string="Estaciones Asociadas" widget="badge" decoration-info="pos_config_count &gt; 0"/>
                 <field name="station_employee_count" string="Empleados en Estaciones" widget="badge" decoration-success="station_employee_count &gt; 0"/>
             </xpath>

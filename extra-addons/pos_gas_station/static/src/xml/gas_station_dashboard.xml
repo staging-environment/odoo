@@ -189,4 +189,15 @@
         </div>
     </t>
 
+<!-- BOTÓN DEBAJO DEL LISTADO DE EMPRESAS -->
+    <t t-name="pos_gas_station.CompanyListView" t-inherit="web.ListView" t-inherit-mode="extension" owl="1">
+        <xpath expr="//t[@t-component='props.Renderer']" position="after">
+            <div t-if="model.root.resModel === 'res.company'" class="o_company_list_bottom_bar">
+                <button type="button" class="btn btn-primary fw-bold px-3 py-2" t-on-click="onClickCreate">
+                    <i class="fa fa-plus me-1"/> Nueva Empresa
+                </button>
+            </div>
+        </xpath>
+    </t>
+
 </templates>
