@@ -409,23 +409,27 @@
 }
 
 /* ==========================================================================
-   LISTADO DE EMPRESAS: OCULTAR BREADCRUMB, ENGRANAJE Y BOTÓN SUPERIOR
+   LISTADO DE EMPRESAS: BOTÓN NUEVA EMPRESA INMEDIATAMENTE DEBAJO DEL LISTADO
    ========================================================================== */
+/* Ocultar el título Compañías y el menú de acciones (engranaje) */
 .o_list_view:has(.o_company_tree_view) .o_control_panel .o_breadcrumb,
 .o_list_view:has(.o_company_tree_view) .o_control_panel .o_control_panel_breadcrumbs_actions,
-.o_list_view:has(.o_company_tree_view) .o_control_panel .o_control_panel_main_buttons,
-.o_view_controller:has(.o_company_tree_view) .o_control_panel .o_breadcrumb,
-.o_view_controller:has(.o_company_tree_view) .o_control_panel .o_control_panel_breadcrumbs_actions,
-.o_view_controller:has(.o_company_tree_view) .o_control_panel .o_control_panel_main_buttons,
-.o_action_manager:has(.o_company_tree_view) .o_control_panel .o_breadcrumb,
-.o_action_manager:has(.o_company_tree_view) .o_control_panel .o_control_panel_breadcrumbs_actions,
-.o_action_manager:has(.o_company_tree_view) .o_control_panel .o_control_panel_main_buttons {
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_cp_action_menus,
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_search_options,
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_searchview,
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_cp_searchview {
     display: none !important;
 }
 
-/* Evitar que el renderizador se expanda al 100% de la ventana empujando el botón al footer */
+/* Invertir el orden: primero la tabla de empresas, inmediatamente después el control panel con el botón */
+.o_list_view:has(.o_company_tree_view) {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
 .o_list_view:has(.o_company_tree_view) .o_content {
-    display: block !important;
+    order: 1 !important;
+    flex: 0 0 auto !important;
     height: auto !important;
 }
 
@@ -435,26 +439,34 @@
     max-height: none !important;
 }
 
-/* Botón colocado inmediatamente al pie de las filas de la tabla */
-.o_company_list_bottom_bar {
-    padding: 14px 18px !important;
-    display: block !important;
+.o_list_view:has(.o_company_tree_view) .o_control_panel {
+    order: 2 !important;
+    border-bottom: none !important;
+    padding: 16px 20px !important;
     background: transparent !important;
-    border-top: none !important;
+    display: flex !important;
+    justify-content: flex-start !important;
 }
 
-.o_company_list_bottom_bar .btn-primary {
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_control_panel_main_buttons {
+    display: block !important;
+}
+
+/* Estilo destacado del botón Nueva Empresa inmediatamente debajo del listado */
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_list_button_add {
+    display: inline-flex !important;
+    align-items: center !important;
     background: #0284c7 !important;
     border-color: #0284c7 !important;
     font-size: 13px !important;
     font-weight: 700 !important;
-    padding: 7px 16px !important;
+    padding: 8px 18px !important;
     border-radius: 6px !important;
     box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25) !important;
     transition: all 0.15s ease !important;
 }
 
-.o_company_list_bottom_bar .btn-primary:hover {
+.o_list_view:has(.o_company_tree_view) .o_control_panel .o_list_button_add:hover {
     background: #0369a1 !important;
     border-color: #0369a1 !important;
     transform: translateY(-1px) !important;
