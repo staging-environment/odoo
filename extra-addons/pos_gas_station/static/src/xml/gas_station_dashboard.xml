@@ -189,11 +189,13 @@
         </div>
     </t>
 
-<!-- BOTÓN DEBAJO DEL LISTADO DE EMPRESAS -->
-    <t t-name="pos_gas_station.CompanyListView" t-inherit="web.ListView" t-inherit-mode="extension" owl="1">
-        <xpath expr="//t[@t-component='props.Renderer']" position="after">
-            <div t-if="model.root.resModel === 'res.company'" class="o_company_list_bottom_bar">
-                <button type="button" class="btn btn-primary fw-bold px-3 py-2" t-on-click="onClickCreate">
+
+
+<!-- BOTÓN INMEDIATAMENTE AL FINAL DE LA TABLA DE EMPRESAS -->
+    <t t-name="pos_gas_station.CompanyListRenderer" t-inherit="web.ListRenderer" t-inherit-mode="extension" owl="1">
+        <xpath expr="//table[hasclass('o_list_table')]" position="after">
+            <div t-if="props.list.resModel === 'res.company'" class="o_company_list_under_table">
+                <button type="button" class="btn btn-primary fw-bold px-3 py-2" t-on-click="() => this.props.onAdd ? this.props.onAdd() : null">
                     <i class="fa fa-plus me-1"/> Nueva Empresa
                 </button>
             </div>

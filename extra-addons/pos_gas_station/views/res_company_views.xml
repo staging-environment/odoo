@@ -115,8 +115,8 @@
             <xpath expr="//field[@name='name']" position="after">
                 <field name="company_address" string="Dirección"/>
                 <field name="phone" string="Teléfono"/>
-                <field name="pos_config_count" string="Estaciones Asociadas" widget="badge" decoration-info="pos_config_count &gt; 0"/>
-                <field name="station_employee_count" string="Empleados en Estaciones" widget="badge" decoration-success="station_employee_count &gt; 0"/>
+                <field name="pos_config_count" string="Estaciones Asociadas"/>
+                <field name="station_employee_count" string="Empleados en Estaciones"/>
             </xpath>
         </field>
     </record>

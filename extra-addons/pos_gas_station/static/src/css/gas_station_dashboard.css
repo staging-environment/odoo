@@ -423,27 +423,25 @@
     display: none !important;
 }
 
-/* Barra inferior con el botón Nueva Empresa debajo del listado */
-.o_company_list_bottom_bar {
-    padding: 16px 20px !important;
-    background: #ffffff !important;
-    border-top: 1px solid #e2e8f0 !important;
-    display: flex !important;
-    align-items: center !important;
+
+/* Botón Nueva Empresa inmediatamente debajo de la tabla */
+.o_company_list_under_table {
+    padding: 12px 16px !important;
+    display: inline-block !important;
 }
 
-.o_company_list_bottom_bar .btn-primary {
+.o_company_list_under_table .btn-primary {
     background: #0284c7 !important;
     border-color: #0284c7 !important;
     font-size: 13px !important;
     font-weight: 700 !important;
-    padding: 8px 18px !important;
+    padding: 7px 16px !important;
     border-radius: 6px !important;
     box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25) !important;
     transition: all 0.15s ease !important;
 }
 
-.o_company_list_bottom_bar .btn-primary:hover {
+.o_company_list_under_table .btn-primary:hover {
     background: #0369a1 !important;
     border-color: #0369a1 !important;
     transform: translateY(-1px) !important;
