@@ -180,31 +180,16 @@ export class GasStationDashboard extends Component {
 
 registry.category("actions").add("gas_station_dashboard", GasStationDashboard);
 
-// Botón 'Nueva Empresa' e icono 'Editar' en listado de empresas
+// Botón 'Nueva Empresa' inmediatamente debajo del listado de empresas
 patch(ListRenderer.prototype, {
     setup() {
         super.setup(...arguments);
         onMounted(() => {
-            this._setupCompanyObserver();
+            this._applyCompanyListViewCustom();
         });
         onPatched(() => {
-            if (this.props.list && this.props.list.resModel === "res.company") {
-                this._applyCompanyListViewCustom();
-            }
+            this._applyCompanyListViewCustom();
         });
-    },
-    _setupCompanyObserver() {
-        if (!this.props.list || this.props.list.resModel !== "res.company") {
-            return;
-        }
-        this._applyCompanyListViewCustom();
-        const root = this.rootRef && this.rootRef.el;
-        if (root && !this._companyObserver) {
-            this._companyObserver = new MutationObserver(() => {
-                this._applyCompanyListViewCustom();
-            });
-            this._companyObserver.observe(root, { childList: true, subtree: true });
-        }
     },
     _applyCompanyListViewCustom() {
         if (!this.props.list || this.props.list.resModel !== "res.company") {
@@ -223,39 +208,7 @@ patch(ListRenderer.prototype, {
             cp.classList.add("o_company_control_panel_custom");
         }
 
-        // 1. Añadir columna e icono 'Editar' en cada fila
-        const table = this.tableRef ? this.tableRef.el : root.querySelector("table");
-        if (table) {
-            const theadRow = table.querySelector("thead tr");
-            if (theadRow && !theadRow.querySelector(".o_company_edit_th")) {
-                const th = document.createElement("th");
-                th.className = "o_company_edit_th text-center";
-                th.style.width = "90px";
-                th.innerText = "Acción";
-                theadRow.appendChild(th);
-            }
-
-            const rows = table.querySelectorAll("tbody tr.o_data_row");
-            rows.forEach((tr, index) => {
-                if (!tr.querySelector(".o_company_edit_td")) {
-                    const td = document.createElement("td");
-                    td.className = "o_data_cell o_company_edit_td text-center align-middle";
-                    td.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary o_company_edit_btn" title="Editar empresa"><i class="fa fa-pencil me-1"></i> Editar</button>';
-                    const btn = td.querySelector("button");
-                    btn.addEventListener("click", (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        const record = this.props.list.records && this.props.list.records[index];
-                        if (record && this.props.openRecord) {
-                            this.props.openRecord(record);
-                        }
-                    });
-                    tr.appendChild(td);
-                }
-            });
-        }
-
-        // 2. Añadir botón Nueva Empresa debajo del listado
+        // Botón Nueva Empresa debajo del listado
         let bar = root.querySelector(".o_company_list_bottom_bar");
         if (!bar) {
             bar = document.createElement("div");

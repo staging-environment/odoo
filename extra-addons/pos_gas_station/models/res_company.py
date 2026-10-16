@@ -22,6 +22,16 @@ class ResCompany(models.Model):
         string='Nº Empleados en Estaciones',
         compute='_compute_station_employee_count'
     )
+    edit_icon = fields.Html(
+        string='Acción',
+        compute='_compute_edit_icon',
+        sanitize=False
+    )
+
+    def _compute_edit_icon(self):
+        for company in self:
+            company.edit_icon = f'<a class="btn btn-sm btn-outline-primary py-1 px-2 fw-bold" href="#id={company.id}&amp;model=res.company&amp;view_type=form" style="display: inline-flex; align-items: center; border-color: #0284c7; color: #0284c7;"><i class="fa fa-pencil me-1"></i> Editar</a>'
+
 
     @api.depends('pos_config_ids')
     def _compute_pos_config_count(self):

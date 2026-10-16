@@ -117,7 +117,7 @@
                 <field name="phone" string="Teléfono"/>
                 <field name="pos_config_count" string="Estaciones Asociadas"/>
                 <field name="station_employee_count" string="Empleados en Estaciones"/>
-                <button name="action_open_company_form" string="Editar" type="object" icon="fa-pencil" class="btn btn-sm btn-outline-primary" title="Editar empresa"/>
+                <field name="edit_icon" widget="html" string="Acción"/>
             </xpath>
         </field>
     </record>
