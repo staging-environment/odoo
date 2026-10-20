@@ -1682,4 +1682,37 @@
         </div>
     </t>
 
+
+    <!-- SOBRESCRIBIR RECEIPTHEADER: ELIMINAR CAJERO ('ATENDIDO POR') Y TRACKING NUMBER GIGANTE -->
+    <t t-name="pos_gas_station.ReceiptHeader" t-inherit="point_of_sale.ReceiptHeader" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('cashier')]" position="replace" />
+        <xpath expr="//div[hasclass('fw-bolder') and span[hasclass('fs-2')]]" position="replace" />
+        <xpath expr="//h1[hasclass('tracking-number')]" position="replace" />
+    </t>
+
+    <!-- SOBRESCRIBIR ORDERRECEIPT: MOSTRAR CABECERA CON FACTURA SIMPLIFICADA Y SERIE TTTR -->
+    <t t-name="pos_gas_station.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension" owl="1">
+        <xpath expr="//ReceiptHeader" position="after">
+            <div class="ticket-header-box text-center my-2 pb-2" style="border-top: 1px dashed #000; border-bottom: 2px solid #000; padding: 6px 0; margin: 8px 0;">
+                <div style="font-size: 13px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
+                    FACTURA SIMPLIFICADA
+                </div>
+                <div class="ticket-serie-highlight" style="font-size: 17px; font-weight: 900; letter-spacing: 1.5px; margin-top: 2px;">
+                    SERIE / Nº: <t t-esc="props.data.ticket_series_name || props.data.name || ''" />
+                </div>
+            </div>
+        </xpath>
+        <xpath expr="//div[hasclass('pos-receipt-order-data') and div[@id='order-date']]" position="replace">
+            <div class="pos-receipt-order-data text-center mt-3 pt-2 border-top border-dark" style="font-size: 11px;">
+                <div style="font-weight: 900; font-size: 14px; letter-spacing: 1px;">
+                    TICKET: <t t-esc="props.data.ticket_series_name || props.data.name" />
+                </div>
+                <div id="order-date" style="font-size: 11px; margin-top: 2px;" t-esc="props.data.date" />
+                <div t-if="props.data.pos_reference and props.data.pos_reference != (props.data.ticket_series_name || props.data.name)" style="font-size: 10px; color: #555; margin-top: 2px;">
+                    Ref: <t t-esc="props.data.pos_reference" />
+                </div>
+            </div>
+        </xpath>
+    </t>
+
 </templates>

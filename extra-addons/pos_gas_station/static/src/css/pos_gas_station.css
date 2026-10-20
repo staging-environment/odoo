@@ -5150,3 +5150,27 @@
     font-size: 12px !important;
     color: #7f1d1d !important;
 }
+
+/* Ocultar Atendido por y número de turno / tracking en cualquier recibo TPV */
+.pos-receipt .cashier,
+.pos-receipt-contact .cashier,
+.pos-receipt .tracking-number,
+.pos-receipt-contact .fw-bolder,
+.pos-receipt .fw-bolder:has(.fs-2) {
+    display: none !important;
+}
+
+.ticket-header-box {
+    border-top: 1px dashed #000;
+    border-bottom: 2px solid #000;
+    padding: 6px 0;
+    margin: 8px 0;
+    text-align: center;
+}
+
+.ticket-serie-highlight {
+    font-size: 17px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    margin-top: 2px;
+}

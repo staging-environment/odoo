@@ -60,3 +60,20 @@ class PosOrder(models.Model):
                     'annulment_date': fields.Datetime.now(),
                 })
         return res
+
+    @api.model
+    def create_from_ui(self, orders, draft=False):
+        order_sync_results = super().create_from_ui(orders, draft=draft)
+        if order_sync_results:
+            order_ids = [r['id'] for r in order_sync_results if isinstance(r, dict) and 'id' in r]
+            if order_ids:
+                orders_records = self.browse(order_ids)
+                order_map = {o.id: o for o in orders_records}
+                for r in order_sync_results:
+                    if isinstance(r, dict) and r.get('id') in order_map:
+                        o = order_map[r['id']]
+                        r['name'] = o.name
+                        r['ticket_name'] = o.name
+                        r['is_ticket_annulled'] = o.is_ticket_annulled
+                        r['annulment_ref'] = o.annulment_ref
+        return order_sync_results

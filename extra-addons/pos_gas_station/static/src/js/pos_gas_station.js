@@ -4,6 +4,7 @@ import { Component, useState, onMounted, onWillUnmount } from "@odoo/owl";
 import { ProductScreen } from "@point_of_sale/app/screens/product_screen/product_screen";
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { OrderReceipt } from "@point_of_sale/app/screens/receipt_screen/receipt/order_receipt";
+import { Order } from "@point_of_sale/app/store/models";
 import { patch } from "@web/core/utils/patch";
 import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { jsonrpc } from "@web/core/network/rpc_service";
@@ -2298,6 +2299,38 @@ ProductScreen.components = {
     UtrecarMainScreen,
 };
 
+
+patch(Order.prototype, {
+    export_for_printing() {
+        const res = super.export_for_printing(...arguments);
+        res.cashier = null;
+        if (res.headerData) {
+            res.headerData.cashier = null;
+            res.headerData.trackingNumber = null;
+        }
+
+        let ticketName = this.backend_name;
+        if (!ticketName && this.name && this.name.startsWith("TTTR")) {
+            ticketName = this.name;
+        }
+        if (!ticketName) {
+            const seq = this.sequence_number || 1;
+            ticketName = `TTTR${String(seq).padStart(4, "0")}`;
+        }
+
+        res.ticket_series_name = ticketName;
+        res.pos_reference = this.get_name();
+        res.name = ticketName;
+
+        if (res.headerData) {
+            res.headerData.ticket_series_name = ticketName;
+            res.headerData.name = ticketName;
+        }
+
+        return res;
+    }
+});
+
 patch(PaymentScreen.prototype, {
     setup() {
         super.setup(...arguments);
@@ -2335,22 +2368,92 @@ patch(PaymentScreen.prototype, {
         return this.currentOrder.is_paid();
     },
 
+    async _finalizeValidation() {
+        if (this.currentOrder.is_paid_with_cash() || this.currentOrder.get_change()) {
+            this.hardwareProxy.openCashbox();
+        }
+
+        this.currentOrder.date_order = luxon.DateTime.now();
+        for (const line of this.paymentLines) {
+            if (!line.amount === 0) {
+                this.currentOrder.remove_paymentline(line);
+            }
+        }
+        this.currentOrder.finalized = true;
+
+        this.env.services.ui.block();
+        let syncOrderResult;
+        try {
+            // 1. Guardar en servidor para obtener la serie y correlativo oficial TTTR
+            syncOrderResult = await this.pos.push_single_order(this.currentOrder);
+            if (!syncOrderResult) {
+                return;
+            }
+            if (syncOrderResult && syncOrderResult.length > 0 && syncOrderResult[0]?.name) {
+                this.currentOrder.backend_name = syncOrderResult[0].name;
+                this.currentOrder.name = syncOrderResult[0].name;
+            }
+
+            // 2. Factura oficial si aplica
+            if (this.shouldDownloadInvoice() && this.currentOrder.is_to_invoice()) {
+                if (syncOrderResult[0]?.account_move) {
+                    await this.report.doAction("account.account_invoices", [
+                        syncOrderResult[0].account_move,
+                    ]);
+                } else {
+                    throw {
+                        code: 401,
+                        message: "Backend Invoice",
+                        data: { order: this.currentOrder },
+                    };
+                }
+            }
+        } catch (error) {
+            if (error instanceof ConnectionLostError) {
+                this.pos.showScreen(this.nextScreen);
+                Promise.reject(error);
+                return error;
+            } else {
+                throw error;
+            }
+        } finally {
+            this.env.services.ui.unblock();
+        }
+
+        // 3. Si se pulsó TICKET (imprimir), imprimir ahora con la serie TTTR oficial ya asignada
+        if (this._virtusPrintTicket) {
+            this._virtusPrintTicket = false;
+            try {
+                await this.printer.print(
+                    OrderReceipt,
+                    {
+                        data: this.currentOrder.export_for_printing(),
+                        formatCurrency: this.env.utils.formatCurrency,
+                    },
+                    { webPrintFallback: true }
+                );
+                this.currentOrder._printed = true;
+            } catch (e) {
+                console.debug("Error imprimiendo ticket:", e);
+            }
+        }
+
+        // 4. Post process
+        if (
+            syncOrderResult &&
+            syncOrderResult.length > 0 &&
+            this.currentOrder.wait_for_push_order()
+        ) {
+            await this.postPushOrderResolve(syncOrderResult.map((res) => res.id));
+        }
+
+        await this.afterOrderValidation(!!syncOrderResult && syncOrderResult.length > 0);
+    },
+
     async validateVirtusTicket() {
         this.ensureOrderPaid();
         this.currentOrder.set_to_invoice(false);
-        try {
-            await this.printer.print(
-                OrderReceipt,
-                {
-                    data: this.currentOrder.export_for_printing(),
-                    formatCurrency: this.env.utils.formatCurrency,
-                },
-                { webPrintFallback: true }
-            );
-            this.currentOrder._printed = true;
-        } catch (e) {
-            console.debug("Error imprimiendo ticket:", e);
-        }
+        this._virtusPrintTicket = true;
         await this.validateOrder(false);
     },
 
@@ -2362,6 +2465,7 @@ patch(PaymentScreen.prototype, {
                 return;
             }
         }
+        this._virtusPrintTicket = false;
         this.currentOrder.set_to_invoice(true);
         await this.validateOrder(false);
     },
@@ -2369,6 +2473,7 @@ patch(PaymentScreen.prototype, {
     async validateVirtusNoPrint() {
         this.ensureOrderPaid();
         this.currentOrder.set_to_invoice(false);
+        this._virtusPrintTicket = false;
         await this.validateOrder(false);
     },
 
