@@ -572,3 +572,68 @@
     margin-top: 4px !important;
     font-style: italic !important;
 }
+
+/* ==========================================================================
+   VISTA FORMULARIO COMPLETA DE POS.CONFIG (ELIMINAR COLUMNA VACÍA DERECHA)
+   ========================================================================== */
+
+/* 1. Específico para formulario de pos.config */
+.o_form_view.o_xxl_form_view:has(.o_pos_config_sheet_full_width),
+.o_form_view.o_xxl_form_view:has(.o_pos_config_form_full_width),
+.o_form_view.o_xxl_form_view:has(.o_form_statusbar:has([name='action_return_to_company'])),
+.o_form_view.o_xxl_form_view:has(.o_form_statusbar:has([name='action_return_to_gas_station_dashboard'])) {
+    flex-flow: column nowrap !important;
+}
+
+.o_form_view:has(.o_pos_config_sheet_full_width) .o_form_view_container,
+.o_form_view:has(.o_pos_config_form_full_width) .o_form_view_container,
+.o_form_view:has(.o_form_statusbar:has([name='action_return_to_company'])) .o_form_view_container,
+.o_form_view:has(.o_form_statusbar:has([name='action_return_to_gas_station_dashboard'])) .o_form_view_container {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+}
+
+.o_form_view:has(.o_pos_config_sheet_full_width) .o_form_sheet_bg,
+.o_form_view:has(.o_pos_config_form_full_width) .o_form_sheet_bg,
+.o_form_renderer.o_pos_config_form_full_width .o_form_sheet_bg,
+.o_form_view:has(.o_form_statusbar:has([name='action_return_to_company'])) .o_form_sheet_bg,
+.o_form_view:has(.o_form_statusbar:has([name='action_return_to_gas_station_dashboard'])) .o_form_sheet_bg {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-right: 0 !important;
+}
+
+.o_pos_config_sheet_full_width,
+.o_form_view:has(.o_pos_config_sheet_full_width) .o_form_sheet,
+.o_form_view:has(.o_pos_config_form_full_width) .o_form_sheet,
+.o_form_view:has(.o_form_statusbar:has([name='action_return_to_company'])) .o_form_sheet,
+.o_form_view:has(.o_form_statusbar:has([name='action_return_to_gas_station_dashboard'])) .o_form_sheet {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* 2. Regla general para cualquier formulario XXL sin Chatter lateral */
+.o_form_view.o_xxl_form_view:not(:has(.o-mail-Form-chatter.o-aside)):not(:has(.o_attachment_preview)) {
+    flex-flow: column nowrap !important;
+}
+
+.o_form_view.o_xxl_form_view:not(:has(.o-mail-Form-chatter.o-aside)):not(:has(.o_attachment_preview)) .o_form_view_container {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+}
+
+.o_form_view.o_xxl_form_view:not(:has(.o-mail-Form-chatter.o-aside)):not(:has(.o_attachment_preview)) .o_form_sheet_bg {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-right: 0 !important;
+}
+
+.o_form_view.o_xxl_form_view:not(:has(.o-mail-Form-chatter.o-aside)):not(:has(.o_attachment_preview)) .o_form_sheet {
+    max-width: 100% !important;
+    width: 100% !important;
+}
