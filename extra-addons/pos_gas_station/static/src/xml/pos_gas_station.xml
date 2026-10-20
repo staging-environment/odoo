@@ -123,7 +123,7 @@
                 <div class="virtus-quadrant-store">
                     <!-- BARRA DE ACCIONES Y PÁGINAS SUPERIOR -->
                     <div class="virtus-store-topbar">
-                        <button class="btn-store-cat" t-on-click="() => this.onSecurityDepositClick()" title="Opciones de Turno / Ingreso de Seguridad">
+                        <button class="btn-store-cat" t-on-click="() => this.openCashMoveModal()" title="Salidas de caja (Ingreso de seguridad, Salidas varias, Factura a proveedores)">
                             ⏱
                         </button>
                         <button class="btn-store-cat btn-catalog-open" t-on-click="() => this.openStoreModal()" title="Catálogo Completo y Búsqueda (Nombre, Código o Código de Barras)">
@@ -743,6 +743,106 @@
                             </button>
                         </div>
 
+                    </div>
+                </div>
+            </t>
+
+    <!-- ============================================================ -->
+            <!-- MODAL DE SALIDAS Y MOVIMIENTOS DE CAJA (INGRESO SEGURIDAD, ETC) -->
+            <!-- ============================================================ -->
+            <t t-if="state.isCashMoveModalOpen">
+                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeCashMoveModal()">
+                    <div class="utrecar-auth-modal cash-move-modal" style="width: 520px; max-width: 95vw;" t-on-click.stop="">
+                        <div class="auth-modal-header">
+                            <div class="auth-header-left">
+                                <div class="auth-header-icon">
+                                    💰
+                                </div>
+                                <div class="auth-header-titles">
+                                    <h3 class="auth-title">Salida / Movimiento de Caja</h3>
+                                    <span class="auth-subtitle">Registre la retirada de efectivo para que quede constancia en el turno</span>
+                                </div>
+                            </div>
+                            <button class="btn-modal-close" t-on-click="() => this.closeCashMoveModal()">✖</button>
+                        </div>
+
+                        <div class="auth-modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+                            <!-- SELECTOR DE TIPO DE MOVIMIENTO -->
+                            <div>
+                                <label class="fw-bold mb-2 text-dark d-block">Tipo de operación:</label>
+                                <div class="cash-move-type-selector">
+                                    <button type="button" 
+                                            t-attf-class="cash-move-type-btn #{state.cashMoveType === 'ingreso_seguridad' ? 'active' : ''}"
+                                            t-on-click="() => this.selectCashMoveType('ingreso_seguridad')">
+                                        <div class="cm-type-icon">🔒</div>
+                                        <div class="cm-type-text">
+                                            <strong>Ingreso de seguridad</strong>
+                                            <small>Retirada a caja fuerte (UAAP)</small>
+                                        </div>
+                                    </button>
+
+                                    <button type="button" 
+                                            t-attf-class="cash-move-type-btn #{state.cashMoveType === 'salidas_varias' ? 'active' : ''}"
+                                            t-on-click="() => this.selectCashMoveType('salidas_varias')">
+                                        <div class="cm-type-icon">💸</div>
+                                        <div class="cm-type-text">
+                                            <strong>Salidas varias</strong>
+                                            <small>Gastos menores o retiradas justificadas</small>
+                                        </div>
+                                    </button>
+
+                                    <button type="button" 
+                                            t-attf-class="cash-move-type-btn #{state.cashMoveType === 'pago_proveedores' ? 'active' : ''}"
+                                            t-on-click="() => this.selectCashMoveType('pago_proveedores')">
+                                        <div class="cm-type-icon">📄</div>
+                                        <div class="cm-type-text">
+                                            <strong>Pago factura a proveedores</strong>
+                                            <small>Pago en efectivo a proveedores de mercancía / servicios</small>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- CAMPO DE IMPORTE -->
+                            <div>
+                                <label class="fw-bold mb-1 text-dark d-block">Importe a retirar (€):</label>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <input type="number" 
+                                           step="0.01" 
+                                           class="form-control cash-move-amount-input" 
+                                           t-model="state.cashMoveAmount" 
+                                           placeholder="0,00" 
+                                           style="font-size: 20px; font-weight: 800; height: 46px; text-align: right;" />
+                                    <span style="font-size: 20px; font-weight: 800; color: #1e293b;">€</span>
+                                </div>
+                                <!-- BOTONES RÁPIDOS DE IMPORTE -->
+                                <div class="d-flex gap-2 mt-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill fw-bold" t-on-click="() => this.setQuickCashMoveAmount(50)">50 €</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill fw-bold" t-on-click="() => this.setQuickCashMoveAmount(100)">100 €</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill fw-bold" t-on-click="() => this.setQuickCashMoveAmount(200)">200 €</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill fw-bold" t-on-click="() => this.setQuickCashMoveAmount(500)">500 €</button>
+                                </div>
+                            </div>
+
+                            <!-- CAMPO DE OBSERVACIONES / DETALLE -->
+                            <div>
+                                <label class="fw-bold mb-1 text-dark d-block">Concepto / Detalle / Factura:</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       t-model="state.cashMoveNotes" 
+                                       t-att-placeholder="getCashMoveNotesPlaceholder()" 
+                                       style="height: 38px; font-size: 13px;" />
+                            </div>
+                        </div>
+
+                        <div class="auth-modal-footer" style="padding: 12px 18px; display: flex; justify-content: space-between; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+                            <button type="button" class="btn btn-secondary px-4 fw-bold" t-on-click="() => this.closeCashMoveModal()">
+                                Cancelar
+                            </button>
+                            <button type="button" class="btn btn-danger px-4 fw-bold" t-on-click="() => this.confirmCashMove()">
+                                💾 Registrar Movimiento
+                            </button>
+                        </div>
                     </div>
                 </div>
             </t>

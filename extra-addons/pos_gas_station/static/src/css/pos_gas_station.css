@@ -4657,3 +4657,55 @@
 .virtus-grid-table tbody tr:hover {
     background: #f0f9ff !important;
 }
+
+/* ==========================================================================
+   MODAL DE MOVIMIENTOS DE CAJA (INGRESO SEGURIDAD, SALIDAS VARIAS, PROVEEDORES)
+   ========================================================================== */
+.cash-move-type-selector {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.cash-move-type-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 14px !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    cursor: pointer !important;
+    text-align: left !important;
+    transition: all 0.15s ease !important;
+    width: 100% !important;
+}
+
+.cash-move-type-btn:hover {
+    border-color: #cbd5e1 !important;
+    background: #f8fafc !important;
+}
+
+.cash-move-type-btn.active {
+    border-color: #2563eb !important;
+    background: #eff6ff !important;
+    box-shadow: 0 0 0 1px #2563eb !important;
+}
+
+.cm-type-icon {
+    font-size: 24px !important;
+    width: 36px !important;
+    text-align: center !important;
+}
+
+.cm-type-text strong {
+    display: block !important;
+    font-size: 13.5px !important;
+    color: #0f172a !important;
+}
+
+.cm-type-text small {
+    display: block !important;
+    font-size: 11px !important;
+    color: #64748b !important;
+}

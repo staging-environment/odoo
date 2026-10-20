@@ -67,6 +67,7 @@ export class UtrecarMainScreen extends Component {
     setup() {
         this.pos = usePos();
         this.popup = useService("popup");
+        this.orm = useService("orm");
         
         const urlParams = new URLSearchParams(window.location.search);
         this.configId = parseInt(urlParams.get("config_id")) || (this.pos.config ? this.pos.config.id : 2);
@@ -82,6 +83,10 @@ export class UtrecarMainScreen extends Component {
         }
 
         this.state = useState({
+            isCashMoveModalOpen: false,
+            cashMoveType: "ingreso_seguridad",
+            cashMoveAmount: "500",
+            cashMoveNotes: "",
             isPendingSalesModalOpen: false,
             pendingModalPump: null,
             stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
@@ -1984,22 +1989,101 @@ export class UtrecarMainScreen extends Component {
         this.state.selectedPumpId = pumpId;
     }
 
-    async onSecurityDepositClick() {
-        const amountStr = prompt("🔒 INGRESO DE SEGURIDAD (RETIRADA A CAJA FUERTE UAAP)\nIntroduzca el importe en efectivo a retirar de la caja (Ej: 500):", "500");
-        if (!amountStr) return;
-        const amount = parseFloat(amountStr);
+    onSecurityDepositClick() {
+        this.openCashMoveModal();
+    }
+
+    openCashMoveModal() {
+        this.state.isCashMoveModalOpen = true;
+        this.state.cashMoveType = "ingreso_seguridad";
+        this.state.cashMoveAmount = "500";
+        this.state.cashMoveNotes = "";
+    }
+
+    closeCashMoveModal() {
+        this.state.isCashMoveModalOpen = false;
+        this.state.cashMoveAmount = "";
+        this.state.cashMoveNotes = "";
+    }
+
+    selectCashMoveType(type) {
+        this.state.cashMoveType = type;
+        if (type === "ingreso_seguridad") {
+            if (!this.state.cashMoveAmount) this.state.cashMoveAmount = "500";
+        }
+    }
+
+    setQuickCashMoveAmount(val) {
+        this.state.cashMoveAmount = String(val);
+    }
+
+    getCashMoveNotesPlaceholder() {
+        if (this.state.cashMoveType === "ingreso_seguridad") {
+            return "Ej: Sobre UAAP #12 / Retirada por exceso de efectivo";
+        } else if (this.state.cashMoveType === "salidas_varias") {
+            return "Ej: Material de limpieza, ferretería, reparaciones...";
+        } else if (this.state.cashMoveType === "pago_proveedores") {
+            return "Ej: Panadería Juan - Factura F-2026/041";
+        }
+        return "Detalle u observaciones del movimiento";
+    }
+
+    async confirmCashMove() {
+        const rawAmount = (this.state.cashMoveAmount || "").toString().trim().replace(",", ".");
+        const amount = parseFloat(rawAmount);
         if (isNaN(amount) || amount <= 0) {
-            alert("Importe no válido.");
+            alert("Por favor, introduzca un importe válido superior a 0 €.");
             return;
         }
 
+        let typeLabel = "Salida de efectivo";
+        let reason = "Movimiento de caja";
+        if (this.state.cashMoveType === "ingreso_seguridad") {
+            typeLabel = "Ingreso de seguridad";
+            reason = "Ingreso de seguridad (Caja Fuerte UAAP)";
+        } else if (this.state.cashMoveType === "salidas_varias") {
+            typeLabel = "Salidas varias";
+            reason = "Salidas varias";
+        } else if (this.state.cashMoveType === "pago_proveedores") {
+            typeLabel = "Pago factura a proveedores";
+            reason = "Pago factura proveedores";
+        }
+
+        const notes = (this.state.cashMoveNotes || "").trim();
+        const fullReason = notes ? `${reason} - ${notes}` : reason;
+        const formattedAmount = `${amount.toFixed(2)} €`;
+
         try {
-            if (typeof this.pos.create_cash_move === "function") {
-                await this.pos.create_cash_move(-amount, "Ingreso de Seguridad - Exceso de efectivo");
+            if (this.pos.pos_session?.id && this.orm) {
+                await this.orm.call("pos.session", "try_cash_in_out", [
+                    [this.pos.pos_session.id],
+                    "out",
+                    amount,
+                    fullReason,
+                    {
+                        formattedAmount: formattedAmount,
+                        translatedType: "Salida",
+                    },
+                ]);
+            } else if (typeof this.pos.create_cash_move === "function") {
+                await this.pos.create_cash_move(-amount, fullReason);
             }
-            alert(`✅ INGRESO DE SEGURIDAD REGISTRADO: ${amount.toFixed(2)} €.\nPor favor, retire los billetes de la caja y deposítelos en la caja fuerte.`);
-        } catch (e) {
-            alert(`✅ Registrado Ingreso de Seguridad de ${amount.toFixed(2)} €.`);
+
+            alert(`✅ REGISTRADO CORRECTAMENTE\n\n📌 Tipo: ${typeLabel}\n💶 Importe: ${formattedAmount}\n${notes ? "📝 Detalle: " + notes + "\n" : ""}\nEl movimiento ha quedado registrado en el turno de caja.`);
+            this.closeCashMoveModal();
+        } catch (err) {
+            console.error("Error registrando movimiento de caja:", err);
+            try {
+                if (typeof this.pos.create_cash_move === "function") {
+                    await this.pos.create_cash_move(-amount, fullReason);
+                    alert(`✅ REGISTRADO CORRECTAMENTE: ${typeLabel} de ${formattedAmount}.`);
+                    this.closeCashMoveModal();
+                    return;
+                }
+            } catch (fallbackErr) {
+                console.error("Error fallback create_cash_move:", fallbackErr);
+            }
+            alert(`⚠️ Error al registrar en Odoo: ${err.message || err}`);
         }
     }
 
