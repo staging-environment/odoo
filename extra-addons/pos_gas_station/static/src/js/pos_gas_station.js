@@ -9,6 +9,7 @@ import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { jsonrpc } from "@web/core/network/rpc_service";
 import { useService } from "@web/core/utils/hooks";
 import { ClosePosPopup } from "@point_of_sale/app/navbar/closing_popup/closing_popup";
+import { NumberPopup } from "@point_of_sale/app/utils/input_popups/number_popup";
 
 export class GasStationClosePosPopup extends ClosePosPopup {
     static template = "pos_gas_station.ClosePosPopup";
@@ -619,6 +620,64 @@ export class UtrecarMainScreen extends Component {
         const currentOrder = this.getOrCreateOrder();
         if (currentOrder) {
             if (currentOrder.set_note) currentOrder.set_note(plate ? `Matrícula: ${plate}` : "");
+        }
+    }
+
+    async editLineQuantity(line) {
+        if (!line) return;
+        this.selectOrderLine(line);
+        const currentQty = line.get_quantity();
+        const productName = line.product ? line.product.display_name : "Artículo";
+        let newQty = null;
+
+        try {
+            const isUnit = line.product?.uom_id && (line.product.uom_id[1] === "Units" || line.product.uom_id[1] === "Unidades");
+            const { confirmed, payload } = await this.popup.add(NumberPopup, {
+                title: `Modificar cantidad: ${productName}`,
+                startingValue: currentQty,
+                isInputSelected: true,
+                nbrDecimal: isUnit ? 0 : 2,
+            });
+            if (confirmed && payload !== null && payload !== "") {
+                newQty = parseFloat(payload);
+            }
+        } catch (e) {
+            console.debug("Aviso abriendo NumberPopup, usando prompt de fallback:", e);
+            const input = prompt(`Modificar cantidad para "${productName}":`, currentQty);
+            if (input !== null && input.trim() !== "") {
+                newQty = parseFloat(input.trim().replace(",", "."));
+            }
+        }
+
+        if (newQty !== null && !isNaN(newQty)) {
+            if (newQty <= 0) {
+                this.deleteSpecificLine(line);
+            } else {
+                line.set_quantity(newQty);
+                this.state.orderVersion = Date.now();
+            }
+        }
+    }
+
+    async onProductCardDblClick(virtusItem) {
+        if (!virtusItem || virtusItem.is_empty) return;
+        const currentOrder = this.getOrCreateOrder();
+        if (!currentOrder) return;
+
+        const lines = currentOrder.get_orderlines() || [];
+        const code = (virtusItem.default_code || "").toLowerCase();
+        const barcode = (virtusItem.barcode || "").toLowerCase();
+        const name = (virtusItem.display_name || virtusItem.full_name || "").toLowerCase();
+
+        let targetLine = lines.find(l => {
+            if (!l.product) return false;
+            if (barcode && (l.product.barcode || "").toLowerCase() === barcode) return true;
+            if (code && (l.product.default_code || "").toLowerCase() === code) return true;
+            return (l.product.display_name || "").toLowerCase().includes(name);
+        });
+
+        if (targetLine) {
+            await this.editLineQuantity(targetLine);
         }
     }
 

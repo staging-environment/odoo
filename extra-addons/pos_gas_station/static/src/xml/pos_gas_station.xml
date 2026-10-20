@@ -73,7 +73,7 @@
                                 <t t-else="">
                                     <t t-foreach="currentOrderLines" t-as="line" t-key="line.id">
                                         <tr t-att-class="(state.selectedLineId === line.id || line.selected) ? 'row-selected' : ''" 
-                                            t-on-click="() => this.selectOrderLine(line)">
+                                            t-on-click="() => this.selectOrderLine(line)" t-on-dblclick="() => this.editLineQuantity(line)" title="Haga doble clic para modificar la cantidad">
                                             <td><span class="cell-code"><t t-esc="line.product.default_code || 'ART'"/></span></td>
                                             <td class="font-weight-bold">
                                                 <t t-if="line.get_quantity() > 0 &amp;&amp; (line.product.display_name.includes('Gasóleo') || line.product.display_name.includes('Sin Plomo'))">
@@ -189,19 +189,19 @@
                             <t t-elif="prod.bg_image">
                                 <button class="store-item-btn" 
                                         t-att-title="prod.display_name"
-                                        t-on-click="() => this.addStoreProductToOrder(prod)">
+                                        t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
                                     <img t-att-src="prod.bg_image" class="store-product-img-tag" alt="Producto"/>
                                 </button>
                             </t>
                             <t t-elif="prod.text_only">
                                 <button class="store-item-btn text-item-btn" 
                                         t-att-title="prod.full_name || prod.display_name"
-                                        t-on-click="() => this.addStoreProductToOrder(prod)">
+                                        t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
                                     <span class="text-btn-label"><t t-esc="prod.display_name"/></span>
                                 </button>
                             </t>
                             <t t-else="">
-                                <button class="store-item-btn" t-on-click="() => this.addStoreProductToOrder(prod)">
+                                <button class="store-item-btn" t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
                                     <span class="store-item-name"><t t-esc="prod.display_name"/></span>
                                 </button>
                             </t>
@@ -484,7 +484,7 @@
                                 </div>
                             </t>
                             <t t-foreach="filteredStoreProducts" t-as="product" t-key="product.id">
-                                <div class="store-product-card" t-on-click="() => this.addStoreProductToOrder(product)">
+                                <div class="store-product-card" t-on-click="() => this.addStoreProductToOrder(product)" t-on-dblclick="() => this.onProductCardDblClick(product)">
                                     <div class="product-card-body">
                                         <div class="product-badges-row">
                                             <span class="product-code" t-if="product.default_code"><t t-esc="product.default_code"/></span>

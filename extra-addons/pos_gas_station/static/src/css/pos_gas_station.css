@@ -4650,3 +4650,10 @@
     padding-top: 8px !important;
     padding-bottom: 8px !important;
 }
+
+.virtus-grid-table tbody tr {
+    cursor: pointer !important;
+}
+.virtus-grid-table tbody tr:hover {
+    background: #f0f9ff !important;
+}
