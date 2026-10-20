@@ -681,9 +681,43 @@ export class UtrecarMainScreen extends Component {
             return (l.product.display_name || "").toLowerCase().includes(name);
         });
 
+        if (!targetLine) {
+            await this.addStoreProductToOrder(virtusItem, true);
+            const updatedLines = currentOrder.get_orderlines() || [];
+            targetLine = updatedLines.find(l => {
+                if (!l.product) return false;
+                if (barcode && (l.product.barcode || "").toLowerCase() === barcode) return true;
+                if (code && (l.product.default_code || "").toLowerCase() === code) return true;
+                return (l.product.display_name || "").toLowerCase().includes(name);
+            });
+        }
+
         if (targetLine) {
             await this.editLineQuantity(targetLine);
         }
+    }
+
+    getProductOrderQty(virtusItem) {
+        if (!virtusItem) return 0;
+        const currentOrder = this.pos ? this.pos.get_order() : null;
+        if (!currentOrder) return 0;
+        const lines = (typeof currentOrder.get_orderlines === "function" ? currentOrder.get_orderlines() : currentOrder.orderlines) || [];
+        const code = (virtusItem.default_code || "").toLowerCase();
+        const barcode = (virtusItem.barcode || "").toLowerCase();
+        const name = (virtusItem.display_name || virtusItem.full_name || virtusItem.name || "").toLowerCase();
+
+        let total = 0;
+        for (const l of lines) {
+            if (!l.product) continue;
+            const pCode = (l.product.default_code || "").toLowerCase();
+            const pBarcode = (l.product.barcode || "").toLowerCase();
+            const pName = (l.product.display_name || l.product.name || "").toLowerCase();
+
+            if ((barcode && pBarcode === barcode) || (code && pCode === code) || (pName === name)) {
+                total += (typeof l.get_quantity === "function" ? l.get_quantity() : l.quantity) || 0;
+            }
+        }
+        return total;
     }
 
     selectOrderLine(line) {
@@ -1306,7 +1340,7 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
-    async addStoreProductToOrder(virtusItem) {
+    async addStoreProductToOrder(virtusItem, keepOpen = false) {
         if (!virtusItem || virtusItem.is_empty) return;
         const currentOrder = this.getOrCreateOrder();
         if (!currentOrder) return;
@@ -1341,7 +1375,9 @@ export class UtrecarMainScreen extends Component {
             }
             this.state.orderVersion = Date.now();
         }
-        this.closeStoreModal();
+        if (!keepOpen) {
+            this.closeStoreModal();
+        }
     }
 
     shouldShowPrepayCoin(pump) {

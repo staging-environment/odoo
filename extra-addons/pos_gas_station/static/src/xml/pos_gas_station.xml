@@ -446,58 +446,115 @@
             <t t-if="state.isStoreModalOpen">
                 <div class="utrecar-modal-backdrop" t-on-click="() => this.closeStoreModal()">
                     <div class="utrecar-store-modal" t-on-click.stop="">
+                        <!-- ENCABEZADO ELEGANTE -->
                         <div class="store-modal-header">
-                            <div class="modal-title">
-                                <i class="fa fa-boxes me-2"/>
-                                <strong>CATÁLOGO COMPLETO DE TIENDA</strong>
+                            <div class="store-modal-header-left">
+                                <div class="store-modal-icon-badge">
+                                    <i class="fa fa-boxes"/>
+                                </div>
+                                <div class="store-modal-titles">
+                                    <h3 class="store-modal-title">Catálogo de Productos</h3>
+                                    <span class="store-modal-subtitle">
+                                        <t t-esc="filteredStoreProducts.length"/> artículos disponibles
+                                    </span>
+                                </div>
                             </div>
-                            <div class="modal-search-box">
+                            <button class="store-modal-close-btn" t-on-click="() => this.closeStoreModal()" title="Cerrar catálogo">
+                                <i class="fa fa-times"/>
+                            </button>
+                        </div>
+
+                        <!-- PANEL DEDICADO DE BÚSQUEDA Y FILTROS -->
+                        <div class="store-modal-filter-panel">
+                            <!-- BARRA DE BÚSQUEDA DESTACADA -->
+                            <div class="store-search-wrapper">
+                                <i class="fa fa-search store-search-icon"/>
                                 <input type="text" 
-                                       class="store-search-input" 
-                                       placeholder="Buscar por Nombre, Código Interno o Código de Barras..." 
+                                       class="store-search-input store-search-input-modern" 
+                                       placeholder="Buscar por nombre de producto, referencia o código de barras..." 
                                        t-att-value="state.storeSearch" 
                                        t-on-input="(ev) => this.onStoreSearchInput(ev)" />
-                                <button t-if="state.storeSearch" class="btn-clear-search-store" t-on-click="() => this.clearStoreSearch()">✖</button>
-                            </div>
-                            <button class="btn-close-modal" t-on-click="() => this.closeStoreModal()">✖</button>
-                        </div>
-
-                        <!-- CATEGORÍAS TPV EN EL MODAL -->
-                        <div class="store-modal-categories" t-if="posCategories.length > 0">
-                            <button t-attf-class="btn-cat-chip #{!state.selectedModalCategory ? 'active' : ''}" 
-                                    t-on-click="() => this.selectModalCategory(null)">
-                                Todos los Artículos
-                            </button>
-                            <t t-foreach="posCategories" t-as="cat" t-key="cat.id">
-                                <button t-attf-class="btn-cat-chip #{state.selectedModalCategory === cat.id ? 'active' : ''}" 
-                                        t-on-click="() => this.selectModalCategory(cat.id)">
-                                    <t t-esc="cat.name"/>
+                                <button t-if="state.storeSearch" class="btn-clear-search-store-modern" t-on-click="() => this.clearStoreSearch()" title="Limpiar búsqueda">
+                                    <i class="fa fa-times-circle"/>
                                 </button>
-                            </t>
+                            </div>
+
+                            <!-- BOTONES DE CATEGORÍAS ELEGANTE (CHIPS/PILLS) -->
+                            <div class="store-modal-categories-bar" t-if="posCategories.length > 0">
+                                <button t-attf-class="btn-cat-pill #{!state.selectedModalCategory ? 'active' : ''}" 
+                                        t-on-click="() => this.selectModalCategory(null)">
+                                    <i class="fa fa-th-large me-1"/>
+                                    Todos los Artículos
+                                </button>
+                                <t t-foreach="posCategories" t-as="cat" t-key="cat.id">
+                                    <button t-attf-class="btn-cat-pill #{state.selectedModalCategory === cat.id ? 'active' : ''}" 
+                                            t-on-click="() => this.selectModalCategory(cat.id)">
+                                        <t t-esc="cat.name"/>
+                                    </button>
+                                </t>
+                            </div>
                         </div>
 
+                        <!-- GRID DE PRODUCTOS MODERNO Y ESPACIOSO -->
                         <div class="store-products-grid">
                             <t t-if="filteredStoreProducts.length === 0">
-                                <div class="col-12 text-center py-5 text-muted">
-                                    <i class="fa fa-search fa-2x mb-2 d-block opacity-40"/>
-                                    No se encontró ningún artículo para "<strong><t t-esc="state.storeSearch"/></strong>".
+                                <div class="store-empty-catalog">
+                                    <i class="fa fa-search fa-3x mb-3 text-muted" style="opacity: 0.4;"/>
+                                    <h5>No se encontraron artículos</h5>
+                                    <p class="text-muted mb-3" t-if="state.storeSearch">
+                                        No hay coincidencias para "<strong><t t-esc="state.storeSearch"/></strong>"
+                                    </p>
+                                    <button class="btn btn-outline-secondary btn-sm" t-if="state.storeSearch" t-on-click="() => this.clearStoreSearch()">
+                                        Limpiar búsqueda
+                                    </button>
                                 </div>
                             </t>
                             <t t-foreach="filteredStoreProducts" t-as="product" t-key="product.id">
-                                <div class="store-product-card" t-on-click="() => this.addStoreProductToOrder(product)" t-on-dblclick="() => this.onProductCardDblClick(product)">
-                                    <div class="product-card-body">
+                                <t t-set="inOrderQty" t-value="this.getProductOrderQty(product)"/>
+                                <div t-attf-class="store-product-card #{inOrderQty > 0 ? 'card-in-sale' : ''}" 
+                                     t-on-click="() => this.addStoreProductToOrder(product, true)" 
+                                     t-on-dblclick="() => this.onProductCardDblClick(product)"
+                                     title="Clic para añadir 1 ud. Doble clic para cambiar cantidad.">
+                                    <div class="product-card-top">
                                         <div class="product-badges-row">
-                                            <span class="product-code" t-if="product.default_code"><t t-esc="product.default_code"/></span>
+                                            <span class="product-code-tag" t-if="product.default_code">
+                                                <t t-esc="product.default_code"/>
+                                            </span>
                                             <span class="product-barcode-tag" t-if="product.barcode">
                                                 <i class="fa fa-barcode me-1"/><t t-esc="product.barcode"/>
                                             </span>
+                                            <span class="product-qty-badge" t-if="inOrderQty > 0">
+                                                <i class="fa fa-shopping-cart me-1"/><t t-esc="inOrderQty"/> en venta
+                                            </span>
                                         </div>
-                                        <div class="product-name"><t t-esc="product.display_name"/></div>
-                                        <div class="product-price"><t t-esc="(product.lst_price || product.list_price || 0).toFixed(2)"/> €</div>
+                                        <div class="product-card-name" t-att-title="product.display_name">
+                                            <t t-esc="product.display_name"/>
+                                        </div>
                                     </div>
-                                    <div class="product-card-footer">➕ Añadir a Venta</div>
+                                    <div class="product-card-bottom">
+                                        <div class="product-card-price">
+                                            <t t-esc="(product.lst_price || product.list_price || 0).toFixed(2)"/> <span class="currency-symbol">€</span>
+                                        </div>
+                                        <button class="btn-add-product-action" 
+                                                t-on-click.stop="() => this.addStoreProductToOrder(product, true)">
+                                            <i class="fa fa-plus me-1"/> Añadir
+                                        </button>
+                                    </div>
                                 </div>
                             </t>
+                        </div>
+
+                        <!-- PIE DEL MODAL CON ACCIÓN Y CONSEJO -->
+                        <div class="store-modal-footer">
+                            <div class="store-modal-tip">
+                                <i class="fa fa-lightbulb-o text-warning me-1"/>
+                                <span><strong>Consejo:</strong> Clic para añadir unidad o <strong>doble clic</strong> para modificar cantidad.</span>
+                            </div>
+                            <div class="store-modal-footer-actions">
+                                <button class="btn-store-modal-done" t-on-click="() => this.closeStoreModal()">
+                                    <i class="fa fa-check me-2"/> Listo / Volver al TPV
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
