@@ -686,6 +686,10 @@ class PosGasStationController(http.Controller):
                     'fiscal_position': o.fiscal_position_id.name if o.fiscal_position_id else 'Posición fiscal ordinaria',
                     'state': 'invoiced' if is_inv else o.state,
                     'is_invoiced': is_inv,
+                    'is_ticket_annulled': getattr(o, 'is_ticket_annulled', False) or is_inv,
+                    'annulment_ref': getattr(o, 'annulment_ref', False) or (f"TTTR_{(''.join(c for c in (o.name or '') if c.isdigit()) or str(o.id))[-4:].zfill(4)}" if is_inv else ''),
+                    'annulment_reason': getattr(o, 'annulment_reason', False) or (f"Anulado por emisión de Factura {o.account_move.name}" if is_inv else ''),
+                    'annulment_date': str(getattr(o, 'annulment_date', '')) if getattr(o, 'annulment_date', False) else '',
                     'account_move_id': o.account_move.id if is_inv else False,
                     'account_move_name': o.account_move.name if is_inv else '',
                     'invoice_url': inv_url,
@@ -781,14 +785,45 @@ class PosGasStationController(http.Controller):
             if not order.account_move:
                 return {'status': 'error', 'message': 'No se pudo generar el asiento contable de factura.'}
 
+            digits = ''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id)
+            annul_ref = getattr(order, 'annulment_ref', '') or f"TTTR_{digits[-4:].zfill(4)}"
             return {
                 'status': 'success',
                 'account_move_id': order.account_move.id,
                 'account_move_name': order.account_move.name,
+                'is_ticket_annulled': True,
+                'annulment_ref': annul_ref,
                 'invoice_url': f'/report/pdf/account.report_invoice_with_payments/{order.account_move.id}'
             }
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/invoice_order: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/annul_order', type='json', auth='user', methods=['POST'], csrf=False)
+    def annul_order(self, order_id, reason=None):
+        try:
+            env = request.env
+            order = env['pos.order'].sudo().browse(int(order_id))
+            if not order.exists():
+                return {'status': 'error', 'message': 'Pedido no encontrado'}
+            if hasattr(order, 'action_annul_ticket'):
+                order.action_annul_ticket(reason=reason)
+            else:
+                digits = ''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id)
+                ref = f"TTTR_{digits[-4:].zfill(4)}"
+                order.write({
+                    'is_ticket_annulled': True,
+                    'annulment_ref': ref,
+                    'annulment_reason': reason or 'Anulación manual de ticket',
+                    'annulment_date': fields.Datetime.now(),
+                })
+            return {
+                'status': 'success',
+                'annulment_ref': order.annulment_ref,
+                'annulment_reason': order.annulment_reason,
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/annul_order: %s", e)
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/search_partners', type='json', auth='user', methods=['POST'], csrf=False)

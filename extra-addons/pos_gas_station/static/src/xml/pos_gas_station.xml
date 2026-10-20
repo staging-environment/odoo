@@ -1146,8 +1146,11 @@
                                                         <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
                                                             👁 Ver
                                                         </button>
-                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord)" title="Imprimir ticket">
+                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir ticket">
                                                             🖨️ Ticket
+                                                        </button>
+                                                        <button class="btn-tbl-action btn-tbl-copy" t-on-click="() => this.printShiftOrderTicket(ord, true)" title="Imprimir copia de ticket">
+                                                            📋 Copia
                                                         </button>
                                                         <t t-if="ord.is_invoiced">
                                                             <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura PDF">
@@ -1188,10 +1191,13 @@
                                 </div>
                             </div>
 
-                            <!-- BARRA DE ACCIONES SUPERIORES (TICKET, FACTURA) -->
+                            <!-- BARRA DE ACCIONES SUPERIORES (TICKET, COPIA, FACTURA, ANULAR) -->
                             <div class="shift-detail-actions-bar">
-                                <button class="btn-action-primary" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder)">
+                                <button class="btn-action-primary" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, false)">
                                     <i class="fa fa-print me-1"/> 🖨️ Imprimir Ticket
+                                </button>
+                                <button class="btn-action-primary btn-action-copy" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, true)">
+                                    <i class="fa fa-copy me-1"/> 📋 Imprimir Copia
                                 </button>
                                 <t t-if="state.selectedShiftOrder.is_invoiced">
                                     <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder)">
@@ -1203,6 +1209,29 @@
                                         <i class="fa fa-file-text-o me-1"/> 📄 Generar Factura (NIF/CIF)
                                     </button>
                                 </t>
+                                <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.is_invoiced">
+                                    <button class="btn-action-primary btn-action-annul" t-on-click="() => this.confirmAnnulOrder(state.selectedShiftOrder)">
+                                        <i class="fa fa-ban me-1"/> ❌ Anular Ticket
+                                    </button>
+                                </t>
+                            </div>
+
+                            <!-- BANNER DE TICKET ANULADO SI CORRESPONDE -->
+                            <div class="shift-annulment-notice-banner" t-if="state.selectedShiftOrder.is_ticket_annulled">
+                                <div class="banner-title">
+                                    <i class="fa fa-ban me-1.5"/>
+                                    <strong>TICKET ANULADO</strong>
+                                    <span class="badge-annul-ref ms-2"><t t-esc="state.selectedShiftOrder.annulment_ref"/></span>
+                                </div>
+                                <div class="banner-text">
+                                    <t t-if="state.selectedShiftOrder.is_invoiced">
+                                        Anulado y canjeado por Factura <strong><t t-esc="state.selectedShiftOrder.account_move_name"/></strong>. 
+                                    </t>
+                                    <t t-else="">
+                                        <t t-if="state.selectedShiftOrder.annulment_reason"><t t-esc="state.selectedShiftOrder.annulment_reason"/>. </t>
+                                    </t>
+                                    El registro se conserva en el sistema a efectos de trazabilidad legal.
+                                </div>
                             </div>
 
                             <!-- CONTENEDOR PRINCIPAL CON SCROLL -->
@@ -1226,6 +1255,10 @@
                                             <div class="meta-row">
                                                 <span class="meta-label">Usuario</span>
                                                 <span class="meta-value"><t t-esc="state.selectedShiftOrder.user_name"/></span>
+                                            </div>
+                                            <div class="meta-row" t-if="state.selectedShiftOrder.annulment_ref">
+                                                <span class="meta-label">Ref. Anulación</span>
+                                                <span class="meta-value text-danger fw-bold"><t t-esc="state.selectedShiftOrder.annulment_ref"/></span>
                                             </div>
                                         </div>
                                         <div class="meta-field-group">

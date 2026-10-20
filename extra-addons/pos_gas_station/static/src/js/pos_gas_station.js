@@ -1003,7 +1003,7 @@ export class UtrecarMainScreen extends Component {
         this.state.shiftActiveTab = tab;
     }
 
-    printShiftOrderTicket(order) {
+    printShiftOrderTicket(order, isCopy = false) {
         if (!order) return;
         const comp = order.company || {};
         const linesHtml = (order.lines || []).map(l => `
@@ -1032,7 +1032,22 @@ export class UtrecarMainScreen extends Component {
 
         const invoiceHtml = order.is_invoiced ? `
             <div style="margin-top: 6px; padding: 4px; background: #e8f5e9; border: 1px solid #81c784; text-align: center; font-weight: bold; font-size: 11px; border-radius: 4px;">
-                FACTURA: ${order.account_move_name}
+                FACTURA ASOCIADA: ${order.account_move_name}
+            </div>
+        ` : '';
+
+        const copyBanner = isCopy ? `
+            <div style="border: 2px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 2px;">
+                *** COPIA DE TICKET ***
+            </div>
+        ` : '';
+
+        const isAnnulled = order.is_ticket_annulled || Boolean(order.annulment_ref);
+        const annulBanner = isAnnulled ? `
+            <div style="border: 2px dashed #b71c1c; background: #ffebee; color: #b71c1c; padding: 6px; text-align: center; margin-bottom: 8px; font-weight: bold; font-size: 11px;">
+                <div style="font-size: 13px; letter-spacing: 1px;">*** TICKET ANULADO ***</div>
+                <div>REF. ANULACIÓN: ${order.annulment_ref || 'TTTR_ANUL'}</div>
+                ${order.is_invoiced ? `<div>SUSTITUIDO POR FACTURA: ${order.account_move_name}</div>` : ''}
             </div>
         ` : '';
 
@@ -1047,7 +1062,7 @@ export class UtrecarMainScreen extends Component {
             <html>
             <head>
                 <meta charset="utf-8">
-                <title>Ticket ${order.name}</title>
+                <title>Ticket ${order.name}${isCopy ? ' (COPIA)' : ''}</title>
                 <style>
                     body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 16px; color: #000; }
                     .header { text-align: center; margin-bottom: 10px; }
@@ -1068,6 +1083,8 @@ export class UtrecarMainScreen extends Component {
                 </style>
             </head>
             <body>
+                ${copyBanner}
+                ${annulBanner}
                 <div class="header">
                     <h2>${comp.name || 'ESTACIÓN DE SERVICIO'}</h2>
                     ${comp.vat ? `<p>CIF: ${comp.vat}</p>` : ''}
@@ -1077,10 +1094,11 @@ export class UtrecarMainScreen extends Component {
                 </div>
                 <div class="divider"></div>
                 <div class="meta">
-                    <div class="meta-row"><span>Nº TICKET:</span><strong>${order.name}</strong></div>
+                    ${isCopy ? `<div class="meta-row"><span>DOCUMENTO:</span><strong>COPIA</strong></div>` : ''}
+                    <div class="meta-row"><span>Nº TICKET (SERIE):</span><strong>${order.name}</strong></div>
+                    ${isAnnulled ? `<div class="meta-row"><span>ESTADO:</span><strong style="color: #b71c1c;">ANULADO (${order.annulment_ref})</strong></div>` : ''}
                     <div class="meta-row"><span>FECHA:</span><span>${order.date_order}</span></div>
                     <div class="meta-row"><span>SESIÓN:</span><span>${order.session_name}</span></div>
-                    <div class="meta-row"><span>ATENDIDO POR:</span><span>${order.user_name}</span></div>
                     <div class="meta-row"><span>REF:</span><span>${order.pos_reference}</span></div>
                 </div>
                 ${clientHtml}
@@ -1206,6 +1224,9 @@ export class UtrecarMainScreen extends Component {
             if (res && res.status === "success") {
                 order.is_invoiced = true;
                 order.state = 'invoiced';
+                order.is_ticket_annulled = true;
+                order.annulment_ref = res.annulment_ref;
+                order.annulment_reason = `Sustituido por Factura ${res.account_move_name}`;
                 order.account_move_id = res.account_move_id;
                 order.account_move_name = res.account_move_name;
                 order.invoice_url = res.invoice_url;
@@ -1217,7 +1238,7 @@ export class UtrecarMainScreen extends Component {
                     order.partner_vat = this.state.invoiceSelectedPartner.vat;
                 }
                 this.closeInvoiceModal();
-                alert(`Factura generada con éxito: ${res.account_move_name}`);
+                alert(`Factura generada con éxito: ${res.account_move_name}\nEl ticket ${order.name} ha sido anulado con Ref: ${order.annulment_ref} y se conserva en el sistema.`);
                 if (res.invoice_url) {
                     window.open(res.invoice_url, "_blank");
                 }
@@ -1230,6 +1251,33 @@ export class UtrecarMainScreen extends Component {
             alert("Error al comunicarse con el servidor al facturar: " + e.message);
         } finally {
             this.state.invoiceLoading = false;
+        }
+    }
+
+    async confirmAnnulOrder(order) {
+        if (!order) return;
+        const confirmMsg = `¿Está seguro de que desea anular el ticket ${order.name}?\nSe asignará la referencia oficial de anulación con serie TTTR_ y el ticket se conservará en el sistema.`;
+        if (!confirm(confirmMsg)) return;
+
+        const reason = prompt("Motivo de la anulación del ticket (opcional):", "Anulación a petición del cliente") || "Anulación manual";
+
+        try {
+            const res = await this.env.services.rpc("/pos_gas_station/annul_order", {
+                order_id: order.id,
+                reason: reason
+            });
+            if (res && res.status === "success") {
+                order.is_ticket_annulled = true;
+                order.annulment_ref = res.annulment_ref;
+                order.annulment_reason = res.annulment_reason;
+                alert(`Ticket anulado con éxito.\nRef. Anulación: ${res.annulment_ref}`);
+                await this.loadShiftOrders();
+            } else {
+                alert("Error al anular el ticket: " + (res ? res.message : "Error desconocido"));
+            }
+        } catch (e) {
+            console.error("Error confirmAnnulOrder:", e);
+            alert("Error al comunicarse con el servidor: " + e.message);
         }
     }
 
