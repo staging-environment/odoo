@@ -109,8 +109,8 @@
                             <button class="tool-btn btn-cancel-order" title="Cancelar ticket" t-on-click="() => this.clearCurrentOrder()">
                                 ✖ Cancelar ticket
                             </button>
-                            <button class="tool-btn btn-history" title="Pedidos realizados en este turno" t-on-click="() => this.openShiftOrdersModal()">
-                                ⏱ Pedidos realizados en este turno
+                            <button class="tool-btn btn-history" title="Historial" t-on-click="() => this.openShiftOrdersModal()">
+                                ⏱ Historial
                             </button>
                         </div>
                         <div class="tools-total-box" t-on-click="() => this.goToPayment()" title="Haga clic aquí para cobrar el ticket">
