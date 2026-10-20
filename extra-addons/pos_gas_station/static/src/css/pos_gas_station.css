@@ -4582,3 +4582,61 @@
     color: #ffffff !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
 }
+
+/* Selector de combustible interactivo dentro del modal de autorizacion */
+.auth-fuel-picker-line {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+}
+
+.auth-fuel-btn-group {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+}
+
+.btn-modal-fuel {
+    flex: 1 1 auto !important;
+    padding: 7px 12px !important;
+    border-radius: 6px !important;
+    border: 2px solid #cbd5e1 !important;
+    background: #f8fafc !important;
+    color: #334155 !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    text-align: center !important;
+}
+
+.btn-modal-fuel:hover {
+    border-color: #94a3b8 !important;
+    background: #f1f5f9 !important;
+}
+
+.btn-modal-fuel.active {
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+}
+
+.btn-modal-fuel.active.fuel-ga {
+    background: #15803d !important;
+    border-color: #166534 !important;
+}
+
+.btn-modal-fuel.active.fuel-sp95 {
+    background: #2563eb !important;
+    border-color: #1d4ed8 !important;
+}
+
+.btn-modal-fuel.active.fuel-gplus {
+    background: #b45309 !important;
+    border-color: #92400e !important;
+}
+
+.btn-gear {
+    min-width: 36px !important;
+    font-size: 15px !important;
+}

@@ -1515,6 +1515,9 @@ export class UtrecarMainScreen extends Component {
 
     isPumpDispensing(pump) {
         if (!pump) return false;
+        if (pump.status === "blocked" || (pump.statusText || "").includes("SIN PREFIJADO") || pump.status === "idle") {
+            return false;
+        }
         return pump.status === "dispensing" || pump.statusText === "AUTORIZADO" || (pump.statusText || "").includes("LLENO") || Boolean(pump.is_lleno);
     }
 

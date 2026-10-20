@@ -45,8 +45,8 @@ SDES_PORT = 8777
 MAPA_COMBUSTIBLES = {
     "1": {"id": 51, "name": "Gasóleo A", "code": "GA", "price": 1.45},
     "2": {"id": 52, "name": "Sin Plomo 95", "code": "95", "price": 1.55},
-    "3": {"id": 54, "name": "Gasóleo Plus", "code": "G+", "price": 1.55},
-    "4": {"id": 51, "name": "Gasóleo A", "code": "GA", "price": 1.45},
+    "3": {"id": 54, "name": "Diesel Ultimate", "code": "G+", "price": 1.55},
+    "4": {"id": 52, "name": "Sin Plomo 95", "code": "95", "price": 1.55},
     "default": {"id": 51, "name": "Gasóleo A", "code": "GA", "price": 1.45}
 }
 
@@ -321,7 +321,7 @@ class AgentePistaRepsol:
         self.modo_estacion_global = "blocked"  # Modo por defecto para control Odoo
         self.sdes_client = None
         self.last_sdes_check = 0
-        self.last_command_ts = time.time()
+        self.last_command_ts = 0.0
         self.asegurar_conexion_hardware()
         self.inicializar_calles()
 
@@ -371,6 +371,20 @@ class AgentePistaRepsol:
                 local["updated_at"] = time.time()
                 hubo_cambio = True
                 logging.info(f"⛽ [SUMINISTRO EN VIVO] Calle {calle}: {litros:.2f}L | {importe:.2f}€")
+        elif local["status"] == "dispensing" and not is_pte_cobro and not local.get("has_prepay"):
+            # Si el hardware ya no está suministrando activamente ni pendiente de cobro, resetear a estado seguro
+            status = self.modo_estacion_global
+            status_txt = "ATENDIDO" if status == "atendido" else "PREPAGO"
+            local["status"] = status
+            local["statusText"] = status_txt
+            local["amount"] = 0.0
+            local["liters"] = 0.0
+            local["preset_amount"] = 0.0
+            local["has_prepay"] = False
+            local["is_lleno"] = False
+            local["updated_at"] = time.time()
+            hubo_cambio = True
+            logging.info(f"🔒 Calle {calle} finalizó suministro/bloqueada -> {status_txt}")
 
         if hubo_cambio:
             self.enviar_estado_a_odoo(forzar=True)
@@ -432,31 +446,32 @@ class AgentePistaRepsol:
             logging.error(f"No hay conexión con hardware para autorizar Calle {calle}")
             return
 
-        cod_prod = 0
+        prods_pref = []
         comb_upper = (combustible or "").upper()
         if "95" in comb_upper or "PLOMO" in comb_upper:
-            cod_prod = 2
+            prods_pref = [2, 4]  # En la estación Repsol, Manguera 1 (prod 4) y Manguera 2 (prod 2) son Sin Plomo 95
         elif "PLUS" in comb_upper or "ULTIMATE" in comb_upper or "G+" in comb_upper:
-            cod_prod = 4
+            prods_pref = [3]     # Manguera 3 es Diesel Ultimate
         elif " B" in comb_upper or "AGR" in comb_upper:
-            cod_prod = 3
+            prods_pref = [3]
         elif "GASOIL" in comb_upper or "GASÓLEO" in comb_upper or "DIESEL" in comb_upper or "GA" in comb_upper:
-            cod_prod = 1
+            prods_pref = [1]     # Manguera 4 es Gasóleo A
 
         try:
             if importe and float(importe) > 0:
                 imp = float(importe)
-                logging.info(f"🎯 [HARDWARE PREFIJADO NATIVO] Fijando límite de {imp:.2f} € en Calle {calle} (Producto: {cod_prod})...")
+                logging.info(f"🎯 [HARDWARE PREFIJADO NATIVO] Fijando límite de {imp:.2f} € en Calle {calle} (Productos hardware: {prods_pref})...")
                 
                 # Para prefijar con corte de válvula exacto, modo PREPAGO (Modo 2)
                 self.sdes_client.cambiar_modo_trabajo(calle, 2)
                 
-                if cod_prod > 0:
-                    res_pref = self.sdes_client.prefijar(calle, cod_prod, imp)
-                    logging.info(f"🎯 [HARDWARE NATIVO] prefijar(calle={calle}, prod={cod_prod}, {imp}€) -> {res_pref}")
+                for p_id in prods_pref:
+                    res_pref = self.sdes_client.prefijar(calle, p_id, imp)
+                    logging.info(f"🎯 [HARDWARE NATIVO] prefijar(calle={calle}, prod={p_id}, {imp}€) -> {res_pref}")
                 
-                res_pref_gen = self.sdes_client.prefijar(calle, 0, imp)
-                logging.info(f"🎯 [HARDWARE NATIVO] prefijar(calle={calle}, prod=0, {imp}€) -> {res_pref_gen}")
+                if not prods_pref:
+                    res_pref_gen = self.sdes_client.prefijar(calle, 0, imp)
+                    logging.info(f"🎯 [HARDWARE NATIVO] prefijar genérico(calle={calle}, prod=0, {imp}€) -> {res_pref_gen}")
 
                 self.cambiar_modo_calle(calle, "dispensing", f"PREFIJADO {imp:.2f}€")
                 self.pumps[calle - 1]["preset_amount"] = imp
@@ -522,7 +537,7 @@ class AgentePistaRepsol:
             if cmd_raw:
                 cmd = json.loads(cmd_raw)
                 ts = cmd.get("timestamp", 0)
-                if ts > self.last_command_ts:
+                if ts != self.last_command_ts and ts > 0:
                     self.last_command_ts = ts
                     action = cmd.get("action")
                     pid = cmd.get("pump_id")

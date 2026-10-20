@@ -210,6 +210,9 @@ class PosGasStationController(http.Controller):
                         p['amount'] = 0.0
                         p['liters'] = 0.0
                         p['statusText'] = 'SIN PREFIJADO' if fallback_status == 'blocked' else 'ATENDIDO'
+                        p['has_prepay'] = False
+                        p['preset_amount'] = 0.0
+                        p['is_lleno'] = False
                         p['updated_at'] = time.time()
                 request.env['ir.config_parameter'].sudo().set_param(param_key, json.dumps(data))
         except Exception as e:
@@ -256,6 +259,8 @@ class PosGasStationController(http.Controller):
                         p['liters'] = 0.0
                         p['preset_amount'] = 0.0
                         p['has_prepay'] = False
+                        p['is_lleno'] = False
+                        p['updated_at'] = time.time()
                         
                 if isinstance(parsed, dict):
                     parsed['pumps'] = p_list

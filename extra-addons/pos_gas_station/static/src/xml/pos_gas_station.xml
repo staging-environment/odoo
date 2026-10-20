@@ -348,7 +348,7 @@
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
                                         </div>
                                     </t>
-                                    <t t-elif="pump.status === 'dispensing' || (pump.status === 'atendido' &amp;&amp; (pump.statusText || '').includes('LLENO')) || pump.is_lleno">
+                                    <t t-elif="(pump.status === 'dispensing' || (pump.status === 'atendido' &amp;&amp; (pump.statusText || '').includes('LLENO')) || pump.is_lleno) &amp;&amp; pump.status !== 'blocked' &amp;&amp; !(pump.statusText || '').includes('SIN PREFIJADO')">
                                         <div class="dispenser-dispensing-panel">
                                             <span class="dispensing-anim">⛽</span>
                                             <strong>SUMINISTRO</strong>
@@ -378,12 +378,6 @@
                             <span class="lcd-current"><t t-esc="state.presetValue > 0 ? (state.presetValue % 1 === 0 ? state.presetValue.toFixed(0) : state.presetValue.toFixed(2)) : '0,00'"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/></span>
                             <span class="lcd-edit-icon" title="Editar importe con decimales">✏️</span>
                         </div>
-                        <button class="btn-numpad-tool btn-decimals-tool" t-on-click="() => this.promptCustomAmount()" title="Escribir cantidad exacta con decimales">
-                            🔢 Dec.
-                        </button>
-                        <button class="btn-numpad-tool btn-mode-calles" t-on-click="() => this.toggleMode()">
-                            <t t-esc="state.mode === 'money' ? 'Modo €' : 'Modo L'"/>
-                        </button>
                         <button class="btn-numpad-tool btn-gear" t-on-click="() => this.openStoreModal()" title="Abrir Catálogo">
                             ⚙
                         </button>
@@ -617,11 +611,17 @@
                                             <t t-esc="state.presetValue.toFixed(2)"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/>
                                         </span>
                                     </div>
-                                    <div class="auth-info-line">
-                                        <span class="info-label">PRODUCTO:</span>
-                                        <span class="info-value">
-                                            <t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)
-                                        </span>
+                                    <div class="auth-info-line auth-fuel-picker-line">
+                                        <span class="info-label">COMBUSTIBLE:</span>
+                                        <div class="auth-fuel-btn-group">
+                                            <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
+                                                <button type="button"
+                                                        t-attf-class="btn-modal-fuel fuel-#{fuel.class} #{state.selectedFuel === fuel.code ? 'active' : ''}"
+                                                        t-on-click="() => this.selectFuel(fuel.code)">
+                                                    <t t-esc="fuel.name"/> (<t t-esc="fuel.code"/>)
+                                                </button>
+                                            </t>
+                                        </div>
                                     </div>
                                     <t t-if="state.vehiclePlate">
                                         <div class="auth-info-line">
@@ -638,11 +638,17 @@
                                             <p>La pista se desbloqueará sin límite previo. El importe final se cobrará al terminar el repostaje.</p>
                                         </div>
                                     </div>
-                                    <div class="auth-info-line mt-2">
-                                        <span class="info-label">PRODUCTO SELECCIONADO:</span>
-                                        <span class="info-value">
-                                            <t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)
-                                        </span>
+                                    <div class="auth-info-line mt-2 auth-fuel-picker-line">
+                                        <span class="info-label">COMBUSTIBLE:</span>
+                                        <div class="auth-fuel-btn-group">
+                                            <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
+                                                <button type="button"
+                                                        t-attf-class="btn-modal-fuel fuel-#{fuel.class} #{state.selectedFuel === fuel.code ? 'active' : ''}"
+                                                        t-on-click="() => this.selectFuel(fuel.code)">
+                                                    <t t-esc="fuel.name"/> (<t t-esc="fuel.code"/>)
+                                                </button>
+                                            </t>
+                                        </div>
                                     </div>
                                 </t>
                             </div>
