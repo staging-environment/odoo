@@ -10,6 +10,56 @@ import { jsonrpc } from "@web/core/network/rpc_service";
 import { useService } from "@web/core/utils/hooks";
 import { ClosePosPopup } from "@point_of_sale/app/navbar/closing_popup/closing_popup";
 
+export class GasStationClosePosPopup extends ClosePosPopup {
+    static template = "pos_gas_station.ClosePosPopup";
+    static components = { ...ClosePosPopup.components };
+
+    getInitialState() {
+        const initialState = { notes: "", payments: {} };
+        if (this.pos.config.cash_control && this.props.default_cash_details) {
+            initialState.payments[this.props.default_cash_details.id] = {
+                counted: this.env.utils.formatCurrency(this.props.default_cash_details.payment_amount || 0, false),
+            };
+        }
+        (this.props.other_payment_methods || []).forEach((pm) => {
+            initialState.payments[pm.id] = {
+                counted: this.env.utils.formatCurrency(pm.amount || 0, false),
+            };
+        });
+        return initialState;
+    }
+
+    getDifference(paymentId) {
+        const counted = this.state.payments[paymentId]?.counted;
+        if (!this.env.utils.isValidFloat(counted)) {
+            return NaN;
+        }
+        const expectedAmount =
+            paymentId === this.props.default_cash_details?.id
+                ? (this.props.default_cash_details.payment_amount || 0)
+                : (this.props.other_payment_methods.find((pm) => pm.id === paymentId)?.amount || 0);
+
+        return parseFloat(counted) - expectedAmount;
+    }
+
+    async closeSession() {
+        if (this.pos.config.cash_control && this.props.default_cash_details) {
+            const shiftCounted = parseFloat(this.state.payments[this.props.default_cash_details.id]?.counted) || 0.0;
+            const opening = this.props.default_cash_details.opening || 0.0;
+            const movesTotal = (this.props.default_cash_details.moves || []).reduce((acc, m) => acc + (m.amount || 0), 0);
+            
+            const originalCounted = this.state.payments[this.props.default_cash_details.id].counted;
+            this.state.payments[this.props.default_cash_details.id].counted = (shiftCounted + opening + movesTotal).toString();
+            try {
+                return await super.closeSession();
+            } finally {
+                this.state.payments[this.props.default_cash_details.id].counted = originalCounted;
+            }
+        }
+        return await super.closeSession();
+    }
+}
+
 export class UtrecarMainScreen extends Component {
     static template = "pos_gas_station.UtrecarMainScreen";
 
@@ -1270,7 +1320,7 @@ export class UtrecarMainScreen extends Component {
     async openCloseSessionPopup() {
         try {
             const info = await this.pos.getClosePosInfo();
-            this.popup.add(ClosePosPopup, { ...info });
+            this.popup.add(GasStationClosePosPopup, { ...info });
         } catch (e) {
             console.debug("Aviso abriendo ClosePosPopup, ejecutando closePos:", e);
             if (this.pos.closePos) {

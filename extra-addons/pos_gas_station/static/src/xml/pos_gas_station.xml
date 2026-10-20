@@ -1407,4 +1407,89 @@
 
 
             
+
+    <!-- MODAL DE CIERRE DE TURNO SIMPLIFICADO UTRECAR -->
+    <t t-name="pos_gas_station.ClosePosPopup">
+        <div class="popup close-pos-popup">
+            <div class="modal-header">
+                <h4 class="modal-title">Cerrar sesión</h4>
+                <div class="total-orders fw-bolder">
+                    Total <t t-esc="props.orders_details.quantity"/> pedidos:
+                    <span class="amount" t-esc="env.utils.formatCurrency(props.orders_details.amount)"/>
+                </div>
+            </div>
+            <main class="modal-body">
+                <div class="payment-methods-overview overflow-auto">
+                    <table class="text-start table">
+                        <thead>
+                            <tr class="text-dark">
+                                <th>Método de pago</th>
+                                <th>Cobrado</th>
+                                <th style="width:25%">Contado</th>
+                                <th>Diferencia</th>
+                            </tr>
+                        </thead>
+                        <t t-if="pos.config.cash_control and props.default_cash_details">
+                            <tbody>
+                                <tr>
+                                    <td class="align-middle fw-bold" t-esc="props.default_cash_details.name"/>
+                                    <td class="align-middle fw-bold" t-esc="env.utils.formatCurrency(props.default_cash_details.payment_amount || 0)"/>
+                                    <td class="align-middle">
+                                        <div class="d-flex align-items-center">
+                                            <Input tModel="[state.payments[props.default_cash_details.id], 'counted']"
+                                                callback.bind="(value) => this.setManualCashInput(value)"
+                                                isValid.bind="env.utils.isValidFloat"/>
+                                            <div class="button icon ClosePosPopup btn btn-secondary ms-1" t-on-click="openDetailsPopup">
+                                                <i class="fa fa-money fa-2x" role="img" title="Desglose de efectivo"/>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="align-middle" t-esc="env.utils.formatCurrency(getDifference(props.default_cash_details.id))"
+                                        t-att-class="{'warning text-danger fw-bolder': !env.utils.floatIsZero(getDifference(props.default_cash_details.id))}"/>
+                                </tr>
+                            </tbody>
+                        </t>
+                        <tbody t-if="props.other_payment_methods and props.other_payment_methods.length > 0">
+                            <tr t-foreach="props.other_payment_methods" t-as="pm" t-key="pm.id">
+                                <td class="align-middle fw-bold" t-esc="pm.name"/>
+                                <td class="align-middle fw-bold" t-esc="env.utils.formatCurrency(pm.amount)"/>
+                                <td class="align-middle">
+                                    <Input tModel="[state.payments[pm.id], 'counted']"
+                                        isValid.bind="env.utils.isValidFloat" />
+                                </td>
+                                <td class="align-middle" t-esc="env.utils.formatCurrency(getDifference(pm.id))"
+                                    t-att-class="{'warning text-danger fw-bolder': !env.utils.floatIsZero(getDifference(pm.id))}"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="notes-container d-flex flex-column flex-sm-row gap-3 border-top mt-3 pt-3">
+                    <div class="closing-notes-container d-flex flex-column flex-grow-1 align-items-start">
+                        <label class="form-label fw-bold" for="closingNotes">Nota de cierre</label>
+                        <textarea class="closing-notes form-control" id="closingNotes" placeholder="Añadir una nota de cierre..." t-model="state.notes"/>
+                    </div>
+                </div>
+            </main>
+            <footer class="footer modal-footer justify-content-between">
+                <div class="modal-footer-left d-flex gap-2">
+                    <button class="button highlight btn btn-lg btn-primary" t-att-disabled="!canConfirm()" t-on-click="confirm">Cerrar sesión</button>
+                    <button class="button btn btn-lg btn-secondary" t-att-disabled="!canCancel()" t-on-click="cancel">Descartar</button>
+                </div>
+                <!-- Download Sale Details -->
+                <div class="modal-footer-right d-flex gap-2">
+                    <button class="button icon btn btn-lg btn-secondary"
+                        t-on-click="downloadSalesReport"
+                        title="Descargar informe de ventas del turno actual">
+                            Venta diaria
+                            <i class="fa fa-download ms-1" role="img"/>
+                    </button>
+                    <!-- Print Sale Details -->
+                    <button t-if="hardwareProxy.printer" class="button icon btn btn-lg btn-secondary">
+                        <SaleDetailsButton/>
+                    </button>
+                </div>
+            </footer>
+        </div>
+    </t>
+
 </templates>
