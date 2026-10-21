@@ -78,6 +78,34 @@ class ResPartner(models.Model):
         else:
             self.customer_type = 'ordinary'
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'customer_type' in vals:
+                ctype = vals['customer_type']
+                if ctype == 'credit':
+                    vals.setdefault('customer_payment_mode', 'credit')
+                    vals.setdefault('invoice_periodicity', 'daily')
+                elif ctype == 'monthly':
+                    vals.setdefault('customer_payment_mode', 'credit')
+                    vals.setdefault('invoice_periodicity', 'monthly')
+                elif ctype == 'ordinary':
+                    vals.setdefault('customer_payment_mode', 'cash')
+                    vals.setdefault('invoice_periodicity', 'daily')
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if 'customer_type' in vals:
+            ctype = vals['customer_type']
+            if ctype == 'credit':
+                vals['customer_payment_mode'] = 'credit'
+            elif ctype == 'monthly':
+                vals['customer_payment_mode'] = 'credit'
+                vals['invoice_periodicity'] = 'monthly'
+            elif ctype == 'ordinary':
+                vals['customer_payment_mode'] = 'cash'
+        return super().write(vals)
+
     @api.depends('vehicle_ids')
     def _compute_vehicle_count(self):
         for partner in self:
