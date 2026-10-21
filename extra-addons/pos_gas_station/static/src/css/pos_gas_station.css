@@ -5174,3 +5174,27 @@
     letter-spacing: 1.5px;
     margin-top: 2px;
 }
+
+
+/* SELECTOR DE PROVEEDORES EN MOVIMIENTOS DE CAJA */
+.cash-move-supplier-section {
+    background: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 10px 12px !important;
+}
+
+.selected-supplier-badge {
+    background: #f0fdf4 !important;
+    border: 1.5px solid #86efac !important;
+    border-radius: 6px !important;
+}
+
+.supplier-results-dropdown {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    border: 1.5px solid #94a3b8 !important;
+}
+
+.supplier-result-item:hover {
+    background-color: #e0f2fe !important;
+}

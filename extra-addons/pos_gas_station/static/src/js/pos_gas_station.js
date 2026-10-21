@@ -93,6 +93,10 @@ export class UtrecarMainScreen extends Component {
             cashMoveType: "ingreso_seguridad",
             cashMoveAmount: "500",
             cashMoveNotes: "",
+            cashMoveSupplier: null,
+            cashMoveSupplierSearch: "",
+            cashMoveSupplierResults: [],
+            isSearchingSuppliers: false,
             isPendingSalesModalOpen: false,
             pendingModalPump: null,
             stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
@@ -2088,19 +2092,74 @@ export class UtrecarMainScreen extends Component {
         this.state.cashMoveType = "ingreso_seguridad";
         this.state.cashMoveAmount = "500";
         this.state.cashMoveNotes = "";
+        this.state.cashMoveSupplier = null;
+        this.state.cashMoveSupplierSearch = "";
+        this.state.cashMoveSupplierResults = [];
+        this.state.isSearchingSuppliers = false;
     }
 
     closeCashMoveModal() {
         this.state.isCashMoveModalOpen = false;
         this.state.cashMoveAmount = "";
         this.state.cashMoveNotes = "";
+        this.state.cashMoveSupplier = null;
+        this.state.cashMoveSupplierSearch = "";
+        this.state.cashMoveSupplierResults = [];
+        this.state.isSearchingSuppliers = false;
     }
 
     selectCashMoveType(type) {
         this.state.cashMoveType = type;
         if (type === "ingreso_seguridad") {
             if (!this.state.cashMoveAmount) this.state.cashMoveAmount = "500";
+        } else if (type === "pago_proveedores") {
+            if (!this.state.cashMoveSupplierResults.length && !this.state.cashMoveSupplier) {
+                this.searchSuppliers("");
+            }
         }
+    }
+
+    async searchSuppliers(query) {
+        this.state.isSearchingSuppliers = true;
+        try {
+            const res = await this.env.services.rpc("/pos_gas_station/search_suppliers", { query: query || "" });
+            if (res && res.status === "success") {
+                this.state.cashMoveSupplierResults = res.suppliers || [];
+            }
+        } catch (e) {
+            console.error("Error search_suppliers:", e);
+        } finally {
+            this.state.isSearchingSuppliers = false;
+        }
+    }
+
+    onSupplierSearchFocus() {
+        if (!this.state.cashMoveSupplierResults.length && !this.state.cashMoveSupplier) {
+            this.searchSuppliers(this.state.cashMoveSupplierSearch || "");
+        }
+    }
+
+    onSupplierSearchInput(ev) {
+        const query = ev.target.value;
+        this.state.cashMoveSupplierSearch = query;
+        this.searchSuppliers(query);
+    }
+
+    clearSupplierSearchText() {
+        this.state.cashMoveSupplierSearch = "";
+        this.searchSuppliers("");
+    }
+
+    selectCashMoveSupplier(supplier) {
+        this.state.cashMoveSupplier = supplier;
+        this.state.cashMoveSupplierSearch = "";
+        this.state.cashMoveSupplierResults = [];
+    }
+
+    clearCashMoveSupplier() {
+        this.state.cashMoveSupplier = null;
+        this.state.cashMoveSupplierSearch = "";
+        this.searchSuppliers("");
     }
 
     setQuickCashMoveAmount(val) {
@@ -2113,7 +2172,7 @@ export class UtrecarMainScreen extends Component {
         } else if (this.state.cashMoveType === "salidas_varias") {
             return "Ej: Material de limpieza, ferretería, reparaciones...";
         } else if (this.state.cashMoveType === "pago_proveedores") {
-            return "Ej: Panadería Juan - Factura F-2026/041";
+            return "Ej: Factura F-2026/041 o Albarán";
         }
         return "Detalle u observaciones del movimiento";
     }
@@ -2126,8 +2185,15 @@ export class UtrecarMainScreen extends Component {
             return;
         }
 
+        if (this.state.cashMoveType === "pago_proveedores" && !this.state.cashMoveSupplier) {
+            alert("⚠️ Por favor, seleccione el proveedor al que se realiza el pago.");
+            return;
+        }
+
         let typeLabel = "Salida de efectivo";
         let reason = "Movimiento de caja";
+        let supplierId = null;
+
         if (this.state.cashMoveType === "ingreso_seguridad") {
             typeLabel = "Ingreso de seguridad";
             reason = "Ingreso de seguridad (Caja Fuerte UAAP)";
@@ -2136,7 +2202,10 @@ export class UtrecarMainScreen extends Component {
             reason = "Salidas varias";
         } else if (this.state.cashMoveType === "pago_proveedores") {
             typeLabel = "Pago factura a proveedores";
-            reason = "Pago factura proveedores";
+            const sup = this.state.cashMoveSupplier;
+            supplierId = sup.id;
+            const vatStr = sup.vat ? ` (${sup.vat})` : "";
+            reason = `Pago proveedor: ${sup.name}${vatStr}`;
         }
 
         const notes = (this.state.cashMoveNotes || "").trim();
@@ -2144,22 +2213,43 @@ export class UtrecarMainScreen extends Component {
         const formattedAmount = `${amount.toFixed(2)} €`;
 
         try {
-            if (this.pos.pos_session?.id && this.orm) {
-                await this.orm.call("pos.session", "try_cash_in_out", [
-                    [this.pos.pos_session.id],
-                    "out",
-                    amount,
-                    fullReason,
-                    {
-                        formattedAmount: formattedAmount,
-                        translatedType: "Salida",
-                    },
-                ]);
-            } else if (typeof this.pos.create_cash_move === "function") {
-                await this.pos.create_cash_move(-amount, fullReason);
+            let recorded = false;
+            // 1. Try via controller endpoint to link partner_id in account.bank.statement.line
+            try {
+                const res = await this.env.services.rpc("/pos_gas_station/cash_move", {
+                    session_id: this.pos.pos_session?.id,
+                    amount: amount,
+                    reason: fullReason,
+                    translated_type: "Salida",
+                    partner_id: supplierId,
+                });
+                if (res && res.status === "success") {
+                    recorded = true;
+                }
+            } catch (rpcErr) {
+                console.warn("Aviso en /pos_gas_station/cash_move, usando try_cash_in_out fallback:", rpcErr);
             }
 
-            alert(`✅ REGISTRADO CORRECTAMENTE\n\n📌 Tipo: ${typeLabel}\n💶 Importe: ${formattedAmount}\n${notes ? "📝 Detalle: " + notes + "\n" : ""}\nEl movimiento ha quedado registrado en el turno de caja.`);
+            // 2. Fallback to try_cash_in_out if needed
+            if (!recorded) {
+                if (this.pos.pos_session?.id && this.orm) {
+                    await this.orm.call("pos.session", "try_cash_in_out", [
+                        [this.pos.pos_session.id],
+                        "out",
+                        amount,
+                        fullReason,
+                        {
+                            formattedAmount: formattedAmount,
+                            translatedType: "Salida",
+                        },
+                    ]);
+                } else if (typeof this.pos.create_cash_move === "function") {
+                    await this.pos.create_cash_move(-amount, fullReason);
+                }
+            }
+
+            const supplierInfo = this.state.cashMoveSupplier ? `\n🏢 Proveedor: ${this.state.cashMoveSupplier.name}` : "";
+            alert(`✅ REGISTRADO CORRECTAMENTE\n\n📌 Tipo: ${typeLabel}${supplierInfo}\n💶 Importe: ${formattedAmount}\n${notes ? "📝 Factura/Detalle: " + notes + "\n" : ""}\nEl movimiento ha quedado registrado en el turno de caja.`);
             this.closeCashMoveModal();
         } catch (err) {
             console.error("Error registrando movimiento de caja:", err);

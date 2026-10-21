@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import http
+from odoo import http, fields
 from odoo.exceptions import UserError
 from odoo.http import request
 import json
@@ -824,6 +824,60 @@ class PosGasStationController(http.Controller):
             }
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/annul_order: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+
+    @http.route('/pos_gas_station/search_suppliers', type='json', auth='user', methods=['POST'], csrf=False)
+    def search_suppliers(self, query=''):
+        try:
+            env = request.env
+            q = (query or '').strip()
+            base_domain = ['|', ('supplier_rank', '>', 0), ('ref', 'like', 'PROV-%')]
+            if q:
+                domain = base_domain + ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('ref', 'ilike', q)]
+                partners = env['res.partner'].sudo().search(domain, order='name asc', limit=15)
+                if not partners and len(q) >= 2:
+                    fallback_domain = ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('ref', 'ilike', q)]
+                    partners = env['res.partner'].sudo().search(fallback_domain, order='name asc', limit=15)
+            else:
+                partners = env['res.partner'].sudo().search(base_domain, order='name asc', limit=20)
+            
+            results = []
+            for p in partners:
+                results.append({
+                    'id': p.id,
+                    'name': p.name,
+                    'vat': p.vat or '',
+                    'ref': p.ref or '',
+                    'city': p.city or '',
+                })
+            return {'status': 'success', 'suppliers': results}
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/search_suppliers: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/cash_move', type='json', auth='user', methods=['POST'], csrf=False)
+    def cash_move(self, session_id, amount, reason, translated_type='Salida', partner_id=None):
+        try:
+            env = request.env
+            session = env['pos.session'].sudo().browse(int(session_id))
+            if not session.exists() or not session.cash_journal_id:
+                return {'status': 'error', 'message': 'Sesión POS o diario de efectivo no disponible'}
+            
+            line_vals = {
+                'pos_session_id': session.id,
+                'journal_id': session.cash_journal_id.id,
+                'amount': -abs(float(amount)),
+                'date': fields.Date.context_today(session),
+                'payment_ref': '-'.join([session.name, translated_type, reason]),
+            }
+            if partner_id:
+                line_vals['partner_id'] = int(partner_id)
+            
+            line = env['account.bank.statement.line'].sudo().create(line_vals)
+            return {'status': 'success', 'line_id': line.id}
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/cash_move: %s", e)
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/search_partners', type='json', auth='user', methods=['POST'], csrf=False)

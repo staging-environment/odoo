@@ -809,7 +809,7 @@
             <!-- ============================================================ -->
             <t t-if="state.isCashMoveModalOpen">
                 <div class="utrecar-modal-backdrop" t-on-click="() => this.closeCashMoveModal()">
-                    <div class="utrecar-auth-modal cash-move-modal" style="width: 520px; max-width: 95vw;" t-on-click.stop="">
+                    <div class="utrecar-auth-modal cash-move-modal" style="width: 520px; max-width: 95vw; max-height: 92vh; display: flex; flex-direction: column;" t-on-click.stop="">
                         <div class="auth-modal-header">
                             <div class="auth-header-left">
                                 <div class="auth-header-icon">
@@ -823,7 +823,7 @@
                             <button class="btn-modal-close" t-on-click="() => this.closeCashMoveModal()">✖</button>
                         </div>
 
-                        <div class="auth-modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+                        <div class="auth-modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1 1 auto;">
                             <!-- SELECTOR DE TIPO DE MOVIMIENTO -->
                             <div>
                                 <label class="fw-bold mb-2 text-dark d-block">Tipo de operación:</label>
@@ -859,6 +859,86 @@
                                     </button>
                                 </div>
                             </div>
+
+                            <!-- SELECTOR DE PROVEEDOR (SOLO SI ES PAGO FACTURA A PROVEEDORES) -->
+                            <t t-if="state.cashMoveType === 'pago_proveedores'">
+                                <div class="cash-move-supplier-section">
+                                    <label class="fw-bold mb-1 text-dark d-flex justify-content-between align-items-center">
+                                        <span>🏢 Proveedor (*):</span>
+                                        <small t-if="state.cashMoveSupplier" class="text-success fw-bold">✓ Seleccionado</small>
+                                    </label>
+
+                                    <!-- SI YA HAY UN PROVEEDOR SELECCIONADO -->
+                                    <t t-if="state.cashMoveSupplier">
+                                        <div class="selected-supplier-badge d-flex justify-content-between align-items-center p-2 rounded border bg-light">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span style="font-size: 20px;">📦</span>
+                                                <div>
+                                                    <div class="fw-bold text-dark" style="font-size: 13.5px;" t-esc="state.cashMoveSupplier.name"/>
+                                                    <small class="text-muted" style="font-size: 11px;">
+                                                        <t t-if="state.cashMoveSupplier.vat">CIF: <t t-esc="state.cashMoveSupplier.vat"/> </t>
+                                                        <t t-if="state.cashMoveSupplier.ref">| Ref: <t t-esc="state.cashMoveSupplier.ref"/> </t>
+                                                        <t t-if="state.cashMoveSupplier.city">| <t t-esc="state.cashMoveSupplier.city"/></t>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <button type="button" 
+                                                    class="btn btn-outline-danger btn-sm fw-bold px-2 py-1"
+                                                    t-on-click="() => this.clearCashMoveSupplier()"
+                                                    title="Cambiar o quitar proveedor">
+                                                ✖ Cambiar
+                                            </button>
+                                        </div>
+                                    </t>
+
+                                    <!-- SI NO HAY PROVEEDOR SELECCIONADO: CAJA DE BÚSQUEDA -->
+                                    <t t-else="">
+                                        <div class="supplier-search-container position-relative">
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white border-end-0">🔍</span>
+                                                <input type="text" 
+                                                       class="form-control border-start-0" 
+                                                       placeholder="Escriba para buscar proveedor (Nombre, CIF o Ref)..." 
+                                                       t-att-value="state.cashMoveSupplierSearch"
+                                                       t-on-focus="() => this.onSupplierSearchFocus()"
+                                                       t-on-input="(ev) => this.onSupplierSearchInput(ev)"
+                                                       style="height: 40px; font-size: 13px;" />
+                                                <button t-if="state.cashMoveSupplierSearch" 
+                                                        class="btn btn-outline-secondary" 
+                                                        type="button" 
+                                                        t-on-click="() => this.clearSupplierSearchText()">✖</button>
+                                            </div>
+
+                                            <!-- LISTA DESPLEGABLE DE RESULTADOS -->
+                                            <t t-if="state.cashMoveSupplierResults and state.cashMoveSupplierResults.length > 0">
+                                                <div class="supplier-results-dropdown shadow-lg rounded border bg-white position-absolute w-100 mt-1" 
+                                                     style="max-height: 190px; overflow-y: auto; z-index: 1050; left: 0;">
+                                                    <t t-foreach="state.cashMoveSupplierResults" t-as="sup" t-key="sup.id">
+                                                        <div class="supplier-result-item p-2 border-bottom d-flex justify-content-between align-items-center"
+                                                             style="cursor: pointer; transition: background 0.15s;"
+                                                             t-on-click="() => this.selectCashMoveSupplier(sup)">
+                                                            <div>
+                                                                <div class="fw-bold text-dark" style="font-size: 13px;" t-esc="sup.name"/>
+                                                                <small class="text-muted" style="font-size: 11px;">
+                                                                    <t t-if="sup.vat">CIF: <t t-esc="sup.vat"/> </t>
+                                                                    <t t-if="sup.ref">| <t t-esc="sup.ref"/> </t>
+                                                                    <t t-if="sup.city">| <t t-esc="sup.city"/></t>
+                                                                </small>
+                                                            </div>
+                                                            <span class="badge bg-primary text-white" style="font-size: 11px;">Elegir</span>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </t>
+                                            <t t-elif="state.isSearchingSuppliers">
+                                                <div class="p-2 text-center text-muted border rounded mt-1 bg-white" style="font-size: 12px;">
+                                                    Buscando proveedores...
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
 
                             <!-- CAMPO DE IMPORTE -->
                             <div>
