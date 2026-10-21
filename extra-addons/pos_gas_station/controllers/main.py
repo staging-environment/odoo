@@ -637,19 +637,19 @@ def _generate_shift_report_html(env, session):
                     <th rowspan="2" class="text-center" style="vertical-align: middle; width: 4%;">Calle</th>
                     <th rowspan="2" class="text-center" style="vertical-align: middle; width: 5%;">Mang.</th>
                     <th rowspan="2" class="text-center" style="vertical-align: middle; width: 5%;">Prod.</th>
-                    <th colspan="3" class="text-center" style="border-bottom: 1px solid #71717a;">Contadores</th>
-                    <th rowspan="2" class="text-center" style="vertical-align: middle; width: 6%;">Incid.</th>
+                    <th colspan="4" class="text-center" style="border-bottom: 1px solid #71717a;">Contadores</th>
                     <th colspan="2" class="text-center" style="border-bottom: 1px solid #71717a;">Litros</th>
                     <th colspan="2" class="text-center" style="border-bottom: 1px solid #71717a;">Descuadre Litros</th>
                 </tr>
                 <tr>
-                    <th class="text-right" style="width: 12%;">Inicial</th>
-                    <th class="text-right" style="width: 12%;">Final</th>
-                    <th class="text-right" style="width: 10%;">Dif.</th>
-                    <th class="text-right" style="width: 10%;">Expedidos</th>
-                    <th class="text-right" style="width: 10%;">Vendidos</th>
-                    <th class="text-right" style="width: 13%;">Dif. Cont. - Exp.</th>
-                    <th class="text-right" style="width: 13%;">Dif Cont. - Vend.</th>
+                    <th class="text-right" style="width: 11%;">Inicial</th>
+                    <th class="text-right" style="width: 11%;">Final</th>
+                    <th class="text-right" style="width: 7%;">Dif.</th>
+                    <th class="text-right" style="width: 7%;">Incid.</th>
+                    <th class="text-right" style="width: 9%;">Expedidos</th>
+                    <th class="text-right" style="width: 9%;">Vendidos</th>
+                    <th class="text-right" style="width: 12%;">Dif. Cont. - Exp.</th>
+                    <th class="text-right" style="width: 12%;">Dif Cont. - Vend.</th>
                 </tr>
             </thead>
             <tbody>'''
