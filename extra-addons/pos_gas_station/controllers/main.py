@@ -1388,9 +1388,10 @@ class PosGasStationController(http.Controller):
                     'partner_phone': o.partner_id.phone or '',
                     'partner_email': o.partner_id.email or '',
                     'fiscal_position': o.fiscal_position_id.name if o.fiscal_position_id else 'Posición fiscal ordinaria',
-                    'state': 'extraction' if getattr(o, 'is_extraction', False) else ('invoiced' if is_inv else o.state),
+                    'state': 'extraction' if getattr(o, 'is_extraction', False) else ('invoiced' if is_inv else ('albaran' if getattr(o, 'is_albaran', False) else o.state)),
                     'is_invoiced': is_inv,
                     'is_extraction': getattr(o, 'is_extraction', False),
+                    'is_albaran': getattr(o, 'is_albaran', False),
                     'extraction_reason': getattr(o, 'extraction_reason', '') or '',
                     'extraction_liters': float(getattr(o, 'extraction_liters', 0.0) or 0.0),
                     'extraction_pump_id': int(getattr(o, 'extraction_pump_id', 0) or 0),
@@ -1619,7 +1620,10 @@ class PosGasStationController(http.Controller):
                     'city': p.city or '',
                     'zip': p.zip or '',
                     'phone': p.phone or '',
-                    'email': p.email or ''
+                    'email': p.email or '',
+                    'customer_type': getattr(p, 'customer_type', 'ordinary') or 'ordinary',
+                    'customer_payment_mode': getattr(p, 'customer_payment_mode', 'cash') or 'cash',
+                    'invoice_periodicity': getattr(p, 'invoice_periodicity', 'daily') or 'daily'
                 })
             return {'status': 'success', 'partners': results}
         except Exception as e:

@@ -610,6 +610,15 @@
                                             t-on-click="() => this.selectClient(c)">
                                             <td>
                                                 <strong><t t-esc="c.name"/></strong>
+                                                <t t-if="c.customer_type === 'credit' || c.customer_payment_mode === 'credit'">
+                                                    <span class="badge-customer-type credit ms-2">Crédito</span>
+                                                </t>
+                                                <t t-elif="c.customer_type === 'monthly' || c.invoice_periodicity === 'monthly'">
+                                                    <span class="badge-customer-type monthly ms-2">Mensual</span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge-customer-type ordinary ms-2">Ordinaria</span>
+                                                </t>
                                             </td>
                                             <td>
                                                 <span class="vat-badge"><t t-esc="c.vat || '-'"/></span>
@@ -1221,7 +1230,7 @@
                                                     <td class="cell-user"><t t-esc="ord.user_name"/></td>
                                                     <td class="cell-total"><strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong></td>
                                                     <td class="cell-state" style="text-align: center;">
-                                                        <span t-attf-class="badge-state #{ord.state}"><t t-esc="ord.state === 'invoiced' ? 'Facturado' : (ord.state === 'extraction' ? 'Extracción' : (ord.state === 'paid' ? 'Pagado' : ord.state))"/></span>
+                                                        <span t-attf-class="badge-state #{ord.state}"><t t-esc="ord.state === 'invoiced' ? 'Facturado' : (ord.state === 'extraction' ? 'Extracción' : (ord.state === 'albaran' ? 'Albarán' : (ord.state === 'paid' ? 'Pagado' : ord.state)))"/></span>
                                                     </td>
                                                     <td class="cell-invoice" style="text-align: center;">
                                                         <t t-if="ord.is_invoiced">
@@ -1870,6 +1879,18 @@
                             <span>Sin Ticket</span>
                         </div>
                     </button>
+
+                    <t t-if="isCreditCustomer">
+                        <button class="btn-virtus-pay btn-pay-albaran" 
+                                t-on-click="() => this.validateVirtusAlbaran()"
+                                title="Cobrar a crédito y emitir Albarán firmado">
+                            <div class="pay-icon">📋</div>
+                            <div class="pay-details">
+                                <strong>ALBARÁN</strong>
+                                <span>Crédito</span>
+                            </div>
+                        </button>
+                    </t>
                 </div>
                 
 
@@ -1972,27 +1993,78 @@
         <xpath expr="//h1[hasclass('tracking-number')]" position="replace" />
     </t>
 
-    <!-- SOBRESCRIBIR ORDERRECEIPT: MOSTRAR CABECERA CON FACTURA SIMPLIFICADA Y SERIE TTTR -->
+    <!-- BOTONES DE CLIENTE EN PAYMENTSCREEN CON INDICACIÓN DE CRÉDITO / MENSUAL / ORDINARIA -->
+    <t t-name="pos_gas_station.PaymentScreenButtons" t-inherit="point_of_sale.PaymentScreenButtons" t-inherit-mode="extension" owl="1">
+        <xpath expr="//span[hasclass('partner-name')]" position="replace">
+            <span class="partner-name">
+                <t t-if="currentOrder.get_partner()">
+                    <t t-esc="currentOrder.get_partner().name"/>
+                    <t t-if="currentOrder.get_partner().customer_type === 'credit' || currentOrder.get_partner().customer_payment_mode === 'credit'">
+                        <span class="badge bg-warning text-dark ms-2 fw-bold" style="font-size: 11px;">CRÉDITO</span>
+                    </t>
+                    <t t-elif="currentOrder.get_partner().customer_type === 'monthly' || currentOrder.get_partner().invoice_periodicity === 'monthly'">
+                        <span class="badge bg-info text-dark ms-2 fw-bold" style="font-size: 11px;">MENSUAL</span>
+                    </t>
+                    <t t-else="">
+                        <span class="badge bg-secondary text-white ms-2" style="font-size: 11px;">ORDINARIA</span>
+                    </t>
+                </t>
+                <t t-else="">Customer</t>
+            </span>
+        </xpath>
+    </t>
+
+    <!-- SOBRESCRIBIR ORDERRECEIPT: MOSTRAR CABECERA CON FACTURA SIMPLIFICADA O ALBARÁN DE CRÉDITO -->
     <t t-name="pos_gas_station.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension" owl="1">
         <xpath expr="//ReceiptHeader" position="after">
             <div class="ticket-header-box text-center my-2 pb-2" style="border-top: 1px dashed #000; border-bottom: 2px solid #000; padding: 6px 0; margin: 8px 0;">
-                <div style="font-size: 13px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
-                    FACTURA SIMPLIFICADA
-                </div>
-                <div class="ticket-serie-highlight" style="font-size: 17px; font-weight: 900; letter-spacing: 1.5px; margin-top: 2px;">
-                    SERIE / Nº: <t t-esc="props.data.ticket_series_name || props.data.name || ''" />
-                </div>
+                <t t-if="props.data.is_albaran">
+                    <div style="font-size: 14px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; color: #000;">
+                        ALBARÁN DE SUMINISTRO A CRÉDITO
+                    </div>
+                    <div class="ticket-serie-highlight" style="font-size: 17px; font-weight: 900; letter-spacing: 1.5px; margin-top: 2px;">
+                        ALBARÁN Nº: <t t-esc="props.data.ticket_series_name || props.data.name || ''" />
+                    </div>
+                </t>
+                <t t-else="">
+                    <div style="font-size: 13px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">
+                        FACTURA SIMPLIFICADA
+                    </div>
+                    <div class="ticket-serie-highlight" style="font-size: 17px; font-weight: 900; letter-spacing: 1.5px; margin-top: 2px;">
+                        SERIE / Nº: <t t-esc="props.data.ticket_series_name || props.data.name || ''" />
+                    </div>
+                </t>
             </div>
+            <t t-if="props.data.is_albaran and props.data.partner">
+                <div class="albaran-client-box p-2 mb-2 border border-dark rounded text-start" style="font-size: 11px;">
+                    <div><strong>CLIENTE:</strong> <t t-esc="props.data.partner.name"/></div>
+                    <div t-if="props.data.partner.vat"><strong>CIF/NIF:</strong> <t t-esc="props.data.partner.vat"/></div>
+                    <div t-if="props.data.partner.street"><strong>DIR:</strong> <t t-esc="props.data.partner.street"/></div>
+                </div>
+            </t>
         </xpath>
         <xpath expr="//div[hasclass('pos-receipt-order-data') and div[@id='order-date']]" position="replace">
             <div class="pos-receipt-order-data text-center mt-3 pt-2 border-top border-dark" style="font-size: 11px;">
                 <div style="font-weight: 900; font-size: 14px; letter-spacing: 1px;">
-                    TICKET: <t t-esc="props.data.ticket_series_name || props.data.name" />
+                    <t t-if="props.data.is_albaran">ALBARÁN:</t>
+                    <t t-else="">TICKET:</t>
+                    <t t-esc="props.data.ticket_series_name || props.data.name" />
                 </div>
                 <div id="order-date" style="font-size: 11px; margin-top: 2px;" t-esc="props.data.date" />
                 <div t-if="props.data.pos_reference and props.data.pos_reference != (props.data.ticket_series_name || props.data.name)" style="font-size: 10px; color: #555; margin-top: 2px;">
                     Ref: <t t-esc="props.data.pos_reference" />
                 </div>
+                <t t-if="props.data.is_albaran">
+                    <div class="albaran-signature-box mt-3 pt-2 text-start border-top border-dark" style="font-size: 10px;">
+                        <div class="fw-bold mb-3">Firma del Conductor / Conforme:</div>
+                        <div style="height: 35px; border-bottom: 1px solid #777; margin-bottom: 6px;"></div>
+                        <div>Nombre / DNI: ______________________________</div>
+                        <div class="mt-1">Matrícula: __________________________________</div>
+                        <div class="text-center text-muted mt-2 fst-italic" style="font-size: 9px;">
+                            Documento de entrega de mercancía a crédito.<br/>Facturación agrupada a fin de periodo.
+                        </div>
+                    </div>
+                </t>
             </div>
         </xpath>
     </t>

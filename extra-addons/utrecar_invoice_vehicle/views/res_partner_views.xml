@@ -14,6 +14,7 @@
                 <page string="Condiciones Comerciales y Facturación" name="commercial_conditions">
                     <group>
                         <group string="Modalidad de Pago y Facturación">
+                            <field name="customer_type" widget="radio" options="{'horizontal': True}"/>
                             <field name="customer_payment_mode" widget="radio" options="{'horizontal': True}"/>
                             <field name="invoice_periodicity"/>
                             <field name="invoice_closing_day" invisible="invoice_periodicity not in ('decadal', 'biweekly', 'monthly')"/>
@@ -44,7 +45,11 @@
         <field name="inherit_id" ref="base.view_res_partner_filter"/>
         <field name="arch" type="xml">
             <xpath expr="//filter[@name='type_person']" position="before">
-                <filter name="filter_customer_credit" string="Clientes de Crédito" domain="[('customer_payment_mode', '=', 'credit')]"/>
+                <filter name="filter_customer_type_credit" string="Clientes de Crédito" domain="[('customer_type', '=', 'credit')]"/>
+                <filter name="filter_customer_type_monthly" string="Facturación Mensual" domain="[('customer_type', '=', 'monthly')]"/>
+                <filter name="filter_customer_type_ordinary" string="Facturación Ordinaria" domain="[('customer_type', '=', 'ordinary')]"/>
+                <separator/>
+                <filter name="filter_customer_credit" string="Clientes de Crédito (Modalidad)" domain="[('customer_payment_mode', '=', 'credit')]"/>
                 <filter name="filter_customer_cash" string="Clientes de Contado" domain="[('customer_payment_mode', '=', 'cash')]"/>
                 <separator/>
                 <filter name="filter_invoice_monthly" string="Facturación Mensual" domain="[('invoice_periodicity', '=', 'monthly')]"/>
@@ -54,6 +59,7 @@
                 <separator/>
             </xpath>
             <xpath expr="//group" position="inside">
+                <filter name="group_customer_type" string="Tipo de Cliente" context="{'group_by': 'customer_type'}"/>
                 <filter name="group_payment_mode" string="Modalidad de Pago" context="{'group_by': 'customer_payment_mode'}"/>
                 <filter name="group_periodicity" string="Periodicidad Facturación" context="{'group_by': 'invoice_periodicity'}"/>
             </xpath>

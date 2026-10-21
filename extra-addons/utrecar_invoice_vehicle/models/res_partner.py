@@ -11,7 +11,14 @@ class ResPartner(models.Model):
         ('paper', 'Factura en papel'),
     ], string='Entrega de Facturas', default='email', tracking=True, help='Preferencia por defecto para el envío de facturas a este cliente.')
 
-    # Gestión Comercial (Crédito vs Contado y Periodicidad)
+    # Gestión Comercial (Crédito, Mensual, Ordinaria)
+    customer_type = fields.Selection([
+        ('credit', 'Crédito'),
+        ('monthly', 'Mensual'),
+        ('ordinary', 'Ordinaria'),
+    ], string='Tipo de Facturación / Cliente', default='ordinary', tracking=True,
+       help='Configuración del cliente: Crédito (genera albarán en cobro), Mensual (facturación agrupada mensual), u Ordinaria (contado/ticket).')
+
     customer_payment_mode = fields.Selection([
         ('cash', 'Contado (Pago en Pista)'),
         ('credit', 'Crédito (Facturación Aplazada / Flotas)'),
@@ -48,6 +55,28 @@ class ResPartner(models.Model):
         string='Forma de Pago Habitual',
         help='Ej: Domiciliación Bancaria SEPA, Transferencia Bancaria 30 días, Pagaré, etc.'
     )
+
+    @api.onchange('customer_type')
+    def _onchange_customer_type(self):
+        if self.customer_type == 'credit':
+            self.customer_payment_mode = 'credit'
+            self.invoice_periodicity = 'daily'
+        elif self.customer_type == 'monthly':
+            self.customer_payment_mode = 'credit'
+            self.invoice_periodicity = 'monthly'
+        elif self.customer_type == 'ordinary':
+            self.customer_payment_mode = 'cash'
+            self.invoice_periodicity = 'daily'
+
+    @api.onchange('customer_payment_mode', 'invoice_periodicity')
+    def _onchange_payment_mode_periodicity(self):
+        if self.customer_payment_mode == 'credit':
+            if self.invoice_periodicity == 'monthly':
+                self.customer_type = 'monthly'
+            else:
+                self.customer_type = 'credit'
+        else:
+            self.customer_type = 'ordinary'
 
     @api.depends('vehicle_ids')
     def _compute_vehicle_count(self):

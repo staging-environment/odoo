@@ -47,6 +47,12 @@ class PosOrder(models.Model):
         string="Surtidor / Calle Extracción",
         default=0
     )
+    is_albaran = fields.Boolean(
+        string="Es Albarán de Crédito",
+        default=False,
+        copy=False,
+        help="Indica si este ticket es un Albarán de suministro a crédito para facturación periódica"
+    )
 
     def _create_order_picking(self):
         self.ensure_one()
@@ -92,6 +98,12 @@ class PosOrder(models.Model):
         return res
 
     @api.model
+    def _order_fields(self, ui_order):
+        fields = super()._order_fields(ui_order)
+        fields['is_albaran'] = ui_order.get('is_albaran', False)
+        return fields
+
+    @api.model
     def create_from_ui(self, orders, draft=False):
         order_sync_results = super().create_from_ui(orders, draft=draft)
         if order_sync_results:
@@ -108,4 +120,5 @@ class PosOrder(models.Model):
                         r['annulment_ref'] = o.annulment_ref
                         r['is_extraction'] = o.is_extraction
                         r['extraction_liters'] = o.extraction_liters
+                        r['is_albaran'] = o.is_albaran
         return order_sync_results

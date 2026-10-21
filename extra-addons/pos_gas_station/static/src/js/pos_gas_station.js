@@ -2583,8 +2583,17 @@ ProductScreen.components = {
 
 
 patch(Order.prototype, {
+    export_as_JSON() {
+        const json = super.export_as_JSON(...arguments);
+        json.is_albaran = Boolean(this.is_albaran);
+        return json;
+    },
     export_for_printing() {
         const res = super.export_for_printing(...arguments);
+        res.is_albaran = Boolean(this.is_albaran);
+        if (res.headerData) {
+            res.headerData.is_albaran = Boolean(this.is_albaran);
+        }
         res.cashier = null;
         if (res.headerData) {
             res.headerData.cashier = null;
@@ -2630,6 +2639,49 @@ patch(PaymentScreen.prototype, {
 
     get nextScreen() {
         return "ProductScreen";
+    },
+
+    get isCreditCustomer() {
+        const partner = this.currentOrder ? this.currentOrder.get_partner() : null;
+        if (!partner) return false;
+        return partner.customer_type === 'credit' || partner.customer_payment_mode === 'credit';
+    },
+
+    async validateVirtusAlbaran() {
+        if (!this.currentOrder.get_partner()) {
+            await this.selectPartner();
+            if (!this.currentOrder.get_partner()) {
+                return;
+            }
+        }
+        const partner = this.currentOrder.get_partner();
+        if (partner.customer_type !== 'credit' && partner.customer_payment_mode !== 'credit') {
+            alert("⚠️ El cliente seleccionado no está configurado como cliente de Crédito.");
+            return;
+        }
+
+        const creditPm = (this.pos.payment_methods || []).find(m => 
+            (m.type === 'pay_later') || 
+            (m.name && (m.name.toLowerCase().includes('cuenta') || m.name.toLowerCase().includes('crédito') || m.name.toLowerCase().includes('customer account')))
+        ) || (this.payment_methods_from_config || []).find(m => 
+            (m.type === 'pay_later') || 
+            (m.name && (m.name.toLowerCase().includes('cuenta') || m.name.toLowerCase().includes('crédito') || m.name.toLowerCase().includes('customer account')))
+        );
+
+        if (creditPm) {
+            const paymentlines = [...this.currentOrder.get_paymentlines()];
+            for (const pl of paymentlines) {
+                this.currentOrder.remove_paymentline(pl);
+            }
+            this.addNewPaymentLine(creditPm);
+        } else {
+            this.ensureOrderPaid();
+        }
+
+        this.currentOrder.is_albaran = true;
+        this.currentOrder.set_to_invoice(false);
+        this._virtusPrintTicket = true;
+        await this.validateOrder(false);
     },
 
     ensureOrderPaid() {
