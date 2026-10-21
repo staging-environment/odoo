@@ -110,7 +110,7 @@ def _send_invoice_email(env, move, target_email=None):
 class PosGasStationController(http.Controller):
 
     @http.route('/pos_gas_station/send_invoice_email', type='json', auth='user', methods=['POST'], csrf=False)
-    def send_invoice_email(self, move_id=None, order_id=None, order_ref=None, email=None):
+    def send_invoice_email(self, move_id=None, order_id=None, order_ref=None, order_name=None, move_name=None, email=None):
         try:
             env = request.env
             move = None
@@ -118,13 +118,22 @@ class PosGasStationController(http.Controller):
                 move = env['account.move'].sudo().browse(int(move_id))
             elif order_id:
                 order = env['pos.order'].sudo().browse(int(order_id))
-                move = order.account_move
+                if order and order.account_move:
+                    move = order.account_move
+            elif order_name:
+                order = env['pos.order'].sudo().search(['|', ('name', '=', order_name), ('pos_reference', '=', order_name)], limit=1)
+                if order and order.account_move:
+                    move = order.account_move
             elif order_ref:
-                order = env['pos.order'].sudo().search([('pos_reference', '=', order_ref)], limit=1)
-                move = order.account_move
+                order = env['pos.order'].sudo().search(['|', ('pos_reference', '=', order_ref), ('name', '=', order_ref)], limit=1)
+                if order and order.account_move:
+                    move = order.account_move
+            
+            if (not move or not move.exists()) and move_name:
+                move = env['account.move'].sudo().search([('name', '=', move_name)], limit=1)
             
             if not move or not move.exists():
-                return {'status': 'error', 'message': 'Factura no encontrada para el pedido indicado.'}
+                return {'status': 'error', 'message': 'No se encontró la factura oficial asociada.'}
             
             res = _send_invoice_email(env, move, target_email=email)
             return res

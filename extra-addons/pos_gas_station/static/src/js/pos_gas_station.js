@@ -142,6 +142,12 @@ export class UtrecarMainScreen extends Component {
             invoiceNewPartner: { name: "", vat: "", street: "", city: "", zip: "", email: "", phone: "" },
             isCreatingPartner: false,
             invoiceLoading: false,
+            isEmailInvoiceModalOpen: false,
+            emailInvoiceOrder: null,
+            emailInvoiceTarget: "",
+            isSendingInvoiceEmail: false,
+            emailInvoiceSuccessMessage: "",
+            emailInvoiceErrorMessage: "",
             pumps: []
         });
 
@@ -1212,7 +1218,7 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
-    async confirmInvoiceOrder() {
+    async confirmInvoiceOrder(deliveryMethod = 'both') {
         const order = this.state.selectedShiftOrder;
         if (!order) return;
 
@@ -1222,14 +1228,27 @@ export class UtrecarMainScreen extends Component {
         if (!partnerId) {
             const p = this.state.invoiceNewPartner;
             if (!p.vat || !p.vat.trim()) {
-                alert("Debe indicar el NIF/CIF del cliente para facturar.");
+                alert("⚠️ Debe indicar el NIF/CIF del cliente para facturar.");
                 return;
             }
             if (!p.name || !p.name.trim()) {
-                alert("Debe indicar el nombre o razón social del cliente.");
+                alert("⚠️ Debe indicar el nombre o razón social del cliente.");
                 return;
             }
-            partnerData = { ...p };
+            partnerData = { ...p, email: (this.state.invoiceEmail || p.email || '').trim() };
+        }
+
+        let targetEmail = (this.state.invoiceEmail || (partnerData ? partnerData.email : '')).trim();
+        if (deliveryMethod === 'email' || deliveryMethod === 'both') {
+            if (!targetEmail || !targetEmail.includes('@')) {
+                const asked = prompt("Introduzca el correo electrónico del cliente para enviar la factura:", targetEmail || "");
+                if (!asked || !asked.includes('@')) {
+                    alert("⚠️ Debe indicar un correo electrónico válido para enviar la factura por email.");
+                    return;
+                }
+                targetEmail = asked.trim();
+                this.state.invoiceEmail = targetEmail;
+            }
         }
 
         this.state.invoiceLoading = true;
@@ -1237,7 +1256,9 @@ export class UtrecarMainScreen extends Component {
             const res = await this.env.services.rpc("/pos_gas_station/invoice_order", {
                 order_id: order.id,
                 partner_id: partnerId,
-                partner_data: partnerData
+                partner_data: partnerData,
+                delivery_method: deliveryMethod,
+                target_email: targetEmail
             });
 
             if (res && res.status === "success") {
@@ -1249,6 +1270,7 @@ export class UtrecarMainScreen extends Component {
                 order.account_move_id = res.account_move_id;
                 order.account_move_name = res.account_move_name;
                 order.invoice_url = res.invoice_url;
+                order.partner_email = targetEmail;
                 if (partnerData) {
                     order.partner_name = partnerData.name;
                     order.partner_vat = partnerData.vat;
@@ -1257,8 +1279,16 @@ export class UtrecarMainScreen extends Component {
                     order.partner_vat = this.state.invoiceSelectedPartner.vat;
                 }
                 this.closeInvoiceModal();
-                alert(`Factura generada con éxito: ${res.account_move_name}\nEl ticket ${order.name} ha sido anulado con Ref: ${order.annulment_ref} y se conserva en el sistema.`);
-                if (res.invoice_url) {
+                
+                let msg = `✅ Factura ${res.account_move_name} generada con éxito.\nEl ticket ${order.name} ha sido anulado con Ref: ${order.annulment_ref}.`;
+                if (res.email_sent) {
+                    msg += `\n\n📧 Enviada por correo a: ${res.email_to}`;
+                } else if (res.email_error) {
+                    msg += `\n\n⚠️ Aviso email: ${res.email_error}`;
+                }
+                alert(msg);
+
+                if ((deliveryMethod === 'paper' || deliveryMethod === 'both') && res.invoice_url) {
                     window.open(res.invoice_url, "_blank");
                 }
                 await this.loadShiftOrders();
@@ -1306,6 +1336,66 @@ export class UtrecarMainScreen extends Component {
             return;
         }
         window.open(order.invoice_url, "_blank");
+    }
+
+    emailShiftOrderInvoice(order) {
+        if (!order) return;
+        this.state.emailInvoiceOrder = order;
+        this.state.emailInvoiceTarget = order.partner_email || order.email || "";
+        this.state.isSendingInvoiceEmail = false;
+        this.state.emailInvoiceSuccessMessage = "";
+        this.state.emailInvoiceErrorMessage = "";
+        this.state.isEmailInvoiceModalOpen = true;
+    }
+
+    closeEmailInvoiceModal() {
+        this.state.isEmailInvoiceModalOpen = false;
+        this.state.emailInvoiceOrder = null;
+        this.state.emailInvoiceTarget = "";
+        this.state.isSendingInvoiceEmail = false;
+        this.state.emailInvoiceSuccessMessage = "";
+        this.state.emailInvoiceErrorMessage = "";
+    }
+
+    async confirmSendInvoiceEmail() {
+        const order = this.state.emailInvoiceOrder;
+        if (!order) return;
+
+        const email = (this.state.emailInvoiceTarget || "").trim();
+        if (!email || !email.includes("@")) {
+            this.state.emailInvoiceErrorMessage = "Por favor, introduzca una dirección de correo válida (ej: cliente@correo.com).";
+            return;
+        }
+
+        this.state.isSendingInvoiceEmail = true;
+        this.state.emailInvoiceErrorMessage = "";
+        this.state.emailInvoiceSuccessMessage = "";
+
+        try {
+            const res = await this.env.services.rpc("/pos_gas_station/send_invoice_email", {
+                move_id: order.account_move_id || null,
+                order_id: order.id || null,
+                order_name: order.name || null,
+                order_ref: order.pos_reference || null,
+                move_name: order.account_move_name || null,
+                email: email
+            });
+
+            if (res && res.status === "success") {
+                this.state.emailInvoiceSuccessMessage = `La factura ${order.account_move_name || ''} ha sido enviada con éxito a ${res.email_to || email} con el PDF adjunto.`;
+                order.partner_email = email;
+                if (this.state.selectedShiftOrder && this.state.selectedShiftOrder.id === order.id) {
+                    this.state.selectedShiftOrder.partner_email = email;
+                }
+            } else {
+                this.state.emailInvoiceErrorMessage = res ? res.message : "No se pudo enviar el correo.";
+            }
+        } catch (e) {
+            console.error("Error confirmSendInvoiceEmail:", e);
+            this.state.emailInvoiceErrorMessage = "Error de comunicación con el servidor: " + (e.message || e);
+        } finally {
+            this.state.isSendingInvoiceEmail = false;
+        }
     }
 
     goToPayment() {

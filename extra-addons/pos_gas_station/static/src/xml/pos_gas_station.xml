@@ -1623,6 +1623,88 @@
                 </div>
             </t>
 
+            <!-- ================= MODAL PARA ENVIAR FACTURA POR EMAIL ================= -->
+            <t t-if="state.isEmailInvoiceModalOpen">
+                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeEmailInvoiceModal()">
+                    <div class="utrecar-auth-modal" style="width: 490px; max-width: 95vw;" t-on-click.stop="">
+                        <div class="auth-modal-header" style="background: #059669; color: white;">
+                            <div class="auth-header-left">
+                                <span style="font-size: 22px;">📧</span>
+                                <div class="auth-header-titles">
+                                    <h3 class="auth-title" style="color: white;">Enviar Factura por Correo</h3>
+                                    <span class="auth-subtitle" style="color: #d1fae5;">
+                                        Factura <t t-esc="state.emailInvoiceOrder ? (state.emailInvoiceOrder.account_move_name || state.emailInvoiceOrder.name) : ''"/>
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="btn-modal-close" style="color: white;" t-on-click="() => this.closeEmailInvoiceModal()">✖</button>
+                        </div>
+
+                        <div class="auth-modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                            <t t-if="state.emailInvoiceSuccessMessage">
+                                <div class="alert alert-success d-flex align-items-center gap-3 p-3 mb-0" style="border-radius: 8px; background: #ecfdf5; border: 1.5px solid #a7f3d0; color: #065f46;">
+                                    <span style="font-size: 28px;">✅</span>
+                                    <div>
+                                        <strong style="font-size: 15px;">¡Factura enviada con éxito!</strong>
+                                        <div style="font-size: 13px; margin-top: 3px;" t-esc="state.emailInvoiceSuccessMessage"/>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <t t-if="state.emailInvoiceErrorMessage">
+                                    <div class="alert alert-danger p-2 mb-0" style="font-size: 13px; border-radius: 6px;" t-esc="state.emailInvoiceErrorMessage"/>
+                                </t>
+
+                                <div>
+                                    <label class="fw-bold mb-1 text-dark d-block">Cliente receptor:</label>
+                                    <div class="p-2 bg-light border rounded fw-bold text-dark" style="font-size: 14px;">
+                                        <t t-esc="state.emailInvoiceOrder ? (state.emailInvoiceOrder.partner_name || 'Cliente') : ''"/>
+                                        <small t-if="state.emailInvoiceOrder and state.emailInvoiceOrder.partner_vat" class="text-muted d-block fw-normal">
+                                            CIF/NIF: <t t-esc="state.emailInvoiceOrder.partner_vat"/>
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="fw-bold mb-1 text-dark d-block">Dirección de correo electrónico (*):</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white">✉</span>
+                                        <input type="email" 
+                                               class="form-control" 
+                                               placeholder="correo@cliente.com" 
+                                               t-model="state.emailInvoiceTarget"
+                                               style="height: 42px; font-size: 14px; font-weight: 600;" 
+                                               t-att-disabled="state.isSendingInvoiceEmail"/>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block">Se enviará el documento PDF oficial adjunto mediante el servidor de correo corporativo.</small>
+                                </div>
+                            </t>
+                        </div>
+
+                        <div class="auth-modal-footer" style="padding: 14px 20px; display: flex; justify-content: space-between; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+                            <t t-if="state.emailInvoiceSuccessMessage">
+                                <button type="button" class="btn btn-success w-100 fw-bold py-2" style="font-size: 14px;" t-on-click="() => this.closeEmailInvoiceModal()">
+                                    ✓ Aceptar y Cerrar
+                                </button>
+                            </t>
+                            <t t-else="">
+                                <button type="button" class="btn btn-secondary px-4 fw-bold" t-on-click="() => this.closeEmailInvoiceModal()" t-att-disabled="state.isSendingInvoiceEmail">
+                                    Cancelar
+                                </button>
+                                <button type="button" class="btn btn-success px-4 fw-bold" t-on-click="() => this.confirmSendInvoiceEmail()" t-att-disabled="state.isSendingInvoiceEmail">
+                                    <t t-if="state.isSendingInvoiceEmail">
+                                        <i class="fa fa-spinner fa-spin me-1"/> Enviando...
+                                    </t>
+                                    <t t-else="">
+                                        <i class="fa fa-paper-plane me-1"/> Enviar Factura
+                                    </t>
+                                </button>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
 </div>
     </t>
 
