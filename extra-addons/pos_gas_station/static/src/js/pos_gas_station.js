@@ -11,6 +11,7 @@ import { jsonrpc } from "@web/core/network/rpc_service";
 import { useService } from "@web/core/utils/hooks";
 import { ClosePosPopup } from "@point_of_sale/app/navbar/closing_popup/closing_popup";
 import { NumberPopup } from "@point_of_sale/app/utils/input_popups/number_popup";
+import { SelectionPopup } from "@point_of_sale/app/utils/input_popups/selection_popup";
 
 export class GasStationClosePosPopup extends ClosePosPopup {
     static template = "pos_gas_station.ClosePosPopup";
@@ -135,6 +136,7 @@ export class UtrecarMainScreen extends Component {
             shiftOrderSearch: "",
             isInvoiceModalOpen: false,
             invoicePartnerSearch: "",
+            invoiceEmail: "",
             invoicePartnerResults: [],
             invoiceSelectedPartner: null,
             invoiceNewPartner: { name: "", vat: "", street: "", city: "", zip: "", email: "", phone: "" },
@@ -1193,7 +1195,14 @@ export class UtrecarMainScreen extends Component {
         this.state.invoiceSelectedPartner = partner;
         this.state.invoicePartnerResults = [];
         this.state.invoicePartnerSearch = partner.name + (partner.vat ? ` (${partner.vat})` : "");
+        this.state.invoiceEmail = partner.email || "";
         this.state.isCreatingPartner = false;
+    }
+
+    clearSelectedPartnerForInvoice() {
+        this.state.invoiceSelectedPartner = null;
+        this.state.invoicePartnerSearch = "";
+        this.state.invoiceEmail = "";
     }
 
     toggleCreatePartnerMode() {
@@ -2560,6 +2569,44 @@ patch(PaymentScreen.prototype, {
                 return;
             }
         }
+        const partner = this.currentOrder.get_partner();
+        const clientEmail = (partner.email || "").trim();
+
+        let deliveryMethod = "both";
+        let invoiceEmail = clientEmail;
+
+        try {
+            const { confirmed, payload } = await this.popup.add(SelectionPopup, {
+                title: `Factura: ${partner.name}`,
+                list: [
+                    { id: 1, label: `🖨️📧 Imprimir y Enviar por Email ${clientEmail ? '(' + clientEmail + ')' : ''}`, item: "both" },
+                    { id: 2, label: `📧 Enviar por Email ${clientEmail ? '(' + clientEmail + ')' : ''}`, item: "email" },
+                    { id: 3, label: "🖨️ Imprimir en Papel", item: "paper" },
+                ],
+            });
+            if (!confirmed || !payload) {
+                return;
+            }
+            deliveryMethod = payload;
+        } catch (e) {
+            console.debug("Aviso con SelectionPopup, usando both:", e);
+            deliveryMethod = "both";
+        }
+
+        if (deliveryMethod === "email" || deliveryMethod === "both") {
+            if (!invoiceEmail || !invoiceEmail.includes("@")) {
+                const asked = prompt("Introduzca el correo electrónico del cliente para el envío de la factura:", "");
+                if (asked && asked.includes("@")) {
+                    invoiceEmail = asked.trim();
+                } else if (deliveryMethod === "email") {
+                    alert("⚠️ No se indicó un correo válido. Se imprimirá en papel.");
+                    deliveryMethod = "paper";
+                }
+            }
+        }
+
+        this._virtusInvoiceDelivery = deliveryMethod;
+        this._virtusInvoiceEmail = invoiceEmail;
         this._virtusPrintTicket = false;
         this.currentOrder.set_to_invoice(true);
         await this.validateOrder(false);
@@ -2606,6 +2653,24 @@ patch(PaymentScreen.prototype, {
                         localStorage.setItem(`pos_gas_station_pending_sales_${this.pos.config.id}`, JSON.stringify(this.pos.pendingSales));
                     } catch (e) {}
                 }
+            }
+        }
+
+        // Si se solicitó envío por email de factura en cobro directo
+        if (order && order.is_to_invoice && order.is_to_invoice() && this._virtusInvoiceDelivery && ['email', 'both'].includes(this._virtusInvoiceDelivery)) {
+            const emailToSend = this._virtusInvoiceEmail;
+            const orderRef = order.name;
+            if (emailToSend) {
+                setTimeout(async () => {
+                    try {
+                        await this.env.services.rpc("/pos_gas_station/send_invoice_email", {
+                            order_ref: orderRef,
+                            email: emailToSend
+                        });
+                    } catch (mailErr) {
+                        console.warn("Aviso enviando factura por email tras validación:", mailErr);
+                    }
+                }, 1000);
             }
         }
 

@@ -1234,7 +1234,10 @@
                                                         </button>
                                                         <t t-if="ord.is_invoiced">
                                                             <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura PDF">
-                                                                📄 PDF
+                                                                🖨️ PDF
+                                                            </button>
+                                                            <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo electrónico" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
+                                                                📧 Email
                                                             </button>
                                                         </t>
                                                         <t t-else="">
@@ -1282,6 +1285,9 @@
                                 <t t-if="state.selectedShiftOrder.is_invoiced">
                                     <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder)">
                                         <i class="fa fa-file-pdf-o me-1"/> 🖨️ Imprimir Factura PDF (<t t-esc="state.selectedShiftOrder.account_move_name"/>)
+                                    </button>
+                                    <button class="btn-action-primary" t-on-click="() => this.emailShiftOrderInvoice(state.selectedShiftOrder)" style="background: #059669; border-color: #047857;">
+                                        <i class="fa fa-envelope me-1"/> 📧 Enviar Factura por E-mail
                                     </button>
                                 </t>
                                 <t t-else="">
@@ -1547,6 +1553,16 @@
                                         </t>
                                     </div>
                                 </t>
+                                <div class="mt-2 p-2 bg-light border rounded" t-if="state.invoiceSelectedPartner">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-success" style="font-size: 13px;">✓ Cliente Seleccionado: <t t-esc="state.invoiceSelectedPartner.name"/></span>
+                                        <button class="btn btn-outline-danger btn-sm py-0 px-2" t-on-click="() => this.clearSelectedPartnerForInvoice()">✖ Cambiar</button>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label small fw-bold mb-1">Email para envío de factura:</label>
+                                        <input type="email" class="form-control form-control-sm" placeholder="correo@cliente.com" t-model="state.invoiceEmail"/>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="text-center my-2 text-muted fw-bold">--- O INTRODUZCA LOS DATOS DIRECTAMENTE ---</div>
@@ -1575,23 +1591,33 @@
                                 </div>
                                 <div class="form-group mb-2">
                                     <label class="form-label">Email (opcional):</label>
-                                    <input type="email" class="form-control" placeholder="correo@empresa.com" t-model="state.invoiceNewPartner.email"/>
+                                    <input type="email" class="form-control" placeholder="correo@empresa.com" t-model="state.invoiceEmail"/>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="invoice-modal-footer">
+                        <div class="invoice-modal-footer d-flex justify-content-between align-items-center gap-2 flex-wrap">
                             <button class="btn btn-secondary" t-on-click="() => this.closeInvoiceModal()">Cancelar</button>
-                            <button class="btn btn-success fw-bold px-4" 
-                                    t-att-disabled="state.invoiceLoading" 
-                                    t-on-click="() => this.confirmInvoiceOrder()">
-                                <t t-if="state.invoiceLoading">
-                                    <i class="fa fa-spinner fa-spin me-1"/> Facturando...
-                                </t>
-                                <t t-else="">
-                                    <i class="fa fa-check me-1"/> Generar y Descargar Factura
-                                </t>
-                            </button>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary fw-bold px-3" 
+                                        t-att-disabled="state.invoiceLoading" 
+                                        t-on-click="() => this.confirmInvoiceOrder('paper')"
+                                        title="Generar y abrir factura PDF para imprimir">
+                                    <i class="fa fa-print me-1"/> 🖨️ Imprimir
+                                </button>
+                                <button class="btn btn-info text-white fw-bold px-3" 
+                                        t-att-disabled="state.invoiceLoading" 
+                                        t-on-click="() => this.confirmInvoiceOrder('email')"
+                                        title="Generar y enviar factura PDF por correo electrónico">
+                                    <i class="fa fa-envelope me-1"/> 📧 Enviar por Email
+                                </button>
+                                <button class="btn btn-success fw-bold px-3" 
+                                        t-att-disabled="state.invoiceLoading" 
+                                        t-on-click="() => this.confirmInvoiceOrder('both')"
+                                        title="Generar, imprimir y enviar factura por correo">
+                                    <i class="fa fa-check me-1"/> 🖨️📧 Imprimir y Enviar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

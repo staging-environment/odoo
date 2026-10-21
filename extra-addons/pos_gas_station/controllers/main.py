@@ -56,7 +56,82 @@ STATION_MAP = {
 STATION_PUMP_OVERRIDES = {}
 OVERRIDE_TIMEOUT_SECONDS = 300  # 5 minutos max para sobreescrituras en memoria
 
+
+def _send_invoice_email(env, move, target_email=None):
+    """Envía la factura en PDF por correo usando la plantilla oficial e ir.mail_server."""
+    try:
+        if not move:
+            return {'status': 'error', 'message': 'Factura no encontrada'}
+        
+        email = (target_email or getattr(move, 'invoice_partner_email', '') or move.partner_id.email or '').strip()
+        email = email.rstrip('.').strip()
+        if not email or '@' not in email:
+            return {'status': 'error', 'message': 'Dirección de correo electrónico no válida.'}
+        
+        template = env.ref('account.email_template_edi_invoice', raise_if_not_found=False)
+        if not template:
+            template = env['mail.template'].sudo().search([('model', '=', 'account.move')], limit=1)
+        if not template:
+            return {'status': 'error', 'message': 'Plantilla de correo de factura no encontrada en Odoo.'}
+
+        mail_server = env['ir.mail_server'].sudo().search([('active', '=', True)], order='sequence, id', limit=1)
+        smtp_sender = mail_server.smtp_user if mail_server else 'informatica@utrecar.com'
+        company_name = move.company_id.name or 'UTRECAR S.L.'
+
+        # Actualizar email del cliente si no lo tenía
+        if move.partner_id and not move.partner_id.email:
+            move.partner_id.sudo().write({'email': email})
+
+        email_values = {
+            'email_to': email,
+            'email_from': f'"{company_name}" <{smtp_sender}>',
+            'reply_to': f'"{company_name}" <{smtp_sender}>',
+            'mail_server_id': mail_server.id if mail_server else False,
+            'auto_delete': False,
+        }
+
+        mail_id = template.sudo().send_mail(move.id, force_send=True, email_values=email_values)
+        mail = env['mail.mail'].sudo().browse(mail_id)
+
+        if mail.state == 'exception':
+            fail_msg = mail.failure_reason or 'Error en servidor SMTP'
+            _logger.warning("Fallo al enviar factura por email: %s", fail_msg)
+            return {'status': 'error', 'message': f'Fallo de entrega SMTP: {fail_msg}', 'email_to': email}
+
+        if hasattr(move, 'invoice_email_sent'):
+            move.sudo().write({'invoice_email_sent': True, 'invoice_partner_email': email})
+
+        move.sudo().message_post(body=f"📧 <strong>Factura enviada por email:</strong> Enviada a <code>{email}</code> con el PDF oficial adjunto.")
+        return {'status': 'success', 'email_to': email, 'mail_id': mail_id}
+    except Exception as e:
+        _logger.exception("Error en _send_invoice_email: %s", e)
+        return {'status': 'error', 'message': str(e)}
+
 class PosGasStationController(http.Controller):
+
+    @http.route('/pos_gas_station/send_invoice_email', type='json', auth='user', methods=['POST'], csrf=False)
+    def send_invoice_email(self, move_id=None, order_id=None, order_ref=None, email=None):
+        try:
+            env = request.env
+            move = None
+            if move_id:
+                move = env['account.move'].sudo().browse(int(move_id))
+            elif order_id:
+                order = env['pos.order'].sudo().browse(int(order_id))
+                move = order.account_move
+            elif order_ref:
+                order = env['pos.order'].sudo().search([('pos_reference', '=', order_ref)], limit=1)
+                move = order.account_move
+            
+            if not move or not move.exists():
+                return {'status': 'error', 'message': 'Factura no encontrada para el pedido indicado.'}
+            
+            res = _send_invoice_email(env, move, target_email=email)
+            return res
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/send_invoice_email: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
 
     @http.route('/pos_gas_station/status', type='json', auth='public', methods=['POST'], csrf=False, cors='*')
     def get_pumps_status(self, config_id=None, **kw):
@@ -736,7 +811,7 @@ class PosGasStationController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/invoice_order', type='json', auth='user', methods=['POST'], csrf=False)
-    def invoice_order(self, order_id, partner_id=None, partner_data=None):
+    def invoice_order(self, order_id, partner_id=None, partner_data=None, delivery_method='both', target_email=None):
         try:
             env = request.env
             order = env['pos.order'].sudo().browse(int(order_id))
@@ -787,13 +862,23 @@ class PosGasStationController(http.Controller):
 
             digits = ''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id)
             annul_ref = getattr(order, 'annulment_ref', '') or f"TTTR_{digits[-4:].zfill(4)}"
+            
+            email_result = None
+            if delivery_method in ('email', 'both'):
+                client_email = target_email or (partner_data.get('email') if partner_data else None) or (partner.email if partner else None)
+                if client_email:
+                    email_result = _send_invoice_email(env, order.account_move, target_email=client_email)
+
             return {
                 'status': 'success',
                 'account_move_id': order.account_move.id,
                 'account_move_name': order.account_move.name,
                 'is_ticket_annulled': True,
                 'annulment_ref': annul_ref,
-                'invoice_url': f'/report/pdf/account.report_invoice_with_payments/{order.account_move.id}'
+                'invoice_url': f'/report/pdf/account.report_invoice_with_payments/{order.account_move.id}',
+                'email_sent': email_result.get('status') == 'success' if email_result else False,
+                'email_to': email_result.get('email_to') if email_result else False,
+                'email_error': email_result.get('message') if (email_result and email_result.get('status') == 'error') else False,
             }
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/invoice_order: %s", e)
