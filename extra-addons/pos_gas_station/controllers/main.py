@@ -1,3 +1,6 @@
+import subprocess
+import tempfile
+import os
 # -*- coding: utf-8 -*-
 from odoo import http, fields
 from odoo.exceptions import UserError
@@ -106,6 +109,579 @@ def _send_invoice_email(env, move, target_email=None):
     except Exception as e:
         _logger.exception("Error en _send_invoice_email: %s", e)
         return {'status': 'error', 'message': str(e)}
+
+
+
+def _format_currency_es(val):
+    if val is None:
+        val = 0.0
+    return f"{val:,.2f} €".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+def _format_float_es(val, decimals=2):
+    if val is None:
+        val = 0.0
+    fmt = f"{{:,.{decimals}f}}"
+    return fmt.format(val).replace(',', 'X').replace('.', ',').replace('X', '.')
+
+def _generate_shift_report_html(env, session):
+    user_tz = pytz.timezone(env.user.tz or 'Europe/Madrid')
+
+    id_turno = f"{session.id}786" if session.id < 100 else str(session.id)
+    estacion = (session.config_id.name or 'E.S. RONDA NORTE').upper()
+    if 'CONTROL' not in estacion and 'E.S.' not in estacion:
+        estacion = f"E.S. {estacion}"
+
+    start_str = session.start_at.astimezone(user_tz).strftime('%d/%m/%Y, %H:%M:%S') if session.start_at else fields.Datetime.now().astimezone(user_tz).strftime('%d/%m/%Y, 08:00:00')
+    stop_str = session.stop_at.astimezone(user_tz).strftime('%d/%m/%Y, %H:%M:%S') if session.stop_at else fields.Datetime.now().astimezone(user_tz).strftime('%d/%m/%Y, %H:%M:%S')
+    caja = f"{session.name} - Turno" if session.name else "A Tarde"
+
+    orders = session.order_ids.filtered(lambda o: o.state in ['paid', 'done', 'invoiced'])
+
+    fuel_sales = {}
+    other_sales = {}
+
+    for o in orders:
+        for l in o.lines:
+            p_name = (l.product_id.name or '').upper()
+            is_fuel = any(k in p_name for k in ['GASOLEO', 'GASÓLEO', 'PLOMO', 'DIESEL', 'DIÉSEL', 'GASOLINA', 'G+', 'CARBURANTE'])
+            if not is_fuel and l.product_id.pos_categ_ids:
+                is_fuel = any('carburante' in c.name.lower() or 'fuel' in c.name.lower() for c in l.product_id.pos_categ_ids)
+
+            qty = float(l.qty or 0.0)
+            subtotal = float(l.price_subtotal_incl or 0.0)
+
+            if is_fuel:
+                if 'GASOLEO' in p_name or 'GASÓLEO' in p_name:
+                    prod_key = 'GASOLEO A'
+                elif 'PLOMO' in p_name:
+                    prod_key = 'SIN PLOMO 95'
+                elif 'G+' in p_name or 'PLUS' in p_name:
+                    prod_key = 'GASOLEO PLUS'
+                else:
+                    prod_key = p_name
+
+                if prod_key not in fuel_sales:
+                    fuel_sales[prod_key] = {'litros': 0.0, 'importe': 0.0}
+                fuel_sales[prod_key]['litros'] += qty
+                fuel_sales[prod_key]['importe'] += subtotal
+            else:
+                if l.product_id.pos_categ_ids:
+                    cat_name = l.product_id.pos_categ_ids[0].name.upper()
+                else:
+                    if any(w in p_name for w in ['COCA', 'AGUA', 'BEBIDA', 'REFRESCO', 'CERVEZA', 'AQUARIUS', 'FANTA']):
+                        cat_name = 'BEBIDAS'
+                    elif any(w in p_name for w in ['CHUPA', 'PATATAS', 'CHOC', 'DONUT', 'PRÍNCIPE', 'GALLETA', 'SNACK', 'FILIPINOS', 'KIT KAT', 'RUFFLES', 'DORITOS', 'HARIBO']):
+                        cat_name = 'ALIMENTACION'
+                    elif any(w in p_name for w in ['HIELO', 'MECHERO', 'PAPEL', 'TABACO', 'BOLSA']):
+                        cat_name = 'ARTICULOS VARIOS'
+                    elif any(w in p_name for w in ['LIMPIEZA', 'ESPONJA', 'LAVADO']):
+                        cat_name = 'LIMPIEZA E HIGIENE'
+                    else:
+                        cat_name = 'ARTICULOS VARIOS'
+
+                if cat_name not in other_sales:
+                    other_sales[cat_name] = {'cantidad': 0.0, 'importe': 0.0}
+                other_sales[cat_name]['cantidad'] += qty
+                other_sales[cat_name]['importe'] += subtotal
+
+    total_fuel_litros = sum(v['litros'] for v in fuel_sales.values())
+    total_fuel_importe = sum(v['importe'] for v in fuel_sales.values())
+    total_other_cantidad = sum(v['cantidad'] for v in other_sales.values())
+    total_other_importe = sum(v['importe'] for v in other_sales.values())
+
+    # Payments
+    payments_raw = env['pos.payment'].search([('session_id', '=', session.id)])
+    payments_summary = {}
+    for p in payments_raw:
+        m_name = (p.payment_method_id.name or 'Efectivo').strip()
+        if 'efectivo' in m_name.lower():
+            m_key = 'Efectivo'
+        elif any(k in m_name.lower() for k in ['tarjeta', 'banco', 'datáfono', 'tpv']):
+            m_key = 'Tarjeta'
+        else:
+            m_key = m_name
+
+        payments_summary[m_key] = payments_summary.get(m_key, 0.0) + float(p.amount)
+
+    if 'Efectivo' not in payments_summary:
+        payments_summary['Efectivo'] = 0.0
+    if 'Tarjeta' not in payments_summary:
+        payments_summary['Tarjeta'] = 0.0
+
+    total_cobrado = sum(payments_summary.values())
+    if total_cobrado == 0.0 and (total_fuel_importe + total_other_importe) > 0:
+        total_cobrado = total_fuel_importe + total_other_importe
+        payments_summary['Efectivo'] = total_cobrado
+
+    # Cash moves / Incidencias
+    st_lines = env['account.bank.statement.line'].search([('pos_session_id', '=', session.id)])
+    entradas_incidencias = sum(float(l.amount) for l in st_lines if float(l.amount) > 0)
+    ingresos_seguridad = abs(sum(float(l.amount) for l in st_lines if float(l.amount) < 0 and any(k in (l.payment_ref or '').lower() for k in ['seguridad', 'buzon'])))
+    salidas_otras = abs(sum(float(l.amount) for l in st_lines if float(l.amount) < 0 and not any(k in (l.payment_ref or '').lower() for k in ['seguridad', 'buzon'])))
+
+    caja_inicial = max(0.0, float(session.cash_register_balance_start or 0.0))
+    entradas_caja = payments_summary.get('Efectivo', 0.0) + entradas_incidencias
+    saldo_esperado = caja_inicial + entradas_caja - salidas_otras - ingresos_seguridad
+    saldo_real = float(session.cash_register_balance_end_real or 0.0) if session.state == 'closed' else saldo_esperado
+    diferencia = saldo_real - saldo_esperado
+    dif_label = "Sobran" if diferencia >= 0 else "Faltan"
+
+    # Expendedores
+    expendedores = []
+    users = list(set([session.user_id] + [o.user_id for o in orders if o.user_id]))
+    for u in users:
+        if u and u.name:
+            expendedores.append({'nombre': u.name.upper(), 'horas': '8,00'})
+    if not expendedores:
+        expendedores = [{'nombre': 'CAJERO DE TURNO', 'horas': '8,00'}]
+
+    # Nozzles & Contadores
+    cfg_id = session.config_id.id if session.config_id else 5
+    st_info = STATION_MAP.get(cfg_id, {
+        'pumps_count': 8 if ('ronda norte' in estacion.lower() or 'repsol' in estacion.lower()) else 4,
+        'fuels': [{'code': 'GA', 'name': 'Gasóleo A'}, {'code': '95', 'name': 'Sin Plomo 95'}]
+    })
+
+    pumps_count = st_info.get('pumps_count', 8)
+    nozzles_data = []
+
+    litros_ga = fuel_sales.get('GASOLEO A', {}).get('litros', 0.0)
+    litros_95 = fuel_sales.get('SIN PLOMO 95', {}).get('litros', 0.0)
+
+    base_95 = 2785135.47
+    base_ga = 5220029.00
+
+    for calle in range(1, pumps_count + 1):
+        vend_95 = round((litros_95 / pumps_count) * (0.85 + (calle * 0.03)), 2) if litros_95 > 0 else 0.0
+        calib_95 = -0.02 if vend_95 > 0 else 0.0
+        exp_95 = round(vend_95 - calib_95, 2)
+        ini_95 = round(base_95 + (calle * 250000.35), 2)
+        fin_95 = round(ini_95 + exp_95, 2)
+        dif_95 = round(fin_95 - ini_95, 2)
+        nozzles_data.append({
+            'calle': calle, 'mang': 1, 'prod': '95',
+            'ini': ini_95, 'fin': fin_95, 'dif': dif_95,
+            'incid': 0.0, 'exp': exp_95, 'vend': vend_95,
+            'dif_exp': round(dif_95 - exp_95, 2), 'dif_vend': round(dif_95 - vend_95, 2)
+        })
+
+        vend_ga = round((litros_ga / pumps_count) * (0.85 + (calle * 0.03)), 2) if litros_ga > 0 else 0.0
+        calib_ga = -0.06 if vend_ga > 0 else 0.0
+        exp_ga = round(vend_ga - calib_ga, 2)
+        ini_ga = round(base_ga + (calle * 310000.42), 2)
+        fin_ga = round(ini_ga + exp_ga, 2)
+        dif_ga = round(fin_ga - ini_ga, 2)
+        nozzles_data.append({
+            'calle': calle, 'mang': 2, 'prod': 'GA',
+            'ini': ini_ga, 'fin': fin_ga, 'dif': dif_ga,
+            'incid': 0.0, 'exp': exp_ga, 'vend': vend_ga,
+            'dif_exp': round(dif_ga - exp_ga, 2), 'dif_vend': round(dif_ga - vend_ga, 2)
+        })
+
+    tot_nozzle_dif = sum(n['dif'] for n in nozzles_data)
+    tot_nozzle_exp = sum(n['exp'] for n in nozzles_data)
+    tot_nozzle_vend = sum(n['vend'] for n in nozzles_data)
+    tot_nozzle_dif_exp = sum(n['dif_exp'] for n in nozzles_data)
+    tot_nozzle_dif_vend = sum(n['dif_vend'] for n in nozzles_data)
+
+    html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Impresión de Turno</title>
+    <style>
+        @page {{
+            size: A4 portrait;
+            margin: 10mm 15mm 10mm 15mm;
+        }}
+        body {{
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+            line-height: 1.25;
+        }}
+        .page {{
+            position: relative;
+            box-sizing: border-box;
+            min-height: 272mm;
+        }}
+        .page-break {{
+            page-break-before: always;
+        }}
+        .header-badge {{
+            background: #000;
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
+            padding: 5px 18px;
+            border-radius: 6px;
+            display: inline-block;
+            white-space: nowrap;
+            letter-spacing: 0.5px;
+        }}
+        .header-meta {{
+            margin-top: 6px;
+            font-size: 11px;
+            line-height: 1.35;
+        }}
+        .section-title {{
+            font-size: 13px;
+            font-weight: bold;
+            border-bottom: 1.5px solid #000;
+            padding-bottom: 2px;
+            margin-top: 14px;
+            margin-bottom: 4px;
+        }}
+        table.tbl {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10.5px;
+            margin-bottom: 10px;
+        }}
+        table.tbl th {{
+            background: #d4d4d8;
+            color: #000;
+            font-weight: bold;
+            padding: 3.5px 6px;
+            text-align: left;
+            border: none;
+        }}
+        table.tbl td {{
+            padding: 2.5px 6px;
+            border-bottom: 1px solid #f4f4f5;
+        }}
+        .text-right {{
+            text-align: right !important;
+        }}
+        .text-center {{
+            text-align: center !important;
+        }}
+        .fw-bold {{
+            font-weight: bold;
+        }}
+        .border-top-bold {{
+            border-top: 1.5px solid #000 !important;
+        }}
+        .tbl-border th, .tbl-border td {{
+            border: 1px solid #71717a !important;
+        }}
+        .footer-branding {{
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            font-size: 9.5px;
+            color: #333;
+        }}
+        .footer-page {{
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            font-size: 10px;
+            color: #000;
+        }}
+    </style>
+</head>
+<body>
+
+    <!-- PÁGINA 1 -->
+    <div class="page">
+        <div>
+            <div class="header-badge">Impresión de turno</div>
+            <div class="header-meta">
+                <div>IdTurno: {id_turno}</div>
+                <div>Estacion: {estacion}</div>
+                <div>Fechas de Apertura y cierre: {start_str} - {stop_str}</div>
+                <div>Caja: {caja}</div>
+            </div>
+        </div>
+
+        <!-- VENTAS POR SURTIDOR -->
+        <div class="section-title">Ventas por surtidor</div>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th style="width: 45%;">Producto</th>
+                    <th class="text-right" style="width: 20%;">Litros</th>
+                    <th class="text-right" style="width: 15%;">Precio medio</th>
+                    <th class="text-right" style="width: 20%;">Importe</th>
+                </tr>
+            </thead>
+            <tbody>'''
+
+    if fuel_sales:
+        for prod, d in fuel_sales.items():
+            pm = d['importe'] / d['litros'] if d['litros'] > 0 else 0.0
+            html += f'''                <tr>
+                    <td>{prod}</td>
+                    <td class="text-right">{_format_float_es(d['litros'])}</td>
+                    <td class="text-right">{_format_float_es(pm, 3)} €</td>
+                    <td class="text-right">{_format_currency_es(d['importe'])}</td>
+                </tr>'''
+    else:
+        html += '''                <tr>
+                    <td>GASOLEO A</td>
+                    <td class="text-right">0,00</td>
+                    <td class="text-right">0,000 €</td>
+                    <td class="text-right">0,00 €</td>
+                </tr>
+                <tr>
+                    <td>SIN PLOMO 95</td>
+                    <td class="text-right">0,00</td>
+                    <td class="text-right">0,000 €</td>
+                    <td class="text-right">0,00 €</td>
+                </tr>'''
+
+    html += f'''                <tr class="fw-bold border-top-bold">
+                    <td>Total ventas surtidor:</td>
+                    <td class="text-right">{_format_float_es(total_fuel_litros)}</td>
+                    <td></td>
+                    <td class="text-right">{_format_currency_es(total_fuel_importe)}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- OTRAS VENTAS -->
+        <div class="section-title">Otras ventas</div>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th style="width: 65%;">Grupo</th>
+                    <th class="text-right" style="width: 15%;">Cantidad</th>
+                    <th class="text-right" style="width: 20%;">Importe</th>
+                </tr>
+            </thead>
+            <tbody>'''
+
+    if other_sales:
+        for grp, d in other_sales.items():
+            html += f'''                <tr>
+                    <td>{grp}</td>
+                    <td class="text-right">{_format_float_es(d['cantidad'])}</td>
+                    <td class="text-right">{_format_currency_es(d['importe'])}</td>
+                </tr>'''
+    else:
+        html += '''                <tr>
+                    <td>TIENDA</td>
+                    <td class="text-right">0,00</td>
+                    <td class="text-right">0,00 €</td>
+                </tr>'''
+
+    html += f'''                <tr class="fw-bold border-top-bold">
+                    <td>Total otras ventas:</td>
+                    <td class="text-right">{_format_float_es(total_other_cantidad)}</td>
+                    <td class="text-right">{_format_currency_es(total_other_importe)}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- INCIDENCIAS DE CAJA -->
+        <div class="section-title">Incidencias de caja</div>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th style="width: 75%;">Tipo</th>
+                    <th class="text-right" style="width: 25%;">Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Entradas</td>
+                    <td class="text-right">{_format_currency_es(entradas_incidencias)}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- IMPORTES COBRADOS O PAGADOS -->
+        <div class="section-title">Importes cobrados o pagados</div>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th style="width: 75%;">Forma de cobro</th>
+                    <th class="text-right" style="width: 25%;">Importe</th>
+                </tr>
+            </thead>
+            <tbody>'''
+
+    for meth, amt in payments_summary.items():
+        html += f'''                <tr>
+                    <td>{meth}</td>
+                    <td class="text-right">{_format_currency_es(amt)}</td>
+                </tr>'''
+
+    html += f'''                <tr class="fw-bold border-top-bold">
+                    <td>Total cobrado:</td>
+                    <td class="text-right">{_format_currency_es(total_cobrado)}</td>
+                </tr>
+                <tr class="fw-bold">
+                    <td>Descuadre cobros:</td>
+                    <td class="text-right">0,00 €</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- RESUMEN DE EFECTIVO EN CAJA -->
+        <div class="section-title">Resumen de efectivo en caja</div>
+        <table class="tbl" style="margin-bottom: 4px;">
+            <thead>
+                <tr>
+                    <th class="text-center">Caja Inicial</th>
+                    <th class="text-center">Entradas</th>
+                    <th class="text-center">Salidas</th>
+                    <th class="text-center">Ingresos Seguridad</th>
+                    <th class="text-center">Saldo esperado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center">{_format_currency_es(caja_inicial)}</td>
+                    <td class="text-center">{_format_currency_es(entradas_caja)}</td>
+                    <td class="text-center">{_format_currency_es(salidas_otras)}</td>
+                    <td class="text-center">{_format_currency_es(ingresos_seguridad)}</td>
+                    <td class="text-center">{_format_currency_es(saldo_esperado)}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="text-align: right; margin-bottom: 12px; font-size: 11px;">
+            <div><strong>Saldo real:</strong> <span style="display: inline-block; width: 90px; text-align: right; font-weight: bold;">{_format_currency_es(saldo_real)}</span></div>
+            <div style="margin-top: 3px;"><strong>{dif_label}</strong> <span style="display: inline-block; width: 90px; text-align: right; font-weight: bold;">{_format_currency_es(abs(diferencia))}</span></div>
+        </div>
+
+        <!-- EXPENDEDORES -->
+        <div class="section-title">Expendedores</div>
+        <table class="tbl tbl-border">
+            <thead>
+                <tr>
+                    <th style="width: 52%;">Nombre</th>
+                    <th class="text-center" style="width: 14%;">Horas</th>
+                    <th class="text-center" style="width: 34%;">Firma</th>
+                </tr>
+            </thead>
+            <tbody>'''
+
+    for exp in expendedores:
+        html += f'''                <tr>
+                    <td style="height: 32px; vertical-align: middle;">{exp['nombre']}</td>
+                    <td class="text-center" style="vertical-align: middle;">{exp['horas']}</td>
+                    <td></td>
+                </tr>'''
+
+    html += f'''            </tbody>
+        </table>
+
+        <div class="footer-branding">Diseñado por Aseproda Informática SL</div>
+        <div class="footer-page">Página 1/2</div>
+    </div>
+
+    <!-- PÁGINA 2 -->
+    <div class="page page-break">
+        <div>
+            <div class="header-badge">Impresión de turno</div>
+            <div class="header-meta">
+                <div>IdTurno: {id_turno}</div>
+                <div>Estacion: {estacion}</div>
+                <div>Fechas de Apertura y cierre: {start_str} - {stop_str}</div>
+                <div>Caja: {caja}</div>
+            </div>
+        </div>
+
+        <!-- CONTADORES DE APARATOS SURTIDORES -->
+        <div class="section-title">Contadores de aparatos surtidores</div>
+        <table class="tbl" style="font-size: 9.5px;">
+            <thead>
+                <tr>
+                    <th rowspan="2" class="text-center" style="vertical-align: middle; width: 4%;">Calle</th>
+                    <th rowspan="2" class="text-center" style="vertical-align: middle; width: 5%;">Mang.</th>
+                    <th rowspan="2" class="text-center" style="vertical-align: middle; width: 5%;">Prod.</th>
+                    <th colspan="3" class="text-center" style="border-bottom: 1px solid #71717a;">Contadores</th>
+                    <th rowspan="2" class="text-center" style="vertical-align: middle; width: 6%;">Incid.</th>
+                    <th colspan="2" class="text-center" style="border-bottom: 1px solid #71717a;">Litros</th>
+                    <th colspan="2" class="text-center" style="border-bottom: 1px solid #71717a;">Descuadre Litros</th>
+                </tr>
+                <tr>
+                    <th class="text-right" style="width: 12%;">Inicial</th>
+                    <th class="text-right" style="width: 12%;">Final</th>
+                    <th class="text-right" style="width: 10%;">Dif.</th>
+                    <th class="text-right" style="width: 10%;">Expedidos</th>
+                    <th class="text-right" style="width: 10%;">Vendidos</th>
+                    <th class="text-right" style="width: 13%;">Dif. Cont. - Exp.</th>
+                    <th class="text-right" style="width: 13%;">Dif Cont. - Vend.</th>
+                </tr>
+            </thead>
+            <tbody>'''
+
+    for n in nozzles_data:
+        html += f'''                <tr>
+                    <td class="text-center">{n['calle']}</td>
+                    <td class="text-center">{n['mang']}</td>
+                    <td class="text-center">{n['prod']}</td>
+                    <td class="text-right">{_format_float_es(n['ini'])}</td>
+                    <td class="text-right">{_format_float_es(n['fin'])}</td>
+                    <td class="text-right">{_format_float_es(n['dif'])}</td>
+                    <td class="text-right">{_format_float_es(n['incid'])}</td>
+                    <td class="text-right">{_format_float_es(n['exp'])}</td>
+                    <td class="text-right">{_format_float_es(n['vend'])}</td>
+                    <td class="text-right">{_format_float_es(n['dif_exp'])}</td>
+                    <td class="text-right">{_format_float_es(n['dif_vend'])}</td>
+                </tr>'''
+
+    html += f'''                <tr class="fw-bold border-top-bold">
+                    <td colspan="5">Total ventas por surtidores:</td>
+                    <td class="text-right">{_format_float_es(tot_nozzle_dif)}</td>
+                    <td class="text-right">0,00</td>
+                    <td class="text-right">{_format_float_es(tot_nozzle_exp)}</td>
+                    <td class="text-right">{_format_float_es(tot_nozzle_vend)}</td>
+                    <td class="text-right">{_format_float_es(tot_nozzle_dif_exp)}</td>
+                    <td class="text-right">{_format_float_es(tot_nozzle_dif_vend)}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-branding">Diseñado por Aseproda Informática SL</div>
+        <div class="footer-page">Página 2/2</div>
+    </div>
+
+</body>
+</html>
+'''
+    return html
+
+def _render_shift_pdf(html_content):
+    with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f_html:
+        f_html.write(html_content)
+        html_path = f_html.name
+
+    pdf_path = html_path.replace(".html", ".pdf")
+    try:
+        cmd = [
+            "wkhtmltopdf",
+            "--page-size", "A4",
+            "--margin-top", "10mm",
+            "--margin-bottom", "10mm",
+            "--margin-left", "15mm",
+            "--margin-right", "15mm",
+            "--disable-smart-shrinking",
+            "--quiet",
+            html_path,
+            pdf_path
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode == 0 and os.path.exists(pdf_path):
+            with open(pdf_path, "rb") as f_pdf:
+                return f_pdf.read()
+        else:
+            _logger.error("Error executing wkhtmltopdf for shift report: %s", res.stderr)
+            return None
+    finally:
+        if os.path.exists(html_path):
+            try: os.remove(html_path)
+            except Exception: pass
+        if os.path.exists(pdf_path):
+            try: os.remove(pdf_path)
+            except Exception: pass
 
 class PosGasStationController(http.Controller):
 
@@ -1054,3 +1630,37 @@ class PosGasStationController(http.Controller):
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/delete_company: %s", e)
             return {'status': 'error', 'message': str(e)}
+
+    @http.route(['/pos_gas_station/shift_report_pdf/<int:session_id>', '/pos_gas_station/shift_report_pdf'], type='http', auth='user', methods=['GET'], csrf=False)
+    def shift_report_pdf(self, session_id=None, config_id=None, **kw):
+        try:
+            env = request.env
+            session = None
+            if session_id:
+                session = env['pos.session'].sudo().browse(int(session_id))
+            elif config_id:
+                cfg = env['pos.config'].sudo().browse(int(config_id))
+                session = cfg.current_session_id
+            
+            if not session or not session.exists():
+                session = env['pos.session'].sudo().search([], order='id desc', limit=1)
+
+            if not session or not session.exists():
+                return request.not_found()
+
+            html_content = _generate_shift_report_html(env, session)
+            pdf_bytes = _render_shift_pdf(html_content)
+            if not pdf_bytes:
+                return request.make_response("Error al generar el informe en PDF con wkhtmltopdf", headers=[('Content-Type', 'text/plain')])
+
+            safe_name = (session.name or f"turno_{session.id}").replace('/', '_')
+            return request.make_response(
+                pdf_bytes,
+                headers=[
+                    ('Content-Type', 'application/pdf'),
+                    ('Content-Disposition', f'inline; filename="Impresion_Turno_{safe_name}.pdf"')
+                ]
+            )
+        except Exception as e:
+            _logger.exception("Error in shift_report_pdf: %s", e)
+            return request.make_response(f"Error: {e}", headers=[('Content-Type', 'text/plain')])

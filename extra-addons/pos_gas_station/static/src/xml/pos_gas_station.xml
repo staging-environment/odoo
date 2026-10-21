@@ -1160,8 +1160,14 @@
                                         <button class="search-clear-btn" t-on-click="() => this.state.shiftOrderSearch = ''">✖</button>
                                     </t>
                                 </div>
-                                <div class="search-stats">
-                                    Mostrando <strong><t t-esc="filteredShiftOrders.length"/></strong> de <strong><t t-esc="state.shiftOrders.length"/></strong> pedidos
+                                <div class="search-stats d-flex align-items-center gap-3">
+                                    <span>Mostrando <strong><t t-esc="filteredShiftOrders.length"/></strong> de <strong><t t-esc="state.shiftOrders.length"/></strong> pedidos</span>
+                                    <button class="btn btn-dark fw-bold d-flex align-items-center gap-2 py-1 px-3" 
+                                            style="font-size: 13px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"
+                                            t-on-click="() => this.printShiftReport()"
+                                            title="Ver e imprimir informe oficial de cierre de turno en PDF (formato Aseproda)">
+                                        <i class="fa fa-print text-warning"/> 🖨️ Imprimir Cierre de Turno (PDF)
+                                    </button>
                                 </div>
                             </div>
 

@@ -14,6 +14,15 @@ import { NumberPopup } from "@point_of_sale/app/utils/input_popups/number_popup"
 import { SelectionPopup } from "@point_of_sale/app/utils/input_popups/selection_popup";
 
 export class GasStationClosePosPopup extends ClosePosPopup {
+    async downloadSalesReport() {
+        const sessionId = (this.pos && this.pos.pos_session) ? this.pos.pos_session.id : null;
+        if (sessionId) {
+            window.open(`/pos_gas_station/shift_report_pdf/${sessionId}`, '_blank');
+        } else {
+            return super.downloadSalesReport();
+        }
+    }
+
     static template = "pos_gas_station.ClosePosPopup";
     static components = { ...ClosePosPopup.components };
 
@@ -1327,6 +1336,15 @@ export class UtrecarMainScreen extends Component {
         } catch (e) {
             console.error("Error confirmAnnulOrder:", e);
             alert("Error al comunicarse con el servidor: " + e.message);
+        }
+    }
+
+    printShiftReport() {
+        const sessionId = this.state.shiftViewSessionId || (this.pos && this.pos.pos_session ? this.pos.pos_session.id : null);
+        if (sessionId) {
+            window.open(`/pos_gas_station/shift_report_pdf/${sessionId}`, '_blank');
+        } else {
+            window.open(`/pos_gas_station/shift_report_pdf`, '_blank');
         }
     }
 
