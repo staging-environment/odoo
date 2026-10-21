@@ -32,8 +32,12 @@ export class GasStationClosePosPopup extends ClosePosPopup {
     }
 
     getDifference(paymentId) {
-        const counted = this.state.payments[paymentId]?.counted;
-        if (!this.env.utils.isValidFloat(counted)) {
+        const rawCounted = this.state.payments[paymentId]?.counted;
+        if (rawCounted === undefined || rawCounted === null || !this.env.utils.isValidFloat(rawCounted)) {
+            return NaN;
+        }
+        const counted = parseFloat(String(rawCounted).replace(',', '.'));
+        if (isNaN(counted)) {
             return NaN;
         }
         const expectedAmount =
@@ -41,12 +45,13 @@ export class GasStationClosePosPopup extends ClosePosPopup {
                 ? (this.props.default_cash_details.payment_amount || 0)
                 : (this.props.other_payment_methods.find((pm) => pm.id === paymentId)?.amount || 0);
 
-        return parseFloat(counted) - expectedAmount;
+        return counted - expectedAmount;
     }
 
     async closeSession() {
         if (this.pos.config.cash_control && this.props.default_cash_details) {
-            const shiftCounted = parseFloat(this.state.payments[this.props.default_cash_details.id]?.counted) || 0.0;
+            const rawCounted = this.state.payments[this.props.default_cash_details.id]?.counted;
+            const shiftCounted = parseFloat(String(rawCounted || '0').replace(',', '.')) || 0.0;
             const opening = this.props.default_cash_details.opening || 0.0;
             const movesTotal = (this.props.default_cash_details.moves || []).reduce((acc, m) => acc + (m.amount || 0), 0);
             

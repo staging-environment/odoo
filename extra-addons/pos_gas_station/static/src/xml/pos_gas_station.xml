@@ -1615,7 +1615,7 @@
                             <tr class="text-dark">
                                 <th>Método de pago</th>
                                 <th>Cobrado</th>
-                                <th style="width:25%">Contado</th>
+                                <th style="width:25%">Cierre</th>
                                 <th>Diferencia</th>
                             </tr>
                         </thead>
@@ -1623,7 +1623,7 @@
                             <tbody>
                                 <tr>
                                     <td class="align-middle fw-bold" t-esc="props.default_cash_details.name"/>
-                                    <td class="align-middle fw-bold" t-esc="env.utils.formatCurrency(props.default_cash_details.payment_amount || 0)"/>
+                                    <td class="align-middle"></td>
                                     <td class="align-middle">
                                         <div class="d-flex align-items-center">
                                             <Input tModel="[state.payments[props.default_cash_details.id], 'counted']"
@@ -1669,9 +1669,9 @@
                 <div class="modal-footer-right d-flex gap-2">
                     <button class="button icon btn btn-lg btn-secondary"
                         t-on-click="downloadSalesReport"
-                        title="Descargar informe de ventas del turno actual">
-                            Venta diaria
-                            <i class="fa fa-download ms-1" role="img"/>
+                        title="Imprimir informe de ventas del turno actual">
+                            Imprimir
+                            <i class="fa fa-print ms-1" role="img"/>
                     </button>
                     <!-- Print Sale Details -->
                     <button t-if="hardwareProxy.printer" class="button icon btn btn-lg btn-secondary">
