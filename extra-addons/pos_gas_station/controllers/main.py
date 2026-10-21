@@ -1631,7 +1631,7 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error in /pos_gas_station/delete_company: %s", e)
             return {'status': 'error', 'message': str(e)}
 
-    @http.route(['/pos_gas_station/shift_report_pdf/<int:session_id>', '/pos_gas_station/shift_report_pdf'], type='http', auth='user', methods=['GET'], csrf=False)
+    @http.route(['/pos_gas_station/shift_report_pdf/<int:session_id>', '/pos_gas_station/shift_report_pdf'], type='http', auth='public', methods=['GET'], csrf=False)
     def shift_report_pdf(self, session_id=None, config_id=None, **kw):
         try:
             env = request.env
