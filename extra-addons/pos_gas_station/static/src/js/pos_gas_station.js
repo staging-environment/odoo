@@ -157,6 +157,10 @@ export class UtrecarMainScreen extends Component {
             isSendingInvoiceEmail: false,
             emailInvoiceSuccessMessage: "",
             emailInvoiceErrorMessage: "",
+            isExtractionModalOpen: false,
+            extractionReason: "Prueba de probeta / Calibración metrológica",
+            extractionNotes: "",
+            isSavingExtraction: false,
             pumps: []
         });
 
@@ -1336,6 +1340,72 @@ export class UtrecarMainScreen extends Component {
         } catch (e) {
             console.error("Error confirmAnnulOrder:", e);
             alert("Error al comunicarse con el servidor: " + e.message);
+        }
+    }
+
+    get currentOrderTotalLiters() {
+        const lines = this.currentOrderLines;
+        if (!lines) return 0.0;
+        let tot = 0.0;
+        for (const l of lines) {
+            tot += (l.quantity || l.qty || 0);
+        }
+        return tot;
+    }
+
+    openExtractionModal() {
+        if (!this.currentOrderLines || this.currentOrderLines.length === 0) {
+            alert("⚠️ No hay ningún suministro o producto en el ticket actual para registrar como extracción.");
+            return;
+        }
+        this.state.extractionReason = "Prueba de probeta / Calibración metrológica";
+        this.state.extractionNotes = "";
+        this.state.isSavingExtraction = false;
+        this.state.isExtractionModalOpen = true;
+    }
+
+    closeExtractionModal() {
+        this.state.isExtractionModalOpen = false;
+        this.state.isSavingExtraction = false;
+    }
+
+    async confirmExtraction() {
+        const lines = this.currentOrderLines;
+        if (!lines || lines.length === 0) return;
+
+        this.state.isSavingExtraction = true;
+        try {
+            const orderLinesData = lines.map(l => ({
+                product_id: l.product_id ? l.product_id.id : null,
+                qty: l.quantity || l.qty || 0,
+                price_unit: l.price_unit || 0,
+                pump_id: l.pump_id || 0,
+                fuel_code: l.fuel_code || ''
+            }));
+
+            const sessionId = (this.pos && this.pos.pos_session) ? this.pos.pos_session.id : (this.state.shiftViewSessionId || null);
+
+            const res = await this.env.services.rpc("/pos_gas_station/register_extraction", {
+                session_id: sessionId,
+                order_lines: orderLinesData,
+                reason: this.state.extractionReason,
+                pump_id: lines[0] ? (lines[0].pump_id || 0) : 0,
+                notes: this.state.extractionNotes
+            });
+
+            if (res && res.status === "success") {
+                this.closeExtractionModal();
+                this.clearCurrentOrder();
+                alert(`✅ Extracción registrada con éxito.\n${res.liters.toFixed(2)} Litros retornados al depósito.\nNo se descuenta de existencias ni se le resta al empleado.`);
+                await this.loadShiftOrders();
+            } else {
+                alert("Error al registrar extracción: " + (res ? res.message : "Error desconocido"));
+            }
+        } catch (e) {
+            console.error("Error confirmExtraction:", e);
+            alert("Error al registrar extracción: " + (e.message || e));
+        } finally {
+            this.state.isSavingExtraction = false;
         }
     }
 

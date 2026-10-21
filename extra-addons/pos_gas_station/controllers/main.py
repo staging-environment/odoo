@@ -136,7 +136,8 @@ def _generate_shift_report_html(env, session):
     stop_str = session.stop_at.astimezone(user_tz).strftime('%d/%m/%Y, %H:%M:%S') if session.stop_at else fields.Datetime.now().astimezone(user_tz).strftime('%d/%m/%Y, %H:%M:%S')
     caja = f"{session.name} - Turno" if session.name else "A Tarde"
 
-    orders = session.order_ids.filtered(lambda o: o.state in ['paid', 'done', 'invoiced'])
+    extractions = session.order_ids.filtered(lambda o: getattr(o, 'is_extraction', False))
+    orders = session.order_ids.filtered(lambda o: not getattr(o, 'is_extraction', False) and o.state in ['paid', 'done', 'invoiced'])
 
     fuel_sales = {}
     other_sales = {}
@@ -253,33 +254,38 @@ def _generate_shift_report_html(env, session):
     base_ga = 5220029.00
 
     for calle in range(1, pumps_count + 1):
+        # Extractions for this pump
+        ext_calle_95 = sum(l.qty for e in extractions if (not e.extraction_pump_id or e.extraction_pump_id == calle) for l in e.lines if any(k in (l.product_id.name or '').upper() for k in ['95', 'PLOMO']))
+        ext_calle_ga = sum(l.qty for e in extractions if (not e.extraction_pump_id or e.extraction_pump_id == calle) for l in e.lines if any(k in (l.product_id.name or '').upper() for k in ['GA', 'GASOLEO', 'GASÓLEO', 'DIESEL']))
+
         vend_95 = round((litros_95 / pumps_count) * (0.85 + (calle * 0.03)), 2) if litros_95 > 0 else 0.0
-        calib_95 = -0.02 if vend_95 > 0 else 0.0
-        exp_95 = round(vend_95 - calib_95, 2)
+        incid_95 = round(ext_calle_95, 2)
+        exp_95 = round(vend_95 + incid_95, 2)
         ini_95 = round(base_95 + (calle * 250000.35), 2)
         fin_95 = round(ini_95 + exp_95, 2)
         dif_95 = round(fin_95 - ini_95, 2)
         nozzles_data.append({
             'calle': calle, 'mang': 1, 'prod': '95',
             'ini': ini_95, 'fin': fin_95, 'dif': dif_95,
-            'incid': 0.0, 'exp': exp_95, 'vend': vend_95,
-            'dif_exp': round(dif_95 - exp_95, 2), 'dif_vend': round(dif_95 - vend_95, 2)
+            'incid': incid_95, 'exp': exp_95, 'vend': vend_95,
+            'dif_exp': 0.0, 'dif_vend': round(-incid_95, 2)
         })
 
         vend_ga = round((litros_ga / pumps_count) * (0.85 + (calle * 0.03)), 2) if litros_ga > 0 else 0.0
-        calib_ga = -0.06 if vend_ga > 0 else 0.0
-        exp_ga = round(vend_ga - calib_ga, 2)
+        incid_ga = round(ext_calle_ga, 2)
+        exp_ga = round(vend_ga + incid_ga, 2)
         ini_ga = round(base_ga + (calle * 310000.42), 2)
         fin_ga = round(ini_ga + exp_ga, 2)
         dif_ga = round(fin_ga - ini_ga, 2)
         nozzles_data.append({
             'calle': calle, 'mang': 2, 'prod': 'GA',
             'ini': ini_ga, 'fin': fin_ga, 'dif': dif_ga,
-            'incid': 0.0, 'exp': exp_ga, 'vend': vend_ga,
-            'dif_exp': round(dif_ga - exp_ga, 2), 'dif_vend': round(dif_ga - vend_ga, 2)
+            'incid': incid_ga, 'exp': exp_ga, 'vend': vend_ga,
+            'dif_exp': 0.0, 'dif_vend': round(-incid_ga, 2)
         })
 
     tot_nozzle_dif = sum(n['dif'] for n in nozzles_data)
+    tot_nozzle_incid = sum(n['incid'] for n in nozzles_data)
     tot_nozzle_exp = sum(n['exp'] for n in nozzles_data)
     tot_nozzle_vend = sum(n['vend'] for n in nozzles_data)
     tot_nozzle_dif_exp = sum(n['dif_exp'] for n in nozzles_data)
@@ -495,6 +501,40 @@ def _generate_shift_report_html(env, session):
             </tbody>
         </table>
 
+        <!-- EXTRACCIONES Y RETORNOS A DEPÓSITO -->
+        <div class="section-title">Extracciones y Retornos a Depósito (Calibraciones / Probetas)</div>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th style="width: 20%;">Ticket</th>
+                    <th style="width: 38%;">Motivo / Observaciones</th>
+                    <th style="width: 20%;">Producto</th>
+                    <th class="text-right" style="width: 11%;">Litros</th>
+                    <th class="text-right" style="width: 11%;">Impacto Caja</th>
+                </tr>
+            </thead>
+            <tbody>'''
+
+    if extractions:
+        for ext in extractions:
+            for eline in ext.lines:
+                ep_name = eline.product_id.display_name or eline.product_id.name or 'Carburante'
+                pump_str = f" (Calle {ext.extraction_pump_id})" if ext.extraction_pump_id else ""
+                html += f'''                <tr>
+                    <td class="fw-bold" style="color: #0369a1;">{ext.name or 'EXTR'}</td>
+                    <td>{ext.extraction_reason or 'Retorno a depósito'}{pump_str}</td>
+                    <td>{ep_name}</td>
+                    <td class="text-right fw-bold" style="color: #0369a1;">{_format_float_es(eline.qty)} L</td>
+                    <td class="text-right">0,00 € (Retorno)</td>
+                </tr>'''
+    else:
+        html += '''                <tr>
+                    <td colspan="5" style="color: #71717a; font-style: italic;">Sin extracciones registradas en este turno</td>
+                </tr>'''
+
+    html += f'''            </tbody>
+        </table>
+
         <!-- IMPORTES COBRADOS O PAGADOS -->
         <div class="section-title">Importes cobrados o pagados</div>
         <table class="tbl">
@@ -632,7 +672,7 @@ def _generate_shift_report_html(env, session):
     html += f'''                <tr class="fw-bold border-top-bold">
                     <td colspan="5">Total ventas por surtidores:</td>
                     <td class="text-right">{_format_float_es(tot_nozzle_dif)}</td>
-                    <td class="text-right">0,00</td>
+                    <td class="text-right">{_format_float_es(tot_nozzle_incid)}</td>
                     <td class="text-right">{_format_float_es(tot_nozzle_exp)}</td>
                     <td class="text-right">{_format_float_es(tot_nozzle_vend)}</td>
                     <td class="text-right">{_format_float_es(tot_nozzle_dif_exp)}</td>
@@ -1259,7 +1299,10 @@ class PosGasStationController(http.Controller):
             ], order='date_order desc, id desc')
 
             payments = env['pos.payment'].sudo().search([('session_id', '=', session.id)])
-            total_sales = round(sum(o.amount_total for o in orders), 2)
+            non_ext_orders = [o for o in orders if not getattr(o, 'is_extraction', False)]
+            total_sales = round(sum(o.amount_total for o in non_ext_orders), 2)
+            extractions_list = [o for o in orders if getattr(o, 'is_extraction', False)]
+            total_extraction_liters = round(sum(float(getattr(o, 'extraction_liters', 0.0) or 0.0) for o in extractions_list), 2)
 
             total_cash = 0.0
             total_bank = 0.0
@@ -1345,8 +1388,12 @@ class PosGasStationController(http.Controller):
                     'partner_phone': o.partner_id.phone or '',
                     'partner_email': o.partner_id.email or '',
                     'fiscal_position': o.fiscal_position_id.name if o.fiscal_position_id else 'Posición fiscal ordinaria',
-                    'state': 'invoiced' if is_inv else o.state,
+                    'state': 'extraction' if getattr(o, 'is_extraction', False) else ('invoiced' if is_inv else o.state),
                     'is_invoiced': is_inv,
+                    'is_extraction': getattr(o, 'is_extraction', False),
+                    'extraction_reason': getattr(o, 'extraction_reason', '') or '',
+                    'extraction_liters': float(getattr(o, 'extraction_liters', 0.0) or 0.0),
+                    'extraction_pump_id': int(getattr(o, 'extraction_pump_id', 0) or 0),
                     'is_ticket_annulled': getattr(o, 'is_ticket_annulled', False) or is_inv,
                     'annulment_ref': getattr(o, 'annulment_ref', False) or (f"TTTR_{(''.join(c for c in (o.name or '') if c.isdigit()) or str(o.id))[-4:].zfill(4)}" if is_inv else ''),
                     'annulment_reason': getattr(o, 'annulment_reason', False) or (f"Anulado por emisión de Factura {o.account_move.name}" if is_inv else ''),
@@ -1388,7 +1435,9 @@ class PosGasStationController(http.Controller):
                     'total_cash_str': f"{total_cash:.2f}",
                     'total_bank': total_bank,
                     'total_bank_str': f"{total_bank:.2f}",
-                    'orders_count': len(orders_list)
+                    'orders_count': len(non_ext_orders),
+                    'extractions_count': len(extractions_list),
+                    'total_extraction_liters': total_extraction_liters
                 },
                 'orders': orders_list
             }
@@ -1630,6 +1679,88 @@ class PosGasStationController(http.Controller):
             return {'status': 'success', 'message': f'Empresa "{name}" eliminada correctamente.'}
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/delete_company: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/register_extraction', type='json', auth='user', methods=['POST'], csrf=False)
+    def register_extraction(self, session_id=None, order_lines=None, reason=None, pump_id=None, notes=None):
+        try:
+            env = request.env
+            session = None
+            if session_id:
+                session = env['pos.session'].sudo().browse(int(session_id))
+            if not session or not session.exists():
+                session = env['pos.session'].sudo().search([('state', '=', 'opened')], order='id desc', limit=1)
+            if not session or not session.exists():
+                return {'status': 'error', 'message': 'No hay sesión de caja abierta activa.'}
+
+            if not order_lines:
+                return {'status': 'error', 'message': 'No se enviaron líneas para registrar como extracción.'}
+
+            reason_str = (reason or 'Prueba de probeta / Calibración metrológica').strip()
+            if notes:
+                reason_str += f" - {notes.strip()}"
+
+            total_amount = 0.0
+            total_liters = 0.0
+            lines_vals = []
+
+            for line in order_lines:
+                p_id = int(line.get('product_id'))
+                qty = float(line.get('qty', 0.0))
+                price = float(line.get('price_unit', 0.0))
+                subtotal = qty * price
+                total_amount += subtotal
+
+                prod = env['product.product'].sudo().browse(p_id)
+                p_name = (prod.name or '').upper()
+                is_fuel = any(k in p_name for k in ['GASOLEO', 'GASÓLEO', 'PLOMO', 'DIESEL', 'DIÉSEL', 'GASOLINA', 'G+', 'CARBURANTE'])
+                if not is_fuel and prod.pos_categ_ids:
+                    is_fuel = any('carburante' in c.name.lower() or 'fuel' in c.name.lower() for c in prod.pos_categ_ids)
+                total_liters += qty
+
+                lines_vals.append((0, 0, {
+                    'product_id': p_id,
+                    'qty': qty,
+                    'price_unit': price,
+                    'price_subtotal': subtotal,
+                    'price_subtotal_incl': subtotal,
+                }))
+
+            ext_seq = int(time.time()) % 10000
+            order_name = f"EXTR/{session.name or 'POS'}/{ext_seq:04d}"
+
+            order_vals = {
+                'name': order_name,
+                'pos_reference': f"Extracción {order_name}",
+                'session_id': session.id,
+                'config_id': session.config_id.id,
+                'user_id': env.user.id,
+                'amount_total': total_amount,
+                'amount_tax': 0.0,
+                'amount_paid': 0.0,
+                'amount_return': 0.0,
+                'lines': lines_vals,
+                'state': 'done',
+                'is_extraction': True,
+                'extraction_reason': reason_str,
+                'extraction_liters': total_liters,
+                'extraction_date': fields.Datetime.now(),
+                'extraction_pump_id': int(pump_id or 0),
+            }
+
+            order = env['pos.order'].sudo().create(order_vals)
+            order.message_post(body=f"⛽ <strong>Extracción / Retorno a Depósito:</strong> {total_liters:.2f} Litros devueltos al depósito.<br/>Motivo: <em>{reason_str}</em>.<br/><strong>No descuenta existencias de inventario ni se resta al cajero en el turno.</strong>")
+
+            return {
+                'status': 'success',
+                'order_id': order.id,
+                'order_name': order.name,
+                'liters': total_liters,
+                'amount': total_amount,
+                'message': f"Extracción de {total_liters:.2f} L registrada con éxito como Retorno a Depósito."
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/register_extraction: %s", e)
             return {'status': 'error', 'message': str(e)}
 
     @http.route(['/pos_gas_station/shift_report_pdf/<int:session_id>', '/pos_gas_station/shift_report_pdf'], type='http', auth='public', methods=['GET'], csrf=False)

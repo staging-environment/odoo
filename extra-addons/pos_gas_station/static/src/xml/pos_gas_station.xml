@@ -101,6 +101,9 @@
                             <button class="tool-btn btn-trash-red" title="Borrar línea seleccionada" t-on-click="() => this.deleteSelectedLine()">
                                 🗑 Borrar linea
                             </button>
+                            <button class="tool-btn btn-extraction" title="Registrar como Extracción / Retorno a depósito (no resta existencias ni se cobra al cajero)" t-on-click="() => this.openExtractionModal()">
+                                ⛽ Extracciones
+                            </button>
                             <t t-if="hasPumpLineInCurrentOrder()">
                                 <button class="tool-btn btn-park-sale" title="Aparcar venta en la monedita de la calle y reabrir la pista para el siguiente cliente" t-on-click="() => this.parkCurrentPumpSale()">
                                     🅿 DEJAR PENDIENTE
@@ -1218,7 +1221,7 @@
                                                     <td class="cell-user"><t t-esc="ord.user_name"/></td>
                                                     <td class="cell-total"><strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong></td>
                                                     <td class="cell-state" style="text-align: center;">
-                                                        <span t-attf-class="badge-state #{ord.state}"><t t-esc="ord.state === 'invoiced' ? 'Facturado' : (ord.state === 'paid' ? 'Pagado' : ord.state)"/></span>
+                                                        <span t-attf-class="badge-state #{ord.state}"><t t-esc="ord.state === 'invoiced' ? 'Facturado' : (ord.state === 'extraction' ? 'Extracción' : (ord.state === 'paid' ? 'Pagado' : ord.state))"/></span>
                                                     </td>
                                                     <td class="cell-invoice" style="text-align: center;">
                                                         <t t-if="ord.is_invoiced">
@@ -1706,6 +1709,91 @@
                                     </t>
                                 </button>
                             </t>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- ================= MODAL DE EXTRACCIONES / RETORNO A DEPÓSITO ================= -->
+            <t t-if="state.isExtractionModalOpen">
+                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeExtractionModal()">
+                    <div class="utrecar-auth-modal" style="width: 530px; max-width: 95vw;" t-on-click.stop="">
+                        <div class="auth-modal-header" style="background: #0284c7; color: white;">
+                            <div class="auth-header-left">
+                                <span style="font-size: 24px;">⛽</span>
+                                <div class="auth-header-titles">
+                                    <h3 class="auth-title" style="color: white;">Extracción / Retorno a Depósito</h3>
+                                    <span class="auth-subtitle" style="color: #bae6fd;">
+                                        Comprobación de probeta, calibración o devolución de combustible
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="btn-modal-close" style="color: white;" t-on-click="() => this.closeExtractionModal()">✖</button>
+                        </div>
+
+                        <div class="auth-modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                            <!-- ALERTA INFORMATIVA -->
+                            <div class="alert alert-info d-flex align-items-center gap-2 p-2 mb-0" style="font-size: 13px; border-radius: 6px; background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1;">
+                                <i class="fa fa-info-circle fa-lg"/>
+                                <div>
+                                    <strong>Operación de Retorno a Depósito:</strong>
+                                    Los litros de este ticket se reintegrarán al depósito. <u>No se descontarán de las existencias</u> ni se le restarán al empleado del turno.
+                                </div>
+                            </div>
+
+                            <!-- DETALLE DE LAS LÍNEAS DEL TICKET ACTUAL -->
+                            <div>
+                                <label class="fw-bold mb-1 text-dark d-block">Líneas y combustible a retornar:</label>
+                                <div class="border rounded p-2 bg-light" style="max-height: 140px; overflow-y: auto;">
+                                    <t t-foreach="currentOrderLines" t-as="l" t-key="l.id">
+                                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                                            <div>
+                                                <strong><t t-esc="l.product_id ? (l.product_id.display_name || l.product_id.name) : 'Producto'"/></strong>
+                                                <small class="text-muted d-block" t-if="l.pump_id">Surtidor Calle <t t-esc="l.pump_id"/></small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-primary text-white" style="font-size: 13px;"><t t-esc="(l.quantity || l.qty || 0).toFixed(2)"/> L</span>
+                                                <small class="text-muted d-block">(Ref: <t t-esc="((l.quantity || l.qty || 0) * (l.price_unit || 0)).toFixed(2)"/> €)</small>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2 px-1 fw-bold" style="font-size: 14px;">
+                                    <span>Total Litros a Devolver:</span>
+                                    <span class="text-primary" style="font-size: 16px;"><t t-esc="currentOrderTotalLiters.toFixed(2)"/> Litros</span>
+                                </div>
+                            </div>
+
+                            <!-- MOTIVO DE LA EXTRACCIÓN -->
+                            <div>
+                                <label class="fw-bold mb-1 text-dark d-block">Motivo de la Extracción (*):</label>
+                                <select class="form-select" t-model="state.extractionReason" style="height: 42px; font-size: 14px; font-weight: 500;">
+                                    <option value="Prueba de probeta / Calibración metrológica">🧪 Prueba de probeta / Calibración metrológica</option>
+                                    <option value="Retorno a depósito por prueba técnica de pista">🔧 Retorno a depósito por prueba técnica de pista</option>
+                                    <option value="Extracción por error de suministro o manguera">🔄 Extracción por error de suministro o manguera</option>
+                                    <option value="Otros retornos a depósito">📋 Otros retornos a depósito</option>
+                                </select>
+                            </div>
+
+                            <!-- OBSERVACIONES OPCIONALES -->
+                            <div>
+                                <label class="fw-bold mb-1 text-dark d-block">Observaciones (opcional):</label>
+                                <input type="text" class="form-control" placeholder="Ej: Probeta oficial 10L Calle 2 comprobada correcta" t-model="state.extractionNotes"/>
+                            </div>
+                        </div>
+
+                        <div class="auth-modal-footer" style="padding: 14px 20px; display: flex; justify-content: space-between; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+                            <button type="button" class="btn btn-secondary px-4 fw-bold" t-on-click="() => this.closeExtractionModal()" t-att-disabled="state.isSavingExtraction">
+                                Cancelar
+                            </button>
+                            <button type="button" class="btn btn-primary px-4 fw-bold" style="background: #0284c7; border-color: #0369a1;" t-on-click="() => this.confirmExtraction()" t-att-disabled="state.isSavingExtraction">
+                                <t t-if="state.isSavingExtraction">
+                                    <i class="fa fa-spinner fa-spin me-1"/> Registrando...
+                                </t>
+                                <t t-else="">
+                                    <i class="fa fa-check me-1"/> ✓ Confirmar Retorno a Depósito
+                                </t>
+                            </button>
                         </div>
                     </div>
                 </div>

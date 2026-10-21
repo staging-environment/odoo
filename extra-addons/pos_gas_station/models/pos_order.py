@@ -23,6 +23,36 @@ class PosOrder(models.Model):
         string="Fecha Anulación",
         copy=False
     )
+    is_extraction = fields.Boolean(
+        string="Es Extracción / Calibración",
+        default=False,
+        copy=False,
+        help="Indica si este ticket corresponde a una extracción o retorno a depósito (no resta existencias ni suma cobro a caja)"
+    )
+    extraction_reason = fields.Char(
+        string="Motivo de Extracción",
+        copy=False,
+        default="Retorno a depósito / Calibración"
+    )
+    extraction_liters = fields.Float(
+        string="Litros Extraídos",
+        digits='Product Unit of Measure',
+        default=0.0
+    )
+    extraction_date = fields.Datetime(
+        string="Fecha de Extracción",
+        copy=False
+    )
+    extraction_pump_id = fields.Integer(
+        string="Surtidor / Calle Extracción",
+        default=0
+    )
+
+    def _create_order_picking(self):
+        self.ensure_one()
+        if self.is_extraction:
+            return
+        return super()._create_order_picking()
 
     def _generate_annulment_ref(self):
         self.ensure_one()
@@ -76,4 +106,6 @@ class PosOrder(models.Model):
                         r['ticket_name'] = o.name
                         r['is_ticket_annulled'] = o.is_ticket_annulled
                         r['annulment_ref'] = o.annulment_ref
+                        r['is_extraction'] = o.is_extraction
+                        r['extraction_liters'] = o.extraction_liters
         return order_sync_results
