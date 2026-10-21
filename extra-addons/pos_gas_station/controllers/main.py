@@ -124,7 +124,8 @@ def _format_float_es(val, decimals=2):
     return fmt.format(val).replace(',', 'X').replace('.', ',').replace('X', '.')
 
 def _generate_shift_report_html(env, session):
-    user_tz = pytz.timezone(env.user.tz or 'Europe/Madrid')
+    session = session.sudo()
+    user_tz = pytz.timezone((session.user_id.tz or env.user.tz or 'Europe/Madrid'))
 
     id_turno = f"{session.id}786" if session.id < 100 else str(session.id)
     estacion = (session.config_id.name or 'E.S. RONDA NORTE').upper()
@@ -190,7 +191,7 @@ def _generate_shift_report_html(env, session):
     total_other_importe = sum(v['importe'] for v in other_sales.values())
 
     # Payments
-    payments_raw = env['pos.payment'].search([('session_id', '=', session.id)])
+    payments_raw = env['pos.payment'].sudo().search([('session_id', '=', session.id)])
     payments_summary = {}
     for p in payments_raw:
         m_name = (p.payment_method_id.name or 'Efectivo').strip()
@@ -214,7 +215,7 @@ def _generate_shift_report_html(env, session):
         payments_summary['Efectivo'] = total_cobrado
 
     # Cash moves / Incidencias
-    st_lines = env['account.bank.statement.line'].search([('pos_session_id', '=', session.id)])
+    st_lines = env['account.bank.statement.line'].sudo().search([('pos_session_id', '=', session.id)])
     entradas_incidencias = sum(float(l.amount) for l in st_lines if float(l.amount) > 0)
     ingresos_seguridad = abs(sum(float(l.amount) for l in st_lines if float(l.amount) < 0 and any(k in (l.payment_ref or '').lower() for k in ['seguridad', 'buzon'])))
     salidas_otras = abs(sum(float(l.amount) for l in st_lines if float(l.amount) < 0 and not any(k in (l.payment_ref or '').lower() for k in ['seguridad', 'buzon'])))
