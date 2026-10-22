@@ -91,6 +91,13 @@ class PosConfig(models.Model):
                         _("• %d albaranes de salida / movimientos de stock de pista") % pickings_count
                     )
 
+            # 7. Clientes asignados a esta estación (res.partner)
+            partners_count = self.env['res.partner'].sudo().search_count([('station_id', '=', config.id)])
+            if partners_count:
+                associated_records.append(
+                    _("• %d cliente(s) vinculados a esta estación") % partners_count
+                )
+
             if associated_records:
                 details = "\n".join(associated_records)
                 raise UserError(_(
@@ -116,6 +123,37 @@ class PosConfig(models.Model):
             'target': 'current',
             'context': {
                 'default_company_id': self.company_id.id if self.company_id else False,
+            }
+        }
+
+    def action_edit_station(self):
+        self.ensure_one()
+        return {
+            'name': f"Editar Estación: {self.name}",
+            'type': 'ir.actions.act_window',
+            'res_model': 'pos.config',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+            'flags': {'mode': 'edit'},
+            'context': {
+                'default_company_id': self.company_id.id if self.company_id else False,
+            }
+        }
+
+    def action_delete_station(self):
+        self.ensure_one()
+        station_name = self.name
+        self.unlink()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Estación eliminada'),
+                'message': _('La estación de servicio "%s" se ha eliminado con éxito.') % station_name,
+                'sticky': False,
+                'type': 'success',
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
             }
         }
 

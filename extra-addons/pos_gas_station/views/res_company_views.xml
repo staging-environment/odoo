@@ -56,22 +56,59 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Pestaña de Estaciones en el formulario de la Empresa a ancho completo -->
-            <xpath expr="//notebook" position="inside">
-                <page string="Estaciones de Servicio / TPVs" name="gas_stations_tab">
+            <!-- Listado de Estaciones de Servicio directamente debajo en el formulario de la Empresa -->
+            <xpath expr="//notebook" position="after">
+                <div class="mt-4 pt-3 border-top">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h4 class="m-0 fw-bold" style="color: #0369a1; font-size: 1.25rem;">
+                                <i class="fa fa-gas-pump me-2 text-danger"></i>Estaciones de Servicio asociadas
+                            </h4>
+                            <div class="text-muted small mt-1">
+                                Terminales y estaciones pertenecientes a esta empresa con control de turnos, arqueo y personal.
+                            </div>
+                        </div>
+                        <button name="action_create_station"
+                                string="＋ Nueva Estación de Servicio"
+                                type="object"
+                                class="btn btn-outline-primary btn-sm fw-bold"/>
+                    </div>
                     <field name="pos_config_ids" context="{'default_company_id': id}">
-                        <tree string="Estaciones de Servicio de la Empresa" create="true" delete="true" no_open="1">
-                            <field name="station_link_html" widget="html" string="Estación de Servicio"/>
+                        <tree string="Estaciones de Servicio de la Empresa" create="true" delete="true">
+                            <field name="name" string="Estación de Servicio" decoration-bf="1"/>
                             <field name="current_session_state" string="Estado del Turno" widget="badge" 
                                    decoration-success="current_session_state == 'opened'" 
-                                   decoration-warning="current_session_state == 'opening_control'"/>
-                            <field name="current_user_id" string="Cajero Activo"/>
+                                   decoration-warning="current_session_state == 'opening_control'"
+                                   decoration-muted="current_session_state == 'closed'"/>
+                            <field name="current_user_id" string="Cajero / Operario Activo"/>
                             <field name="station_users_summary" string="Personal y Roles Asignados"/>
-                            <button name="action_open_station_form" string="Ficha Completa de la Estación" type="object" icon="fa-arrow-circle-right" class="btn-primary fw-bold"/>
-                            <button name="open_ui" string="Entrar al TPV" type="object" icon="fa-desktop" class="btn-secondary"/>
+                            <field name="last_session_closing_date" string="Último Cierre"/>
+                            <field name="last_session_closing_cash" string="Último Arqueo" widget="monetary"/>
+                            <field name="currency_id" column_invisible="True"/>
+                            <button name="action_open_station_form" 
+                                    string="Ver Ficha" 
+                                    type="object" 
+                                    icon="fa-eye" 
+                                    class="btn btn-sm btn-outline-primary py-0 px-2"/>
+                            <button name="action_edit_station" 
+                                    string="Editar" 
+                                    type="object" 
+                                    icon="fa-pencil" 
+                                    class="btn btn-sm btn-primary py-0 px-2 text-white"/>
+                            <button name="open_ui" 
+                                    string="TPV" 
+                                    type="object" 
+                                    icon="fa-desktop" 
+                                    class="btn btn-sm btn-secondary py-0 px-2"/>
+                            <button name="action_delete_station" 
+                                    string="Borrar" 
+                                    type="object" 
+                                    icon="fa-trash" 
+                                    class="btn btn-sm btn-outline-danger py-0 px-2 text-danger" 
+                                    confirm="¿Está seguro de que desea eliminar esta estación de servicio? Se verificará que no tenga información ni registros asociados antes de proceder."/>
                         </tree>
                     </field>
-                </page>
+                </div>
             </xpath>
         </field>
     </record>

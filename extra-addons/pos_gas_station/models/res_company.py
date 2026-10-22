@@ -84,6 +84,19 @@ class ResCompany(models.Model):
             'target': 'current',
         }
 
+    def action_create_station(self):
+        self.ensure_one()
+        return {
+            'name': _('Nueva Estación de Servicio'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'pos.config',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {
+                'default_company_id': self.id,
+            }
+        }
+
     def action_view_gas_stations(self):
         self.ensure_one()
         return {
