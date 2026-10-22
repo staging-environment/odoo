@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- VISTA FORMULARIO HEREDADA: ASIGNACIÓN DE EMPRESA Y ESTACIÓN DE SERVICIO -->
+    <record id="view_partner_form_inherit_gas_station" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.gas.station</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="priority">25</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="company_id" options="{'no_create': True}" string="Empresa / Compañía"/>
+                <field name="station_id" domain="[('company_id', '=', company_id)]" options="{'no_create': True}" string="Estación de Servicio"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- VISTA LISTA / TREE DEDICADA DE CLIENTES DE ESTACIÓN DE SERVICIO -->
+    <record id="view_partner_gas_station_tree" model="ir.ui.view">
+        <field name="name">res.partner.gas.station.tree</field>
+        <field name="model">res.partner</field>
+        <field name="priority">25</field>
+        <field name="arch" type="xml">
+            <tree string="Clientes de Estaciones de Servicio" sample="1">
+                <field name="display_name" string="Nombre / Razón Social"/>
+                <field name="vat" string="CIF / NIF"/>
+                <field name="customer_type" widget="badge" 
+                       decoration-warning="customer_type == 'credit'" 
+                       decoration-info="customer_type == 'monthly'" 
+                       decoration-muted="customer_type == 'ordinary'"
+                       string="Tipo Facturación"/>
+                <field name="company_id" string="Empresa"/>
+                <field name="station_id" string="Estación de Servicio"/>
+                <field name="phone" class="o_force_ltr" optional="show"/>
+                <field name="email" optional="show"/>
+                <field name="city" optional="show"/>
+                <field name="credit_limit_amount" string="Límite Crédito" optional="hide" widget="monetary"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- FILTROS Y BÚSQUEDA PERSONALIZADA PARA CLIENTES -->
+    <record id="view_res_partner_filter_gas_station" model="ir.ui.view">
+        <field name="name">res.partner.select.gas.station</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="priority">25</field>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='type_person']" position="before">
+                <filter name="filter_customer" string="Clientes" domain="[('customer_rank', '>', 0)]"/>
+                <separator/>
+                <filter name="filter_customer_credit" string="Clientes de Crédito" domain="[('customer_type', '=', 'credit')]"/>
+                <filter name="filter_customer_monthly" string="Facturación Mensual" domain="[('customer_type', '=', 'monthly')]"/>
+                <filter name="filter_customer_ordinary" string="Facturación Ordinaria" domain="[('customer_type', '=', 'ordinary')]"/>
+                <separator/>
+                <filter name="filter_has_station" string="Con Estación Asignada" domain="[('station_id', '!=', False)]"/>
+                <filter name="filter_no_station" string="Sin Estación Asignada" domain="[('station_id', '=', False)]"/>
+                <separator/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter name="group_company" string="Empresa" context="{'group_by': 'company_id'}"/>
+                <filter name="group_station" string="Estación de Servicio" context="{'group_by': 'station_id'}"/>
+                <filter name="group_customer_type" string="Tipo de Facturación" context="{'group_by': 'customer_type'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ACCIÓN DE VENTANA DIRECTA A CLIENTES -->
+    <record id="action_gas_station_customers" model="ir.actions.act_window">
+        <field name="name">Clientes</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('type', '!=', 'private')]</field>
+        <field name="context">{
+            'default_customer_rank': 1,
+            'search_default_filter_customer': 1,
+        }</field>
+        <field name="view_id" ref="view_partner_gas_station_tree"/>
+        <field name="search_view_id" ref="view_res_partner_filter_gas_station"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear un nuevo cliente de estación de servicio
+            </p>
+            <p>
+                Gestione aquí los clientes de cada empresa y estación de servicio, estableciendo si son de Crédito (albarán en pista), Mensual u Ordinaria.
+            </p>
+        </field>
+    </record>
+</odoo>

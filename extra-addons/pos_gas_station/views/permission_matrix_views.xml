@@ -143,23 +143,29 @@
               action="point_of_sale.product_template_action_pos_product"
               sequence="2"/>
 
+    <menuitem id="menu_gas_station_sub_customers"
+              name="Clientes"
+              parent="menu_gas_station_root"
+              action="action_gas_station_customers"
+              sequence="3"/>
+
     <menuitem id="menu_gas_station_sub_orders"
               name="Pedidos"
               parent="menu_gas_station_root"
               action="point_of_sale.action_pos_pos_form"
-              sequence="3"/>
+              sequence="4"/>
 
     <menuitem id="menu_gas_station_sub_reports"
               name="Informes"
               parent="menu_gas_station_root"
               action="point_of_sale.action_report_pos_order_all"
-              sequence="4"/>
+              sequence="5"/>
 
     <menuitem id="menu_gas_station_sub_companies"
               name="Empresas y estaciones de servicio"
               parent="menu_gas_station_root"
               action="base.action_res_company_form"
-              sequence="5"/>
+              sequence="6"/>
 
     <!-- MENÚ EN AJUSTES > USUARIOS Y COMPANIAS -->
     <menuitem id="menu_utrecar_permission_matrix_settings"

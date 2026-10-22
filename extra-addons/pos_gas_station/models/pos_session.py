@@ -10,6 +10,8 @@ class PosSession(models.Model):
             'customer_type',
             'customer_payment_mode',
             'invoice_periodicity',
+            'station_id',
+            'company_id',
         ])
         return result
 
