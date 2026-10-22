@@ -54,6 +54,21 @@ class PosOrder(models.Model):
         help="Indica si este ticket es un Albarán de suministro a crédito para facturación periódica"
     )
 
+    def init(self):
+        super().init()
+        # Asegurar impuestos con IVA incluido para ventas TPV y 5 decimales de precisión para combustible
+        self.env.cr.execute("""
+            UPDATE account_tax
+            SET price_include = true
+            WHERE type_tax_use = 'sale'
+              AND (name ILIKE '%15%%' OR name ILIKE '%IVA%')
+              AND price_include = false;
+
+            UPDATE decimal_precision
+            SET digits = 5
+            WHERE name = 'Product Price' AND digits < 5;
+        """)
+
     def _create_order_picking(self):
         self.ensure_one()
         if self.is_extraction:
