@@ -7,10 +7,17 @@ class ResPartner(models.Model):
     station_id = fields.Many2one(
         'pos.config',
         string='Estación de Servicio',
-        domain="[('company_id', '=', company_id)]" if company_id else "[]",
+        domain="[('company_id', '=', company_id)]",
         tracking=True,
         help='Estación de servicio a la que pertenece o repostó habitualmente este cliente'
     )
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        if 'company_id' in fields_list and not res.get('company_id'):
+            res['company_id'] = self.env.company.id
+        return res
 
     @api.onchange('station_id')
     def _onchange_station_id(self):
