@@ -1920,9 +1920,8 @@
                         <thead>
                             <tr class="text-dark">
                                 <th>Método de pago</th>
-                                <th>Cobrado</th>
-                                <th style="width:25%">Cierre</th>
-                                <th>Diferencia</th>
+                                <th style="width:25%">Cobrado</th>
+                                <th style="width:35%">Cierre</th>
                             </tr>
                         </thead>
                         <t t-if="pos.config.cash_control and props.default_cash_details">
@@ -1940,8 +1939,6 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="align-middle" t-esc="env.utils.formatCurrency(getDifference(props.default_cash_details.id))"
-                                        t-att-class="{'warning text-danger fw-bolder': !env.utils.floatIsZero(getDifference(props.default_cash_details.id))}"/>
                                 </tr>
                             </tbody>
                         </t>
@@ -1953,8 +1950,6 @@
                                     <Input tModel="[state.payments[pm.id], 'counted']"
                                         isValid.bind="env.utils.isValidFloat" />
                                 </td>
-                                <td class="align-middle" t-esc="env.utils.formatCurrency(getDifference(pm.id))"
-                                    t-att-class="{'warning text-danger fw-bolder': !env.utils.floatIsZero(getDifference(pm.id))}"/>
                             </tr>
                         </tbody>
                     </table>
