@@ -61,7 +61,7 @@ class PosOrder(models.Model):
             UPDATE account_tax
             SET price_include = true
             WHERE type_tax_use = 'sale'
-              AND (name ILIKE '%15%%' OR name ILIKE '%IVA%')
+              AND (name::text ILIKE '%15%%' OR name::text ILIKE '%IVA%')
               AND price_include = false;
 
             UPDATE decimal_precision
