@@ -1247,9 +1247,6 @@
                                                         <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir ticket">
                                                             🖨️ Ticket
                                                         </button>
-                                                        <button class="btn-tbl-action btn-tbl-copy" t-on-click="() => this.printShiftOrderTicket(ord, true)" title="Imprimir copia de ticket">
-                                                            📋 Copia
-                                                        </button>
                                                         <t t-if="ord.is_invoiced">
                                                             <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura PDF">
                                                                 🖨️ PDF
@@ -1299,9 +1296,6 @@
                             <div class="shift-detail-actions-bar">
                                 <button class="btn-action-primary" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, false)">
                                     <i class="fa fa-print me-1"/> 🖨️ Imprimir Ticket
-                                </button>
-                                <button class="btn-action-primary btn-action-copy" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, true)">
-                                    <i class="fa fa-copy me-1"/> 📋 Imprimir Copia
                                 </button>
                                 <t t-if="state.selectedShiftOrder.is_invoiced">
                                     <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder)">
