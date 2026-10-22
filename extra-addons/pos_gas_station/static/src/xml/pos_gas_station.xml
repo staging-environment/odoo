@@ -1643,8 +1643,8 @@
 
             <!-- ================= MODAL PARA ENVIAR FACTURA POR EMAIL ================= -->
             <t t-if="state.isEmailInvoiceModalOpen">
-                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeEmailInvoiceModal()">
-                    <div class="utrecar-auth-modal" style="width: 490px; max-width: 95vw;" t-on-click.stop="">
+                <div class="email-invoice-modal-backdrop" style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(15, 23, 42, 0.75) !important; backdrop-filter: blur(4px) !important; z-index: 12000 !important; display: flex !important; align-items: center !important; justify-content: center !important;" t-on-click="() => this.closeEmailInvoiceModal()">
+                    <div class="utrecar-auth-modal email-invoice-modal-window" style="width: 500px; max-width: 95vw; z-index: 12001 !important; box-shadow: 0 25px 60px rgba(0,0,0,0.6) !important; position: relative !important;" t-on-click.stop="">
                         <div class="auth-modal-header" style="background: #059669; color: white;">
                             <div class="auth-header-left">
                                 <span style="font-size: 22px;">📧</span>
@@ -1702,7 +1702,7 @@
                         <div class="auth-modal-footer" style="padding: 14px 20px; display: flex; justify-content: space-between; background: #f8fafc; border-top: 1px solid #e2e8f0;">
                             <t t-if="state.emailInvoiceSuccessMessage">
                                 <button type="button" class="btn btn-success w-100 fw-bold py-2" style="font-size: 14px;" t-on-click="() => this.closeEmailInvoiceModal()">
-                                    ✓ Aceptar y Cerrar
+                                    ✓ Aceptar y Volver a Pedidos
                                 </button>
                             </t>
                             <t t-else="">

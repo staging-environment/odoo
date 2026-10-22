@@ -1433,16 +1433,31 @@ export class UtrecarMainScreen extends Component {
         this.state.isSendingInvoiceEmail = false;
         this.state.emailInvoiceSuccessMessage = "";
         this.state.emailInvoiceErrorMessage = "";
+        this.state.wasShiftOrdersOpenBeforeEmail = this.state.isShiftOrdersModalOpen;
+        this.state.savedShiftOrderBeforeEmail = this.state.selectedShiftOrder;
+
+        // Cerrar la ventana flotante actual (pedidos) para que la de email quede sola y activa en primer plano
+        this.state.isShiftOrdersModalOpen = false;
         this.state.isEmailInvoiceModalOpen = true;
     }
 
     closeEmailInvoiceModal() {
         this.state.isEmailInvoiceModalOpen = false;
+        const reopen = this.state.wasShiftOrdersOpenBeforeEmail;
+        const savedOrder = this.state.savedShiftOrderBeforeEmail;
         this.state.emailInvoiceOrder = null;
         this.state.emailInvoiceTarget = "";
         this.state.isSendingInvoiceEmail = false;
         this.state.emailInvoiceSuccessMessage = "";
         this.state.emailInvoiceErrorMessage = "";
+        this.state.wasShiftOrdersOpenBeforeEmail = false;
+        this.state.savedShiftOrderBeforeEmail = null;
+
+        // Si venía de la ventana flotante de pedidos, volver a abrirla para continuar
+        if (reopen) {
+            this.state.selectedShiftOrder = savedOrder;
+            this.state.isShiftOrdersModalOpen = true;
+        }
     }
 
     async confirmSendInvoiceEmail() {
@@ -1474,6 +1489,9 @@ export class UtrecarMainScreen extends Component {
                 order.partner_email = email;
                 if (this.state.selectedShiftOrder && this.state.selectedShiftOrder.id === order.id) {
                     this.state.selectedShiftOrder.partner_email = email;
+                }
+                if (this.state.savedShiftOrderBeforeEmail && this.state.savedShiftOrderBeforeEmail.id === order.id) {
+                    this.state.savedShiftOrderBeforeEmail.partner_email = email;
                 }
             } else {
                 this.state.emailInvoiceErrorMessage = res ? res.message : "No se pudo enviar el correo.";
