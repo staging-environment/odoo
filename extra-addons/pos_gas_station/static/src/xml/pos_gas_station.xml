@@ -101,10 +101,10 @@
                             <button class="tool-btn btn-trash-red" title="Borrar línea seleccionada" t-on-click="() => this.deleteSelectedLine()">
                                 🗑 Borrar linea
                             </button>
-                            <button class="tool-btn btn-extraction" title="Registrar como Extracción / Retorno a depósito (no resta existencias ni se cobra al cajero)" t-on-click="() => this.openExtractionModal()">
-                                ⛽ Extracciones
-                            </button>
                             <t t-if="hasPumpLineInCurrentOrder()">
+                                <button class="tool-btn btn-extraction" title="Registrar como Extracción / Retorno a depósito (no resta existencias ni se cobra al cajero)" t-on-click="() => this.openExtractionModal()">
+                                    ⛽ Extracciones
+                                </button>
                                 <button class="tool-btn btn-park-sale" title="Aparcar venta en la monedita de la calle y reabrir la pista para el siguiente cliente" t-on-click="() => this.parkCurrentPumpSale()">
                                     🅿 DEJAR PENDIENTE
                                 </button>

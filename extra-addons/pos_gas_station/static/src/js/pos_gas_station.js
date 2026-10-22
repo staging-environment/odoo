@@ -1712,8 +1712,19 @@ export class UtrecarMainScreen extends Component {
     hasPumpLineInCurrentOrder() {
         const order = this.pos.get_order();
         if (!order) return false;
-        const lines = order.get_orderlines ? order.get_orderlines() : [];
-        return lines.some(l => l.pump_id);
+        const lines = order.get_orderlines ? order.get_orderlines() : (order.orderlines || []);
+        if (!lines || lines.length === 0) return false;
+        return lines.some(l => {
+            if (l.pump_id) return true;
+            const p = l.product || (l.product_id ? (this.pos.db ? this.pos.db.get_product_by_id(l.product_id.id || l.product_id) : null) : null);
+            if (p) {
+                const name = (p.display_name || p.name || "").toLowerCase();
+                const code = (p.default_code || "").toUpperCase();
+                if (code.includes("GAS") || code.includes("SP95") || code.includes("DIESEL") || code.includes("CARBURANTE")) return true;
+                if (name.includes("gasóleo") || name.includes("gasoleo") || name.includes("sin plomo") || name.includes("gasolina") || name.includes("combustible") || name.includes("diesel")) return true;
+            }
+            return false;
+        });
     }
 
     onCoinBadgeClick(pump) {
