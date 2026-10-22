@@ -1285,10 +1285,13 @@
                                         <strong><t t-esc="state.selectedShiftOrder.name"/></strong>
                                     </div>
                                 </div>
-                                <div class="shift-status-ribbon">
-                                    <span class="ribbon-step">Nuevo</span>
-                                    <span t-attf-class="ribbon-step #{!state.selectedShiftOrder.is_invoiced ? 'active' : 'passed'}">Pagado</span>
-                                    <span t-attf-class="ribbon-step #{state.selectedShiftOrder.is_invoiced ? 'active' : ''}">Publicado</span>
+                                <div class="shift-detail-header-right">
+                                    <div class="shift-status-ribbon">
+                                        <span class="ribbon-step">Nuevo</span>
+                                        <span t-attf-class="ribbon-step #{!state.selectedShiftOrder.is_invoiced ? 'active' : 'passed'}">Pagado</span>
+                                        <span t-attf-class="ribbon-step #{state.selectedShiftOrder.is_invoiced ? 'active' : ''}">Publicado</span>
+                                    </div>
+                                    <button class="shift-btn-close" t-on-click="() => this.closeShiftOrdersModal()" title="Cerrar ventana y volver al TPV">✖</button>
                                 </div>
                             </div>
 
