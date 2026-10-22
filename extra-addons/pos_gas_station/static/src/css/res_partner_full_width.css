@@ -1,0 +1,73 @@
+/* ==========================================================================
+   FICHA DE CLIENTE (RES.PARTNER) A PANTALLA COMPLETA - SIN CHATTER
+   ========================================================================== */
+
+/* En pantallas grandes (XXL), evitar que el formulario se comporte como flex-row */
+.o_form_view.o_xxl_form_view:has(.o_partner_full_width_marker),
+.o_form_view.o_xxl_form_view:has([name="station_id"]) {
+    flex-flow: column nowrap !important;
+}
+
+/* El contenedor principal de la vista de formulario */
+.o_form_view:has(.o_partner_full_width_marker),
+.o_form_view:has([name="station_id"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.o_form_view:has(.o_partner_full_width_marker) .o_form_view_container,
+.o_form_view:has([name="station_id"]) .o_form_view_container {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+}
+
+.o_form_view:has(.o_partner_full_width_marker) .o_content,
+.o_form_view:has([name="station_id"]) .o_content {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.o_form_view:has(.o_partner_full_width_marker) .o_form_renderer,
+.o_form_view:has([name="station_id"]) .o_form_renderer {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Fondo de la ficha (sheet_bg) ocupando todo el ancho disponible */
+.o_form_view:has(.o_partner_full_width_marker) .o_form_sheet_bg,
+.o_form_view:has([name="station_id"]) .o_form_sheet_bg,
+.o_form_sheet_bg:has(.o_partner_full_width_marker),
+.o_form_sheet_bg:has([name="station_id"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+    padding-left: 28px !important;
+    padding-right: 28px !important;
+    box-sizing: border-box !important;
+}
+
+/* Hoja del formulario (o_form_sheet) a pantalla completa */
+.o_form_view:has(.o_partner_full_width_marker) .o_form_sheet,
+.o_form_view:has([name="station_id"]) .o_form_sheet,
+.o_form_sheet:has(.o_partner_full_width_marker),
+.o_form_sheet:has([name="station_id"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Ocultar cualquier bloque o resto de chatter si existiera */
+.o_form_view:has(.o_partner_full_width_marker) .oe_chatter,
+.o_form_view:has(.o_partner_full_width_marker) .o-mail-Form-chatter,
+.o_form_view:has(.o_partner_full_width_marker) .o-mail-ChatterContainer,
+.o_form_view:has([name="station_id"]) .oe_chatter,
+.o_form_view:has([name="station_id"]) .o-mail-Form-chatter,
+.o_form_view:has([name="station_id"]) .o-mail-ChatterContainer {
+    display: none !important;
+}

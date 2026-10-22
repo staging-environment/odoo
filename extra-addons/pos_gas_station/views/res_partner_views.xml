@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- VISTA FORMULARIO HEREDADA: ASIGNACIÓN DE EMPRESA Y ESTACIÓN DE SERVICIO -->
+    <!-- VISTA FORMULARIO HEREDADA: ASIGNACIÓN DE EMPRESA Y ESTACIÓN DE SERVICIO Y PANTALLA COMPLETA SIN CHATTER -->
     <record id="view_partner_form_inherit_gas_station" model="ir.ui.view">
         <field name="name">res.partner.form.inherit.gas.station</field>
         <field name="model">res.partner</field>
@@ -10,6 +10,12 @@
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="company_id" options="{'no_create': True}" string="Empresa / Compañía"/>
                 <field name="station_id" domain="[('company_id', '=', company_id)]" options="{'no_create': True}" string="Estación de Servicio"/>
+            </xpath>
+            <!-- Quitar bloque lateral/inferior de chatter (enviar mensaje, registrar nota y actividades) -->
+            <xpath expr="//div[hasclass('oe_chatter')]" position="replace"/>
+            <!-- Marcador dentro de sheet para aplicar estilos de pantalla completa -->
+            <xpath expr="//sheet" position="inside">
+                <div class="o_partner_full_width_marker d-none"/>
             </xpath>
         </field>
     </record>

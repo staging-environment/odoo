@@ -1,6 +1,6 @@
 {
     'name': 'POS Gas Station Integration',
-    'version': '17.0.2.7.3',
+    'version': '17.0.2.7.4',
     'category': 'Point of Sale',
     'summary': 'Control táctil de gasolinera en tiempo real y compatibilidad con VirtusTPV',
     'description': """
@@ -34,6 +34,7 @@
             'pos_gas_station/static/src/css/gas_station_dashboard.css',
             'pos_gas_station/static/src/js/gas_station_dashboard.js',
             'pos_gas_station/static/src/xml/gas_station_dashboard.xml',
+            'pos_gas_station/static/src/css/res_partner_full_width.css',
         ],
     },
     'installable': True,
