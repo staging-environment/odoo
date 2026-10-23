@@ -11,6 +11,8 @@ class PosSession(models.Model):
             'customer_type',
             'customer_payment_mode',
             'invoice_periodicity',
+            'credit_blocked',
+            'credit_limit_amount',
             'station_id',
             'company_id',
         ])

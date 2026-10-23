@@ -5296,7 +5296,6 @@
     gap: 16px !important;
 }
 
-
 /* CLIENT BOX EN TICKET DE CLIENTE MENSUAL / ALBARÁN */
 .ticket-client-box, .albaran-client-box {
     border: 1.5px solid #111 !important;
@@ -5315,4 +5314,49 @@
 .payment-customer-rule-info .badge {
     box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
     letter-spacing: 0.3px !important;
+}
+
+/* BOTÓN Y MODAL DE CONVERTIR A ALBARÁN DE CRÉDITO */
+.btn-action-convert-albaran {
+    background: #2563eb !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+}
+.btn-action-convert-albaran:hover {
+    background: #1d4ed8 !important;
+    border-color: #1e40af !important;
+}
+
+.btn-action-albaran {
+    background: #eef2ff !important;
+    color: #4338ca !important;
+    border: 1px solid #a5b4fc !important;
+}
+.btn-action-albaran:hover {
+    background: #e0e7ff !important;
+    color: #3730a3 !important;
+}
+
+.btn-pay-albaran.credit-active {
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.4) !important;
+    animation: pulse-albaran 2s infinite !important;
+}
+@keyframes pulse-albaran {
+    0%, 100% { border-color: #ca8a04; }
+    50% { border-color: #eab308; box-shadow: 0 0 10px rgba(234, 179, 8, 0.6); }
+}
+
+.partner-result-item.credit-ok {
+    background: #f0fdf4 !important;
+}
+.partner-result-item.credit-ok:hover {
+    background: #dcfce7 !important;
+}
+
+.partner-result-item.credit-no {
+    background: #f8fafc !important;
+    opacity: 0.75;
+}
+.partner-result-item.credit-no:hover {
+    background: #f1f5f9 !important;
 }

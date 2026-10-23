@@ -153,6 +153,14 @@ export class UtrecarMainScreen extends Component {
             invoiceNewPartner: { name: "", vat: "", street: "", city: "", zip: "", email: "", phone: "" },
             isCreatingPartner: false,
             invoiceLoading: false,
+            isConvertAlbaranModalOpen: false,
+            convertAlbaranOrder: null,
+            convertAlbaranSelectedPartner: null,
+            convertAlbaranPartnerSearch: "",
+            convertAlbaranPartnerResults: [],
+            convertAlbaranPlate: "",
+            convertAlbaranDriver: "",
+            convertAlbaranLoading: false,
             isEmailInvoiceModalOpen: false,
             emailInvoiceOrder: null,
             emailInvoiceTarget: "",
@@ -1048,7 +1056,12 @@ export class UtrecarMainScreen extends Component {
             </tr>
         `).join("");
 
-        const paymentsHtml = (order.payments || []).map(p => `
+        const paymentsHtml = order.is_albaran ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 2px; font-weight: bold;">
+                <span>Forma de Pago:</span>
+                <span>A CUENTA (CRÉDITO)</span>
+            </div>
+        ` : (order.payments || []).map(p => `
             <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
                 <span>${p.name}:</span>
                 <span style="font-weight: bold;">${Number(p.amount).toFixed(2)} €</span>
@@ -1056,10 +1069,12 @@ export class UtrecarMainScreen extends Component {
         `).join("");
 
         const clientHtml = order.partner_name ? `
-            <div style="margin-top: 6px; font-size: 11px; border-top: 1px dashed #bbb; padding-top: 4px;">
-                <strong>CLIENTE:</strong> ${order.partner_name}<br/>
+            <div style="margin-top: 6px; font-size: 11px; border: ${order.is_albaran ? '1px solid #000' : '1px dashed #bbb'}; padding: 6px; border-radius: 4px;">
+                <strong>${order.is_albaran ? 'CLIENTE DE CRÉDITO:' : 'CLIENTE:'}</strong> ${order.partner_name}<br/>
                 ${order.partner_vat ? `<strong>CIF/NIF:</strong> ${order.partner_vat}<br/>` : ''}
-                ${order.partner_street ? `${order.partner_street}, ${order.partner_city}<br/>` : ''}
+                ${order.partner_street ? `${order.partner_street}, ${order.partner_city || ''}<br/>` : ''}
+                ${order.vehicle_plate ? `<strong>MATRÍCULA:</strong> ${order.vehicle_plate}<br/>` : ''}
+                ${order.vehicle_driver ? `<strong>CONDUCTOR / DNI:</strong> ${order.vehicle_driver}<br/>` : ''}
             </div>
         ` : '';
 
@@ -1071,22 +1086,41 @@ export class UtrecarMainScreen extends Component {
 
         const copyBanner = isCopy ? `
             <div style="border: 2px solid #000; padding: 6px; text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 8px; letter-spacing: 2px;">
-                *** COPIA DE TICKET ***
+                *** COPIA DE ${order.is_albaran ? 'ALBARÁN' : 'TICKET'} ***
+            </div>
+        ` : '';
+
+        const albaranBanner = order.is_albaran ? `
+            <div style="border: 2px solid #000; padding: 6px; text-align: center; margin-bottom: 8px;">
+                <div style="font-size: 13px; font-weight: 900; letter-spacing: 1px;">ALBARÁN DE SUMINISTRO A CRÉDITO</div>
+                <div style="font-size: 16px; font-weight: 900; margin-top: 2px;">ALBARÁN Nº: ${order.name}</div>
             </div>
         ` : '';
 
         const isAnnulled = order.is_ticket_annulled || Boolean(order.annulment_ref);
         const annulBanner = isAnnulled ? `
             <div style="border: 2px dashed #b71c1c; background: #ffebee; color: #b71c1c; padding: 6px; text-align: center; margin-bottom: 8px; font-weight: bold; font-size: 11px;">
-                <div style="font-size: 13px; letter-spacing: 1px;">*** TICKET ANULADO ***</div>
+                <div style="font-size: 13px; letter-spacing: 1px;">*** DOCUMENTO ANULADO ***</div>
                 <div>REF. ANULACIÓN: ${order.annulment_ref || 'TTTR_ANUL'}</div>
                 ${order.is_invoiced ? `<div>SUSTITUIDO POR FACTURA: ${order.account_move_name}</div>` : ''}
             </div>
         ` : '';
 
+        const albaranSignature = order.is_albaran ? `
+            <div style="border-top: 1px solid #000; margin-top: 15px; padding-top: 8px; font-size: 11px;">
+                <div style="font-weight: bold; margin-bottom: 22px;">Firma del Conductor / Conforme:</div>
+                <div style="height: 35px; border-bottom: 1px solid #555; margin-bottom: 6px;"></div>
+                <div>Nombre / DNI: ${order.vehicle_driver || '__________________________________'}</div>
+                <div style="margin-top: 2px;">Matrícula: ${order.vehicle_plate || '__________________________________'}</div>
+                <div style="text-align: center; font-size: 10px; margin-top: 8px; font-style: italic;">
+                    Documento de entrega de mercancía a crédito.<br/>Facturación agrupada a fin de periodo.
+                </div>
+            </div>
+        ` : '';
+
         const receiptWindow = window.open("", "_blank", "width=400,height=650");
         if (!receiptWindow) {
-            alert("Por favor permita las ventanas emergentes en su navegador para imprimir el ticket.");
+            alert("Por favor permita las ventanas emergentes en su navegador para imprimir.");
             return;
         }
 
@@ -1095,7 +1129,7 @@ export class UtrecarMainScreen extends Component {
             <html>
             <head>
                 <meta charset="utf-8">
-                <title>Ticket ${order.name}${isCopy ? ' (COPIA)' : ''}</title>
+                <title>${order.is_albaran ? 'Albarán' : 'Ticket'} ${order.name}${isCopy ? ' (COPIA)' : ''}</title>
                 <style>
                     body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 16px; color: #000; }
                     .header { text-align: center; margin-bottom: 10px; }
@@ -1117,6 +1151,7 @@ export class UtrecarMainScreen extends Component {
             </head>
             <body>
                 ${copyBanner}
+                ${albaranBanner}
                 ${annulBanner}
                 <div class="header">
                     <h2>${comp.name || 'ESTACIÓN DE SERVICIO'}</h2>
@@ -1128,7 +1163,8 @@ export class UtrecarMainScreen extends Component {
                 <div class="divider"></div>
                 <div class="meta">
                     ${isCopy ? `<div class="meta-row"><span>DOCUMENTO:</span><strong>COPIA</strong></div>` : ''}
-                    <div class="meta-row"><span>Nº TICKET (SERIE):</span><strong>${order.name}</strong></div>
+                    <div class="meta-row"><span>${order.is_albaran ? 'Nº ALBARÁN:' : 'Nº TICKET (SERIE):'}</span><strong>${order.name}</strong></div>
+                    ${order.is_albaran ? '<div class="meta-row"><span>MODALIDAD:</span><strong>CRÉDITO (ALBARÁN)</strong></div>' : ''}
                     ${isAnnulled ? `<div class="meta-row"><span>ESTADO:</span><strong style="color: #b71c1c;">ANULADO (${order.annulment_ref})</strong></div>` : ''}
                     <div class="meta-row"><span>FECHA:</span><span>${order.date_order}</span></div>
                     <div class="meta-row"><span>SESIÓN:</span><span>${order.session_name}</span></div>
@@ -1159,8 +1195,9 @@ export class UtrecarMainScreen extends Component {
                 <div style="margin-top: 6px;">
                     ${paymentsHtml}
                 </div>
+                ${albaranSignature}
                 <div class="footer">
-                    <p>*** GRACIAS POR SU VISITA ***</p>
+                    <p>*** ${order.is_albaran ? 'ALBARÁN FIRMADO POR EL CLIENTE' : 'GRACIAS POR SU VISITA'} ***</p>
                 </div>
                 <script>
                     window.onload = function() {
@@ -1342,6 +1379,135 @@ export class UtrecarMainScreen extends Component {
         } catch (e) {
             console.error("Error confirmAnnulOrder:", e);
             alert("Error al comunicarse con el servidor: " + e.message);
+        }
+    }
+
+    openConvertAlbaranModal(order) {
+        if (!order) return;
+        this.state.convertAlbaranOrder = order;
+        this.state.convertAlbaranPlate = order.vehicle_plate || "";
+        this.state.convertAlbaranDriver = order.vehicle_driver || "";
+        this.state.convertAlbaranPartnerSearch = "";
+        this.state.convertAlbaranPartnerResults = [];
+        this.state.convertAlbaranLoading = false;
+
+        const hasCredit = (order.partner_customer_payment_mode === 'credit' || order.partner_customer_type === 'credit' || order.partner_customer_type === 'monthly') && !order.partner_credit_blocked;
+
+        if (order.partner_id && hasCredit) {
+            this.state.convertAlbaranSelectedPartner = {
+                id: order.partner_id,
+                name: order.partner_name,
+                vat: order.partner_vat,
+                street: order.partner_street,
+                city: order.partner_city,
+                customer_type: order.partner_customer_type,
+                customer_payment_mode: order.partner_customer_payment_mode,
+                credit_blocked: order.partner_credit_blocked,
+                hasCredit: true,
+                vehicles: order.partner_vehicles || []
+            };
+        } else {
+            this.state.convertAlbaranSelectedPartner = null;
+        }
+
+        this.state.isConvertAlbaranModalOpen = true;
+    }
+
+    closeConvertAlbaranModal() {
+        this.state.isConvertAlbaranModalOpen = false;
+        this.state.convertAlbaranOrder = null;
+        this.state.convertAlbaranSelectedPartner = null;
+        this.state.convertAlbaranPartnerResults = [];
+        this.state.convertAlbaranPartnerSearch = "";
+        this.state.convertAlbaranLoading = false;
+    }
+
+    async onConvertAlbaranPartnerSearch(ev) {
+        const query = ev.target.value;
+        this.state.convertAlbaranPartnerSearch = query;
+        if (query && query.trim().length >= 2) {
+            try {
+                const res = await this.env.services.rpc("/pos_gas_station/search_partners", { query: query.trim() });
+                if (res && res.status === "success") {
+                    this.state.convertAlbaranPartnerResults = (res.partners || []).map(p => ({
+                        ...p,
+                        hasCredit: (p.customer_payment_mode === 'credit' || p.customer_type === 'credit' || p.customer_type === 'monthly') && !p.credit_blocked
+                    }));
+                }
+            } catch (e) {
+                console.error("Error onConvertAlbaranPartnerSearch:", e);
+            }
+        } else {
+            this.state.convertAlbaranPartnerResults = [];
+        }
+    }
+
+    selectPartnerForConvertAlbaran(partner) {
+        if (!partner.hasCredit) {
+            if (partner.credit_blocked) {
+                alert(`⚠️ El cliente "${partner.name}" tiene el crédito BLOQUEADO por riesgo o impago.`);
+            } else {
+                alert(`⚠️ El cliente "${partner.name}" está configurado como cliente de CONTADO.\nSolo se pueden emitir Albaranes de Crédito a clientes con modalidad de Crédito autorizada.`);
+            }
+            return;
+        }
+
+        this.state.convertAlbaranSelectedPartner = partner;
+        this.state.convertAlbaranPartnerResults = [];
+        this.state.convertAlbaranPartnerSearch = partner.name + (partner.vat ? ` (${partner.vat})` : "");
+        if (partner.vehicles && partner.vehicles.length > 0 && !this.state.convertAlbaranPlate) {
+            this.state.convertAlbaranPlate = partner.vehicles[0].name;
+        }
+    }
+
+    clearSelectedPartnerForConvertAlbaran() {
+        this.state.convertAlbaranSelectedPartner = null;
+        this.state.convertAlbaranPartnerSearch = "";
+    }
+
+    async confirmConvertToAlbaran() {
+        const order = this.state.convertAlbaranOrder;
+        const partner = this.state.convertAlbaranSelectedPartner;
+        if (!order || !partner) {
+            alert("⚠️ Por favor seleccione un cliente de crédito válido.");
+            return;
+        }
+
+        const confirmText = order.is_invoiced
+            ? `¿Está seguro de que desea anular la factura ${order.account_move_name} y convertir este pedido en Albarán de Crédito para ${partner.name}?`
+            : `¿Está seguro de que desea convertir el ticket ${order.name} en Albarán de Crédito para ${partner.name}?`;
+
+        if (!confirm(confirmText)) return;
+
+        this.state.convertAlbaranLoading = true;
+        try {
+            const res = await this.env.services.rpc("/pos_gas_station/convert_to_albaran", {
+                order_id: order.id,
+                partner_id: partner.id,
+                vehicle_plate: this.state.convertAlbaranPlate,
+                vehicle_driver: this.state.convertAlbaranDriver
+            });
+
+            if (res && res.status === "success") {
+                this.closeConvertAlbaranModal();
+                alert(`✅ ${res.message || "Pedido convertido con éxito en Albarán de Crédito."}`);
+                await this.loadShiftOrders();
+
+                const updatedOrder = (this.state.shiftOrders || []).find(o => o.id === order.id);
+                if (updatedOrder) {
+                    this.state.selectedShiftOrder = updatedOrder;
+                    if (confirm("¿Desea imprimir el Albarán de Crédito firmado ahora?")) {
+                        this.printShiftOrderTicket(updatedOrder, false);
+                    }
+                }
+            } else {
+                alert("Error al convertir a albarán: " + (res ? res.message : "Error desconocido"));
+            }
+        } catch (e) {
+            console.error("Error confirmConvertToAlbaran:", e);
+            alert("Error al comunicarse con el servidor: " + (e.message || e));
+        } finally {
+            this.state.convertAlbaranLoading = false;
         }
     }
 
@@ -2636,13 +2802,19 @@ patch(Order.prototype, {
     export_as_JSON() {
         const json = super.export_as_JSON(...arguments);
         json.is_albaran = Boolean(this.is_albaran);
+        json.vehicle_plate = this.vehicle_plate || '';
+        json.vehicle_driver = this.vehicle_driver || '';
         return json;
     },
     export_for_printing() {
         const res = super.export_for_printing(...arguments);
         res.is_albaran = Boolean(this.is_albaran);
+        res.vehicle_plate = this.vehicle_plate || '';
+        res.vehicle_driver = this.vehicle_driver || '';
         if (res.headerData) {
             res.headerData.is_albaran = Boolean(this.is_albaran);
+            res.headerData.vehicle_plate = this.vehicle_plate || '';
+            res.headerData.vehicle_driver = this.vehicle_driver || '';
         }
         res.cashier = null;
         if (res.headerData) {
@@ -2717,7 +2889,8 @@ patch(PaymentScreen.prototype, {
     get isCreditCustomer() {
         const partner = this.currentPartner;
         if (!partner) return false;
-        return partner.customer_type === 'credit' || partner.customer_payment_mode === 'credit';
+        const hasCredit = partner.customer_type === 'credit' || partner.customer_type === 'monthly' || partner.customer_payment_mode === 'credit';
+        return hasCredit && !partner.credit_blocked;
     },
 
     get isMonthlyCustomer() {
@@ -2739,8 +2912,13 @@ patch(PaymentScreen.prototype, {
                 return;
             }
         }
+        const partner = this.currentOrder.get_partner();
         if (!this.isCreditCustomer) {
-            alert("⚠️ El cliente seleccionado no está configurado como cliente de Crédito. Solo se permite Albarán para clientes de crédito.");
+            if (partner.credit_blocked) {
+                alert(`⚠️ El cliente "${partner.name}" tiene el crédito BLOQUEADO por riesgo o impago.`);
+            } else {
+                alert(`⚠️ El cliente "${partner.name}" está configurado como cliente de CONTADO.\nSolo se permite Albarán a crédito para clientes con modalidad de Crédito autorizada.`);
+            }
             return;
         }
 

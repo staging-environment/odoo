@@ -1388,11 +1388,17 @@ class PosGasStationController(http.Controller):
                     'partner_zip': o.partner_id.zip or '',
                     'partner_phone': o.partner_id.phone or '',
                     'partner_email': o.partner_id.email or '',
+                    'partner_customer_type': getattr(o.partner_id, 'customer_type', 'ordinary') or 'ordinary',
+                    'partner_customer_payment_mode': getattr(o.partner_id, 'customer_payment_mode', 'cash') or 'cash',
+                    'partner_credit_blocked': getattr(o.partner_id, 'credit_blocked', False) or False,
+                    'partner_vehicles': [{'id': v.id, 'name': v.name} for v in getattr(o.partner_id, 'vehicle_ids', [])],
                     'fiscal_position': o.fiscal_position_id.name if o.fiscal_position_id else 'Posición fiscal ordinaria',
                     'state': 'extraction' if getattr(o, 'is_extraction', False) else ('invoiced' if is_inv else ('albaran' if getattr(o, 'is_albaran', False) else o.state)),
                     'is_invoiced': is_inv,
                     'is_extraction': getattr(o, 'is_extraction', False),
                     'is_albaran': getattr(o, 'is_albaran', False),
+                    'vehicle_plate': getattr(o, 'vehicle_plate', '') or '',
+                    'vehicle_driver': getattr(o, 'vehicle_driver', '') or '',
                     'extraction_reason': getattr(o, 'extraction_reason', '') or '',
                     'extraction_liters': float(getattr(o, 'extraction_liters', 0.0) or 0.0),
                     'extraction_pump_id': int(getattr(o, 'extraction_pump_id', 0) or 0),
@@ -1610,7 +1616,7 @@ class PosGasStationController(http.Controller):
             if not q or len(q) < 2:
                 return {'status': 'success', 'partners': []}
             domain = ['|', ('name', 'ilike', q), ('vat', 'ilike', q)]
-            partners = env['res.partner'].sudo().search(domain, limit=12)
+            partners = env['res.partner'].sudo().search(domain, limit=15)
             results = []
             for p in partners:
                 results.append({
@@ -1624,11 +1630,44 @@ class PosGasStationController(http.Controller):
                     'email': p.email or '',
                     'customer_type': getattr(p, 'customer_type', 'ordinary') or 'ordinary',
                     'customer_payment_mode': getattr(p, 'customer_payment_mode', 'cash') or 'cash',
-                    'invoice_periodicity': getattr(p, 'invoice_periodicity', 'daily') or 'daily'
+                    'invoice_periodicity': getattr(p, 'invoice_periodicity', 'daily') or 'daily',
+                    'credit_blocked': getattr(p, 'credit_blocked', False) or False,
+                    'credit_limit_amount': float(getattr(p, 'credit_limit_amount', 0.0) or 0.0),
+                    'vehicles': [{'id': v.id, 'name': v.name} for v in getattr(p, 'vehicle_ids', [])],
                 })
             return {'status': 'success', 'partners': results}
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/search_partners: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/convert_to_albaran', type='json', auth='user', methods=['POST'], csrf=False)
+    def convert_to_albaran(self, order_id, partner_id, vehicle_plate=None, vehicle_driver=None):
+        try:
+            env = request.env
+            order = env['pos.order'].sudo().browse(int(order_id))
+            if not order.exists():
+                return {'status': 'error', 'message': 'Pedido no encontrado'}
+
+            order.action_convert_to_albaran(
+                partner_id=partner_id,
+                vehicle_plate=vehicle_plate,
+                vehicle_driver=vehicle_driver
+            )
+
+            return {
+                'status': 'success',
+                'order_id': order.id,
+                'order_name': order.name,
+                'partner_id': order.partner_id.id,
+                'partner_name': order.partner_id.name,
+                'partner_vat': order.partner_id.vat or '',
+                'is_albaran': True,
+                'vehicle_plate': order.vehicle_plate or '',
+                'vehicle_driver': order.vehicle_driver or '',
+                'message': f"Pedido {order.name} convertido con éxito en Albarán de Crédito para {order.partner_id.name}."
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/convert_to_albaran: %s", e)
             return {'status': 'error', 'message': str(e)}
 
 

@@ -1305,35 +1305,55 @@
                                 <div class="shift-detail-header-right">
                                     <div class="shift-status-ribbon">
                                         <span class="ribbon-step">Nuevo</span>
-                                        <span t-attf-class="ribbon-step #{!state.selectedShiftOrder.is_invoiced ? 'active' : 'passed'}">Pagado</span>
-                                        <span t-attf-class="ribbon-step #{state.selectedShiftOrder.is_invoiced ? 'active' : ''}">Publicado</span>
+                                        <t t-if="state.selectedShiftOrder.is_albaran">
+                                            <span class="ribbon-step passed">Pagado</span>
+                                            <span class="ribbon-step active" style="background: #4f46e5; color: white; border-color: #4338ca;">Albarán Crédito</span>
+                                        </t>
+                                        <t t-else="">
+                                            <span t-attf-class="ribbon-step #{!state.selectedShiftOrder.is_invoiced ? 'active' : 'passed'}">Pagado</span>
+                                            <span t-attf-class="ribbon-step #{state.selectedShiftOrder.is_invoiced ? 'active' : ''}">Publicado</span>
+                                        </t>
                                     </div>
                                     <button class="shift-btn-close" t-on-click="() => this.closeShiftOrdersModal()" title="Cerrar ventana y volver al TPV">✖</button>
                                 </div>
                             </div>
 
-                            <!-- BARRA DE ACCIONES SUPERIORES (TICKET, COPIA, FACTURA, ANULAR) -->
+                            <!-- BARRA DE ACCIONES SUPERIORES (TICKET, COPIA, FACTURA, ALBARÁN, ANULAR) -->
                             <div class="shift-detail-actions-bar">
-                                <button class="btn-action-primary" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, false)">
-                                    <i class="fa fa-print me-1"/> 🖨️ Imprimir Ticket
-                                </button>
-                                <t t-if="state.selectedShiftOrder.is_invoiced">
-                                    <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder)">
-                                        <i class="fa fa-file-pdf-o me-1"/> 🖨️ Imprimir Factura PDF (<t t-esc="state.selectedShiftOrder.account_move_name"/>)
+                                <t t-if="state.selectedShiftOrder.is_albaran">
+                                    <button class="btn-action-primary btn-action-albaran" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, false)" style="background: #eef2ff; color: #4338ca; border-color: #a5b4fc;">
+                                        <i class="fa fa-print me-1"/> 📋 Imprimir Albarán
                                     </button>
-                                    <button class="btn-action-primary" t-on-click="() => this.emailShiftOrderInvoice(state.selectedShiftOrder)" style="background: #059669; border-color: #047857;">
-                                        <i class="fa fa-envelope me-1"/> 📧 Enviar Factura por E-mail
+                                    <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">
+                                        <i class="fa fa-file-text-o me-1"/> 📄 Facturar Albarán (NIF/CIF)
                                     </button>
                                 </t>
                                 <t t-else="">
-                                    <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">
-                                        <i class="fa fa-file-text-o me-1"/> 📄 Generar Factura (NIF/CIF)
+                                    <button class="btn-action-primary" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, false)">
+                                        <i class="fa fa-print me-1"/> 🖨️ Imprimir Ticket
                                     </button>
-                                </t>
-                                <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.is_invoiced">
-                                    <button class="btn-action-primary btn-action-annul" t-on-click="() => this.confirmAnnulOrder(state.selectedShiftOrder)">
-                                        <i class="fa fa-ban me-1"/> ❌ Anular Ticket
+                                    <t t-if="state.selectedShiftOrder.is_invoiced">
+                                        <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder)">
+                                            <i class="fa fa-file-pdf-o me-1"/> 🖨️ Imprimir Factura PDF (<t t-esc="state.selectedShiftOrder.account_move_name"/>)
+                                        </button>
+                                        <button class="btn-action-primary" t-on-click="() => this.emailShiftOrderInvoice(state.selectedShiftOrder)" style="background: #059669; border-color: #047857;">
+                                            <i class="fa fa-envelope me-1"/> 📧 Enviar Factura por E-mail
+                                        </button>
+                                    </t>
+                                    <t t-else="">
+                                        <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">
+                                            <i class="fa fa-file-text-o me-1"/> 📄 Generar Factura (NIF/CIF)
+                                        </button>
+                                    </t>
+                                    <!-- BOTÓN CONVERTIR EN ALBARÁN DE CRÉDITO -->
+                                    <button class="btn-action-primary btn-action-convert-albaran" t-on-click="() => this.openConvertAlbaranModal(state.selectedShiftOrder)" style="background: #2563eb; border-color: #1d4ed8; color: white;">
+                                        <i class="fa fa-file-text me-1"/> 📋 Convertir a Albarán de Crédito
                                     </button>
+                                    <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.is_invoiced">
+                                        <button class="btn-action-primary btn-action-annul" t-on-click="() => this.confirmAnnulOrder(state.selectedShiftOrder)">
+                                            <i class="fa fa-ban me-1"/> ❌ Anular Ticket
+                                        </button>
+                                    </t>
                                 </t>
                             </div>
 
@@ -1357,6 +1377,23 @@
 
                             <!-- CONTENEDOR PRINCIPAL CON SCROLL -->
                             <div class="shift-detail-content-scroll">
+                                <!-- BANNER DE ALBARÁN DE CRÉDITO SI CORRESPONDE -->
+                                <div class="shift-albaran-notice-banner" t-if="state.selectedShiftOrder.is_albaran" style="background: #eef2ff; border-left: 4px solid #4f46e5; padding: 12px 16px; margin: 0 0 14px 0; border-radius: 6px;">
+                                    <div style="color: #3730a3; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                                        <i class="fa fa-info-circle"/> ALBARÁN DE SUMINISTRO A CRÉDITO
+                                        <span style="background: #c7d2fe; color: #312e81; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-left: auto;">Facturación periódica</span>
+                                    </div>
+                                    <div style="font-size: 12px; color: #4338ca; margin-top: 4px;">
+                                        Suministro cargado en la <strong>Cuenta de Crédito</strong> de <strong><t t-esc="state.selectedShiftOrder.partner_name"/></strong>.
+                                        <t t-if="state.selectedShiftOrder.vehicle_plate">
+                                            | Matrícula: <strong><t t-esc="state.selectedShiftOrder.vehicle_plate"/></strong>
+                                        </t>
+                                        <t t-if="state.selectedShiftOrder.vehicle_driver">
+                                            | Conductor: <strong><t t-esc="state.selectedShiftOrder.vehicle_driver"/></strong>
+                                        </t>
+                                    </div>
+                                </div>
+
                                 <!-- FICHA METADATOS DEL PEDIDO (CAMPOS CLAVE DE ODOO) -->
                                 <div class="shift-detail-card">
                                     <div class="shift-meta-grid">
@@ -1381,6 +1418,14 @@
                                                 <span class="meta-label">Ref. Anulación</span>
                                                 <span class="meta-value text-danger fw-bold"><t t-esc="state.selectedShiftOrder.annulment_ref"/></span>
                                             </div>
+                                            <div class="meta-row" t-if="state.selectedShiftOrder.vehicle_plate">
+                                                <span class="meta-label">Matrícula</span>
+                                                <span class="meta-value"><strong class="text-uppercase"><t t-esc="state.selectedShiftOrder.vehicle_plate"/></strong></span>
+                                            </div>
+                                            <div class="meta-row" t-if="state.selectedShiftOrder.vehicle_driver">
+                                                <span class="meta-label">Conductor</span>
+                                                <span class="meta-value"><t t-esc="state.selectedShiftOrder.vehicle_driver"/></span>
+                                            </div>
                                         </div>
                                         <div class="meta-field-group">
                                             <div class="meta-row">
@@ -1395,6 +1440,10 @@
                                                         <button class="btn-link ms-2" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">Asignar</button>
                                                     </t>
                                                 </span>
+                                            </div>
+                                            <div class="meta-row" t-if="state.selectedShiftOrder.is_albaran">
+                                                <span class="meta-label">Tipo Documento</span>
+                                                <span class="meta-value"><span class="badge-customer-type credit">Albarán a Crédito</span></span>
                                             </div>
                                             <div class="meta-row">
                                                 <span class="meta-label">Posición fiscal</span>
@@ -1735,6 +1784,164 @@
                                     </t>
                                 </button>
                             </t>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- ================= MODAL DE CONVERTIR EN ALBARÁN DE CRÉDITO ================= -->
+            <t t-if="state.isConvertAlbaranModalOpen">
+                <div class="convert-albaran-modal-backdrop" style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(15, 23, 42, 0.75) !important; backdrop-filter: blur(4px) !important; z-index: 12000 !important; display: flex !important; align-items: center !important; justify-content: center !important;" t-on-click="() => this.closeConvertAlbaranModal()">
+                    <div class="utrecar-auth-modal" style="width: 560px; max-width: 95vw; z-index: 12001 !important; box-shadow: 0 25px 60px rgba(0,0,0,0.6) !important; position: relative !important;" t-on-click.stop="">
+                        <div class="auth-modal-header" style="background: #2563eb; color: white;">
+                            <div class="auth-header-left">
+                                <span style="font-size: 24px;">📋</span>
+                                <div class="auth-header-titles">
+                                    <h3 class="auth-title" style="color: white;">Convertir en Albarán de Crédito</h3>
+                                    <span class="auth-subtitle" style="color: #bfdbfe;">
+                                        Pedido <t t-esc="state.convertAlbaranOrder ? state.convertAlbaranOrder.name : ''"/> - Total: <t t-esc="state.convertAlbaranOrder ? (state.convertAlbaranOrder.amount_total_str || state.convertAlbaranOrder.amount_total) : '0'"/> €
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="btn-modal-close" style="color: white;" t-on-click="() => this.closeConvertAlbaranModal()">✖</button>
+                        </div>
+
+                        <div class="auth-modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px; max-height: 75vh; overflow-y: auto;">
+                            <!-- AVISO SEGÚN TIPO DE PEDIDO -->
+                            <t t-if="state.convertAlbaranOrder and state.convertAlbaranOrder.is_invoiced">
+                                <div class="alert alert-warning d-flex align-items-center gap-2 p-2 mb-0" style="font-size: 13px; border-radius: 6px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e;">
+                                    <i class="fa fa-exclamation-triangle fa-lg"/>
+                                    <div>
+                                        <strong>Factura asociada (<t t-esc="state.convertAlbaranOrder.account_move_name"/>):</strong><br/>
+                                        Al convertir este pedido a Albarán de Crédito, la factura será <u>anulada en contabilidad</u> y el cobro se trasladará a la cuenta de crédito del cliente para su facturación agrupada periódica.
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-info d-flex align-items-center gap-2 p-2 mb-0" style="font-size: 13px; border-radius: 6px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;">
+                                    <i class="fa fa-info-circle fa-lg"/>
+                                    <div>
+                                        El ticket se convertirá en un <strong>Albarán de Crédito firmado</strong>. El método de cobro se pasará a <u>Cuenta de Cliente (Crédito)</u> para facturación aplazada.
+                                    </div>
+                                </div>
+                            </t>
+
+                            <!-- CLIENTE DE CRÉDITO SELECCIONADO -->
+                            <t t-if="state.convertAlbaranSelectedPartner">
+                                <div class="p-3 border rounded" style="background: #f0fdf4; border-color: #86efac !important;">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <span class="badge bg-success text-white mb-1">✓ Cliente de Crédito Autorizado</span>
+                                            <h5 class="mb-0 text-success fw-bold"><t t-esc="state.convertAlbaranSelectedPartner.name"/></h5>
+                                            <div class="small text-muted" t-if="state.convertAlbaranSelectedPartner.vat">
+                                                CIF/NIF: <strong><t t-esc="state.convertAlbaranSelectedPartner.vat"/></strong>
+                                            </div>
+                                            <div class="small text-muted" t-if="state.convertAlbaranSelectedPartner.street">
+                                                <t t-esc="state.convertAlbaranSelectedPartner.street"/>, <t t-esc="state.convertAlbaranSelectedPartner.city || ''"/>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" t-on-click="() => this.clearSelectedPartnerForConvertAlbaran()">
+                                            Cambiar Cliente
+                                        </button>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <!-- BÚSQUEDA DE CLIENTE CON CRÉDITO -->
+                                <div>
+                                    <label class="fw-bold mb-1 text-dark d-block">
+                                        Seleccione Cliente con Crédito Autorizado (*):
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white">🔍</span>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               placeholder="Buscar cliente de crédito por Nombre o CIF/NIF..." 
+                                               t-att-value="state.convertAlbaranPartnerSearch"
+                                               t-on-input="(ev) => this.onConvertAlbaranPartnerSearch(ev)"
+                                               style="height: 42px; font-size: 14px; font-weight: 500;"/>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block">Escriba al menos 2 caracteres. Solo se permite seleccionar clientes con modalidad de crédito autorizada.</small>
+
+                                    <!-- RESULTADOS DE BÚSQUEDA -->
+                                    <t t-if="state.convertAlbaranPartnerResults.length > 0">
+                                        <div class="partner-results-list mt-2" style="max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                            <t t-foreach="state.convertAlbaranPartnerResults" t-as="p" t-key="p.id">
+                                                <div t-attf-class="partner-result-item p-2 border-bottom #{p.hasCredit ? 'credit-ok' : 'credit-no'}" 
+                                                     style="cursor: pointer;"
+                                                     t-on-click="() => this.selectPartnerForConvertAlbaran(p)">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <strong t-esc="p.name"/>
+                                                        <t t-if="p.hasCredit">
+                                                            <span class="badge bg-success text-white">Crédito</span>
+                                                        </t>
+                                                        <t t-elif="p.credit_blocked">
+                                                            <span class="badge bg-danger text-white">Bloqueado</span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span class="badge bg-secondary text-white">Contado</span>
+                                                        </t>
+                                                    </div>
+                                                    <small class="text-muted d-block">
+                                                        CIF/NIF: <t t-esc="p.vat || 'Sin NIF'"/> <t t-if="p.city"> | <t t-esc="p.city"/></t>
+                                                    </small>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
+
+                            <!-- CAMPOS ADICIONALES DEL ALBARÁN (MATRÍCULA Y CONDUCTOR) -->
+                            <div class="p-3 border rounded bg-light">
+                                <h6 class="fw-bold text-dark mb-2" style="font-size: 13px;">Datos de Entrega / Transporte (Opcional):</h6>
+                                
+                                <div class="mb-2">
+                                    <label class="form-label small fw-bold mb-1">Matrícula del Vehículo:</label>
+                                    <t t-if="state.convertAlbaranSelectedPartner and state.convertAlbaranSelectedPartner.vehicles and state.convertAlbaranSelectedPartner.vehicles.length > 0">
+                                        <div class="d-flex flex-wrap gap-1 mb-1">
+                                            <t t-foreach="state.convertAlbaranSelectedPartner.vehicles" t-as="veh" t-key="veh.id">
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-primary py-0 px-2" 
+                                                        style="font-size: 11px;"
+                                                        t-on-click="() => { this.state.convertAlbaranPlate = veh.name; }">
+                                                    🚗 <t t-esc="veh.name"/>
+                                                </button>
+                                            </t>
+                                        </div>
+                                    </t>
+                                    <input type="text" 
+                                           class="form-control form-control-sm text-uppercase fw-bold" 
+                                           placeholder="Ej: 1234-XYZ" 
+                                           t-model="state.convertAlbaranPlate"/>
+                                </div>
+
+                                <div>
+                                    <label class="form-label small fw-bold mb-1">Conductor / DNI:</label>
+                                    <input type="text" 
+                                           class="form-control form-control-sm" 
+                                           placeholder="Nombre y DNI del conductor..." 
+                                           t-model="state.convertAlbaranDriver"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="auth-modal-footer" style="padding: 14px 20px; display: flex; justify-content: space-between; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+                            <button type="button" class="btn btn-secondary px-4 fw-bold" t-on-click="() => this.closeConvertAlbaranModal()" t-att-disabled="state.convertAlbaranLoading">
+                                Cancelar
+                            </button>
+                            <button type="button" 
+                                    class="btn btn-primary px-4 fw-bold" 
+                                    t-on-click="() => this.confirmConvertToAlbaran()" 
+                                    t-att-disabled="!state.convertAlbaranSelectedPartner || state.convertAlbaranLoading"
+                                    style="background: #2563eb; border-color: #1d4ed8;">
+                                <t t-if="state.convertAlbaranLoading">
+                                    <i class="fa fa-spinner fa-spin me-1"/> Convirtiendo...
+                                </t>
+                                <t t-else="">
+                                    <i class="fa fa-check me-1"/> Confirmar y Convertir a Albarán
+                                </t>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2156,8 +2363,8 @@
                     <div class="albaran-signature-box mt-3 pt-2 text-start border-top border-dark" style="font-size: 10px;">
                         <div class="fw-bold mb-3">Firma del Conductor / Conforme:</div>
                         <div style="height: 35px; border-bottom: 1px solid #777; margin-bottom: 6px;"></div>
-                        <div>Nombre / DNI: ______________________________</div>
-                        <div class="mt-1">Matrícula: __________________________________</div>
+                        <div>Nombre / DNI: <t t-esc="props.data.vehicle_driver || '____________________________'"/></div>
+                        <div class="mt-1">Matrícula: <strong t-esc="props.data.vehicle_plate || '____________________________'"/></div>
                         <div class="text-center text-muted mt-2 fst-italic" style="font-size: 9px;">
                             Documento de entrega de mercancía a crédito.<br/>Facturación agrupada a fin de periodo.
                         </div>
