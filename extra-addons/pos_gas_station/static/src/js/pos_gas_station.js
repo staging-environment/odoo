@@ -133,6 +133,8 @@ export class UtrecarMainScreen extends Component {
             currentStorePage: 1,
             selectedModalCategory: null,
             clientSearch: "",
+            clientSortDirection: "asc",
+            clientSortField: "name",
             storeSearch: "",
                         isShiftOrdersModalOpen: false,
             shiftOrdersLoading: false,
@@ -1555,20 +1557,39 @@ export class UtrecarMainScreen extends Component {
         this.state.clientSearch = ev.target.value;
     }
 
+    toggleClientSort(field = "name") {
+        if (this.state.clientSortField === field) {
+            this.state.clientSortDirection = this.state.clientSortDirection === "asc" ? "desc" : "asc";
+        } else {
+            this.state.clientSortField = field;
+            this.state.clientSortDirection = "asc";
+        }
+    }
+
     get filteredClients() {
         const search = (this.state.clientSearch || "").toLowerCase().trim();
         const allPartners = Object.values(this.pos.db.partner_by_id || {});
-        if (!search) {
-            return allPartners.slice(0, 30);
+        let list = allPartners;
+        if (search) {
+            list = allPartners.filter(p => {
+                const name = (p.name || "").toLowerCase();
+                const vat = (p.vat || "").toLowerCase();
+                const ref = (p.ref || "").toLowerCase();
+                const phone = (p.phone || p.mobile || "").toLowerCase();
+                const email = (p.email || "").toLowerCase();
+                const barcode = (p.barcode || "").toLowerCase();
+                return name.includes(search) || vat.includes(search) || ref.includes(search) || phone.includes(search) || email.includes(search) || barcode.includes(search);
+            });
         }
-        return allPartners.filter(p => {
-            const name = (p.name || "").toLowerCase();
-            const vat = (p.vat || "").toLowerCase();
-            const phone = (p.phone || p.mobile || "").toLowerCase();
-            const email = (p.email || "").toLowerCase();
-            const barcode = (p.barcode || "").toLowerCase();
-            return name.includes(search) || vat.includes(search) || phone.includes(search) || email.includes(search) || barcode.includes(search);
-        }).slice(0, 40);
+        const field = this.state.clientSortField || "name";
+        const isAsc = (this.state.clientSortDirection || "asc") === "asc";
+
+        return [...list].sort((a, b) => {
+            let valA = (a[field] || "").toString().toLowerCase();
+            let valB = (b[field] || "").toString().toLowerCase();
+            let comp = valA.localeCompare(valB, undefined, { numeric: true });
+            return isAsc ? comp : -comp;
+        }).slice(0, 50);
     }
 
     selectClient(partner) {
@@ -2848,10 +2869,6 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusTicket() {
-        if (this.isCreditCustomer) {
-            alert("⚠️ Los clientes de crédito solo pueden tramitarse mediante Albarán.");
-            return;
-        }
         if (this.isOrdinaryCustomer) {
             alert("⚠️ Para clientes ordinarios no se permite ticket: solo se permite emitir Factura.");
             return;
@@ -2886,10 +2903,6 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusInvoice() {
-        if (this.isCreditCustomer) {
-            alert("⚠️ Los clientes de crédito solo pueden tramitarse mediante Albarán.");
-            return;
-        }
         this.ensureOrderPaid();
         if (!this.currentOrder.get_partner()) {
             await this.selectPartner();
@@ -3018,5 +3031,52 @@ patch(PaymentScreen.prototype, {
             if (this.pos.resetProductScreenSearch) { this.pos.resetProductScreenSearch(); };
         }
         this.pos.showScreen("ProductScreen");
+    }
+});
+
+
+patch(PartnerListScreen.prototype, {
+    setup() {
+        super.setup(...arguments);
+        this.state.sortDirection = this.state.sortDirection || 'asc';
+        this.state.sortField = this.state.sortField || 'name';
+    },
+
+    toggleSort(field = 'name') {
+        if (this.state.sortField === field) {
+            this.state.sortDirection = this.state.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.state.sortField = field;
+            this.state.sortDirection = 'asc';
+        }
+    },
+
+    get partners() {
+        let res;
+        if (this.state.query && this.state.query.trim() !== "") {
+            res = this.pos.db.search_partner(this.state.query.trim());
+        } else {
+            res = this.pos.db.get_partners_sorted(1000);
+        }
+        const field = this.state.sortField || 'name';
+        const isAsc = (this.state.sortDirection || 'asc') === 'asc';
+
+        res.sort((a, b) => {
+            let valA = (a[field] || "").toString().toLowerCase();
+            let valB = (b[field] || "").toString().toLowerCase();
+            let comp = valA.localeCompare(valB, undefined, { numeric: true });
+            return isAsc ? comp : -comp;
+        });
+
+        if (this.state.selectedPartner) {
+            const indexOfSelectedPartner = res.findIndex(
+                (partner) => partner.id === this.state.selectedPartner.id
+            );
+            if (indexOfSelectedPartner !== -1) {
+                res.splice(indexOfSelectedPartner, 1);
+            }
+            res.unshift(this.state.selectedPartner);
+        }
+        return res;
     }
 });

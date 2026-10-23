@@ -574,11 +574,18 @@
                                 <i class="fa fa-address-card mr-2"/>
                                 <strong>SELECCIÓN DE CLIENTE</strong>
                             </div>
-                            <div class="modal-search-box">
-                                <input type="text" class="client-search-input" 
-                                       placeholder="Buscar por Nombre, CIF/NIF, Teléfono..." 
+                            <div class="modal-search-box d-flex align-items-center gap-2">
+                                <input type="text" class="client-search-input flex-grow-1" 
+                                       placeholder="Buscar por Nombre, CIF/NIF, Código, Teléfono..." 
                                        t-att-value="state.clientSearch" 
                                        t-on-input="(ev) => this.onClientSearchInput(ev)" />
+                                <button class="btn btn-sm btn-light text-dark fw-bold px-2 py-1 d-flex align-items-center text-nowrap"
+                                        style="height: 32px; border: 1px solid #cbd5e1;"
+                                        t-on-click="() => this.toggleClientSort('name')"
+                                        title="Cambiar orden Ascendente / Descendente">
+                                    <i t-attf-class="fa #{state.clientSortDirection === 'asc' ? 'fa-sort-alpha-asc' : 'fa-sort-alpha-desc'} me-1"/>
+                                    <span><t t-esc="state.clientSortDirection === 'asc' ? 'A → Z' : 'Z → A'"/></span>
+                                </button>
                             </div>
                             <div class="header-actions">
                                 <button class="btn-clear-client" t-on-click="() => this.removeClient()" title="Desasignar cliente">
@@ -591,10 +598,22 @@
                             <table class="client-modal-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 38%;">Nombre / Razón Social</th>
-                                        <th style="width: 18%;">CIF / NIF</th>
-                                        <th style="width: 18%;">Teléfono</th>
-                                        <th style="width: 26%;">Email / Población</th>
+                                        <th style="width: 38%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('name')" title="Ordenar por Nombre (Ascendente / Descendente)">
+                                            Nombre / Razón Social
+                                            <i t-if="state.clientSortField === 'name'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                        </th>
+                                        <th style="width: 18%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('vat')" title="Ordenar por CIF/NIF">
+                                            CIF / NIF
+                                            <i t-if="state.clientSortField === 'vat'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                        </th>
+                                        <th style="width: 18%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('phone')" title="Ordenar por Teléfono">
+                                            Teléfono
+                                            <i t-if="state.clientSortField === 'phone'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                        </th>
+                                        <th style="width: 26%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('city')" title="Ordenar por Población / Email">
+                                            Email / Población
+                                            <i t-if="state.clientSortField === 'city'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1848,7 +1867,7 @@
                 <div class="payment-customer-rule-info mb-2 text-center" t-if="currentPartner">
                     <t t-if="isCreditCustomer">
                         <span class="badge bg-warning text-dark px-3 py-1 fw-bold" style="font-size: 11px;">
-                            <i class="fa fa-info-circle me-1"/> Cliente de Crédito: Solo se emite Albarán
+                            <i class="fa fa-info-circle me-1"/> Cliente de Crédito: Factura, Ticket o Albarán a crédito
                         </span>
                     </t>
                     <t t-elif="isMonthlyCustomer">
@@ -1864,8 +1883,28 @@
                 </div>
 
                 <div class="utrecar-payment-actions-grid mb-2">
-                    <!-- 1. SI ES CLIENTE DE CRÉDITO: ÚNICAMENTE OPCIÓN DE ALBARÁN -->
+                    <!-- 1. SI ES CLIENTE DE CRÉDITO: SE PUEDE COBRAR CON FACTURA, CON TICKET O A CRÉDITO (CON ALBARÁN) -->
                     <t t-if="isCreditCustomer">
+                        <button class="btn-virtus-pay btn-pay-ticket" 
+                                t-on-click="() => this.validateVirtusTicket()"
+                                title="Cobrar e imprimir ticket">
+                            <div class="pay-icon">🖨</div>
+                            <div class="pay-details">
+                                <strong>TICKET</strong>
+                                <span>Imprimir</span>
+                            </div>
+                        </button>
+
+                        <button class="btn-virtus-pay btn-pay-invoice" 
+                                t-on-click="() => this.validateVirtusInvoice()"
+                                title="Cobrar y emitir Factura con NIF/CIF">
+                            <div class="pay-icon">📄</div>
+                            <div class="pay-details">
+                                <strong>FACTURA</strong>
+                                <span>NIF / CIF</span>
+                            </div>
+                        </button>
+
                         <button class="btn-virtus-pay btn-pay-albaran" 
                                 t-on-click="() => this.validateVirtusAlbaran()"
                                 title="Cobrar a crédito y emitir Albarán firmado">
@@ -2125,6 +2164,42 @@
                     </div>
                 </t>
             </div>
+        </xpath>
+    </t>
+
+
+    <!-- EXTENSIÓN DE PARTNERLISTSCREEN: ORDENACIÓN ASCENDENTE / DESCENDENTE EN PESTAÑA CLIENTES -->
+    <t t-name="pos_gas_station.PartnerListScreen" t-inherit="point_of_sale.PartnerListScreen" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('sb-partner')]" position="after">
+            <button class="btn btn-lg btn-outline-secondary d-flex align-items-center ms-2 text-nowrap" 
+                    t-if="!state.detailIsShown"
+                    t-on-click="() => this.toggleSort('name')"
+                    title="Alternar orden Ascendente / Descendente">
+                <i t-attf-class="fa #{state.sortDirection === 'asc' ? 'fa-sort-alpha-asc' : 'fa-sort-alpha-desc'} me-2" style="font-size: 16px;"/>
+                <span class="fw-bold"><t t-esc="state.sortDirection === 'asc' ? 'A → Z' : 'Z → A'"/></span>
+            </button>
+        </xpath>
+        <xpath expr="//table[hasclass('partner-list')]//th[1]" position="replace">
+            <th class="py-2 cursor-pointer user-select-none" t-on-click="() => this.toggleSort('name')" title="Clic para ordenar por Nombre (Ascendente / Descendente)">
+                <span>Name</span>
+                <i t-if="state.sortField === 'name'" t-attf-class="fa ms-1 #{state.sortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+            </th>
+        </xpath>
+    </t>
+
+    <!-- EXTENSIÓN DE PARTNERLINE: MOSTRAR CÓDIGO REF Y BADGE DE CLIENTE -->
+    <t t-name="pos_gas_station.PartnerLine" t-inherit="point_of_sale.PartnerLine" t-inherit-mode="extension" owl="1">
+        <xpath expr="//tr[hasclass('partner-line')]//td[1]//b" position="after">
+            <span t-if="props.partner.ref" class="badge bg-light text-dark ms-1 border" style="font-size: 11px;">[<t t-esc="props.partner.ref"/>]</span>
+            <t t-if="props.partner.customer_type === 'credit' || props.partner.customer_payment_mode === 'credit'">
+                <span class="badge bg-warning text-dark ms-1" style="font-size: 10px;">Crédito</span>
+            </t>
+            <t t-elif="props.partner.customer_type === 'monthly' || props.partner.invoice_periodicity === 'monthly'">
+                <span class="badge bg-info text-dark ms-1" style="font-size: 10px;">Mensual</span>
+            </t>
+            <t t-else="">
+                <span class="badge bg-secondary text-white ms-1" style="font-size: 10px;">Ordinaria</span>
+            </t>
         </xpath>
     </t>
 
