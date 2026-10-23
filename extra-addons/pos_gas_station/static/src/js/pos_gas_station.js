@@ -3047,11 +3047,6 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusTicket() {
-        if (this.isOrdinaryCustomer) {
-            alert("⚠️ Para clientes ordinarios no se permite ticket: solo se permite emitir Factura.");
-            return;
-        }
-
         // Si es cliente mensual con cuenta de crédito y no se seleccionó pago manual, asignar cuenta de cliente
         if (this.isMonthlyCustomer && this.currentPartner && (this.currentPartner.customer_payment_mode === 'credit' || this.currentPartner.customer_type === 'monthly')) {
             const currentLines = this.currentOrder.get_paymentlines();
@@ -3132,14 +3127,6 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusNoPrint() {
-        if (this.isCreditCustomer) {
-            alert("⚠️ Los clientes de crédito solo pueden tramitarse mediante Albarán.");
-            return;
-        }
-        if (this.isOrdinaryCustomer) {
-            alert("⚠️ Para clientes ordinarios no se permite ticket ni guardar sin comprobante: solo se permite emitir Factura.");
-            return;
-        }
         this.ensureOrderPaid();
         this.currentOrder.set_to_invoice(false);
         this._virtusPrintTicket = false;
