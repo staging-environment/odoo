@@ -2167,40 +2167,4 @@
         </xpath>
     </t>
 
-
-    <!-- EXTENSIÓN DE PARTNERLISTSCREEN: ORDENACIÓN ASCENDENTE / DESCENDENTE EN PESTAÑA CLIENTES -->
-    <t t-name="pos_gas_station.PartnerListScreen" t-inherit="point_of_sale.PartnerListScreen" t-inherit-mode="extension" owl="1">
-        <xpath expr="//div[hasclass('sb-partner')]" position="after">
-            <button class="btn btn-lg btn-outline-secondary d-flex align-items-center ms-2 text-nowrap" 
-                    t-if="!state.detailIsShown"
-                    t-on-click="() => this.toggleSort('name')"
-                    title="Alternar orden Ascendente / Descendente">
-                <i t-attf-class="fa #{state.sortDirection === 'asc' ? 'fa-sort-alpha-asc' : 'fa-sort-alpha-desc'} me-2" style="font-size: 16px;"/>
-                <span class="fw-bold"><t t-esc="state.sortDirection === 'asc' ? 'A → Z' : 'Z → A'"/></span>
-            </button>
-        </xpath>
-        <xpath expr="//table[hasclass('partner-list')]//th[1]" position="replace">
-            <th class="py-2 cursor-pointer user-select-none" t-on-click="() => this.toggleSort('name')" title="Clic para ordenar por Nombre (Ascendente / Descendente)">
-                <span>Name</span>
-                <i t-if="state.sortField === 'name'" t-attf-class="fa ms-1 #{state.sortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
-            </th>
-        </xpath>
-    </t>
-
-    <!-- EXTENSIÓN DE PARTNERLINE: MOSTRAR CÓDIGO REF Y BADGE DE CLIENTE -->
-    <t t-name="pos_gas_station.PartnerLine" t-inherit="point_of_sale.PartnerLine" t-inherit-mode="extension" owl="1">
-        <xpath expr="//tr[hasclass('partner-line')]//td[1]//b" position="after">
-            <span t-if="props.partner.ref" class="badge bg-light text-dark ms-1 border" style="font-size: 11px;">[<t t-esc="props.partner.ref"/>]</span>
-            <t t-if="props.partner.customer_type === 'credit' || props.partner.customer_payment_mode === 'credit'">
-                <span class="badge bg-warning text-dark ms-1" style="font-size: 10px;">Crédito</span>
-            </t>
-            <t t-elif="props.partner.customer_type === 'monthly' || props.partner.invoice_periodicity === 'monthly'">
-                <span class="badge bg-info text-dark ms-1" style="font-size: 10px;">Mensual</span>
-            </t>
-            <t t-else="">
-                <span class="badge bg-secondary text-white ms-1" style="font-size: 10px;">Ordinaria</span>
-            </t>
-        </xpath>
-    </t>
-
 </templates>
