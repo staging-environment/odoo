@@ -1381,6 +1381,7 @@ class PosGasStationController(http.Controller):
                     'user_name': o.user_id.name or 'Cajero',
                     'partner_id': o.partner_id.id if o.partner_id else False,
                     'partner_name': o.partner_id.name if o.partner_id else False,
+                    'partner_ref': o.partner_id.ref or (f"CLI-{o.partner_id.id}" if o.partner_id else ''),
                     'partner_vat': o.partner_id.vat if o.partner_id else '',
                     'partner_street': o.partner_id.street or '',
                     'partner_city': o.partner_id.city or '',
@@ -1568,8 +1569,8 @@ class PosGasStationController(http.Controller):
                 results.append({
                     'id': p.id,
                     'name': p.name,
+                    'ref': p.ref or f"CLI-{p.id}",
                     'vat': p.vat or '',
-                    'ref': p.ref or '',
                     'city': p.city or '',
                 })
             return {'status': 'success', 'suppliers': results}

@@ -2647,6 +2647,25 @@ patch(Order.prototype, {
             res.headerData.name = ticketName;
         }
 
+        const partner = this.get_partner();
+        if (partner) {
+            const partnerData = {
+                id: partner.id,
+                name: partner.name,
+                ref: partner.ref || (partner.id ? `CLI-${partner.id}` : ''),
+                vat: partner.vat || '',
+                street: partner.street || '',
+                city: partner.city || '',
+                customer_type: partner.customer_type,
+                customer_payment_mode: partner.customer_payment_mode,
+                invoice_periodicity: partner.invoice_periodicity,
+            };
+            res.partner = partnerData;
+            if (res.headerData) {
+                res.headerData.partner = partnerData;
+            }
+        }
+
         return res;
     }
 });
@@ -2670,10 +2689,26 @@ patch(PaymentScreen.prototype, {
         return "ProductScreen";
     },
 
+    get currentPartner() {
+        return this.currentOrder ? this.currentOrder.get_partner() : null;
+    },
+
     get isCreditCustomer() {
-        const partner = this.currentOrder ? this.currentOrder.get_partner() : null;
+        const partner = this.currentPartner;
         if (!partner) return false;
         return partner.customer_type === 'credit' || partner.customer_payment_mode === 'credit';
+    },
+
+    get isMonthlyCustomer() {
+        const partner = this.currentPartner;
+        if (!partner) return false;
+        return partner.customer_type === 'monthly' || partner.invoice_periodicity === 'monthly';
+    },
+
+    get isOrdinaryCustomer() {
+        const partner = this.currentPartner;
+        if (!partner) return false;
+        return !this.isCreditCustomer && !this.isMonthlyCustomer;
     },
 
     async validateVirtusAlbaran() {
@@ -2683,9 +2718,8 @@ patch(PaymentScreen.prototype, {
                 return;
             }
         }
-        const partner = this.currentOrder.get_partner();
-        if (partner.customer_type !== 'credit' && partner.customer_payment_mode !== 'credit') {
-            alert("⚠️ El cliente seleccionado no está configurado como cliente de Crédito.");
+        if (!this.isCreditCustomer) {
+            alert("⚠️ El cliente seleccionado no está configurado como cliente de Crédito. Solo se permite Albarán para clientes de crédito.");
             return;
         }
 
@@ -2814,13 +2848,48 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusTicket() {
+        if (this.isCreditCustomer) {
+            alert("⚠️ Los clientes de crédito solo pueden tramitarse mediante Albarán.");
+            return;
+        }
+        if (this.isOrdinaryCustomer) {
+            alert("⚠️ Para clientes ordinarios no se permite ticket: solo se permite emitir Factura.");
+            return;
+        }
+
+        // Si es cliente mensual con cuenta de crédito y no se seleccionó pago manual, asignar cuenta de cliente
+        if (this.isMonthlyCustomer && this.currentPartner && (this.currentPartner.customer_payment_mode === 'credit' || this.currentPartner.customer_type === 'monthly')) {
+            const currentLines = this.currentOrder.get_paymentlines();
+            const isManualNonCash = currentLines.some(l => !l.payment_method.is_cash_count && !l.payment_method.name?.toLowerCase().includes('efectivo'));
+            if (!isManualNonCash) {
+                const creditPm = (this.pos.payment_methods || []).find(m => 
+                    (m.type === 'pay_later') || 
+                    (m.name && (m.name.toLowerCase().includes('cuenta') || m.name.toLowerCase().includes('crédito') || m.name.toLowerCase().includes('customer account')))
+                ) || (this.payment_methods_from_config || []).find(m => 
+                    (m.type === 'pay_later') || 
+                    (m.name && (m.name.toLowerCase().includes('cuenta') || m.name.toLowerCase().includes('crédito') || m.name.toLowerCase().includes('customer account')))
+                );
+                if (creditPm) {
+                    for (const pl of [...currentLines]) {
+                        this.currentOrder.remove_paymentline(pl);
+                    }
+                    this.addNewPaymentLine(creditPm);
+                }
+            }
+        }
+
         this.ensureOrderPaid();
+        this.currentOrder.is_albaran = false;
         this.currentOrder.set_to_invoice(false);
         this._virtusPrintTicket = true;
         await this.validateOrder(false);
     },
 
     async validateVirtusInvoice() {
+        if (this.isCreditCustomer) {
+            alert("⚠️ Los clientes de crédito solo pueden tramitarse mediante Albarán.");
+            return;
+        }
         this.ensureOrderPaid();
         if (!this.currentOrder.get_partner()) {
             await this.selectPartner();
@@ -2872,6 +2941,14 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusNoPrint() {
+        if (this.isCreditCustomer) {
+            alert("⚠️ Los clientes de crédito solo pueden tramitarse mediante Albarán.");
+            return;
+        }
+        if (this.isOrdinaryCustomer) {
+            alert("⚠️ Para clientes ordinarios no se permite ticket ni guardar sin comprobante: solo se permite emitir Factura.");
+            return;
+        }
         this.ensureOrderPaid();
         this.currentOrder.set_to_invoice(false);
         this._virtusPrintTicket = false;

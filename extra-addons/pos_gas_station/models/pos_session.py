@@ -7,6 +7,7 @@ class PosSession(models.Model):
     def _loader_params_res_partner(self):
         result = super()._loader_params_res_partner()
         result['search_params']['fields'].extend([
+            'ref',
             'customer_type',
             'customer_payment_mode',
             'invoice_periodicity',

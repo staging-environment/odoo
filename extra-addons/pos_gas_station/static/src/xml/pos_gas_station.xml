@@ -610,6 +610,7 @@
                                             t-on-click="() => this.selectClient(c)">
                                             <td>
                                                 <strong><t t-esc="c.name"/></strong>
+                                                <small class="text-muted ms-1" t-if="c.ref">(<t t-esc="c.ref"/>)</small>
                                                 <t t-if="c.customer_type === 'credit' || c.customer_payment_mode === 'credit'">
                                                     <span class="badge-customer-type credit ms-2">Crédito</span>
                                                 </t>
@@ -1843,40 +1844,27 @@
     <t t-name="pos_gas_station.PaymentScreenValidate" t-inherit="point_of_sale.PaymentScreenValidate" t-inherit-mode="extension" owl="1">
         <xpath expr="//div[hasclass('validation')]" position="replace">
             <div class="utrecar-payment-actions-wrapper p-2 bg-light border-top">
+                <!-- Indicador visual informativo de la regla según el cliente -->
+                <div class="payment-customer-rule-info mb-2 text-center" t-if="currentPartner">
+                    <t t-if="isCreditCustomer">
+                        <span class="badge bg-warning text-dark px-3 py-1 fw-bold" style="font-size: 11px;">
+                            <i class="fa fa-info-circle me-1"/> Cliente de Crédito: Solo se emite Albarán
+                        </span>
+                    </t>
+                    <t t-elif="isMonthlyCustomer">
+                        <span class="badge bg-info text-dark px-3 py-1 fw-bold" style="font-size: 11px;">
+                            <i class="fa fa-info-circle me-1"/> Cliente Mensual: Ticket de control con código o Factura puntual
+                        </span>
+                    </t>
+                    <t t-elif="isOrdinaryCustomer">
+                        <span class="badge bg-primary text-white px-3 py-1 fw-bold" style="font-size: 11px;">
+                            <i class="fa fa-info-circle me-1"/> Cliente Ordinario: Solo Factura (No se permite ticket)
+                        </span>
+                    </t>
+                </div>
+
                 <div class="utrecar-payment-actions-grid mb-2">
-                    <button class="btn-virtus-pay btn-pay-ticket" 
-                             
-                            t-on-click="() => this.validateVirtusTicket()"
-                            title="Cobrar e imprimir ticket">
-                        <div class="pay-icon">🖨</div>
-                        <div class="pay-details">
-                            <strong>TICKET</strong>
-                            <span>Imprimir</span>
-                        </div>
-                    </button>
-
-                    <button class="btn-virtus-pay btn-pay-invoice" 
-                             
-                            t-on-click="() => this.validateVirtusInvoice()"
-                            title="Cobrar y emitir Factura con NIF/CIF">
-                        <div class="pay-icon">📄</div>
-                        <div class="pay-details">
-                            <strong>FACTURA</strong>
-                            <span>NIF / CIF</span>
-                        </div>
-                    </button>
-
-                    <button class="btn-virtus-pay btn-pay-noprint" 
-                             
-                            t-on-click="() => this.validateVirtusNoPrint()"
-                            title="Guardar venta sin imprimir ticket">
-                        <div class="pay-icon">💾</div>
-                        <div class="pay-details">
-                            <strong>GUARDAR</strong>
-                            <span>Sin Ticket</span>
-                        </div>
-                    </button>
-
+                    <!-- 1. SI ES CLIENTE DE CRÉDITO: ÚNICAMENTE OPCIÓN DE ALBARÁN -->
                     <t t-if="isCreditCustomer">
                         <button class="btn-virtus-pay btn-pay-albaran" 
                                 t-on-click="() => this.validateVirtusAlbaran()"
@@ -1888,9 +1876,76 @@
                             </div>
                         </button>
                     </t>
-                </div>
-                
 
+                    <!-- 2. SI ES CLIENTE MENSUAL: TICKET (con nombre y código) Y OPCIÓN FACTURA PUNTUAL -->
+                    <t t-elif="isMonthlyCustomer">
+                        <button class="btn-virtus-pay btn-pay-ticket" 
+                                t-on-click="() => this.validateVirtusTicket()"
+                                title="Cobrar e imprimir ticket con nombre y código de cliente">
+                            <div class="pay-icon">🖨</div>
+                            <div class="pay-details">
+                                <strong>TICKET</strong>
+                                <span>Imprimir</span>
+                            </div>
+                        </button>
+
+                        <button class="btn-virtus-pay btn-pay-invoice" 
+                                t-on-click="() => this.validateVirtusInvoice()"
+                                title="Cobrar y emitir Factura puntual">
+                            <div class="pay-icon">📄</div>
+                            <div class="pay-details">
+                                <strong>FACTURA</strong>
+                                <span>Puntual</span>
+                            </div>
+                        </button>
+                    </t>
+
+                    <!-- 3. SI ES CLIENTE ORDINARIO: ÚNICAMENTE FACTURA (NO SE PERMITE TICKET) -->
+                    <t t-elif="isOrdinaryCustomer">
+                        <button class="btn-virtus-pay btn-pay-invoice" 
+                                t-on-click="() => this.validateVirtusInvoice()"
+                                title="Cobrar y emitir Factura con NIF/CIF (Cliente Ordinario)">
+                            <div class="pay-icon">📄</div>
+                            <div class="pay-details">
+                                <strong>FACTURA</strong>
+                                <span>NIF / CIF</span>
+                            </div>
+                        </button>
+                    </t>
+
+                    <!-- 4. SI NO HAY CLIENTE SELECCIONADO (VENTA GENERAL / ANÓNIMO): TICKET, FACTURA O GUARDAR -->
+                    <t t-else="">
+                        <button class="btn-virtus-pay btn-pay-ticket" 
+                                t-on-click="() => this.validateVirtusTicket()"
+                                title="Cobrar e imprimir ticket">
+                            <div class="pay-icon">🖨</div>
+                            <div class="pay-details">
+                                <strong>TICKET</strong>
+                                <span>Imprimir</span>
+                            </div>
+                        </button>
+
+                        <button class="btn-virtus-pay btn-pay-invoice" 
+                                t-on-click="() => this.validateVirtusInvoice()"
+                                title="Cobrar y emitir Factura con NIF/CIF">
+                            <div class="pay-icon">📄</div>
+                            <div class="pay-details">
+                                <strong>FACTURA</strong>
+                                <span>NIF / CIF</span>
+                            </div>
+                        </button>
+
+                        <button class="btn-virtus-pay btn-pay-noprint" 
+                                t-on-click="() => this.validateVirtusNoPrint()"
+                                title="Guardar venta sin imprimir ticket">
+                            <div class="pay-icon">💾</div>
+                            <div class="pay-details">
+                                <strong>GUARDAR</strong>
+                                <span>Sin Ticket</span>
+                            </div>
+                        </button>
+                    </t>
+                </div>
             </div>
         </xpath>
     </t>
@@ -1991,6 +2046,9 @@
             <span class="partner-name">
                 <t t-if="currentOrder.get_partner()">
                     <t t-esc="currentOrder.get_partner().name"/>
+                    <t t-if="currentOrder.get_partner().ref">
+                        <span class="badge bg-light text-dark ms-1 border" style="font-size: 10px;">[<t t-esc="currentOrder.get_partner().ref"/>]</span>
+                    </t>
                     <t t-if="currentOrder.get_partner().customer_type === 'credit' || currentOrder.get_partner().customer_payment_mode === 'credit'">
                         <span class="badge bg-warning text-dark ms-2 fw-bold" style="font-size: 11px;">CRÉDITO</span>
                     </t>
@@ -2030,6 +2088,15 @@
             <t t-if="props.data.is_albaran and props.data.partner">
                 <div class="albaran-client-box p-2 mb-2 border border-dark rounded text-start" style="font-size: 11px;">
                     <div><strong>CLIENTE:</strong> <t t-esc="props.data.partner.name"/></div>
+                    <div t-if="props.data.partner.ref"><strong>CÓD. CLIENTE:</strong> <t t-esc="props.data.partner.ref"/></div>
+                    <div t-if="props.data.partner.vat"><strong>CIF/NIF:</strong> <t t-esc="props.data.partner.vat"/></div>
+                    <div t-if="props.data.partner.street"><strong>DIR:</strong> <t t-esc="props.data.partner.street"/></div>
+                </div>
+            </t>
+            <t t-elif="props.data.partner">
+                <div class="ticket-client-box p-2 mb-2 border border-dark rounded text-start" style="font-size: 11px; background-color: #fafafa;">
+                    <div><strong>CLIENTE:</strong> <t t-esc="props.data.partner.name"/></div>
+                    <div t-if="props.data.partner.ref"><strong>CÓD. CLIENTE:</strong> <t t-esc="props.data.partner.ref"/></div>
                     <div t-if="props.data.partner.vat"><strong>CIF/NIF:</strong> <t t-esc="props.data.partner.vat"/></div>
                     <div t-if="props.data.partner.street"><strong>DIR:</strong> <t t-esc="props.data.partner.street"/></div>
                 </div>
