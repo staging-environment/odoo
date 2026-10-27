@@ -2150,15 +2150,23 @@ export class UtrecarMainScreen extends Component {
         if (!pump) return 'GA';
         if (pump.fuel && pump.fuel !== 'N/A') {
             const f = pump.fuel.toLowerCase();
-            if (f.includes('95') || f.includes('plomo')) return '95';
+            // Si es la etiqueta generica de surtidor libre / multiproducto en reposo
+            if (f.includes('/') || f.includes('libre') || (f.includes('gasóleo a') && f.includes('95'))) {
+                if (this.state && this.state.pumpPresets && this.state.pumpPresets[pump.id]) {
+                    return this.state.pumpPresets[pump.id].code || 'GA';
+                }
+                return (this.state && this.state.selectedFuel) ? this.state.selectedFuel : 'GA';
+            }
             if (f.includes('plus') || f.includes('g+')) return 'G+';
+            if (f.includes('95') || f.includes('plomo')) return '95';
             if (f.includes('gasóleo b') || f.includes('diesel b')) return 'GB';
+            if (f.includes('gasóleo a') || f.includes('diesel a') || f.includes('ga')) return 'GA';
             return 'GA';
         }
         if (this.state.pumpPresets && this.state.pumpPresets[pump.id]) {
             return this.state.pumpPresets[pump.id].code || 'GA';
         }
-        return 'GA';
+        return (this.state && this.state.selectedFuel) ? this.state.selectedFuel : 'GA';
     }
 
     openCancelModal(pump) {
@@ -2210,6 +2218,43 @@ export class UtrecarMainScreen extends Component {
         if (!pump) return;
         this.state.selectedPumpId = pump.id;
         this.state.authModalPump = pump;
+
+        // Si la orden actual ya contiene una linea de combustible, sincronizar selectedFuel con ese producto unico
+        const currentOrder = this.pos.get_order();
+        if (currentOrder) {
+            const lines = currentOrder.get_orderlines();
+            const fuelLine = lines.slice().reverse().find(l => {
+                if (!l.product) return false;
+                const c = (l.product.default_code || "").toUpperCase();
+                const n = (l.product.display_name || l.product.name || "").toLowerCase();
+                return c.includes("GAS_A") || c.includes("SP95") || c.includes("GAS_PLUS") || c.includes("GAS_B") ||
+                       n.includes("gasóleo") || n.includes("gasoleo") || n.includes("sin plomo") || n.includes("diesel");
+            });
+            if (fuelLine && fuelLine.product) {
+                const c = (fuelLine.product.default_code || "").toUpperCase();
+                const n = (fuelLine.product.display_name || fuelLine.product.name || "").toLowerCase();
+                if (c.includes("SP95") || n.includes("sin plomo") || n.includes("95")) {
+                    this.state.selectedFuel = "95";
+                } else if (c.includes("GAS_PLUS") || n.includes("plus") || n.includes("g+")) {
+                    this.state.selectedFuel = "G+";
+                } else if (c.includes("GAS_B") || n.includes("gasóleo b") || n.includes("diesel b")) {
+                    this.state.selectedFuel = "GB";
+                } else {
+                    this.state.selectedFuel = "GA";
+                }
+
+                if ((!this.state.presetValue || this.state.presetValue <= 0) && fuelLine.get_price_with_tax() > 0) {
+                    this.state.presetValue = fuelLine.get_price_with_tax();
+                    this.state.mode = "money";
+                }
+            }
+        }
+
+        // Si la calle ya tiene un preset o combustible previo en curso, fijarlo a ese combustible
+        if (this.state.pumpPresets && this.state.pumpPresets[pump.id] && this.state.pumpPresets[pump.id].code) {
+            this.state.selectedFuel = this.state.pumpPresets[pump.id].code;
+        }
+
         this.state.isAuthModalOpen = true;
     }
 
@@ -2237,6 +2282,26 @@ export class UtrecarMainScreen extends Component {
 
     selectFuel(fuel) {
         this.state.selectedFuel = fuel;
+        // Si hay una linea de combustible en la orden activa que aun no ha sido autorizada en bomba, actualizar su producto
+        const currentOrder = this.pos.get_order();
+        if (currentOrder) {
+            const product = this.findFuelProduct(fuel);
+            if (product) {
+                const lines = currentOrder.get_orderlines();
+                const unlinkedFuelLine = lines.find(l => {
+                    if (!l.product || l.pump_id) return false;
+                    const c = (l.product.default_code || "").toUpperCase();
+                    const n = (l.product.display_name || l.product.name || "").toLowerCase();
+                    return c.includes("GAS_A") || c.includes("SP95") || c.includes("GAS_PLUS") || c.includes("GAS_B") ||
+                           n.includes("gasóleo") || n.includes("gasoleo") || n.includes("sin plomo") || n.includes("diesel");
+                });
+                if (unlinkedFuelLine && unlinkedFuelLine.product.id !== product.id) {
+                    unlinkedFuelLine.product = product;
+                    unlinkedFuelLine.set_unit_price(product.lst_price);
+                    this.state.orderVersion = Date.now();
+                }
+            }
+        }
     }
 
     

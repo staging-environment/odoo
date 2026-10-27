@@ -5360,3 +5360,49 @@
 .partner-result-item.credit-no:hover {
     background: #f1f5f9 !important;
 }
+
+/* Badge de Combustible Único y Bloqueado por Pista */
+.auth-fuel-badge-fixed {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 14px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+.auth-fuel-badge-fixed.badge-fuel-ga {
+    background: #15803d !important;
+    border: 1px solid #166534 !important;
+}
+
+.auth-fuel-badge-fixed.badge-fuel-sp95 {
+    background: #2563eb !important;
+    border: 1px solid #1d4ed8 !important;
+}
+
+.auth-fuel-badge-fixed.badge-fuel-gplus {
+    background: #b45309 !important;
+    border: 1px solid #92400e !important;
+}
+
+.auth-fuel-badge-fixed .fuel-lock-icon {
+    font-size: 14px !important;
+}
+
+.auth-fuel-badge-fixed .fuel-name-txt {
+    letter-spacing: 0.3px !important;
+}
+
+.auth-fuel-badge-fixed .fuel-fixed-label {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    opacity: 0.95 !important;
+    margin-left: 6px !important;
+    background: rgba(0, 0, 0, 0.25) !important;
+    padding: 3px 8px !important;
+    border-radius: 4px !important;
+}

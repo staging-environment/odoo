@@ -702,14 +702,10 @@
                                     </div>
                                     <div class="auth-info-line auth-fuel-picker-line">
                                         <span class="info-label">COMBUSTIBLE:</span>
-                                        <div class="auth-fuel-btn-group">
-                                            <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
-                                                <button type="button"
-                                                        t-attf-class="btn-modal-fuel fuel-#{fuel.class} #{state.selectedFuel === fuel.code ? 'active' : ''}"
-                                                        t-on-click="() => this.selectFuel(fuel.code)">
-                                                    <t t-esc="fuel.name"/> (<t t-esc="fuel.code"/>)
-                                                </button>
-                                            </t>
+                                        <div class="auth-fuel-badge-fixed" t-attf-class="badge-fuel-#{selectedFuelObj.class || 'ga'}">
+                                            <span class="fuel-lock-icon">🔒</span>
+                                            <strong class="fuel-name-txt"><t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)</strong>
+                                            <span class="fuel-fixed-label">Único combustible para Calle <t t-esc="state.authModalPump.id"/></span>
                                         </div>
                                     </div>
                                     <t t-if="state.vehiclePlate">
@@ -729,14 +725,10 @@
                                     </div>
                                     <div class="auth-info-line mt-2 auth-fuel-picker-line">
                                         <span class="info-label">COMBUSTIBLE:</span>
-                                        <div class="auth-fuel-btn-group">
-                                            <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
-                                                <button type="button"
-                                                        t-attf-class="btn-modal-fuel fuel-#{fuel.class} #{state.selectedFuel === fuel.code ? 'active' : ''}"
-                                                        t-on-click="() => this.selectFuel(fuel.code)">
-                                                    <t t-esc="fuel.name"/> (<t t-esc="fuel.code"/>)
-                                                </button>
-                                            </t>
+                                        <div class="auth-fuel-badge-fixed" t-attf-class="badge-fuel-#{selectedFuelObj.class || 'ga'}">
+                                            <span class="fuel-lock-icon">🔒</span>
+                                            <strong class="fuel-name-txt"><t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)</strong>
+                                            <span class="fuel-fixed-label">Único combustible para Calle <t t-esc="state.authModalPump.id"/></span>
                                         </div>
                                     </div>
                                 </t>
