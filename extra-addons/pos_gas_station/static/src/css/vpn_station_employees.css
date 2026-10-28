@@ -1,8 +1,33 @@
 /* Estilos para Vista de Empleados por Estación y VPN */
 .vpn-emp-container {
-    padding: 24px 32px;
-    background: #f8fafc;
-    min-height: 100vh;
+    height: 100% !important;
+    width: 100% !important;
+    min-height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: #f1f5f9 !important;
+    padding: 24px 32px 80px 32px !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+}
+
+/* Barra de desplazamiento visible y moderna */
+.vpn-emp-container::-webkit-scrollbar {
+    width: 10px !important;
+}
+.vpn-emp-container::-webkit-scrollbar-track {
+    background: #e2e8f0 !important;
+    border-radius: 8px !important;
+}
+.vpn-emp-container::-webkit-scrollbar-thumb {
+    background: #94a3b8 !important;
+    border-radius: 8px !important;
+    border: 2px solid #e2e8f0 !important;
+}
+.vpn-emp-container::-webkit-scrollbar-thumb:hover {
+    background: #0284c7 !important;
 }
 
 .vpn-emp-header {
@@ -11,6 +36,7 @@
     border-radius: 20px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    flex-shrink: 0 !important;
 }
 
 .vpn-title-badge {
@@ -96,6 +122,7 @@
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+    margin-bottom: 24px !important;
 }
 
 .station-card-top {
