@@ -179,3 +179,20 @@ Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempr
     - Vista agrupada por defecto por Estación de Servicio (`'search_default_group_station': 1`).
     - Regla de registro de seguridad (`ir.rule` en `res.partner`): los empleados de pista solo ven clientes asignados a las estaciones a las que tienen permiso, mientras que los administradores conservan acceso global.
     - Creación de clientes desde el TPV o formulario auto-asigna la estación de servicio y compañía correspondiente.
+
+
+### 8. Seguridad y Acceso SSH Restringido Exclusivamente a Jose por VPN WireGuard
+- **Aislamiento a Nivel de Firewall (UFW)**:
+  - Puerto 22 (SSH) permitido **únicamente** desde las IPs estáticas de WireGuard asignadas a Jose:
+    - `10.8.0.2` (*Jose - Informático*)
+    - `10.8.0.19` (*Jose - Informático Salón*)
+    - `127.0.0.1` (*Localhost*)
+  - El resto de clientes de la VPN (equipos de gasolineras `10.8.0.18`, `10.8.0.6`, etc., y otros empleados) tienen denegado explícitamente el puerto 22 en la interfaz `wg0`.
+  - El acceso a SSH desde internet público (IP pública `164.68.101.69`) está completamente cerrado (política Default Deny).
+- **Aislamiento a Nivel de Aplicación OpenSSH (`sshd_config.d`)**:
+  - Archivo `/etc/ssh/sshd_config.d/allowed_vpn_users.conf`:
+    ```sshd
+    AllowUsers developer@10.8.0.2 developer@10.8.0.19 developer@127.0.0.1 root@10.8.0.2 root@10.8.0.19 root@127.0.0.1
+    ```
+- **Configuración de Cliente Local (`~/.ssh/config`)**:
+  - `utrecar` y `utrecar-dev` apuntan directamente a `Hostname 10.8.0.1` a través de la VPN WireGuard.
