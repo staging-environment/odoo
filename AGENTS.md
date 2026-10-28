@@ -163,3 +163,19 @@ Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempr
   - Si no hay turno abierto, se presenta la ventana flotante táctil (station_employee_select_modal) solicitando el nombre del empleado (obtenido en tiempo real desde la BD de dmin-platform).
   - Al pulsar sobre su tarjeta de empleado, se autentica su usuario sincronizado en Odoo, se abre su turno (pos.session) y entra **directa y únicamente al TPV** (/pos/ui?config_id=<id>).
   - Cualquier intento de navegar a / o /web desde una IP de estación redirige de forma forzada al TPV de su estación asignada.
+
+
+### 7. Selector de Estaciones en el TPV y Segregación de Clientes por Estación
+- **Botón "Estaciones" en la cabecera del TPV**:
+  - Ubicado junto al indicador de estación y botón de cerrar turno (`.btn-topbar-stations`).
+  - Al pulsarlo, abre una ventana modal táctil (`stations-selector-modal-window`) que consulta `pos.config.get_user_available_stations()`.
+  - Muestra tarjetas con las terminales autorizadas según el usuario y su conexión VPN:
+    - **Administrador**: Acceso a todas las estaciones (Repsol, Rodalabota, Vistalegre, Ronda Norte, Atenas) y botón para volver al backend ("Volver a Gestión de Gasolineras").
+    - **Operario / Empleado**: Únicamente las estaciones asignadas a su usuario (`pos_config_ids` / estación VPN) y opción de cambiar de cajero.
+    - Permite cambiar de terminal (`/pos/ui?config_id=<id>`) con un solo clic.
+- **Gestión de Clientes Separada por Estación**:
+  - **En el TPV**: `pos.session._loader_params_res_partner()` aplica un dominio estricto `[('station_id', '=', self.config_id.id), ...]`, de modo que cada estación únicamente carga sus clientes asignados (p. ej. los más de 2.200 clientes de Repsol quedan aislados en Repsol y no saturan ni se mezclan con Rodalabota u otras estaciones).
+  - **En el Backend (Menú Clientes)**:
+    - Vista agrupada por defecto por Estación de Servicio (`'search_default_group_station': 1`).
+    - Regla de registro de seguridad (`ir.rule` en `res.partner`): los empleados de pista solo ven clientes asignados a las estaciones a las que tienen permiso, mientras que los administradores conservan acceso global.
+    - Creación de clientes desde el TPV o formulario auto-asigna la estación de servicio y compañía correspondiente.
