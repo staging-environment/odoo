@@ -20,8 +20,7 @@ class UtrecarLogin(Home):
         request.session.uid = user.id
         request.session.login = user.login
         request.session.session_token = security.compute_session_token(request.session, request.env)
-        request.update_env(user=user.id)
-        request.update_context(**user.context_get())
+        request.session.rotate = True
         
         station.open_shift_for_user(user)
         target_url = redirect or f'/pos/ui?config_id={station.id}'
@@ -48,14 +47,12 @@ class UtrecarLogin(Home):
                     request.session.uid = admin_user.id
                     request.session.login = admin_user.login
                     request.session.session_token = security.compute_session_token(request.session, request.env)
-                    request.update_env(user=admin_user.id)
-                    request.update_context(**admin_user.context_get())
-                    return request.redirect(redirect or '/web')
+                    request.session.rotate = True
+                    return request.redirect(self._login_redirect(admin_user.id, redirect=redirect))
 
             # Si ya hay un usuario logueado en la sesión
             if request.session.uid and not request.params.get('select_employee'):
                 current_user = request.env['res.users'].sudo().browse(request.session.uid)
-                # Si el usuario actual es admin o tiene acceso a esta estación
                 if current_user._is_admin() or (station.id in current_user.pos_config_ids.ids):
                     station.open_shift_for_user(current_user)
                     return request.redirect(redirect or f'/pos/ui?config_id={station.id}')
@@ -67,7 +64,7 @@ class UtrecarLogin(Home):
             if len(employees) == 1:
                 return self._station_login_and_redirect(station, employees[0], redirect=redirect)
 
-            # Si hay varios empleados (o ninguno específico y se muestran los activos):
+            # Si hay varios empleados:
             # Mostrar la ventana flotante para elegir el empleado
             return request.render('pos_gas_station.station_employee_select_modal', {
                 'station': station,
@@ -81,11 +78,9 @@ class UtrecarLogin(Home):
         # CASO 2: NO ES IP DE ESTACIÓN (ACCESO GENERAL PROTEGIDO POR VPN)
         # "cuando alguien entre al entorno https://odoo.utrecar.com/ se acceda directamente con el usuario de administrador"
         # ---------------------------------------------------------------------
-        # Si ya está autenticado, continuar a la URL destino o /web
         if request.session.uid:
             return request.redirect(redirect or '/web')
 
-        # Auto-login automático como Administrador
         admin_user = request.env['res.users'].sudo().search([
             ('id', '=', 2),
             ('active', '=', True)
@@ -97,10 +92,9 @@ class UtrecarLogin(Home):
             request.session.uid = admin_user.id
             request.session.login = admin_user.login
             request.session.session_token = security.compute_session_token(request.session, request.env)
-            request.update_env(user=admin_user.id)
-            request.update_context(**admin_user.context_get())
+            request.session.rotate = True
             _logger.info("Auto-login directo como Administrador (%s) desde IP VPN: %s", admin_user.login, ip)
-            return request.redirect(redirect or '/web')
+            return request.redirect(self._login_redirect(admin_user.id, redirect=redirect))
 
         return super(UtrecarLogin, self).web_login(redirect=redirect, **kw)
 
@@ -134,8 +128,7 @@ class UtrecarLogin(Home):
             request.session.uid = user.id
             request.session.login = user.login
             request.session.session_token = security.compute_session_token(request.session, request.env)
-            request.update_env(user=user.id)
-            request.update_context(**user.context_get())
+            request.session.rotate = True
 
             # Abrir o activar el turno del TPV
             station.open_shift_for_user(user)
