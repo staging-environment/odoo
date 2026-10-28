@@ -196,3 +196,16 @@ Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempr
     ```
 - **Configuración de Cliente Local (`~/.ssh/config`)**:
   - `utrecar` y `utrecar-dev` apuntan directamente a `Hostname 10.8.0.1` a través de la VPN WireGuard.
+
+
+### 9. Integración con admin-platform: Enlace en Menú Principal y Permiso acceso_odoo
+- **Acceso a Odoo en el Menú Principal (`utrecar.com/admin`)**:
+  - En `resources/views/layouts/navigation.blade.php`, se ha añadido un botón/enlace directo hacia `https://odoo.utrecar.com` (en modo desktop y móvil/responsive).
+  - Condicionado mediante `@if(auth()->user()?->can('acceso_odoo'))`.
+- **Nuevo Permiso en la Matriz de Permisos (`admin-platform`)**:
+  - Permiso Spatie creado en base de datos: `acceso_odoo` (guard `web`).
+  - Agregado en `resources/views/filament/pages/permission-matrix.blade.php` bajo la sección *Gasolineras*:
+    `'acceso_odoo' => 'Acceso a Odoo (ERP / TPV)'`.
+  - Permite a los administradores activar o revocar en tiempo real el acceso a Odoo para cualquier rol (`CEO`, `ADMINISTRACION Y RRHH`, `Empleado`) o usuario individual.
+- **Validación del Permiso en el TPV de Odoo**:
+  - En `pos_config.get_admin_platform_employees()`, la consulta a la tabla `empleados` cruza con `users`, `model_has_roles`, `role_has_permissions` y `model_has_permissions` de MariaDB para verificar que el empleado cuenta con el permiso `acceso_odoo`. Si el permiso está desactivado para su rol o usuario, no aparecerá en el selector táctil de la estación ni podrá abrir turno.
