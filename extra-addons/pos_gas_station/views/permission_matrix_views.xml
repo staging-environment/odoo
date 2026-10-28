@@ -118,6 +118,13 @@
     </record>
 
     <!-- ACCION CLIENTE: DASHBOARD VISUAL DE GASOLINERAS POR EMPRESA -->
+        <!-- ACCION CLIENTE: VISUALIZACION DE EMPLEADOS POR ESTACION Y VPN -->
+    <record id="action_vpn_station_employees" model="ir.actions.client">
+        <field name="name">Empleados por Estación (VPN)</field>
+        <field name="tag">vpn_station_employees</field>
+        <field name="target">current</field>
+    </record>
+
     <record id="action_gas_station_dashboard" model="ir.actions.client">
         <field name="name">Gestión de gasolineras</field>
         <field name="tag">gas_station_dashboard</field>
@@ -130,17 +137,17 @@
               web_icon="pos_gas_station,static/description/icon.png"
               sequence="1"/>
 
-    <!-- SUBMENÚS VISIBLES EN LA BARRA SUPERIOR DE LA HERRAMIENTA -->
+    <!-- SUBMENÚS VISIBLES EN LA BARRA SUPERIOR (SIMPLIFICADA: SIN PRODUCTOS, PEDIDOS NI INFORMES) -->
     <menuitem id="menu_gas_station_sub_matrix"
               name="Matriz de Permisos"
               parent="menu_gas_station_root"
               action="action_utrecar_permission_matrix"
               sequence="1"/>
 
-    <menuitem id="menu_gas_station_sub_products"
-              name="Productos"
+    <menuitem id="menu_gas_station_sub_vpn_employees"
+              name="Empleados por Estación (VPN)"
               parent="menu_gas_station_root"
-              action="point_of_sale.product_template_action_pos_product"
+              action="action_vpn_station_employees"
               sequence="2"/>
 
     <menuitem id="menu_gas_station_sub_customers"
@@ -149,23 +156,11 @@
               action="action_gas_station_customers"
               sequence="3"/>
 
-    <menuitem id="menu_gas_station_sub_orders"
-              name="Pedidos"
-              parent="menu_gas_station_root"
-              action="point_of_sale.action_pos_pos_form"
-              sequence="4"/>
-
-    <menuitem id="menu_gas_station_sub_reports"
-              name="Informes"
-              parent="menu_gas_station_root"
-              action="point_of_sale.action_report_pos_order_all"
-              sequence="5"/>
-
     <menuitem id="menu_gas_station_sub_companies"
               name="Empresas y estaciones de servicio"
               parent="menu_gas_station_root"
               action="base.action_res_company_form"
-              sequence="6"/>
+              sequence="4"/>
 
     <!-- MENÚ EN AJUSTES > USUARIOS Y COMPANIAS -->
     <menuitem id="menu_utrecar_permission_matrix_settings"

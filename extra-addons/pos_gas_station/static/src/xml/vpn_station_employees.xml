@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="pos_gas_station.VpnStationEmployeesView" owl="1">
+        <div class="vpn-emp-container">
+
+            <!-- CABECERA PRINCIPAL -->
+            <div class="vpn-emp-header">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="vpn-title-badge">
+                                <i class="fa fa-network-wired text-cyan me-1"></i> Red WireGuard VPN &amp; Admin Platform
+                            </span>
+                        </div>
+                        <h1 class="vpn-main-title">
+                            <i class="fa fa-gas-pump text-primary me-2"></i> Asignación de Empleados por Estación y VPN
+                        </h1>
+                        <p class="vpn-main-desc">
+                            Mapeo en vivo de los empleados vinculados a cada gasolinera según la IP de la VPN configurada en pista.
+                        </p>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary d-flex align-items-center gap-2 fw-bold" t-on-click="() => this.openDashboard()">
+                            <i class="fa fa-arrow-left"></i> Volver a Gasolineras
+                        </button>
+                        <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold shadow-sm" t-on-click="() => this.loadData()">
+                            <i class="fa fa-sync-alt" t-att-class="state.loading ? 'fa-spin' : ''"></i> Actualizar Datos
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI CARDS SUMMARY -->
+                <div class="vpn-kpi-grid mt-4">
+                    <div class="vpn-kpi-card">
+                        <div class="kpi-icon bg-blue-subtle text-primary">
+                            <i class="fa fa-gas-pump"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Estaciones de Servicio</span>
+                            <span class="kpi-value"><t t-esc="state.stats.total_stations"/></span>
+                        </div>
+                    </div>
+
+                    <div class="vpn-kpi-card">
+                        <div class="kpi-icon bg-success-subtle text-success">
+                            <i class="fa fa-users"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Empleados en Alta (Admin Platform)</span>
+                            <span class="kpi-value"><t t-esc="state.stats.total_employees"/></span>
+                        </div>
+                    </div>
+
+                    <div class="vpn-kpi-card">
+                        <div class="kpi-icon bg-info-subtle text-info">
+                            <i class="fa fa-shield-alt"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Protección VPN WireGuard</span>
+                            <span class="kpi-value text-success" style="font-size: 1.25rem;">100% Activa</span>
+                        </div>
+                    </div>
+
+                    <div class="vpn-kpi-card">
+                        <div class="kpi-icon bg-warning-subtle text-warning">
+                            <i class="fa fa-microchip"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Controladores en Pista</span>
+                            <span class="kpi-value">1 Activo <span class="kpi-subtext">(E.S. Repsol)</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILTROS Y BÚSQUEDA -->
+                <div class="vpn-filter-bar mt-4">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-6 col-lg-7">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0">
+                                    <i class="fa fa-search text-muted"></i>
+                                </span>
+                                <input type="text"
+                                       class="form-control border-start-0 ps-0"
+                                       placeholder="Buscar por nombre, DNI de empleado, gasolinera o IP de VPN..."
+                                       t-model="state.searchTerm"/>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-5 d-flex gap-2 justify-content-md-end">
+                            <select class="form-select w-auto" t-model="state.selectedStationId">
+                                <option value="all">Todas las Estaciones</option>
+                                <t t-foreach="state.stations" t-as="st" t-key="st.id">
+                                    <option t-att-value="st.id"><t t-esc="st.name"/></option>
+                                </t>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENIDO PRINCIPAL: LISTADO DE ESTACIONES -->
+            <div class="vpn-emp-body mt-4">
+                <t t-if="state.loading">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <div class="text-muted mt-2 fw-medium">Sincronizando empleados de pista desde admin-platform...</div>
+                    </div>
+                </t>
+
+                <t t-else="">
+                    <t t-if="filteredStations.length === 0">
+                        <div class="alert alert-warning text-center py-4 rounded-4 shadow-sm">
+                            <i class="fa fa-exclamation-circle fa-2x mb-2 d-block"></i>
+                            No se encontraron empleados ni estaciones que coincidan con el término de búsqueda.
+                        </div>
+                    </t>
+
+                    <t t-else="">
+                        <div class="d-flex flex-column gap-4">
+                            <t t-foreach="filteredStations" t-as="station" t-key="station.id">
+                                <div class="vpn-station-card">
+                                    
+                                    <!-- HEADER DE LA ESTACIÓN -->
+                                    <div class="station-card-top">
+                                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                                            <div class="station-avatar">
+                                                <i class="fa fa-gas-pump text-white"></i>
+                                            </div>
+                                            <div>
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <h2 class="station-name-title mb-0"><t t-esc="station.name"/></h2>
+                                                    <span class="badge text-bg-light border text-muted">
+                                                        <i class="fa fa-building me-1"></i> <t t-esc="station.company_name"/>
+                                                    </span>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+                                                    <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1">
+                                                        <i class="fa fa-network-wired me-1"></i> IP VPN: <t t-esc="station.vpn_ips_str"/>
+                                                    </span>
+                                                    <span class="badge bg-dark-subtle text-dark px-2 py-1">
+                                                        Código Admin Platform: <strong>#<t t-esc="station.admin_platform_code"/></strong>
+                                                    </span>
+                                                    <span t-attf-class="badge {{ station.controller_status.badge_class }} px-2 py-1">
+                                                        <i class="fa fa-microchip me-1"></i> <t t-esc="station.controller_status.label"/>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge text-bg-primary rounded-pill fs-6 px-3 py-2 fw-bold">
+                                                <i class="fa fa-users me-1"></i> <t t-esc="station.employees.length"/> Empleados
+                                            </span>
+                                            <button class="btn btn-sm btn-outline-secondary" title="Configurar Estación" t-on-click="() => this.openStationConfig(station.id)">
+                                                <i class="fa fa-cog"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- LISTADO DE EMPLEADOS DE ESTA ESTACIÓN -->
+                                    <div class="station-card-content">
+                                        <t t-if="station.employees.length === 0">
+                                            <div class="text-center py-4 text-muted fst-italic">
+                                                No hay empleados asignados a esta estación en la base de datos de admin-platform.
+                                            </div>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="emp-table-wrapper">
+                                                <table class="table table-hover emp-table mb-0 align-middle">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 40px;">#</th>
+                                                            <th style="width: 32%;">Empleado / Nombre</th>
+                                                            <th style="width: 15%;">DNI / NIE</th>
+                                                            <th style="width: 23%;">Puesto / Rol</th>
+                                                            <th style="width: 20%;">Usuario de Acceso / Email</th>
+                                                            <th style="width: 10%; text-align: center;">Estado</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <t t-foreach="station.employees" t-as="emp" t-key="emp.id">
+                                                            <tr>
+                                                                <td class="text-muted small"><t t-esc="emp_index + 1"/></td>
+                                                                <td>
+                                                                    <div class="d-flex align-items-center gap-2">
+                                                                        <div class="emp-mini-avatar" t-attf-style="background: {{ emp.avatar_gradient }};">
+                                                                            <t t-esc="emp.initials"/>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span class="emp-table-name"><t t-esc="emp.full_name"/></span>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="badge bg-light text-dark border font-monospace">
+                                                                        <t t-esc="emp.dni || '-'"/>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="emp-role-tag">
+                                                                        <i class="fa fa-id-badge text-primary me-1"></i> <t t-esc="emp.puesto"/>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="text-muted small font-monospace">
+                                                                        <t t-esc="emp.login"/>
+                                                                    </span>
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                                        ● Alta
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        </t>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </t>
+                                    </div>
+
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+                </t>
+            </div>
+
+        </div>
+    </t>
+
+</templates>

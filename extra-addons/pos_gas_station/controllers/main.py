@@ -1843,3 +1843,63 @@ class PosGasStationController(http.Controller):
         except Exception as e:
             _logger.exception("Error in shift_report_pdf: %s", e)
             return request.make_response(f"Error: {e}", headers=[('Content-Type', 'text/plain')])
+
+
+    @http.route('/pos_gas_station/vpn_employees_data', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_vpn_station_employees_data(self):
+        """Devuelve todas las estaciones, sus IPs de VPN WireGuard y sus empleados vinculados desde admin-platform."""
+        env = request.env
+        PosConfig = env['pos.config'].sudo()
+        stations = PosConfig.search([('active', 'in', [True, False])], order='id')
+        
+        stations_data = []
+        total_employees = 0
+
+        default_map = PosConfig._get_default_station_vpn_mapping()
+
+        for st in stations:
+            # Solo incluir estaciones reales de gasolinera (evitar tiendas genéricas o de prueba)
+            if st.id not in default_map and 'e.s.' not in (st.name or '').lower() and 'repsol' not in (st.name or '').lower():
+                continue
+
+            vpn_ips = [x.strip() for x in (st.vpn_ip or '').split(',') if x.strip()]
+            if not vpn_ips and st.id in default_map:
+                vpn_ips = default_map[st.id]['vpn_ips']
+
+            admin_code = st.get_admin_platform_code()
+            employees = st.get_admin_platform_employees()
+            total_employees += len(employees)
+
+            # Estado del controlador de pista
+            has_controller = (st.id == 7) # Solo Repsol tiene actualmente concentrador físico en COM3
+            controller_status = {
+                'active': has_controller,
+                'label': 'Controlador MÁSTER Activo 24/7 (COM3 - SDES)' if has_controller else 'Pendiente de Controlador Físico',
+                'badge_class': 'badge-success' if has_controller else 'badge-secondary',
+                'mode': 'Wayne DART 9600 bps' if has_controller else 'Sin hardware conectado'
+            }
+
+            stations_data.append({
+                'id': st.id,
+                'name': st.name,
+                'active': st.active,
+                'company_name': st.company_id.name or 'UTRECAR S.L.',
+                'company_id': st.company_id.id if st.company_id else False,
+                'vpn_ips': vpn_ips,
+                'vpn_ips_str': ", ".join(vpn_ips) if vpn_ips else 'Sin IP asignada',
+                'admin_platform_code': admin_code,
+                'controller_status': controller_status,
+                'employees_count': len(employees),
+                'employees': employees
+            })
+
+        return {
+            'status': 'success',
+            'stations': stations_data,
+            'stats': {
+                'total_stations': len(stations_data),
+                'total_employees': total_employees,
+                'active_controllers': 1,
+            }
+        }
+

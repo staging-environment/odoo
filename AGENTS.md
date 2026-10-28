@@ -128,3 +128,28 @@ Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempr
 3. Despliegue en servidor Cloud:
    - `ssh utrecar-dev "cd /home/developer/Projects/odoo && git pull origin main && docker restart ddev-odoo-odoo"`
    - Verificar logs: `ssh utrecar-dev "docker logs --tail 15 ddev-odoo-odoo"`
+
+
+## 🛡️ Autenticación VPN, Simplificación de Menú y Control de Empleados por Estación (Actualizado)
+
+### 1. Acceso Protegido por VPN y Auto-login Administrador:
+- Al estar el servidor de producción protegido por WireGuard VPN interna, cualquier acceso a `https://odoo.utrecar.com/` desde IPs que no son puestos de gasolinera entra directamente autenticado con el usuario Administrador (`jarodriguezbonilla@gmail.com`).
+- Se mantiene el bypass manual con `?admin=1` para acceso administrativo explícito.
+
+### 2. Detección de Estación por IP de WireGuard VPN:
+- Los equipos de las gasolineras tienen asignadas IPs fijas en WireGuard:
+  - **E.S. Repsol:** `10.8.0.18` (Código Admin Platform: `5`) - **Única estación actualmente con concentrador de pista SDES nativo activo 24/7 en COM3**.
+  - **E.S. Ronda Norte:** `10.8.0.6`, `10.8.0.7` (Código Admin Platform: `2`) - *Pendiente de instalación de controladores de hardware*.
+  - **E.S. Vistalegre (Utrera):** `10.8.0.11`, `10.8.0.12` (Código Admin Platform: `1`) - *Pendiente de instalación de controladores de hardware*.
+  - **E.S. Rodalabota (El Cuervo):** `10.8.0.9`, `10.8.0.10` (Código Admin Platform: `3`) - *Pendiente de instalación de controladores de hardware*.
+  - **E.S. Atenas (Écija):** `10.8.0.14`, `10.8.0.15` (Código Admin Platform: `4`) - *Pendiente de instalación de controladores de hardware*.
+
+### 3. Selector Táctil de Empleados desde `admin-platform`:
+- Al entrar desde la IP de una gasolinera, Odoo consulta la base de datos de producción de `admin-platform` (`ddev-admin-platform-db`) y despliega la ventana flotante `station_employee_select_modal` con los trabajadores asignados a dicha estación (`gasolinera_codigo`).
+- Al pulsar sobre el empleado, se inicia sesión como ese usuario en Odoo, se abre/activa su turno (`pos.session`) y se entra al TPV.
+- Cada empleado tiene restringido el acceso únicamente a su estación de servicio asignada.
+
+### 4. Simplificación del Menú Superior:
+- Se han eliminado de la barra superior: **Productos**, **Pedidos** e **Informes**.
+- Se ha incorporado el nuevo ítem: **"Empleados por Estación (VPN)"** (`action_vpn_station_employees`), que presenta una vista visual interactiva con el resumen de cada gasolinera, sus IPs de VPN, estado del controlador de pista y la tabla completa de empleados asociados desde `admin-platform`.
+
