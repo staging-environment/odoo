@@ -153,3 +153,13 @@ Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempr
 - Se han eliminado de la barra superior: **Productos**, **Pedidos** e **Informes**.
 - Se ha incorporado el nuevo ítem: **"Empleados por Estación (VPN)"** (`action_vpn_station_employees`), que presenta una vista visual interactiva con el resumen de cada gasolinera, sus IPs de VPN, estado del controlador de pista y la tabla completa de empleados asociados desde `admin-platform`.
 
+
+
+### 6. Control de Acceso Estricto: TPV Exclusivo por IP de Estación vs Admin
+- **Acceso Administrador (IPs VPN generales / oficina)**:
+  - Al ingresar a https://odoo.utrecar.com/, auto-login directo como Administrador en /web.
+- **Acceso Empleado de Pista (IPs VPN de gasolinera: 10.8.0.18, 10.8.0.6, etc.)**:
+  - Al acceder a /, /web o /web/login, queda **estrictamente bloqueado el acceso al backend /web**.
+  - Si no hay turno abierto, se presenta la ventana flotante táctil (station_employee_select_modal) solicitando el nombre del empleado (obtenido en tiempo real desde la BD de dmin-platform).
+  - Al pulsar sobre su tarjeta de empleado, se autentica su usuario sincronizado en Odoo, se abre su turno (pos.session) y entra **directa y únicamente al TPV** (/pos/ui?config_id=<id>).
+  - Cualquier intento de navegar a / o /web desde una IP de estación redirige de forma forzada al TPV de su estación asignada.
