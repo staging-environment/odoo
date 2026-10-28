@@ -123,12 +123,40 @@ class PosConfig(models.Model):
                 connect_timeout=3
             )
             with conn.cursor() as cur:
-                sql = """
-                    SELECT id, nombre, apellidos, dni, email, puesto, gasolinera_codigo, foto
-                    FROM empleados
-                    WHERE estado = 'Alta' AND (deleted_at IS NULL)
-                    ORDER BY nombre, apellidos
-                """
+                # Comprobar si existe el permiso 'acceso_odoo' en la matriz de permisos de admin-platform
+                cur.execute("SELECT id FROM permissions WHERE name = 'acceso_odoo' LIMIT 1")
+                has_odoo_perm_def = cur.fetchone()
+
+                if has_odoo_perm_def:
+                    # Filtrar solo aquellos empleados autorizados con 'acceso_odoo' en admin-platform
+                    # (bien directamente a su usuario o mediante su rol en la Matriz de Permisos)
+                    sql = """
+                        SELECT e.id, e.nombre, e.apellidos, e.dni, e.email, e.puesto, e.gasolinera_codigo, e.foto
+                        FROM empleados e
+                        JOIN users u ON e.email = u.email
+                        WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
+                          AND (
+                              EXISTS (
+                                  SELECT 1 FROM model_has_permissions mhp
+                                  JOIN permissions p ON mhp.permission_id = p.id
+                                  WHERE mhp.model_id = u.id AND mhp.model_type LIKE '%%User' AND p.name = 'acceso_odoo'
+                              )
+                              OR EXISTS (
+                                  SELECT 1 FROM model_has_roles mhr
+                                  JOIN role_has_permissions rhp ON mhr.role_id = rhp.role_id
+                                  JOIN permissions p ON rhp.permission_id = p.id
+                                  WHERE mhr.model_id = u.id AND mhr.model_type LIKE '%%User' AND p.name = 'acceso_odoo'
+                              )
+                          )
+                        ORDER BY e.nombre, e.apellidos
+                    """
+                else:
+                    sql = """
+                        SELECT id, nombre, apellidos, dni, email, puesto, gasolinera_codigo, foto
+                        FROM empleados
+                        WHERE estado = 'Alta' AND (deleted_at IS NULL)
+                        ORDER BY nombre, apellidos
+                    """
                 cur.execute(sql)
                 rows = cur.fetchall()
 
