@@ -27,6 +27,30 @@ class UtrecarLogin(Home):
         _logger.info("Acceso estación por VPN %s: Empleado %s (ID %s) logueado y turno abierto -> %s", station.name, user.name, user.id, target_url)
         return request.redirect(target_url)
 
+    @http.route('/', type='http', auth="none")
+    def index(self, s_action=None, db=None, **kw):
+        """Redirige raíz: si es IP de estación va directo al TPV, si no va al backend."""
+        ip = self._get_client_ip()
+        station = request.env['pos.config'].sudo().get_station_by_vpn_ip(ip)
+        if station and request.params.get('admin') != '1':
+            return request.redirect(f'/pos/ui?config_id={station.id}')
+        return super(UtrecarLogin, self).index(s_action=s_action, db=db, **kw)
+
+    @http.route('/web', type='http', auth="none")
+    def web_client(self, s_action=None, **kw):
+        """Control de acceso a /web: empleados desde IP de estación tienen acceso exclusivo al TPV."""
+        ip = self._get_client_ip()
+        station = request.env['pos.config'].sudo().get_station_by_vpn_ip(ip)
+        if station and request.params.get('admin') != '1':
+            if request.session.uid:
+                user = request.env['res.users'].sudo().browse(request.session.uid)
+                if not user._is_admin():
+                    # El empleado de pista tiene acceso único y directo al TPV
+                    return request.redirect(f'/pos/ui?config_id={station.id}')
+            else:
+                return request.redirect(f'/web/login?config_id={station.id}')
+        return super(UtrecarLogin, self).web_client(s_action=s_action, **kw)
+
     @http.route('/web/login', type='http', auth="none", sitemap=False)
     def web_login(self, redirect=None, **kw):
         ip = self._get_client_ip()
@@ -35,6 +59,8 @@ class UtrecarLogin(Home):
 
         # ---------------------------------------------------------------------
         # CASO 1: LA IP PERTENECE A UNA ESTACIÓN DE SERVICIO (GASOLINERA)
+        # El empleado accede directamente al TPV de la estación asignada
+        # pidiéndole su nombre en ventana flotante para abrir el turno.
         # ---------------------------------------------------------------------
         if station:
             # Si se solicita explícitamente acceso manual de administrador (ej: ?admin=1)
@@ -50,33 +76,34 @@ class UtrecarLogin(Home):
                     request.session.rotate = True
                     return request.redirect(self._login_redirect(admin_user.id, redirect=redirect))
 
-            # Si ya hay un usuario logueado en la sesión
+            # Si ya hay un usuario empleado logueado en la sesión con turno abierto actualmente
             if request.session.uid and not request.params.get('select_employee'):
                 current_user = request.env['res.users'].sudo().browse(request.session.uid)
-                if current_user._is_admin() or (station.id in current_user.pos_config_ids.ids):
-                    station.open_shift_for_user(current_user)
-                    return request.redirect(redirect or f'/pos/ui?config_id={station.id}')
+                if station.id in current_user.pos_config_ids.ids:
+                    active_session = request.env['pos.session'].sudo().search([
+                        ('config_id', '=', station.id),
+                        ('user_id', '=', current_user.id),
+                        ('state', '=', 'opened')
+                    ], limit=1)
+                    if active_session:
+                        return request.redirect(f'/pos/ui?config_id={station.id}')
 
             # Obtener los empleados de admin-platform para esta estación
             employees = station.get_admin_platform_employees()
 
-            # Si solo hay 1 empleado, acceso directo y apertura de turno
-            if len(employees) == 1:
-                return self._station_login_and_redirect(station, employees[0], redirect=redirect)
-
-            # Si hay varios empleados:
-            # Mostrar la ventana flotante para elegir el empleado
+            # Mostrar la ventana flotante táctil para seleccionar el empleado e iniciar turno
             return request.render('pos_gas_station.station_employee_select_modal', {
                 'station': station,
                 'employees': employees,
                 'client_ip': ip,
-                'redirect': redirect,
+                'redirect': f'/pos/ui?config_id={station.id}',
                 'csrf_token': request.csrf_token(),
             })
 
         # ---------------------------------------------------------------------
         # CASO 2: NO ES IP DE ESTACIÓN (ACCESO GENERAL PROTEGIDO POR VPN)
-        # "cuando alguien entre al entorno https://odoo.utrecar.com/ se acceda directamente con el usuario de administrador"
+        # "yo entro con mi usuario como administrador"
+        # Entra directamente autenticado con el usuario de Administrador a /web
         # ---------------------------------------------------------------------
         if request.session.uid:
             return request.redirect(redirect or '/web')
@@ -101,7 +128,7 @@ class UtrecarLogin(Home):
 
     @http.route('/pos_gas_station/station_login', type='http', auth='none', methods=['POST', 'GET'], csrf=False)
     def station_login(self, station_id=None, employee_id=None, redirect=None, **kw):
-        """Procesa la selección de empleado en la ventana flotante, autentica y abre el turno."""
+        """Procesa la selección de empleado en la ventana flotante, autentica y abre el turno hacia el TPV."""
         try:
             if not station_id or not employee_id:
                 return request.redirect('/web/login')
@@ -133,7 +160,7 @@ class UtrecarLogin(Home):
             # Abrir o activar el turno del TPV
             station.open_shift_for_user(user)
 
-            dest_url = redirect or f'/pos/ui?config_id={station.id}'
+            dest_url = f'/pos/ui?config_id={station.id}'
             _logger.info("Empleado %s (ID %s) autenticado con éxito en %s. Turno listo -> %s", user.name, user.id, station.name, dest_url)
             return request.redirect(dest_url)
 
@@ -146,4 +173,7 @@ class UtrecarLogin(Home):
     def switch_cashier(self, config_id=None, **kw):
         """Permite cambiar de cajero o reabrir el selector de empleados de la estación."""
         request.session.logout()
-        return request.redirect('/web/login?select_employee=1')
+        target = f'/web/login?select_employee=1'
+        if config_id:
+            target += f'&config_id={config_id}'
+        return request.redirect(target)
