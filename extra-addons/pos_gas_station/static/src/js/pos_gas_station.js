@@ -543,8 +543,21 @@ export class UtrecarMainScreen extends Component {
 
     
     async changeCashierName() {
-        const currentName = this.pos.user ? this.pos.user.name : "";
-        const newName = prompt("👤 CAMBIAR NOMBRE DE CAJERO / OPERADOR:\nIntroduzca el nombre del operador que atiende en este turno:", currentName);
+        const currentName = this.pos.user ? this.pos.user.name : "Operador";
+        const switchConfirm = confirm(
+            "👤 GESTIÓN DE CAJERO Y TURNO\n\n" +
+            "Operador actual: " + currentName + "\n\n" +
+            "¿Desea cambiar de empleado y abrir la selección de personal de la estación?\n\n" +
+            "• Pulse 'Aceptar' para elegir otro empleado de la estación.\n" +
+            "• Pulse 'Cancelar' para editar únicamente el nombre en pantalla."
+        );
+
+        if (switchConfirm) {
+            window.location.href = "/pos_gas_station/switch_cashier?config_id=" + this.configId;
+            return;
+        }
+
+        const newName = prompt("Introduzca el nombre del operador que atiende en este turno:", currentName);
         if (newName && newName.trim()) {
             if (this.pos.user) {
                 this.pos.user.name = newName.trim();

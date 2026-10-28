@@ -3,4 +3,19 @@
     <record id="point_of_sale.rule_pos_config_multi_company" model="ir.rule">
         <field name="domain_force">['|', ('company_id', '=', False), '|', ('company_id', 'in', company_ids), ('company_id', 'in', user.company_ids.ids)]</field>
     </record>
+
+    <!-- REGLA DE SEGURIDAD: LOS EMPLEADOS DE PISTA SOLO VEN LAS ESTACIONES VINCULADAS -->
+    <record id="rule_pos_config_employee_restricted" model="ir.rule">
+        <field name="name">Restricción de Estación para Empleados de Pista</field>
+        <field name="model_id" ref="point_of_sale.model_pos_config"/>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_user'))]"/>
+        <field name="domain_force">['|', ('id', 'in', user.pos_config_ids.ids), ('allowed_user_ids', 'in', [user.id])]</field>
+    </record>
+
+    <record id="rule_pos_config_manager_all" model="ir.rule">
+        <field name="name">Acceso Total a Estaciones para Responsables y Administradores</field>
+        <field name="model_id" ref="point_of_sale.model_pos_config"/>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_manager')), (4, ref('base.group_erp_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
 </odoo>

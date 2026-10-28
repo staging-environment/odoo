@@ -6,6 +6,266 @@ import pytz
 class PosConfig(models.Model):
     _inherit = 'pos.config'
 
+    vpn_ip = fields.Char(
+        string='IPs VPN de Pista',
+        help='Dirección IP o lista de IPs separadas por coma asignadas a esta estación en la VPN WireGuard (ej: 10.8.0.18)'
+    )
+    admin_platform_code = fields.Integer(
+        string='Código Estación Admin Platform',
+        help='Código numérico de estación (gasolinera_codigo) en la base de datos de admin-platform'
+    )
+
+    @api.model
+    def _get_default_station_vpn_mapping(self):
+        """Mapeo estándar de estaciones por ID, IPs de WireGuard VPN y código en admin-platform."""
+        return {
+            7: {'vpn_ips': ['10.8.0.18'], 'code': 5, 'name': 'E.S. Repsol'},
+            5: {'vpn_ips': ['10.8.0.6', '10.8.0.7'], 'code': 2, 'name': 'E.S. Ronda Norte'},
+            3: {'vpn_ips': ['10.8.0.11', '10.8.0.12'], 'code': 1, 'name': 'E.S. Vistalegre (Utrera)'},
+            2: {'vpn_ips': ['10.8.0.9', '10.8.0.10'], 'code': 3, 'name': 'E.S. Rodalabota (El Cuervo)'},
+            6: {'vpn_ips': ['10.8.0.14', '10.8.0.15'], 'code': 4, 'name': 'E.S. Atenas (Écija)'},
+        }
+
+    @api.model
+    def get_station_by_vpn_ip(self, ip):
+        """Busca y retorna el pos.config asociado a una IP de VPN."""
+        if not ip:
+            return False
+        clean_ip = str(ip).strip()
+        
+        # 1. Búsqueda en base de datos en pos.config con vpn_ip configurada
+        configs = self.sudo().search([('active', 'in', [True, False])])
+        for cfg in configs:
+            if cfg.vpn_ip:
+                ips = [x.strip() for x in cfg.vpn_ip.split(',') if x.strip()]
+                if clean_ip in ips:
+                    if not cfg.active:
+                        cfg.sudo().write({'active': True})
+                    return cfg
+
+        # 2. Fallback a mapeo por defecto de la infraestructura WireGuard
+        default_map = self._get_default_station_vpn_mapping()
+        for cfg_id, info in default_map.items():
+            if clean_ip in info['vpn_ips']:
+                cfg = self.sudo().browse(cfg_id)
+                if cfg.exists():
+                    vals = {}
+                    if not cfg.vpn_ip:
+                        vals['vpn_ip'] = ", ".join(info['vpn_ips'])
+                    if not cfg.admin_platform_code:
+                        vals['admin_platform_code'] = info['code']
+                    if not cfg.active:
+                        vals['active'] = True
+                    if vals:
+                        try:
+                            cfg.sudo().write(vals)
+                        except Exception:
+                            pass
+                    return cfg
+        return False
+
+    def get_admin_platform_code(self):
+        self.ensure_one()
+        if self.admin_platform_code:
+            return self.admin_platform_code
+        default_map = self._get_default_station_vpn_mapping()
+        if self.id in default_map:
+            return default_map[self.id]['code']
+        n = (self.name or '').lower()
+        if 'vistalegre' in n or 'utrera' in n:
+            return 1
+        elif 'ronda norte' in n:
+            return 2
+        elif 'rodalabota' in n or 'cuervo' in n:
+            return 3
+        elif 'atenas' in n or 'ecija' in n or 'écija' in n or 'lebrija' in n:
+            return 4
+        elif 'repsol' in n or 'trieste' in n:
+            return 5
+        return 0
+
+    def get_admin_platform_employees(self):
+        """Consulta la base de datos de admin-platform en MariaDB de producción y devuelve los empleados activos para esta estación."""
+        self.ensure_one()
+        import pymysql
+        import pymysql.cursors
+
+        ICP = self.env['ir.config_parameter'].sudo()
+        host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
+        port = int(ICP.get_param('admin_platform.db_port', 3306))
+        user = ICP.get_param('admin_platform.db_user', 'db')
+        password = ICP.get_param('admin_platform.db_password', 'db')
+        database = ICP.get_param('admin_platform.db_name', 'db')
+
+        target_code = self.get_admin_platform_code()
+
+        color_palette = [
+            'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            'linear-gradient(135deg, #059669, #047857)',
+            'linear-gradient(135deg, #d97706, #b45309)',
+            'linear-gradient(135deg, #7c3aed, #6d28d9)',
+            'linear-gradient(135deg, #0891b2, #0e7490)',
+            'linear-gradient(135deg, #db2777, #be185d)',
+            'linear-gradient(135deg, #ea580c, #c2410c)',
+            'linear-gradient(135deg, #4f46e5, #4338ca)',
+        ]
+
+        employees = []
+        try:
+            conn = pymysql.connect(
+                host=host,
+                port=port,
+                user=user,
+                password=password,
+                database=database,
+                charset='utf8mb4',
+                cursorclass=pymysql.cursors.DictCursor,
+                connect_timeout=3
+            )
+            with conn.cursor() as cur:
+                sql = """
+                    SELECT id, nombre, apellidos, dni, email, puesto, gasolinera_codigo, foto
+                    FROM empleados
+                    WHERE estado = 'Alta' AND (deleted_at IS NULL)
+                    ORDER BY nombre, apellidos
+                """
+                cur.execute(sql)
+                rows = cur.fetchall()
+
+                matched_rows = [r for r in rows if r.get('gasolinera_codigo') == target_code]
+                if not matched_rows:
+                    matched_rows = rows
+
+                for idx, r in enumerate(matched_rows):
+                    nombre = (r.get('nombre') or '').strip()
+                    apellidos = (r.get('apellidos') or '').strip()
+                    full_name = f"{nombre} {apellidos}".strip() or f"Empleado #{r['id']}"
+                    
+                    parts = full_name.split()
+                    initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'EM'
+                    initials = initials.upper()
+
+                    email = (r.get('email') or '').strip()
+                    dni = (r.get('dni') or '').strip()
+                    login = email or dni or f"empleado_{r['id']}@utrecar.com"
+
+                    employees.append({
+                        'id': r['id'],
+                        'full_name': full_name,
+                        'first_name': nombre,
+                        'last_name': apellidos,
+                        'dni': dni,
+                        'email': email,
+                        'login': login,
+                        'puesto': (r.get('puesto') or 'Expendedor de Pista').strip().title(),
+                        'initials': initials,
+                        'avatar_gradient': color_palette[idx % len(color_palette)],
+                        'photo': r.get('foto') or False,
+                        'gasolinera_codigo': r.get('gasolinera_codigo'),
+                    })
+            conn.close()
+        except Exception:
+            for idx, u in enumerate(self.allowed_user_ids or self.env['res.users'].sudo().search([('active', '=', True), ('share', '=', False)])):
+                parts = u.name.split()
+                initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'U'
+                employees.append({
+                    'id': u.id,
+                    'full_name': u.name,
+                    'first_name': parts[0] if parts else u.name,
+                    'last_name': " ".join(parts[1:]) if len(parts) > 1 else '',
+                    'dni': getattr(u, 'dni', '') or '',
+                    'email': u.email or u.login,
+                    'login': u.login,
+                    'puesto': 'Expendedor Odoo',
+                    'initials': initials.upper(),
+                    'avatar_gradient': color_palette[idx % len(color_palette)],
+                    'photo': False,
+                    'gasolinera_codigo': target_code,
+                })
+
+        return employees
+
+    def sync_or_get_odoo_user_for_employee(self, emp_data):
+        """Garantiza la existencia y vinculación de un usuario en res.users para el empleado de admin-platform."""
+        self.ensure_one()
+        User = self.env['res.users'].sudo()
+        login = emp_data.get('login') or emp_data.get('email') or emp_data.get('dni')
+        email = emp_data.get('email') or login
+
+        user = User.search(['|', ('login', '=', login), ('email', '=', email)], limit=1)
+        if not user and emp_data.get('dni'):
+            user = User.search([('login', '=', emp_data['dni'])], limit=1)
+
+        role_employee = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+        group_pos_user = self.env.ref('point_of_sale.group_pos_user', raise_if_not_found=False)
+        group_internal = self.env.ref('base.group_user', raise_if_not_found=False)
+
+        company = self.company_id or self.env.company
+
+        if not user:
+            vals = {
+                'name': emp_data['full_name'],
+                'login': login,
+                'email': email,
+                'company_id': company.id,
+                'company_ids': [(6, 0, [company.id])],
+                'pos_config_ids': [(6, 0, [self.id])],
+                'active': True,
+            }
+            if role_employee:
+                vals['utrecar_role_id'] = role_employee.id
+            groups = []
+            if group_pos_user:
+                groups.append(group_pos_user.id)
+            if group_internal:
+                groups.append(group_internal.id)
+            if groups:
+                vals['groups_id'] = [(6, 0, groups)]
+
+            user = User.create(vals)
+        else:
+            vals = {}
+            if self.id not in user.pos_config_ids.ids:
+                vals['pos_config_ids'] = [(4, self.id)]
+            if company.id not in user.company_ids.ids:
+                vals['company_ids'] = [(4, company.id)]
+            if not user.active:
+                vals['active'] = True
+            if role_employee and not user.utrecar_role_id:
+                vals['utrecar_role_id'] = role_employee.id
+            if vals:
+                user.write(vals)
+
+        return user
+
+    def open_shift_for_user(self, user):
+        """Abre o reanuda el turno (pos.session) en este TPV para el empleado seleccionado."""
+        self.ensure_one()
+        Session = self.env['pos.session'].sudo()
+
+        session = Session.search([
+            ('config_id', '=', self.id),
+            ('state', 'in', ['opened', 'opening_control'])
+        ], limit=1)
+
+        if session:
+            if session.state == 'opening_control':
+                session.action_pos_session_open()
+                if session.state == 'opening_control':
+                    session.write({'state': 'opened'})
+            if session.user_id != user:
+                session.write({'user_id': user.id})
+            return session
+
+        session = Session.create({
+            'user_id': user.id,
+            'config_id': self.id,
+        })
+        session.action_pos_session_open()
+        if session.state == 'opening_control':
+            session.write({'state': 'opened'})
+        return session
+
     @api.depends('session_ids')
     def _compute_last_session(self):
         PosSession = self.env['pos.session']

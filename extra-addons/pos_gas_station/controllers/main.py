@@ -1218,6 +1218,9 @@ class PosGasStationController(http.Controller):
             total_stations += len(accessible_stations)
             has_logo = bool(c.logo)
 
+            if not accessible_stations and not is_manager:
+                continue
+
             companies_data.append({
                 'id': c.id,
                 'name': c.name,

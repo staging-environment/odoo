@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- TEMPLATE FLOTANTE: SELECCIÓN DE EMPLEADO Y APERTURA DE TURNO EN ESTACIÓN -->
+    <template id="station_employee_select_modal" name="Utrecar - Selección de Empleado de Pista">
+        &lt;!DOCTYPE html&gt;
+        <html lang="es">
+        <head>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+            <title><t t-esc="station.name"/> - Apertura de Turno UTRECAR</title>
+            <link rel="preconnect" href="https://fonts.googleapis.com"/>
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+            <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+            <style>
+                :root {
+                    --bg-gradient: radial-gradient(circle at 50% -20%, #1e293b 0%, #0f172a 60%, #020617 100%);
+                    --card-bg: rgba(30, 41, 59, 0.7);
+                    --card-border: rgba(255, 255, 255, 0.08);
+                    --accent-cyan: #06b6d4;
+                    --accent-blue: #3b82f6;
+                    --text-main: #f8fafc;
+                    --text-muted: #94a3b8;
+                }
+                * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                    -webkit-tap-highlight-color: transparent;
+                }
+                body {
+                    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+                    background: var(--bg-gradient);
+                    color: var(--text-main);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                    overflow-x: hidden;
+                }
+                .ambient-glow {
+                    position: fixed;
+                    top: 10%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 600px;
+                    height: 350px;
+                    background: radial-gradient(ellipse at center, rgba(6, 182, 212, 0.15), transparent 70%);
+                    pointer-events: none;
+                    z-index: 0;
+                }
+                .modal-container {
+                    position: relative;
+                    z-index: 1;
+                    width: 100%;
+                    max-width: 960px;
+                    background: rgba(15, 23, 42, 0.85);
+                    backdrop-filter: blur(28px);
+                    -webkit-backdrop-filter: blur(28px);
+                    border: 1px solid var(--card-border);
+                    border-radius: 28px;
+                    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+                    padding: 40px;
+                    animation: modalFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                @keyframes modalFadeIn {
+                    from { opacity: 0; transform: translateY(20px) scale(0.98); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
+                }
+                .modal-header {
+                    text-align: center;
+                    margin-bottom: 32px;
+                }
+                .brand-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: rgba(6, 182, 212, 0.1);
+                    border: 1px solid rgba(6, 182, 212, 0.25);
+                    padding: 6px 16px;
+                    border-radius: 9999px;
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    color: var(--accent-cyan);
+                    letter-spacing: 0.5px;
+                    text-transform: uppercase;
+                    margin-bottom: 14px;
+                }
+                .pulse-dot {
+                    width: 8px;
+                    height: 8px;
+                    background-color: #10b981;
+                    border-radius: 50%;
+                    box-shadow: 0 0 12px #10b981;
+                    animation: pulse 2s infinite;
+                }
+                @keyframes pulse {
+                    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+                    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                }
+                .station-title {
+                    font-size: 2.2rem;
+                    font-weight: 800;
+                    letter-spacing: -0.5px;
+                    color: #ffffff;
+                    margin-bottom: 8px;
+                    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                }
+                .station-subtitle {
+                    font-size: 1rem;
+                    color: var(--text-muted);
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+                .station-meta-bar {
+                    display: flex;
+                    justify-content: center;
+                    gap: 20px;
+                    margin-top: 14px;
+                    font-size: 0.85rem;
+                    color: #cbd5e1;
+                }
+                .meta-tag {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    background: rgba(255, 255, 255, 0.05);
+                    padding: 4px 12px;
+                    border-radius: 8px;
+                }
+                .search-box-wrap {
+                    margin-bottom: 24px;
+                    position: relative;
+                }
+                .search-input {
+                    width: 100%;
+                    padding: 14px 20px 14px 46px;
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 16px;
+                    color: #fff;
+                    font-size: 0.95rem;
+                    font-family: inherit;
+                    outline: none;
+                    transition: all 0.2s;
+                }
+                .search-input:focus {
+                    border-color: var(--accent-cyan);
+                    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+                    background: rgba(15, 23, 42, 0.9);
+                }
+                .search-icon {
+                    position: absolute;
+                    left: 18px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    color: var(--text-muted);
+                    font-size: 0.95rem;
+                }
+                .employees-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+                    gap: 16px;
+                    max-height: 460px;
+                    overflow-y: auto;
+                    padding: 4px 4px 12px 4px;
+                }
+                .employees-grid::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .employees-grid::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 3px;
+                }
+                .employee-card {
+                    background: var(--card-bg);
+                    border: 1px solid var(--card-border);
+                    border-radius: 20px;
+                    padding: 18px;
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                    cursor: pointer;
+                    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+                    text-decoration: none;
+                    color: inherit;
+                    position: relative;
+                    overflow: hidden;
+                    user-select: none;
+                }
+                .employee-card:hover {
+                    background: rgba(51, 65, 85, 0.7);
+                    border-color: rgba(6, 182, 212, 0.4);
+                    transform: translateY(-3px);
+                    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(6, 182, 212, 0.2);
+                }
+                .employee-card:active {
+                    transform: translateY(0) scale(0.98);
+                }
+                .avatar-wrap {
+                    width: 54px;
+                    height: 54px;
+                    border-radius: 16px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: 800;
+                    font-size: 1.15rem;
+                    color: #fff;
+                    flex-shrink: 0;
+                    box-shadow: 0 6px 14px -3px rgba(0, 0, 0, 0.35);
+                    position: relative;
+                }
+                .avatar-img {
+                    width: 100%;
+                    height: 100%;
+                    border-radius: 16px;
+                    object-fit: cover;
+                }
+                .emp-info {
+                    flex: 1;
+                    min-width: 0;
+                }
+                .emp-name {
+                    font-weight: 700;
+                    font-size: 1.05rem;
+                    color: #ffffff;
+                    margin-bottom: 4px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .emp-role {
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    color: var(--accent-cyan);
+                    display: inline-block;
+                    margin-bottom: 2px;
+                }
+                .emp-dni {
+                    font-size: 0.75rem;
+                    color: var(--text-muted);
+                }
+                .card-arrow {
+                    color: rgba(255, 255, 255, 0.3);
+                    font-size: 1.1rem;
+                    transition: transform 0.2s, color 0.2s;
+                }
+                .employee-card:hover .card-arrow {
+                    color: var(--accent-cyan);
+                    transform: translateX(4px);
+                }
+                .modal-footer {
+                    margin-top: 30px;
+                    padding-top: 20px;
+                    border-top: 1px solid rgba(255, 255, 255, 0.08);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 14px;
+                }
+                .admin-link {
+                    color: var(--text-muted);
+                    text-decoration: none;
+                    font-size: 0.85rem;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    transition: color 0.2s;
+                }
+                .admin-link:hover {
+                    color: #ffffff;
+                }
+                .footer-badge {
+                    font-size: 0.8rem;
+                    color: #64748b;
+                }
+                .loading-overlay {
+                    display: none;
+                    position: absolute;
+                    inset: 0;
+                    background: rgba(15, 23, 42, 0.9);
+                    border-radius: 28px;
+                    backdrop-filter: blur(10px);
+                    z-index: 10;
+                    align-items: center;
+                    justify-content: center;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                .spinner {
+                    width: 44px;
+                    height: 44px;
+                    border: 3px solid rgba(6, 182, 212, 0.2);
+                    border-top-color: var(--accent-cyan);
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                }
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="ambient-glow"></div>
+            
+            <div class="modal-container">
+                <div id="loadingOverlay" class="loading-overlay">
+                    <div class="spinner"></div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">Iniciando turno y conectando TPV...</div>
+                    <div style="font-size: 0.9rem; color: #94a3b8;">Sincronizando con estación de servicio</div>
+                </div>
+
+                <div class="modal-header">
+                    <div class="brand-badge">
+                        <span class="pulse-dot"></span>
+                        Terminal de Pista UTRECAR
+                    </div>
+                    <h1 class="station-title"><t t-esc="station.name"/></h1>
+                    <p class="station-subtitle">Seleccione su usuario de empleado para iniciar el turno de caja y cargar el punto de venta.</p>
+                    <div class="station-meta-bar">
+                        <span class="meta-tag">
+                            <i class="fa fa-network-wired text-info me-1"></i> VPN IP: <strong><t t-esc="client_ip"/></strong>
+                        </span>
+                        <span class="meta-tag">
+                            <i class="fa fa-users text-primary me-1"></i> <strong><t t-esc="len(employees)"/></strong> Empleados vinculados
+                        </span>
+                        <span class="meta-tag">
+                            <i class="fa fa-building text-warning me-1"></i> <t t-esc="station.company_id.name"/>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="search-box-wrap">
+                    <i class="fa fa-search search-icon"></i>
+                    <input type="text" id="searchEmployeeInput" class="search-input" placeholder="Buscar por nombre o DNI de empleado..." autocomplete="off" autofocus="autofocus"/>
+                </div>
+
+                <form id="employeeLoginForm" action="/pos_gas_station/station_login" method="POST">
+                    <input type="hidden" name="csrf_token" t-att-value="csrf_token"/>
+                    <input type="hidden" name="station_id" t-att-value="station.id"/>
+                    <input type="hidden" name="employee_id" id="selectedEmployeeId" value=""/>
+                    
+                    <div class="employees-grid" id="employeesGrid">
+                        <t t-foreach="employees" t-as="emp">
+                            <div class="employee-card" t-att-data-emp-id="emp['id']" t-att-data-name="emp['full_name'].lower()" t-att-data-dni="emp['dni'].lower()" onclick="selectEmployee(this)">
+                                <div class="avatar-wrap" t-attf-style="background: {{ emp['avatar_gradient'] }};">
+                                    <t t-if="emp.get('photo')">
+                                        <img t-attf-src="/web/image?model=pos.config&amp;id={{ station.id }}&amp;field=logo" class="avatar-img" alt="foto"/>
+                                    </t>
+                                    <t t-else="">
+                                        <t t-esc="emp['initials']"/>
+                                    </t>
+                                </div>
+                                <div class="emp-info">
+                                    <div class="emp-name"><t t-esc="emp['full_name']"/></div>
+                                    <div class="emp-role"><t t-esc="emp['puesto']"/></div>
+                                    <div class="emp-dni"><i class="fa fa-id-card me-1"></i><t t-esc="emp['dni'] or 'Personal de Pista'"/></div>
+                                </div>
+                                <div class="card-arrow">
+                                    <i class="fa fa-chevron-right"></i>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </form>
+
+                <div class="modal-footer">
+                    <a href="/web/login?admin=1" class="admin-link">
+                        <i class="fa fa-shield-alt"></i> Acceso manual de Administrador
+                    </a>
+                    <div class="footer-badge">
+                        UTRECAR ERP 17.0 • Mando Central de Pista
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function selectEmployee(card) {
+                    const empId = card.getAttribute('data-emp-id');
+                    if (!empId) return;
+                    document.getElementById('selectedEmployeeId').value = empId;
+                    document.getElementById('loadingOverlay').style.display = 'flex';
+                    document.getElementById('employeeLoginForm').submit();
+                }
+
+                // Filtro rápido de búsqueda
+                const searchInput = document.getElementById('searchEmployeeInput');
+                const cards = document.querySelectorAll('.employee-card');
+                
+                searchInput.addEventListener('input', function(e) {
+                    const term = e.target.value.toLowerCase().trim();
+                    cards.forEach(card => {
+                        const name = card.getAttribute('data-name') || '';
+                        const dni = card.getAttribute('data-dni') || '';
+                        if (!term || name.includes(term) || dni.includes(term)) {
+                            card.style.display = 'flex';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            </script>
+        </body>
+        </html>
+    </template>
+
+    <!-- EXTENSIÓN DE VISTA FORMULARIO POS CONFIG PARA MOSTRAR IPs VPN Y CÓDIGO ADMIN PLATFORM -->
+    <record id="view_pos_config_form_inherit_vpn_ip" model="ir.ui.view">
+        <field name="name">pos.config.form.inherit.vpn.ip</field>
+        <field name="model">pos.config</field>
+        <field name="inherit_id" ref="point_of_sale.pos_config_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info d-flex align-items-center mb-3 shadow-sm rounded border" role="status">
+                    <div class="me-3 fs-3 text-info">
+                        <i class="fa fa-network-wired"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="alert-heading fw-bold mb-1">Protección por VPN WireGuard y Acceso Directo de Turno</h5>
+                        <p class="mb-0 small text-muted">
+                            Los equipos de pista con IP configurada abrirán automáticamente este TPV con selector táctil de empleados de admin-platform al iniciar sesión.
+                        </p>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <div class="mt-2 mb-3 p-3 bg-light rounded border">
+                    <h5 class="fw-bold text-dark mb-2"><i class="fa fa-lock text-primary me-2"></i> Parámetros de Red VPN y Admin Platform</h5>
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label for="vpn_ip" class="form-label fw-bold">IPs de la Estación en WireGuard VPN</label>
+                            <field name="vpn_ip" placeholder="Ej: 10.8.0.18 o 10.8.0.6, 10.8.0.7"/>
+                            <div class="form-text small text-muted">Al acceder desde esta IP, Odoo reconoce la estación y muestra los empleados asignados.</div>
+                        </div>
+                        <div class="col-md-5">
+                            <label for="admin_platform_code" class="form-label fw-bold">Código en Admin Platform (gasolinera_codigo)</label>
+                            <field name="admin_platform_code" placeholder="Ej: 1, 2, 3, 4, 5"/>
+                            <div class="form-text small text-muted">1: Vistalegre, 2: Ronda Norte, 3: Rodalabota, 4: Atenas, 5: Repsol.</div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
