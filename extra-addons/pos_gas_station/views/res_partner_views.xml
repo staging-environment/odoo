@@ -79,6 +79,7 @@
         <field name="context">{
             'default_customer_rank': 1,
             'search_default_filter_customer': 1,
+            'search_default_group_station': 1,
         }</field>
         <field name="view_id" ref="view_partner_gas_station_tree"/>
         <field name="search_view_id" ref="view_res_partner_filter_gas_station"/>

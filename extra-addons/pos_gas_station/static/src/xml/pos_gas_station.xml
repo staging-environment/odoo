@@ -2024,6 +2024,114 @@
                 </div>
             </t>
 
+
+        <!-- ======================================================== -->
+        <!-- MODAL DE ESTACIONES DISPONIBLES EN FUNCIÓN DEL USUARIO -->
+        <!-- ======================================================== -->
+        <t t-if="state.isStationsModalOpen">
+            <div class="virtus-modal-overlay" t-on-click.self="() => this.closeStationsSelector()">
+                <div class="stations-selector-modal-window">
+                    <div class="stations-modal-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="stations-header-icon">
+                                <i class="fa fa-gas-pump"/>
+                            </div>
+                            <div>
+                                <h3 class="stations-modal-title">Estaciones de Servicio Disponibles</h3>
+                                <p class="stations-modal-subtitle">
+                                    Terminales asignados a su usuario según perfil y permisos de VPN
+                                </p>
+                            </div>
+                        </div>
+                        <button class="stations-close-btn" t-on-click="() => this.closeStationsSelector()" title="Cerrar ventana">
+                            <i class="fa fa-times"/>
+                        </button>
+                    </div>
+
+                    <div class="stations-modal-body">
+                        <t t-if="state.loadingStations">
+                            <div class="stations-loading-box">
+                                <div class="spinner-border text-primary mb-2" role="status"></div>
+                                <div class="fw-bold">Cargando estaciones autorizadas...</div>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="stations-cards-grid">
+                                <t t-foreach="state.availableStations" t-as="st" t-key="st.id">
+                                    <div t-attf-class="station-card {{ st.is_current ? 'station-card-active' : '' }}"
+                                         t-on-click="() => this.switchToStation(st.id)">
+                                        <div class="station-card-top">
+                                            <div class="station-icon-badge">
+                                                <i class="fa fa-gas-pump"/>
+                                            </div>
+                                            <div class="station-badges">
+                                                <t t-if="st.is_current">
+                                                    <span class="badge-current-station">
+                                                        <i class="fa fa-check-circle me-1"/> En uso
+                                                    </span>
+                                                </t>
+                                                <span class="badge-company-name">
+                                                    <t t-esc="st.company_name"/>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="station-card-info">
+                                            <h4 class="station-card-name"><t t-esc="st.name"/></h4>
+                                            <div class="station-card-session-status">
+                                                <t t-if="st.has_active_session">
+                                                    <span class="session-status-open">
+                                                        <span class="status-dot green"></span>
+                                                        Turno abierto por: <strong><t t-esc="st.active_user_name || 'Personal'"/></strong>
+                                                    </span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="session-status-closed">
+                                                        <span class="status-dot gray"></span>
+                                                        Turno cerrado
+                                                    </span>
+                                                </t>
+                                            </div>
+                                            <t t-if="st.vpn_ip">
+                                                <div class="station-vpn-meta">
+                                                    <i class="fa fa-network-wired text-muted me-1"/> VPN: <t t-esc="st.vpn_ip"/>
+                                                </div>
+                                            </t>
+                                        </div>
+                                        <div class="station-card-action">
+                                            <t t-if="st.is_current">
+                                                <span class="btn-card-current">
+                                                    ✓ Estación Actual
+                                                </span>
+                                            </t>
+                                            <t t-else="">
+                                                <button class="btn-card-switch">
+                                                    Acceder al TPV <i class="fa fa-arrow-right ms-1"/>
+                                                </button>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="stations-modal-footer">
+                        <t t-if="state.isAdminUser">
+                            <button class="btn-back-dashboard" t-on-click="() => this.goToDashboard()">
+                                <i class="fa fa-arrow-left me-1"/> Volver a Gestión de Gasolineras (Backend)
+                            </button>
+                        </t>
+                        <button class="btn-switch-cashier" t-on-click="() => this.switchCashierUser()">
+                            <i class="fa fa-user-circle me-1"/> Cambiar de Empleado / Cajero
+                        </button>
+                        <button class="btn-close-stations-modal" t-on-click="() => this.closeStationsSelector()">
+                            Continuar en este TPV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </t>
+
 </div>
     </t>
 

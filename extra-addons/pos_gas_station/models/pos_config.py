@@ -423,3 +423,40 @@ class PosConfig(models.Model):
             'tag': 'gas_station_dashboard',
             'target': 'main',
         }
+
+
+    @api.model
+    def get_user_available_stations(self, current_config_id=None):
+        """Retorna las estaciones accesibles según el usuario actual."""
+        user = self.env.user
+        is_admin = user._is_admin() or user.has_group('point_of_sale.group_pos_manager')
+        if is_admin:
+            configs = self.search([('active', '=', True)])
+        else:
+            configs = self.search([
+                ('active', '=', True),
+                '|', ('id', 'in', user.pos_config_ids.ids),
+                     ('allowed_user_ids', 'in', [user.id])
+            ])
+            if not configs and current_config_id:
+                configs = self.browse(current_config_id)
+        
+        stations_data = []
+        for c in configs:
+            active_session = self.env['pos.session'].search([
+                ('config_id', '=', c.id),
+                ('state', '=', 'opened')
+            ], limit=1)
+            stations_data.append({
+                'id': c.id,
+                'name': c.name,
+                'company_name': c.company_id.name,
+                'is_current': c.id == current_config_id,
+                'has_active_session': bool(active_session),
+                'active_user_name': active_session.user_id.name if active_session else None,
+                'vpn_ip': c.vpn_ip or '',
+            })
+        return {
+            'is_admin': is_admin,
+            'stations': stations_data,
+        }

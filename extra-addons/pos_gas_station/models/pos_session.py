@@ -16,6 +16,12 @@ class PosSession(models.Model):
             'station_id',
             'company_id',
         ])
+        # Separar clientes por estación: cargar los de esta estación o clientes generales de la misma empresa
+        result['search_params']['domain'] = [
+            '|',
+            ('station_id', '=', self.config_id.id),
+            '&', ('station_id', '=', False), ('company_id', 'in', [False, self.config_id.company_id.id])
+        ]
         return result
 
     def _get_pos_ui_pos_payment_method(self, params):

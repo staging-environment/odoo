@@ -17,7 +17,26 @@ class ResPartner(models.Model):
         res = super().default_get(fields_list)
         if 'company_id' in fields_list and not res.get('company_id'):
             res['company_id'] = self.env.company.id
+        if 'station_id' in fields_list and not res.get('station_id'):
+            user = self.env.user
+            if len(user.pos_config_ids) == 1:
+                res['station_id'] = user.pos_config_ids[0].id
+                if user.pos_config_ids[0].company_id:
+                    res['company_id'] = user.pos_config_ids[0].company_id.id
         return res
+
+    @api.model
+    def create_from_ui(self, partner):
+        # Auto-asignar estación si se crea cliente desde el TPV
+        if not partner.get('station_id'):
+            session = self.env['pos.session'].search([
+                ('user_id', '=', self.env.uid),
+                ('state', '=', 'opened')
+            ], limit=1)
+            if session and session.config_id:
+                partner['station_id'] = session.config_id.id
+                partner['company_id'] = session.config_id.company_id.id
+        return super().create_from_ui(partner)
 
     @api.onchange('station_id')
     def _onchange_station_id(self):

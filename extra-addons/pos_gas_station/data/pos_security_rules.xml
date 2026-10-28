@@ -18,4 +18,20 @@
         <field name="groups" eval="[(4, ref('point_of_sale.group_pos_manager')), (4, ref('base.group_erp_manager'))]"/>
         <field name="domain_force">[(1, '=', 1)]</field>
     </record>
+
+    <!-- REGLA DE SEGURIDAD: CLIENTES SEPARADOS POR ESTACIÓN SEGÚN PERMISOS DE USUARIO -->
+    <record id="rule_res_partner_station_restricted" model="ir.rule">
+        <field name="name">Restricción de Clientes por Estación de Servicio</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_user'))]"/>
+        <field name="domain_force">['|', ('station_id', '=', False), ('station_id', 'in', user.pos_config_ids.ids)]</field>
+    </record>
+
+    <record id="rule_res_partner_station_manager_all" model="ir.rule">
+        <field name="name">Acceso Total a Clientes para Responsables y Administradores</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_manager')), (4, ref('base.group_erp_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
 </odoo>

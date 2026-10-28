@@ -5406,3 +5406,335 @@
     padding: 3px 8px !important;
     border-radius: 4px !important;
 }
+
+
+/* ==========================================================================
+   BOTÓN TOPBAR ESTACIONES Y MODAL DE ESTACIONES DISPONIBLES
+   ========================================================================== */
+
+.btn-topbar-stations {
+    margin-left: 10px !important;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    padding: 0 12px !important;
+    height: 30px !important;
+    border: 1px solid #0284c7 !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 4px rgba(2, 132, 199, 0.3) !important;
+    transition: transform 0.15s ease, background 0.15s ease !important;
+}
+
+.btn-topbar-stations:hover {
+    background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important;
+    transform: scale(1.05) !important;
+}
+
+.stations-selector-modal-window {
+    background: #ffffff !important;
+    border-radius: 16px !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
+    width: 90% !important;
+    max-width: 900px !important;
+    max-height: 90vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.stations-modal-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+    padding: 20px 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    color: #ffffff !important;
+    border-bottom: 2px solid #334155 !important;
+}
+
+.stations-header-icon {
+    width: 44px !important;
+    height: 44px !important;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 20px !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4) !important;
+}
+
+.stations-modal-title {
+    font-size: 1.35rem !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    letter-spacing: -0.3px !important;
+}
+
+.stations-modal-subtitle {
+    font-size: 0.85rem !important;
+    color: #94a3b8 !important;
+    margin: 3px 0 0 0 !important;
+}
+
+.stations-close-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: none !important;
+    color: #ffffff !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    font-size: 16px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background 0.15s ease !important;
+}
+
+.stations-close-btn:hover {
+    background: rgba(239, 68, 68, 0.8) !important;
+}
+
+.stations-modal-body {
+    padding: 24px !important;
+    overflow-y: auto !important;
+    flex: 1 !important;
+    background: #f8fafc !important;
+}
+
+.stations-loading-box {
+    text-align: center !important;
+    padding: 40px !important;
+    color: #64748b !important;
+}
+
+.stations-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    gap: 16px !important;
+}
+
+.station-card {
+    background: #ffffff !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 14px !important;
+    padding: 18px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.station-card:hover {
+    transform: translateY(-3px) !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 12px 20px -5px rgba(2, 132, 199, 0.15) !important;
+}
+
+.station-card-active {
+    border-color: #10b981 !important;
+    background: #f0fdf4 !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15) !important;
+}
+
+.station-card-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 12px !important;
+}
+
+.station-icon-badge {
+    width: 36px !important;
+    height: 36px !important;
+    background: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+}
+
+.station-card-active .station-icon-badge {
+    background: #d1fae5 !important;
+    color: #059669 !important;
+}
+
+.station-badges {
+    display: flex !important;
+    gap: 6px !important;
+    align-items: center !important;
+}
+
+.badge-current-station {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    padding: 2px 8px !important;
+    border-radius: 9999px !important;
+}
+
+.badge-company-name {
+    background: #e2e8f0 !important;
+    color: #334155 !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+}
+
+.station-card-name {
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    margin: 0 0 8px 0 !important;
+}
+
+.station-card-session-status {
+    font-size: 0.8rem !important;
+    margin-bottom: 6px !important;
+}
+
+.session-status-open {
+    color: #166534 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.session-status-closed {
+    color: #64748b !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.status-dot {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    display: inline-block !important;
+}
+
+.status-dot.green {
+    background: #22c55e !important;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.6) !important;
+}
+
+.status-dot.gray {
+    background: #94a3b8 !important;
+}
+
+.station-vpn-meta {
+    font-size: 0.75rem !important;
+    color: #64748b !important;
+    margin-top: 4px !important;
+}
+
+.station-card-action {
+    margin-top: 14px !important;
+    padding-top: 12px !important;
+    border-top: 1px dashed #e2e8f0 !important;
+}
+
+.btn-card-current {
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    color: #059669 !important;
+    display: block !important;
+    text-align: center !important;
+}
+
+.btn-card-switch {
+    width: 100% !important;
+    background: #0284c7 !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.btn-card-switch:hover {
+    background: #0369a1 !important;
+}
+
+.stations-modal-footer {
+    background: #ffffff !important;
+    padding: 16px 24px !important;
+    border-top: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+}
+
+.btn-back-dashboard {
+    background: #334155 !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 9px 16px !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease !important;
+    margin-right: auto !important;
+}
+
+.btn-back-dashboard:hover {
+    background: #1e293b !important;
+}
+
+.btn-switch-cashier {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 9px 16px !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease !important;
+}
+
+.btn-switch-cashier:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+.btn-close-stations-modal {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 9px 18px !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    cursor: pointer !important;
+    transition: opacity 0.15s ease !important;
+}
+
+.btn-close-stations-modal:hover {
+    opacity: 0.9 !important;
+}

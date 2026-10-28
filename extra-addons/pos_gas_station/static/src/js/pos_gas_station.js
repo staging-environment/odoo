@@ -138,6 +138,10 @@ export class UtrecarMainScreen extends Component {
             storeSearch: "",
                         isShiftOrdersModalOpen: false,
             shiftOrdersLoading: false,
+            isStationsModalOpen: false,
+            loadingStations: false,
+            availableStations: [],
+            isAdminUser: false,
             shiftViewSessionId: null,
             shiftSessionInfo: { currentId: null, currentName: '', prevId: null, prevName: '', activeState: 'current' },
             shiftOrders: [],
@@ -1748,7 +1752,11 @@ export class UtrecarMainScreen extends Component {
     get filteredClients() {
         const search = (this.state.clientSearch || "").toLowerCase().trim();
         const allPartners = Object.values(this.pos.db.partner_by_id || {});
-        let list = allPartners;
+        // Separar clientes por estación: solo mostrar clientes de esta estación o generales
+        let list = allPartners.filter(p => {
+            const stId = Array.isArray(p.station_id) ? p.station_id[0] : p.station_id;
+            return !stId || stId === this.configId;
+        });
         if (search) {
             list = allPartners.filter(p => {
                 const name = (p.name || "").toLowerCase();
@@ -1878,6 +1886,42 @@ export class UtrecarMainScreen extends Component {
         // 4. Solo en MODO LLENO / POSTPAGO
         const isModoLleno = pump.is_lleno || Boolean(preset && preset.isLleno) || (!pump.has_prepay && !pump.preset_amount);
         return Boolean(isModoLleno);
+    }
+
+
+    async openStationsSelector() {
+        this.state.isStationsModalOpen = true;
+        this.state.loadingStations = true;
+        try {
+            const res = await this.orm.call("pos.config", "get_user_available_stations", [this.configId]);
+            this.state.availableStations = (res && res.stations) ? res.stations : [];
+            this.state.isAdminUser = Boolean(res && res.is_admin);
+        } catch (e) {
+            console.error("Error al obtener estaciones disponibles:", e);
+            this.state.availableStations = [];
+        } finally {
+            this.state.loadingStations = false;
+        }
+    }
+
+    closeStationsSelector() {
+        this.state.isStationsModalOpen = false;
+    }
+
+    switchToStation(targetStationId) {
+        if (!targetStationId || targetStationId === this.configId) {
+            this.closeStationsSelector();
+            return;
+        }
+        window.location.href = `/pos/ui?config_id=${targetStationId}`;
+    }
+
+    goToDashboard() {
+        window.location.href = "/web#action=pos_gas_station.action_gas_station_dashboard";
+    }
+
+    switchCashierUser() {
+        window.location.href = `/pos_gas_station/switch_cashier?config_id=${this.configId}`;
     }
 
     async openCloseSessionPopup() {
