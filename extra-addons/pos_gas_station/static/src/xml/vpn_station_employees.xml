@@ -25,6 +25,9 @@
                         <button class="btn btn-outline-secondary d-flex align-items-center gap-2 fw-bold" t-on-click="() => this.openDashboard()">
                             <i class="fa fa-arrow-left"></i> Volver a Gasolineras
                         </button>
+                        <button class="btn btn-success d-flex align-items-center gap-2 fw-bold shadow-sm" t-on-click="() => this.syncEmployeesNow()" title="Sincronizar ahora todos los empleados de admin-platform y darlos de alta automáticamente en Odoo">
+                            <i class="fa fa-cloud-download" t-att-class="state.syncing ? 'fa-spin' : ''"></i> Sincronizar y Alta en Odoo
+                        </button>
                         <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold shadow-sm" t-on-click="() => this.loadData()">
                             <i class="fa fa-sync-alt" t-att-class="state.loading ? 'fa-spin' : ''"></i> Actualizar Datos
                         </button>

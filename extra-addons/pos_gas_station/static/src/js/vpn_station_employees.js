@@ -13,6 +13,7 @@ export class VpnStationEmployeesView extends Component {
         this.notification = useService("notification");
         this.state = useState({
             loading: true,
+            syncing: false,
             stations: [],
             allUsers: [],
             stats: {
@@ -47,6 +48,28 @@ export class VpnStationEmployeesView extends Component {
             this.notification.add("Error de conexión al cargar empleados por VPN", { type: "danger" });
         } finally {
             this.state.loading = false;
+        }
+    }
+
+    
+    async syncEmployeesNow() {
+        this.state.syncing = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/sync_employees_now", {});
+            if (res.status === "success") {
+                this.notification.add(
+                    `Sincronización completada: ${res.created} nuevos usuarios dados de alta, ${res.updated} actualizados en Odoo (Total analizados: ${res.total}).`,
+                    { type: "success" }
+                );
+                await this.loadData();
+            } else {
+                this.notification.add(`Error en sincronización: ${res.message || "desconocido"}`, { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error sincronizando empleados:", e);
+            this.notification.add("Error al conectar para sincronizar empleados", { type: "danger" });
+        } finally {
+            this.state.syncing = false;
         }
     }
 

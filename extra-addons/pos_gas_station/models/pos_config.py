@@ -1,3 +1,5 @@
+import logging
+_logger = logging.getLogger(__name__)
 # -*- coding: utf-8 -*-
 from odoo import models, api, fields, _
 from odoo.exceptions import UserError
@@ -496,4 +498,156 @@ class PosConfig(models.Model):
         return {
             'is_admin': is_admin,
             'stations': stations_data,
+        }
+
+
+    @api.model
+    def cron_sync_admin_platform_employees(self):
+        """Sincroniza periódicamente los empleados de admin-platform en res.users de Odoo."""
+        _logger.info("Iniciando sincronización programada de empleados desde admin-platform...")
+        import pymysql
+        import pymysql.cursors
+
+        ICP = self.env['ir.config_parameter'].sudo()
+        host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
+        port = int(ICP.get_param('admin_platform.db_port', 3306))
+        user_db = ICP.get_param('admin_platform.db_user', 'db')
+        password = ICP.get_param('admin_platform.db_password', 'db')
+        database = ICP.get_param('admin_platform.db_name', 'db')
+
+        try:
+            conn = pymysql.connect(
+                host=host,
+                port=port,
+                user=user_db,
+                password=password,
+                database=database,
+                charset='utf8mb4',
+                cursorclass=pymysql.cursors.DictCursor,
+                connect_timeout=5
+            )
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, nombre, apellidos, dni, email, puesto, gasolinera_codigo, foto, estado
+                    FROM empleados
+                    WHERE (deleted_at IS NULL)
+                    ORDER BY id ASC
+                """)
+                rows = cur.fetchall()
+            conn.close()
+        except Exception as e:
+            _logger.error("Error conectando a MariaDB admin-platform para sincronizar empleados: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+        User = self.env['res.users'].sudo()
+        all_stations = self.search([])
+        default_map = self._get_default_station_vpn_mapping()
+
+        role_employee = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+        role_manager = self.env.ref('pos_gas_station.role_manager', raise_if_not_found=False)
+        role_admin = self.env.ref('pos_gas_station.role_admin_hr', raise_if_not_found=False)
+
+        group_pos_user = self.env.ref('point_of_sale.group_pos_user', raise_if_not_found=False)
+        group_internal = self.env.ref('base.group_user', raise_if_not_found=False)
+
+        created_count = 0
+        updated_count = 0
+
+        for r in rows:
+            estado = (r.get('estado') or '').strip().title()
+            is_active = (estado == 'Alta')
+
+            nombre = (r.get('nombre') or '').strip()
+            apellidos = (r.get('apellidos') or '').strip()
+            full_name = f"{nombre} {apellidos}".strip() or f"Empleado #{r['id']}"
+
+            dni = (r.get('dni') or '').strip()
+            email = (r.get('email') or '').strip()
+            login = email or dni or f"empleado_{r['id']}@utrecar.com"
+            puesto = (r.get('puesto') or '').strip()
+            gas_code = r.get('gasolinera_codigo')
+
+            # Buscar estación correspondiente
+            target_station = False
+            if gas_code:
+                target_station = all_stations.filtered(lambda s: s.get_admin_platform_code() == gas_code)
+                if not target_station:
+                    for sid, m in default_map.items():
+                        if m.get('admin_platform_code') == gas_code:
+                            target_station = self.browse(sid)
+                            break
+
+            company = target_station.company_id if target_station and target_station.company_id else self.env.company
+
+            # Buscar si el usuario ya existe en Odoo
+            user = User.search(['|', ('login', '=', login), ('email', '=', email)], limit=1)
+            if not user and dni:
+                user = User.search([('login', '=', dni)], limit=1)
+
+            # Rol según puesto
+            puesto_lower = puesto.lower()
+            assigned_role = role_employee
+            if 'admin' in puesto_lower:
+                assigned_role = role_admin or role_manager
+            elif any(k in puesto_lower for k in ['encargad', 'responsable', 'gestor', 'jefe']):
+                assigned_role = role_manager
+
+            if not user:
+                if not is_active:
+                    continue
+
+                vals = {
+                    'name': full_name,
+                    'login': login,
+                    'email': email or (f"{login}@utrecar.com" if '@' not in login else login),
+                    'company_id': company.id,
+                    'company_ids': [(6, 0, [company.id])],
+                    'active': True,
+                }
+                if target_station:
+                    vals['pos_config_ids'] = [(6, 0, [target_station.id])]
+                if assigned_role:
+                    vals['utrecar_role_id'] = assigned_role.id
+
+                groups = []
+                if group_internal:
+                    groups.append(group_internal.id)
+                if group_pos_user:
+                    groups.append(group_pos_user.id)
+                if groups:
+                    vals['groups_id'] = [(6, 0, groups)]
+
+                try:
+                    user = User.with_context(
+                        no_reset_password=True,
+                        mail_create_nosubscribe=True,
+                        mail_create_nolog=True
+                    ).create(vals)
+                    created_count += 1
+                except Exception as ex:
+                    _logger.warning("No se pudo crear usuario para %s: %s", full_name, ex)
+            else:
+                vals = {}
+                if user.active != is_active:
+                    vals['active'] = is_active
+                if is_active:
+                    if company.id not in user.company_ids.ids:
+                        vals['company_ids'] = [(4, company.id)]
+                    if target_station and target_station.id not in user.pos_config_ids.ids:
+                        vals['pos_config_ids'] = [(4, target_station.id)]
+                    if not user.utrecar_role_id and assigned_role:
+                        vals['utrecar_role_id'] = assigned_role.id
+                if vals:
+                    user.write(vals)
+                    updated_count += 1
+
+            if user and is_active and target_station and user.id not in target_station.allowed_user_ids.ids:
+                target_station.sudo().write({'allowed_user_ids': [(4, user.id)]})
+
+        _logger.info("Sincronización finalizada: %d creados, %d actualizados de %d empleados.", created_count, updated_count, len(rows))
+        return {
+            'status': 'success',
+            'created': created_count,
+            'updated': updated_count,
+            'total': len(rows)
         }

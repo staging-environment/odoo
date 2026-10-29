@@ -1960,3 +1960,10 @@ class PosGasStationController(http.Controller):
             }
         }
 
+
+
+    @http.route('/pos_gas_station/sync_employees_now', type='json', auth='user', methods=['POST'], csrf=False)
+    def sync_employees_now(self):
+        """Dispara manualmente la sincronización de empleados de admin-platform y alta en res.users."""
+        res = request.env['pos.config'].sudo().cron_sync_admin_platform_employees()
+        return res
