@@ -169,7 +169,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <t t-foreach="filteredUsers" t-as="u" t-key="u.id">
+                                            <t t-foreach="filteredUsers" t-as="u" t-key="'u_' + (u.id || '') + '_' + u_index">
                                                 <tr t-att-class="u.is_admin ? 'table-light' : ''">
                                                     <td class="text-muted small"><t t-esc="u_index + 1"/></td>
                                                     <td>
@@ -307,7 +307,7 @@
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <t t-foreach="station.employees" t-as="emp" t-key="emp.id">
+                                                            <t t-foreach="station.employees" t-as="emp" t-key="'emp_' + (emp.id || '') + '_' + emp_index">
                                                                 <tr>
                                                                     <td class="text-muted small"><t t-esc="emp_index + 1"/></td>
                                                                     <td>

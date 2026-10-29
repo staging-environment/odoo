@@ -1909,7 +1909,7 @@ class PosGasStationController(http.Controller):
 
             for emp in employees:
                 all_users.append({
-                    'id': emp['id'],
+                    'id': f"st_{st.id}_emp_{emp['id']}",
                     'full_name': emp['full_name'],
                     'dni': emp.get('dni') or '-',
                     'email': emp.get('email') or emp.get('login'),
