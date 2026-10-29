@@ -209,3 +209,17 @@ Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempr
   - Permite a los administradores activar o revocar en tiempo real el acceso a Odoo para cualquier rol (`CEO`, `ADMINISTRACION Y RRHH`, `Empleado`) o usuario individual.
 - **Validación del Permiso en el TPV de Odoo**:
   - En `pos_config.get_admin_platform_employees()`, la consulta a la tabla `empleados` cruza con `users`, `model_has_roles`, `role_has_permissions` y `model_has_permissions` de MariaDB para verificar que el empleado cuenta con el permiso `acceso_odoo`. Si el permiso está desactivado para su rol o usuario, no aparecerá en el selector táctil de la estación ni podrá abrir turno.
+
+
+### 10. Hoja de Ruta: Ubicaciones de Trabajo Múltiples por Empleado (Admin Platform & Odoo)
+- **Requisito Fundamental de Operativa**:
+  - En la base de datos de `admin-platform`, la **Ubicación de trabajo de un empleado debe ser múltiple** (muchos a muchos N:M), ya que los expendedores y encargados cubren turnos de forma rotativa en varias estaciones de servicio (p. ej. Vistalegre y Ronda Norte, o Repsol y Rodalabota).
+- **Implementación Técnica Prevista en `admin-platform` (MariaDB)**:
+  - Crear tabla relacional `empleado_gasolinera` (`empleado_id`, `gasolinera_codigo`) o columna JSON/string con la lista de códigos asignados (`gasolinera_codigos = [1, 2, 5]`).
+- **Regla de Visualización Estricta al Abrir Turno en Odoo**:
+  - Al abrir turno en cualquier terminal táctil (`/pos_gas_station/select_employee?station_id=<id>`), **únicamente deben salir los empleados que tengan asignada esa ubicación de trabajo específica**.
+  - Si un empleado tiene asignadas múltiples estaciones, su tarjeta aparecerá en el selector de cada una de esas terminales.
+  - Al hacer clic sobre su nombre, se le abre el turno (`pos.session`) y se vincula su usuario de Odoo (`res.users`), asociando todas sus ventas, cobros y arqueos a esa sesión de caja específica.
+- **Sincronización Automática con `res.users`**:
+  - En Odoo, el usuario se vincula a todas las estaciones en `pos_config_ids` y se añade a `pos.config.allowed_user_ids` de cada terminal respectiva.
+- **Documentación de Detalle**: Consultar `docs/ARQUITECTURA_UBICACIONES_MULTIPLES_EMPLEADOS.md`.

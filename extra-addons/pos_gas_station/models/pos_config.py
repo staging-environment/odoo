@@ -86,6 +86,23 @@ class PosConfig(models.Model):
             return 5
         return 0
 
+
+    @api.model
+    def _match_employee_station(self, gas_code_val, target_code):
+        """Verifica si el valor de ubicación del empleado coincide con el código de estación (soporta valor único o múltiple)."""
+        if not target_code:
+            return True
+        if gas_code_val is None:
+            return False
+        if isinstance(gas_code_val, int):
+            return gas_code_val == target_code
+        if isinstance(gas_code_val, str):
+            parts = [x.strip() for x in gas_code_val.replace(';', ',').split(',') if x.strip()]
+            return str(target_code) in parts
+        if isinstance(gas_code_val, (list, tuple)):
+            return target_code in gas_code_val or str(target_code) in [str(x) for x in gas_code_val]
+        return False
+
     def get_admin_platform_employees(self):
         """Consulta la base de datos de admin-platform en MariaDB de producción y devuelve los empleados activos para esta estación."""
         self.ensure_one()
@@ -162,7 +179,7 @@ class PosConfig(models.Model):
                 cur.execute(sql)
                 rows = cur.fetchall()
 
-                matched_rows = [r for r in rows if r.get('gasolinera_codigo') == target_code]
+                matched_rows = [r for r in rows if self._match_employee_station(r.get('gasolinera_codigo'), target_code)]
                 if not matched_rows:
                     matched_rows = rows
 
