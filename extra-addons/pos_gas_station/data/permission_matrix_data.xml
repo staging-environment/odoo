@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <data noupdate="0">
         <!-- ==================== ROLES PRINCIPALES ==================== -->
         <record id="role_ceo" model="utrecar.role">
             <field name="name">CEO</field>
@@ -24,7 +24,7 @@
         </record>
 
         <record id="role_admin_hr" model="utrecar.role">
-            <field name="name">ADMINISTRACION Y RRHH</field>
+            <field name="name">ADMINISTRACION</field>
             <field name="code">admin_hr</field>
             <field name="sequence">40</field>
             <field name="color">#7c3aed</field>
@@ -32,7 +32,7 @@
 
         <!-- ==================== CATEGORÍAS ==================== -->
         <record id="cat_system" model="utrecar.permission.category">
-            <field name="name">SISTEMA Y GENERAL</field>
+            <field name="name">ADMINISTRACIÓN Y ACCESO ODOO</field>
             <field name="code">system</field>
             <field name="sequence">10</field>
         </record>
@@ -49,122 +49,62 @@
             <field name="sequence">30</field>
         </record>
 
-        <record id="cat_recruitment" model="utrecar.permission.category">
-            <field name="name">OFERTAS DE EMPLEO</field>
-            <field name="code">recruitment</field>
-            <field name="sequence">40</field>
-        </record>
-
-        <record id="cat_hr" model="utrecar.permission.category">
-            <field name="name">RECURSOS HUMANOS / EMPLEADOS</field>
-            <field name="code">hr</field>
-            <field name="sequence">50</field>
-        </record>
-
-        <!-- ==================== PERMISOS: SISTEMA Y GENERAL ==================== -->
-        <record id="perm_price_comparator" model="utrecar.permission">
-            <field name="name">Ver Comparador de Precios</field>
-            <field name="code">system.price_comparator</field>
+        <!-- ==================== PERMISOS: ADMINISTRACIÓN Y ACCESO ODOO ==================== -->
+        <record id="perm_gas_management" model="utrecar.permission">
+            <field name="name">Gestión y Configuración de Gasolineras (Empresas, TPVs, Surtidores)</field>
+            <field name="code">gas.management</field>
             <field name="category_id" ref="cat_system"/>
             <field name="sequence">10</field>
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
         </record>
 
         <record id="perm_user_management" model="utrecar.permission">
-            <field name="name">Gestión de Usuarios</field>
+            <field name="name">Gestión de Usuarios y Asignación a Gasolineras</field>
             <field name="code">system.user_management</field>
             <field name="category_id" ref="cat_system"/>
             <field name="sequence">20</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
-        </record>
-
-        <record id="perm_delete_users" model="utrecar.permission">
-            <field name="name">Eliminar Usuarios</field>
-            <field name="code">system.delete_users</field>
-            <field name="category_id" ref="cat_system"/>
-            <field name="sequence">30</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
-        </record>
-
-        <record id="perm_impersonate" model="utrecar.permission">
-            <field name="name">Suplantar / Enmascarar Usuarios (Impersonate)</field>
-            <field name="code">system.impersonate</field>
-            <field name="category_id" ref="cat_system"/>
-            <field name="sequence">40</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
+            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_admin_hr')])]"/>
         </record>
 
         <record id="perm_manage_roles" model="utrecar.permission">
             <field name="name">Gestión de Roles y Matriz de Permisos</field>
             <field name="code">system.manage_roles</field>
             <field name="category_id" ref="cat_system"/>
-            <field name="sequence">50</field>
+            <field name="sequence">30</field>
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
         </record>
 
-        <record id="perm_file_explorer" model="utrecar.permission">
-            <field name="name">Utilizar Explorador de Archivos</field>
-            <field name="code">system.file_explorer</field>
+        <record id="perm_delete_users" model="utrecar.permission">
+            <field name="name">Eliminar / Desactivar Usuarios</field>
+            <field name="code">system.delete_users</field>
             <field name="category_id" ref="cat_system"/>
-            <field name="sequence">60</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
-        </record>
-
-        <record id="perm_view_reports" model="utrecar.permission">
-            <field name="name">Ver Informes y Estadísticas</field>
-            <field name="code">system.view_reports</field>
-            <field name="category_id" ref="cat_system"/>
-            <field name="sequence">70</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
-        </record>
-
-        <record id="perm_analytics" model="utrecar.permission">
-            <field name="name">Ver Analíticas de Visitas</field>
-            <field name="code">system.analytics</field>
-            <field name="category_id" ref="cat_system"/>
-            <field name="sequence">80</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
-        </record>
-
-        <record id="perm_portal_config" model="utrecar.permission">
-            <field name="name">Configuración de Portada</field>
-            <field name="code">system.portal_config</field>
-            <field name="category_id" ref="cat_system"/>
-            <field name="sequence">90</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
-        </record>
-
-        <record id="perm_telegram_alerts" model="utrecar.permission">
-            <field name="name">Recibir alertas de cambios de precios de las gasolineras por telegram</field>
-            <field name="code">system.telegram_alerts</field>
-            <field name="category_id" ref="cat_system"/>
-            <field name="sequence">100</field>
+            <field name="sequence">40</field>
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
         </record>
 
         <!-- ==================== PERMISOS: GASOLINERAS Y PISTA (TPV) ==================== -->
-        <record id="perm_gas_management" model="utrecar.permission">
-            <field name="name">Gestión de Gasolineras</field>
-            <field name="code">gas.management</field>
-            <field name="category_id" ref="cat_gas_station"/>
-            <field name="sequence">10</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
-        </record>
-
         <record id="perm_pos_access" model="utrecar.permission">
             <field name="name">Acceso y Venta en TPV de Pista</field>
             <field name="code">pos.access</field>
+            <field name="category_id" ref="cat_gas_station"/>
+            <field name="sequence">10</field>
+            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_employee')])]"/>
+        </record>
+
+        <record id="perm_pos_open_shift" model="utrecar.permission">
+            <field name="name">Abrir Turno en Estación / TPV (Firma y Selección de Empleado)</field>
+            <field name="code">pos.open_shift</field>
             <field name="category_id" ref="cat_gas_station"/>
             <field name="sequence">20</field>
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_employee')])]"/>
         </record>
 
-        <record id="perm_pos_change_track_mode" model="utrecar.permission">
-            <field name="name">Cambiar modo de pista (Lleno / Prefijado)</field>
-            <field name="code">pos.change_track_mode</field>
+        <record id="perm_pos_close_shift" model="utrecar.permission">
+            <field name="name">Cerrar Turno y Realizar Arqueo de Caja</field>
+            <field name="code">pos.close_shift</field>
             <field name="category_id" ref="cat_gas_station"/>
             <field name="sequence">30</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager')])]"/>
+            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_employee')])]"/>
         </record>
 
         <record id="perm_pos_cancel_pump" model="utrecar.permission">
@@ -175,27 +115,35 @@
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager')])]"/>
         </record>
 
+        <record id="perm_pos_change_track_mode" model="utrecar.permission">
+            <field name="name">Cambiar Modo de Pista (Lleno / Prefijado / Desatendido)</field>
+            <field name="code">pos.change_track_mode</field>
+            <field name="category_id" ref="cat_gas_station"/>
+            <field name="sequence">50</field>
+            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager')])]"/>
+        </record>
+
         <record id="perm_pos_fuel_price" model="utrecar.permission">
             <field name="name">Modificar Precios de Combustible</field>
             <field name="code">pos.fuel_price</field>
             <field name="category_id" ref="cat_gas_station"/>
-            <field name="sequence">50</field>
+            <field name="sequence">60</field>
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo')])]"/>
         </record>
 
         <record id="perm_pos_discounts" model="utrecar.permission">
-            <field name="name">Aplicar Descuentos Manuales</field>
+            <field name="name">Aplicar Descuentos Manuales en TPV</field>
             <field name="code">pos.discounts</field>
             <field name="category_id" ref="cat_gas_station"/>
-            <field name="sequence">60</field>
+            <field name="sequence">70</field>
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager')])]"/>
         </record>
 
         <record id="perm_pos_delete_lines" model="utrecar.permission">
-            <field name="name">Borrar Líneas de Combustible del Ticket</field>
+            <field name="name">Borrar Líneas de Combustible o Productos del Ticket</field>
             <field name="code">pos.delete_lines</field>
             <field name="category_id" ref="cat_gas_station"/>
-            <field name="sequence">70</field>
+            <field name="sequence">80</field>
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager')])]"/>
         </record>
 
@@ -203,20 +151,12 @@
             <field name="name">Aparcar Ventas Pendientes en Monedita (Dejar Pendiente)</field>
             <field name="code">pos.park_sales</field>
             <field name="category_id" ref="cat_gas_station"/>
-            <field name="sequence">80</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_employee')])]"/>
-        </record>
-
-        <record id="perm_pos_close_shift" model="utrecar.permission">
-            <field name="name">Cerrar Turno y Realizar Arqueo de Caja</field>
-            <field name="code">pos.close_shift</field>
-            <field name="category_id" ref="cat_gas_station"/>
             <field name="sequence">90</field>
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_employee')])]"/>
         </record>
 
         <record id="perm_pos_cash_in_out" model="utrecar.permission">
-            <field name="name">Entradas y Salidas de Efectivo</field>
+            <field name="name">Entradas y Salidas de Efectivo de Caja</field>
             <field name="code">pos.cash_in_out</field>
             <field name="category_id" ref="cat_gas_station"/>
             <field name="sequence">100</field>
@@ -245,88 +185,6 @@
             <field name="code">invoice.cancel</field>
             <field name="category_id" ref="cat_invoicing"/>
             <field name="sequence">30</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_admin_hr')])]"/>
-        </record>
-
-        <!-- ==================== PERMISOS: OFERTAS DE EMPLEO ==================== -->
-        <record id="perm_jobs_management" model="utrecar.permission">
-            <field name="name">Gestión de Ofertas de Trabajo</field>
-            <field name="code">jobs.management</field>
-            <field name="category_id" ref="cat_recruitment"/>
-            <field name="sequence">10</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_admin_hr')])]"/>
-        </record>
-
-        <!-- ==================== PERMISOS: RECURSOS HUMANOS ==================== -->
-        <record id="perm_hr_access" model="utrecar.permission">
-            <field name="name">Acceso General a Recursos Humanos</field>
-            <field name="code">hr.access</field>
-            <field name="category_id" ref="cat_hr"/>
-            <field name="sequence">10</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_admin_hr')])]"/>
-        </record>
-
-        <record id="perm_hr_view_employee" model="utrecar.permission">
-            <field name="name">Ver Ficha de Empleado (Detalle)</field>
-            <field name="code">hr.view_employee</field>
-            <field name="category_id" ref="cat_hr"/>
-            <field name="sequence">20</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_admin_hr')])]"/>
-        </record>
-
-        <record id="perm_hr_attendance" model="utrecar.permission">
-            <field name="name">Ver y Supervisar Listado de Fichajes</field>
-            <field name="code">hr.attendance</field>
-            <field name="category_id" ref="cat_hr"/>
-            <field name="sequence">30</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_admin_hr')])]"/>
-        </record>
-
-        <record id="perm_hr_portal" model="utrecar.permission">
-            <field name="name">Acceder al Portal del Empleado (Fichar y Solicitudes)</field>
-            <field name="code">hr.portal</field>
-            <field name="category_id" ref="cat_hr"/>
-            <field name="sequence">40</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_manager'), ref('role_employee')])]"/>
-        </record>
-
-        <record id="perm_hr_create_employee" model="utrecar.permission">
-            <field name="name">Alta de nuevos empleados</field>
-            <field name="code">hr.create_employee</field>
-            <field name="category_id" ref="cat_hr"/>
-            <field name="sequence">50</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_admin_hr')])]"/>
-        </record>
-
-        <record id="perm_hr_edit_employee" model="utrecar.permission">
-            <field name="name">Edición de ficha principal</field>
-            <field name="code">hr.edit_employee</field>
-            <field name="category_id" ref="cat_hr"/>
-            <field name="sequence">60</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_manager'), ref('role_admin_hr')])]"/>
-        </record>
-
-        <record id="perm_hr_delete_employee" model="utrecar.permission">
-            <field name="name">Eliminar empleados</field>
-            <field name="code">hr.delete_employee</field>
-            <field name="category_id" ref="cat_hr"/>
-            <field name="sequence">70</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_admin_hr')])]"/>
-        </record>
-
-        <record id="perm_hr_terminate_employee" model="utrecar.permission">
-            <field name="name">Dar de baja a un empleado</field>
-            <field name="code">hr.terminate_employee</field>
-            <field name="category_id" ref="cat_hr"/>
-            <field name="sequence">80</field>
-            <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_admin_hr')])]"/>
-        </record>
-
-        <record id="perm_hr_leaves" model="utrecar.permission">
-            <field name="name">Aprobación y Gestión de Vacaciones y Bajas</field>
-            <field name="code">hr.leaves</field>
-            <field name="category_id" ref="cat_hr"/>
-            <field name="sequence">90</field>
             <field name="role_ids" eval="[(6, 0, [ref('role_ceo'), ref('role_admin_hr')])]"/>
         </record>
     </data>

@@ -240,7 +240,7 @@ class ResUsers(models.Model):
 
             badges = []
             role_code = user.utrecar_role_id.code
-            if role_code == 'ceo' or len(perms) >= 25:
+            if role_code == 'ceo' or len(perms) >= 15:
                 badges.append(f'<span class="badge text-bg-primary fw-bold me-1 mb-1" style="font-size: 0.8rem;"><i class="fa fa-star me-1"></i> Acceso Total ({len(perms)} permisos)</span>')
                 key_perms = perms.filtered(lambda p: any(k in p.name.lower() for k in ['tpv', 'pista', 'precios', 'surtidor', 'cierre', 'arqueo', 'factura', 'descuento']))
                 for p in key_perms[:4]:
