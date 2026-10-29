@@ -166,6 +166,12 @@
                                                                 <i class="fa fa-play-circle me-1"/> Abrir Turno y Entrar al TPV
                                                             </t>
                                                         </button>
+                                                        <button t-if="st.has_active_session" 
+                                                                class="btn btn-sm btn-outline-primary ms-1" 
+                                                                t-on-click="() => this.selectEmployeeForStation(st.id)" 
+                                                                title="Cambiar de empleado o reabrir selección de turno">
+                                                            <i class="fa fa-user-circle me-1"/> Cambiar Empleado
+                                                        </button>
 
                                                         <div class="station-sub-actions" t-if="state.isManager">
                                                             <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.openConfig(st.id)" title="Ajustes de esta estación">

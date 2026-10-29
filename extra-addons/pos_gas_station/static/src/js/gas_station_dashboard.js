@@ -69,6 +69,10 @@ export class GasStationDashboard extends Component {
         }
     }
 
+    selectEmployeeForStation(stationId) {
+        window.location.href = `/pos_gas_station/select_employee?station_id=${stationId}`;
+    }
+
     openCompany(companyId) {
         this.actionService.doAction({
             type: "ir.actions.act_window",

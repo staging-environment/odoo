@@ -1254,6 +1254,17 @@ class PosGasStationController(http.Controller):
                 return {'status': 'error', 'message': 'Punto de venta no encontrado'}
 
             comp_id = cfg.company_id.id
+            active_session = request.env['pos.session'].sudo().search([
+                ('config_id', '=', cfg.id),
+                ('state', '=', 'opened')
+            ], limit=1)
+
+            if not active_session:
+                return {
+                    'status': 'success',
+                    'url': f'/pos_gas_station/select_employee?station_id={cfg.id}'
+                }
+
             action = cfg.with_user(request.env.user).with_company(cfg.company_id).open_ui()
             session = cfg.current_session_id
             if session and session.state == 'opening_control':

@@ -250,7 +250,7 @@ class PosConfig(models.Model):
             if groups:
                 vals['groups_id'] = [(6, 0, groups)]
 
-            user = User.create(vals)
+            user = User.with_context(no_reset_password=True, mail_create_nosubscribe=True, mail_create_nolog=True).create(vals)
         else:
             vals = {}
             if self.id not in user.pos_config_ids.ids:
@@ -261,6 +261,15 @@ class PosConfig(models.Model):
                 vals['active'] = True
             if role_employee and not user.utrecar_role_id:
                 vals['utrecar_role_id'] = role_employee.id
+            
+            groups_to_add = []
+            if group_pos_user and group_pos_user.id not in user.groups_id.ids:
+                groups_to_add.append(group_pos_user.id)
+            if group_internal and group_internal.id not in user.groups_id.ids:
+                groups_to_add.append(group_internal.id)
+            if groups_to_add:
+                vals['groups_id'] = [(4, gid) for gid in groups_to_add]
+
             if vals:
                 user.write(vals)
 

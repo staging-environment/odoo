@@ -372,6 +372,9 @@
                     <a href="/web/login?admin=1" class="admin-link">
                         <i class="fa fa-shield-alt"></i> Acceso manual de Administrador
                     </a>
+                    <a href="/web#action=pos_gas_station.action_gas_station_dashboard" class="admin-link" style="color: #38bdf8;">
+                        <i class="fa fa-arrow-left"></i> Volver a Gestión de Gasolineras
+                    </a>
                     <div class="footer-badge">
                         UTRECAR ERP 17.0 • Mando Central de Pista
                     </div>
