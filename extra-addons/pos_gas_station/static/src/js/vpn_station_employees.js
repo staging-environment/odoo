@@ -14,11 +14,14 @@ export class VpnStationEmployeesView extends Component {
         this.state = useState({
             loading: true,
             stations: [],
+            allUsers: [],
             stats: {
                 total_stations: 0,
                 total_employees: 0,
+                total_users: 0,
                 active_controllers: 0
             },
+            viewMode: "users", // "users" (Directorio) or "stations" (Agrupado)
             searchTerm: "",
             selectedStationId: "all"
         });
@@ -33,8 +36,9 @@ export class VpnStationEmployeesView extends Component {
         try {
             const res = await jsonrpc("/pos_gas_station/vpn_employees_data", {});
             if (res.status === "success") {
-                this.state.stations = res.stations;
-                this.state.stats = res.stats;
+                this.state.stations = res.stations || [];
+                this.state.allUsers = res.all_users || [];
+                this.state.stats = res.stats || {};
             } else {
                 this.notification.add("Error al cargar datos de empleados y estaciones", { type: "danger" });
             }
@@ -44,6 +48,33 @@ export class VpnStationEmployeesView extends Component {
         } finally {
             this.state.loading = false;
         }
+    }
+
+    setViewMode(mode) {
+        this.state.viewMode = mode;
+    }
+
+    get filteredUsers() {
+        let users = this.state.allUsers;
+        if (this.state.selectedStationId !== "all") {
+            const targetId = parseInt(this.state.selectedStationId);
+            users = users.filter(u => u.station_id === targetId || u.is_admin);
+        }
+
+        const term = this.state.searchTerm.toLowerCase().trim();
+        if (!term) {
+            return users;
+        }
+
+        return users.filter(u => {
+            return (u.full_name && u.full_name.toLowerCase().includes(term)) ||
+                   (u.dni && u.dni.toLowerCase().includes(term)) ||
+                   (u.email && u.email.toLowerCase().includes(term)) ||
+                   (u.login && u.login.toLowerCase().includes(term)) ||
+                   (u.puesto && u.puesto.toLowerCase().includes(term)) ||
+                   (u.station_name && u.station_name.toLowerCase().includes(term)) ||
+                   (u.vpn_ips_str && u.vpn_ips_str.toLowerCase().includes(term));
+        });
     }
 
     get filteredStations() {

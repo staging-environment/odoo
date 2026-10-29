@@ -29,6 +29,9 @@
                 </div>
 
                 <div class="topbar-actions">
+                    <button class="btn btn-outline-info btn-sm me-2" t-on-click="() => this.openVpnEmployees()" title="Usuarios de la herramienta y sus estaciones por VPN">
+                        <i class="fa fa-users me-1"/> Usuarios por Estación (VPN)
+                    </button>
                     <button class="btn btn-outline-primary btn-sm me-2" t-on-click="() => this.openNewCompany()" t-if="state.isManager">
                         <i class="fa fa-plus me-1"/> Nueva Empresa
                     </button>

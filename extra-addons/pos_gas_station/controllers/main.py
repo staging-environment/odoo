@@ -1864,9 +1864,33 @@ class PosGasStationController(http.Controller):
         stations = PosConfig.search([('active', 'in', [True, False])], order='id')
         
         stations_data = []
+        all_users = []
         total_employees = 0
 
         default_map = PosConfig._get_default_station_vpn_mapping()
+
+        # 1. Incluir administradores y usuarios clave del ERP
+        admin_users = env['res.users'].sudo().search([('active', '=', True)], order='id')
+        for u in admin_users:
+            if u._is_admin():
+                parts = u.name.split()
+                initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'AD'
+                all_users.append({
+                    'id': f'admin_{u.id}',
+                    'full_name': u.name,
+                    'dni': getattr(u, 'dni', '') or '-',
+                    'email': u.email or u.login,
+                    'login': u.login,
+                    'puesto': 'Administrador General',
+                    'initials': initials.upper(),
+                    'avatar_gradient': 'linear-gradient(135deg, #1e293b, #0f172a)',
+                    'station_id': 'all',
+                    'station_name': 'Todas las Estaciones',
+                    'company_name': 'Central UTRECAR',
+                    'vpn_ips_str': '10.8.0.2, 10.8.0.19 (VPN Central)',
+                    'access_type': 'Administrador Global (VPN Central)',
+                    'is_admin': True,
+                })
 
         for st in stations:
             # Solo incluir estaciones reales de gasolinera (evitar tiendas genéricas o de prueba)
@@ -1880,6 +1904,26 @@ class PosGasStationController(http.Controller):
             admin_code = st.get_admin_platform_code()
             employees = st.get_admin_platform_employees()
             total_employees += len(employees)
+
+            vpn_str = ", ".join(vpn_ips) if vpn_ips else 'Sin IP asignada'
+
+            for emp in employees:
+                all_users.append({
+                    'id': emp['id'],
+                    'full_name': emp['full_name'],
+                    'dni': emp.get('dni') or '-',
+                    'email': emp.get('email') or emp.get('login'),
+                    'login': emp.get('login') or emp.get('email'),
+                    'puesto': emp.get('puesto') or 'Expendedor de Pista',
+                    'initials': emp.get('initials') or 'EM',
+                    'avatar_gradient': emp.get('avatar_gradient') or 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    'station_id': st.id,
+                    'station_name': st.name,
+                    'company_name': st.company_id.name or 'UTRECAR S.L.',
+                    'vpn_ips_str': vpn_str,
+                    'access_type': f'Pista ({vpn_str})',
+                    'is_admin': False,
+                })
 
             # Estado del controlador de pista
             has_controller = (st.id == 7) # Solo Repsol tiene actualmente concentrador físico en COM3
@@ -1897,7 +1941,7 @@ class PosGasStationController(http.Controller):
                 'company_name': st.company_id.name or 'UTRECAR S.L.',
                 'company_id': st.company_id.id if st.company_id else False,
                 'vpn_ips': vpn_ips,
-                'vpn_ips_str': ", ".join(vpn_ips) if vpn_ips else 'Sin IP asignada',
+                'vpn_ips_str': vpn_str,
                 'admin_platform_code': admin_code,
                 'controller_status': controller_status,
                 'employees_count': len(employees),
@@ -1907,9 +1951,11 @@ class PosGasStationController(http.Controller):
         return {
             'status': 'success',
             'stations': stations_data,
+            'all_users': all_users,
             'stats': {
                 'total_stations': len(stations_data),
                 'total_employees': total_employees,
+                'total_users': len(all_users),
                 'active_controllers': 1,
             }
         }

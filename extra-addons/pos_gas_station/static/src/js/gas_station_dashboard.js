@@ -98,6 +98,10 @@ export class GasStationDashboard extends Component {
         this.actionService.doAction("pos_gas_station.action_utrecar_permission_matrix");
     }
 
+    openVpnEmployees() {
+        this.actionService.doAction("pos_gas_station.action_vpn_station_employees");
+    }
+
 
     openConfig(stationId) {
         this.actionService.doAction({

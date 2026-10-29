@@ -207,3 +207,44 @@
     color: #334155;
     font-weight: 600;
 }
+
+
+/* Grupo de botones para alternar vista (Directorio vs Agrupado) */
+.view-mode-toggle-group {
+    display: inline-flex;
+    background: #e2e8f0;
+    padding: 4px;
+    border-radius: 12px;
+    gap: 4px;
+}
+
+.view-mode-pill {
+    border: none;
+    background: transparent;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+
+.view-mode-pill:hover {
+    color: #0f172a;
+}
+
+.view-mode-pill.active {
+    background: #ffffff;
+    color: #2563eb;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.bg-purple-subtle {
+    background-color: #f3e8ff !important;
+}
+
+.text-purple {
+    color: #7e22ce !important;
+}
