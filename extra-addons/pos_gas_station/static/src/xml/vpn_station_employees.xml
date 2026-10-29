@@ -180,7 +180,6 @@
                                                             <div>
                                                                 <div class="emp-table-name">
                                                                     <t t-esc="u.full_name"/>
-                                                                    <span t-if="u.is_admin" class="badge bg-dark ms-1" style="font-size: 0.65rem;">ADMIN</span>
                                                                 </div>
                                                                 <div class="text-muted small">
                                                                     <i class="fa fa-envelope-o me-1"></i><t t-esc="u.email || u.login"/>
