@@ -36,7 +36,10 @@ export class UtrecarPermissionMatrix extends Component {
     async loadMatrixData() {
         this.state.loading = true;
         try {
-            const data = await jsonrpc("/utrecar/permission_matrix/data", {});
+            const compParam = this.state.selectedCompanyId !== "all" ? parseInt(this.state.selectedCompanyId) : null;
+            const data = await jsonrpc("/utrecar/permission_matrix/data", {
+                company_id: compParam
+            });
             if (data.status === "success") {
                 this.state.roles = data.roles;
                 this.state.categories = data.categories;
@@ -51,6 +54,13 @@ export class UtrecarPermissionMatrix extends Component {
         } finally {
             this.state.loading = false;
         }
+    }
+
+    async onCompanyChange() {
+        await this.loadMatrixData();
+        const comp = this.state.companies.find(c => String(c.id) === String(this.state.selectedCompanyId));
+        const compName = comp ? comp.name : "Todas las Empresas (Base)";
+        this.notification.add(`Cargando permisos para: ${compName}`, { type: "info" });
     }
 
     isPermissionGranted(permId, roleId) {
@@ -69,15 +79,23 @@ export class UtrecarPermissionMatrix extends Component {
         this.state.matrix[permId][roleId] = nextVal;
         this.state.savingCell = `${permId}_${roleId}`;
 
+        const compParam = this.state.selectedCompanyId !== "all" ? parseInt(this.state.selectedCompanyId) : null;
+
         try {
             const res = await jsonrpc("/utrecar/permission_matrix/toggle", {
                 role_id: roleId,
                 permission_id: permId,
-                granted: nextVal
+                granted: nextVal,
+                company_id: compParam
             });
             if (res.status !== "success") {
                 this.state.matrix[permId][roleId] = current;
                 this.notification.add("No se pudo guardar el cambio", { type: "danger" });
+            } else {
+                const comp = this.state.companies.find(c => String(c.id) === String(this.state.selectedCompanyId));
+                if (comp) {
+                    this.notification.add(`Permiso actualizado para la empresa: ${comp.name}`, { type: "success" });
+                }
             }
         } catch (e) {
             this.state.matrix[permId][roleId] = current;
@@ -114,7 +132,7 @@ export class UtrecarPermissionMatrix extends Component {
             .filter(cat => cat.permissions.length > 0);
     }
 
-        get filteredAssignUsers() {
+    get filteredAssignUsers() {
         if (!this.state.assignModalSearch) {
             return this.state.users;
         }
@@ -125,54 +143,48 @@ export class UtrecarPermissionMatrix extends Component {
         );
     }
 
+    userHasModalRole(user) {
+        if (!this.state.assignModalRole) return false;
+        const targetId = this.state.assignModalRole.id;
+        const roleIds = Array.isArray(user.role_ids) ? user.role_ids : (user.role_id ? [user.role_id] : []);
+        return roleIds.includes(targetId);
+    }
+
     openUserAssign(role) {
         this.state.assignModalRole = role;
+        this.state.assignModalSearch = "";
         this.state.showUserAssignModal = true;
     }
 
     closeUserAssign() {
         this.state.showUserAssignModal = false;
         this.state.assignModalRole = null;
+        this.state.assignModalSearch = "";
     }
 
     async toggleUserRole(user, roleId) {
-        const newRoleId = user.role_id === roleId ? false : roleId;
+        const hasRole = this.userHasModalRole(user);
+        const action = hasRole ? "remove" : "add";
+
         try {
-            await jsonrpc("/utrecar/permission_matrix/assign_user", {
+            const res = await jsonrpc("/utrecar/permission_matrix/assign_user", {
                 user_id: user.id,
-                role_id: newRoleId
+                role_id: roleId,
+                action: action
             });
-            user.role_id = newRoleId;
-            user.role_name = newRoleId ? this.state.roles.find(r => r.id === newRoleId)?.name : "Sin Rol";
-            await this.loadMatrixData();
-            this.notification.add(`Rol actualizado para ${user.name}`, { type: "success" });
+            if (res.status === "success") {
+                user.role_ids = res.role_ids;
+                user.role_names = res.role_names;
+                await this.loadMatrixData();
+                const roleName = this.state.roles.find(r => r.id === roleId)?.name || "Rol";
+                this.notification.add(
+                    action === "add" ? `Rol ${roleName} añadido a ${user.name}` : `Rol ${roleName} retirado de ${user.name}`,
+                    { type: "success" }
+                );
+            }
         } catch (e) {
             console.error("Error asignando rol:", e);
-            this.notification.add("Error al asignar rol", { type: "danger" });
-        }
-    }
-
-    async toggleUserStation(user, stationId, ev) {
-        if (ev) ev.stopPropagation();
-        const currentList = Array.isArray(user.pos_config_ids) ? [...user.pos_config_ids] : [];
-        const idx = currentList.indexOf(stationId);
-        if (idx >= 0) {
-            currentList.splice(idx, 1);
-        } else {
-            currentList.push(stationId);
-        }
-
-        try {
-            await jsonrpc("/utrecar/permission_matrix/assign_user", {
-                user_id: user.id,
-                pos_config_ids: currentList
-            });
-            user.pos_config_ids = currentList;
-            await this.loadMatrixData();
-            this.notification.add(`Tiendas actualizadas para ${user.name}`, { type: "success" });
-        } catch (e) {
-            console.error("Error asignando tienda a usuario:", e);
-            this.notification.add("Error al actualizar tiendas del usuario", { type: "danger" });
+            this.notification.add("Error al modificar rol del usuario", { type: "danger" });
         }
     }
 }

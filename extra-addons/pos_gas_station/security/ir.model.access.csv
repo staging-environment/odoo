@@ -8,3 +8,6 @@ access_utrecar_category_pos_manager,utrecar.permission.category.pos_manager,mode
 access_utrecar_permission_user,utrecar.permission.user,model_utrecar_permission,base.group_user,1,0,0,0
 access_utrecar_permission_manager,utrecar.permission.manager,model_utrecar_permission,base.group_system,1,1,1,1
 access_utrecar_permission_pos_manager,utrecar.permission.pos_manager,model_utrecar_permission,point_of_sale.group_pos_manager,1,1,1,1
+access_utrecar_comp_role_perm_user,utrecar.company.role.permission.user,model_utrecar_company_role_permission,base.group_user,1,0,0,0
+access_utrecar_comp_role_perm_manager,utrecar.company.role.permission.manager,model_utrecar_company_role_permission,base.group_system,1,1,1,1
+access_utrecar_comp_role_perm_pos_manager,utrecar.company.role.permission.pos_manager,model_utrecar_company_role_permission,point_of_sale.group_pos_manager,1,1,1,1

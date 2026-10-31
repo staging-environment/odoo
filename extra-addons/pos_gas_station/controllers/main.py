@@ -1048,24 +1048,16 @@ class PosGasStationController(http.Controller):
 
     # ==================== MATRIZ VISUAL DE ROLES Y PERMISOS ====================
     @http.route('/utrecar/permission_matrix/data', type='json', auth='user', methods=['POST'], csrf=False)
-    def get_permission_matrix_data(self):
+    def get_permission_matrix_data(self, company_id=None):
         env = request.env
         roles = env['utrecar.role'].search([])
         categories = env['utrecar.permission.category'].search([])
         permissions = env['utrecar.permission'].search([])
-        env['utrecar.role'].auto_link_admin_users()
         users = env['res.users'].search([('active', '=', True)], order='name')
         companies = env['res.company'].search_read([], ['id', 'name'])
         stations = env['pos.config'].search_read([], ['id', 'name', 'company_id'])
 
-        roles_data = [{
-            'id': r.id,
-            'name': r.name,
-            'code': r.code,
-            'color': r.color,
-            'user_count': r.user_count,
-            'users': [{'id': u.id, 'name': u.name, 'login': u.login} for u in r.user_ids]
-        } for r in roles]
+        roles_data = [{'id': r.id, 'name': r.name, 'code': r.code, 'color': r.color, 'user_count': len(r.user_ids)} for r in roles]
 
         cat_dict = {}
         for c in categories:
@@ -1077,27 +1069,34 @@ class PosGasStationController(http.Controller):
                 'permissions': []
             }
 
-        matrix_state = {} # perm_id -> {role_id -> bool}
+        matrix_state = {}
+        selected_cid = int(company_id) if company_id and str(company_id).isdigit() else None
+
+        # Si se especifica empresa, precargar los permisos específicos de esa empresa
+        company_perms_map = {}
+        if selected_cid:
+            comp_perms = env['utrecar.company.role.permission'].sudo().search([('company_id', '=', selected_cid)])
+            for cp in comp_perms:
+                company_perms_map[(cp.permission_id.id, cp.role_id.id)] = cp.granted
 
         for p in permissions:
             cat_id = p.category_id.id
-            if cat_id not in cat_dict:
-                cat_dict[cat_id] = {
-                    'id': cat_id,
-                    'name': p.category_id.name,
-                    'code': p.category_id.code,
-                    'sequence': p.category_sequence,
-                    'permissions': []
-                }
-            cat_dict[cat_id]['permissions'].append({
-                'id': p.id,
-                'name': p.name,
-                'code': p.code,
-                'sequence': p.sequence
-            })
+            if cat_id in cat_dict:
+                cat_dict[cat_id]['permissions'].append({
+                    'id': p.id,
+                    'name': p.name,
+                    'code': p.code,
+                    'sequence': p.sequence,
+                    'description': p.description or ''
+                })
 
-            role_ids = set(p.role_ids.ids)
-            matrix_state[p.id] = {r.id: (r.id in role_ids) for r in roles}
+            base_role_ids = set(p.role_ids.ids)
+            matrix_state[p.id] = {}
+            for r in roles:
+                if selected_cid and (p.id, r.id) in company_perms_map:
+                    matrix_state[p.id][r.id] = company_perms_map[(p.id, r.id)]
+                else:
+                    matrix_state[p.id][r.id] = (r.id in base_role_ids)
 
         sorted_categories = sorted(cat_dict.values(), key=lambda x: x['sequence'])
         for cat in sorted_categories:
@@ -1109,10 +1108,10 @@ class PosGasStationController(http.Controller):
             'login': u.login,
             'company_id': u.company_id.id if u.company_id else False,
             'company_name': u.company_id.name if u.company_id else '',
+            'role_ids': u.utrecar_role_ids.ids if hasattr(u, 'utrecar_role_ids') and u.utrecar_role_ids else ([u.utrecar_role_id.id] if u.utrecar_role_id else []),
+            'role_names': [r.name for r in u.utrecar_role_ids] if hasattr(u, 'utrecar_role_ids') and u.utrecar_role_ids else ([u.utrecar_role_id.name] if u.utrecar_role_id else ['Sin Rol']),
             'role_id': u.utrecar_role_id.id if u.utrecar_role_id else False,
             'role_name': u.utrecar_role_id.name if u.utrecar_role_id else 'Sin Rol',
-            'pos_config_ids': u.pos_config_ids.ids if hasattr(u, 'pos_config_ids') else [],
-            'pos_config_names': [p.name for p in u.pos_config_ids] if hasattr(u, 'pos_config_ids') else []
         } for u in users]
 
         return {
@@ -1122,39 +1121,81 @@ class PosGasStationController(http.Controller):
             'matrix': matrix_state,
             'users': users_data,
             'companies': companies,
-            'stations': stations
+            'stations': stations,
+            'selected_company_id': selected_cid
         }
 
     @http.route('/utrecar/permission_matrix/toggle', type='json', auth='user', methods=['POST'], csrf=False)
-    def toggle_permission_matrix(self, role_id, permission_id, granted):
+    def toggle_permission_matrix(self, role_id, permission_id, granted, company_id=None):
         env = request.env
         role = env['utrecar.role'].browse(int(role_id))
         permission = env['utrecar.permission'].browse(int(permission_id))
         if not role.exists() or not permission.exists():
             return {'status': 'error', 'message': 'Rol o permiso no encontrado'}
 
-        if granted:
-            role.write({'permission_ids': [(4, permission.id)]})
-        else:
-            role.write({'permission_ids': [(3, permission.id)]})
+        selected_cid = int(company_id) if company_id and str(company_id).isdigit() else None
 
-        return {'status': 'success', 'granted': bool(granted)}
+        if selected_cid:
+            # Guardar permiso específico por empresa
+            CompPerm = env['utrecar.company.role.permission'].sudo()
+            record = CompPerm.search([
+                ('company_id', '=', selected_cid),
+                ('role_id', '=', role.id),
+                ('permission_id', '=', permission.id)
+            ], limit=1)
+            if record:
+                record.write({'granted': bool(granted)})
+            else:
+                CompPerm.create({
+                    'company_id': selected_cid,
+                    'role_id': role.id,
+                    'permission_id': permission.id,
+                    'granted': bool(granted)
+                })
+        else:
+            # Guardar en matriz base global
+            if granted:
+                role.write({'permission_ids': [(4, permission.id)]})
+            else:
+                role.write({'permission_ids': [(3, permission.id)]})
+
+        return {'status': 'success', 'granted': bool(granted), 'company_id': selected_cid}
 
     @http.route('/utrecar/permission_matrix/assign_user', type='json', auth='user', methods=['POST'], csrf=False)
-    def assign_user_role(self, user_id, role_id=None, pos_config_ids=None):
+    def assign_user_role(self, user_id, role_id=None, action='toggle', pos_config_ids=None):
+        """Asigna o añade un rol a un usuario (soporta múltiples roles simultáneos)."""
         env = request.env
         user = env['res.users'].browse(int(user_id))
         if not user.exists():
             return {'status': 'error', 'message': 'Usuario no encontrado'}
 
-        vals = {}
         if role_id is not None:
-            vals['utrecar_role_id'] = int(role_id) if role_id else False
+            rid = int(role_id) if role_id else False
+            if rid:
+                curr_ids = user.utrecar_role_ids.ids if hasattr(user, 'utrecar_role_ids') and user.utrecar_role_ids else ([user.utrecar_role_id.id] if user.utrecar_role_id else [])
+                if action == 'add':
+                    if rid not in curr_ids:
+                        user.write({'utrecar_role_ids': [(4, rid)]})
+                elif action == 'remove':
+                    if rid in curr_ids:
+                        user.write({'utrecar_role_ids': [(3, rid)]})
+                else: # toggle
+                    if rid in curr_ids:
+                        user.write({'utrecar_role_ids': [(3, rid)]})
+                    else:
+                        user.write({'utrecar_role_ids': [(4, rid)]})
+            else:
+                user.write({'utrecar_role_ids': [(5, 0, 0)]})
+
         if pos_config_ids is not None:
-            vals['pos_config_ids'] = [(6, 0, [int(pid) for pid in pos_config_ids])]
-        if vals:
-            user.write(vals)
-        return {'status': 'success'}
+            user.write({'pos_config_ids': [(6, 0, [int(pid) for pid in pos_config_ids])]})
+
+        updated_roles = user.utrecar_role_ids
+        return {
+            'status': 'success',
+            'role_ids': updated_roles.ids,
+            'role_names': [r.name for r in updated_roles] if updated_roles else ['Sin Rol']
+        }
 
 
     # ==================== DASHBOARD MULTI-EMPRESA / GESTIÓN DE GASOLINERAS ====================
@@ -1255,7 +1296,7 @@ class PosGasStationController(http.Controller):
 
     @http.route('/pos_gas_station/company_employees_data', type='json', auth='user', methods=['POST'], csrf=False)
     def get_company_employees_data(self, company_id=None):
-        """Retorna todos los empleados con rol Empleado y las empresas a las que tienen acceso."""
+        """Retorna todos los empleados/usuarios con su rol y las empresas a las que tienen acceso."""
         env = request.env
         role_emp = env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
 
@@ -1263,7 +1304,11 @@ class PosGasStationController(http.Controller):
         all_companies = env['res.company'].sudo().search([], order='id')
         companies_list = [{'id': c.id, 'name': c.name} for c in all_companies]
 
-        # 2. Consultar empleados de admin-platform en MariaDB
+        # 2. Todos los roles de Utrecar
+        all_roles_records = env['utrecar.role'].sudo().search([], order='sequence, id')
+        roles_list = [{'id': r.id, 'name': r.name, 'code': r.code} for r in all_roles_records]
+
+        # 3. Consultar empleados de admin-platform en MariaDB
         ICP = env['ir.config_parameter'].sudo()
         host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
         port = int(ICP.get_param('admin_platform.db_port', 3306))
@@ -1294,10 +1339,7 @@ class PosGasStationController(http.Controller):
                 cur.execute("""
                     SELECT e.id, e.nombre, e.apellidos, e.dni, e.email, e.virtus_codigo
                     FROM empleados e
-                    JOIN users u ON e.email = u.email
-                    JOIN model_has_roles mhr ON mhr.model_id = u.id AND mhr.model_type LIKE '%%User'
-                    JOIN roles r ON mhr.role_id = r.id
-                    WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL) AND LOWER(TRIM(r.name)) = 'empleado'
+                    WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
                     ORDER BY e.nombre, e.apellidos
                 """)
                 emp_rows = cur.fetchall()
@@ -1306,6 +1348,9 @@ class PosGasStationController(http.Controller):
             _logger.warning("Error consultando MariaDB en company_employees_data: %s", ex)
 
         employees_data = []
+        seen_odoo_user_ids = set()
+
+        # Mapeo de filas de MariaDB
         for idx, r in enumerate(emp_rows):
             email = (r.get('email') or '').strip().lower()
             odoo_u = env['res.users'].sudo().search(['|', ('login', '=ilike', email), ('email', '=ilike', email)], limit=1)
@@ -1316,28 +1361,65 @@ class PosGasStationController(http.Controller):
             if odoo_u.id in [1, 2] or odoo_u.login in ['__system__', 'jarodriguezbonilla@gmail.com']:
                 continue
 
-            # Excluir si no tiene rol empleado
-            if role_emp and odoo_u.utrecar_role_id and odoo_u.utrecar_role_id.id != role_emp.id:
-                continue
+            seen_odoo_user_ids.add(odoo_u.id)
 
-            name = f"{r.get('nombre', '')} {r.get('apellidos', '')}".strip() or odoo_u.name
-            parts = name.split()
+            nombre = f"{r.get('nombre', '')} {r.get('apellidos', '')}".strip() or odoo_u.name
+            parts = nombre.split()
             initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'EM'
+
+            curr_role = odoo_u.utrecar_role_id
+            is_emp = bool(role_emp and curr_role and curr_role.id == role_emp.id)
 
             employees_data.append({
                 'odoo_user_id': odoo_u.id,
-                'name': name,
+                'name': nombre,
                 'dni': r.get('dni') or '-',
                 'code': r.get('virtus_codigo') or str(r.get('id', '')),
                 'email': email,
                 'initials': initials.upper(),
                 'avatar_gradient': color_palette[idx % len(color_palette)],
                 'company_ids': odoo_u.company_ids.ids,
+                'role_id': curr_role.id if curr_role else False,
+                'role_name': curr_role.name if curr_role else 'Sin Rol',
+                'role_code': curr_role.code if curr_role else '',
+                'is_employee': is_emp,
             })
+
+        # También incluir usuarios activos de Odoo que no estén en empleados de MariaDB
+        other_users = env['res.users'].sudo().search([
+            ('id', 'not in', list(seen_odoo_user_ids) + [1, 2]),
+            ('active', '=', True)
+        ])
+        for idx, u in enumerate(other_users):
+            if u.login in ['__system__', 'default', 'jarodriguezbonilla@gmail.com']:
+                continue
+            parts = u.name.split()
+            initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'US'
+            curr_role = u.utrecar_role_id
+            is_emp = bool(role_emp and curr_role and curr_role.id == role_emp.id)
+
+            employees_data.append({
+                'odoo_user_id': u.id,
+                'name': u.name,
+                'dni': getattr(u, 'dni', '') or '-',
+                'code': str(u.id),
+                'email': u.email or u.login,
+                'initials': initials.upper(),
+                'avatar_gradient': color_palette[(idx + len(emp_rows)) % len(color_palette)],
+                'company_ids': u.company_ids.ids,
+                'role_id': curr_role.id if curr_role else False,
+                'role_name': curr_role.name if curr_role else 'Sin Rol',
+                'role_code': curr_role.code if curr_role else '',
+                'is_employee': is_emp,
+            })
+
+        # Ordenar alfabéticamente por nombre
+        employees_data.sort(key=lambda x: x['name'].lower())
 
         return {
             'status': 'success',
             'companies': companies_list,
+            'roles': roles_list,
             'employees': employees_data,
         }
 

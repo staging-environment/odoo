@@ -202,7 +202,7 @@ class PosConfig(models.Model):
                         continue
 
                     # Solo usuarios con rol empleado en Odoo
-                    if role_emp and odoo_u.utrecar_role_id and odoo_u.utrecar_role_id.id != role_emp.id:
+                    if role_emp and not (role_emp in odoo_u.utrecar_role_ids or odoo_u.utrecar_role_id == role_emp):
                         continue
 
                     # Pertenencia estricta a la empresa de esta estación

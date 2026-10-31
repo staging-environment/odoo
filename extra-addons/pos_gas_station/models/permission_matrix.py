@@ -27,6 +27,20 @@ ROLE_DEFAULT_GROUPS = {
     ],
 }
 
+class UtrecarCompanyRolePermission(models.Model):
+    _name = 'utrecar.company.role.permission'
+    _description = 'Permiso de Rol por Empresa UTRECAR'
+
+    company_id = fields.Many2one('res.company', string='Empresa', required=True, ondelete='cascade', index=True)
+    role_id = fields.Many2one('utrecar.role', string='Rol', required=True, ondelete='cascade', index=True)
+    permission_id = fields.Many2one('utrecar.permission', string='Permiso', required=True, ondelete='cascade', index=True)
+    granted = fields.Boolean(string='Otorgado', default=True)
+
+    _sql_constraints = [
+        ('uniq_comp_role_perm', 'unique(company_id, role_id, permission_id)', 'Ya existe una configuración de permiso para esta empresa, rol y permiso.')
+    ]
+
+
 class UtrecarRole(models.Model):
     _name = 'utrecar.role'
     _description = 'Rol de Usuario UTRECAR'
@@ -36,7 +50,13 @@ class UtrecarRole(models.Model):
     code = fields.Char(string='Codigo', required=True)
     sequence = fields.Integer(string='Secuencia', default=10)
     color = fields.Char(string='Color', default='#0284c7')
-    user_ids = fields.One2many('res.users', 'utrecar_role_id', string='Usuarios Asignados')
+    user_ids = fields.Many2many(
+        'res.users',
+        'utrecar_user_role_rel',
+        'role_id',
+        'user_id',
+        string='Usuarios Asignados'
+    )
     permission_ids = fields.Many2many(
         'utrecar.permission',
         'utrecar_role_permission_rel',
@@ -198,7 +218,30 @@ class PosConfig(models.Model):
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
-    utrecar_role_id = fields.Many2one('utrecar.role', string='Rol UTRECAR')
+    utrecar_role_ids = fields.Many2many(
+        'utrecar.role',
+        'utrecar_user_role_rel',
+        'user_id',
+        'role_id',
+        string='Roles UTRECAR'
+    )
+    utrecar_role_id = fields.Many2one(
+        'utrecar.role',
+        string='Rol Principal UTRECAR',
+        compute='_compute_utrecar_role_id',
+        inverse='_inverse_utrecar_role_id',
+        store=True
+    )
+
+    @api.depends('utrecar_role_ids')
+    def _compute_utrecar_role_id(self):
+        for user in self:
+            user.utrecar_role_id = user.utrecar_role_ids[:1] if user.utrecar_role_ids else False
+
+    def _inverse_utrecar_role_id(self):
+        for user in self:
+            if user.utrecar_role_id and user.utrecar_role_id not in user.utrecar_role_ids:
+                user.utrecar_role_ids = [(4, user.utrecar_role_id.id)]
     pos_config_ids = fields.Many2many(
         'pos.config',
         'res_users_pos_config_rel',
@@ -254,44 +297,48 @@ class ResUsers(models.Model):
 
     def _sync_utrecar_role_groups(self):
         for user in self:
-            # Nunca alterar super administradores del sistema (ID 1 y ID 2)
             if user.id in [1, 2] or user.login in ['__system__', 'jarodriguezbonilla@gmail.com']:
                 continue
-            if not user.utrecar_role_id:
+            all_roles = user.utrecar_role_ids or (user.utrecar_role_id if user.utrecar_role_id else self.env['utrecar.role'])
+            if not all_roles:
                 continue
-            role_code = (user.utrecar_role_id.code or '').lower()
+            role_codes = [(r.code or '').lower() for r in all_roles]
+            has_admin = any(c in ['ceo', 'admin_hr'] for c in role_codes)
+            has_manager = any(c in ['manager', 'gestor'] for c in role_codes)
 
             admin_groups = [
                 self.env.ref('base.group_erp_manager', raise_if_not_found=False),
                 self.env.ref('base.group_system', raise_if_not_found=False),
-                self.env.ref('point_of_sale.group_pos_manager', raise_if_not_found=False),
             ]
             admin_group_ids = [g.id for g in admin_groups if g]
+            pos_mgr = self.env.ref('point_of_sale.group_pos_manager', raise_if_not_found=False)
+            pos_user = self.env.ref('point_of_sale.group_pos_user', raise_if_not_found=False)
 
-            if role_code in ['employee', 'empleado']:
-                # Retirar privilegios administrativos y asegurar rol de cajero TPV
-                commands = [(3, gid) for gid in admin_group_ids if gid in user.groups_id.ids]
-                pos_user = self.env.ref('point_of_sale.group_pos_user', raise_if_not_found=False)
-                if pos_user and pos_user.id not in user.groups_id.ids:
-                    commands.append((4, pos_user.id))
-                if commands:
-                    user.sudo().write({'groups_id': commands})
-            elif role_code in ['manager', 'gestor']:
-                erp_groups = [
-                    self.env.ref('base.group_erp_manager', raise_if_not_found=False),
-                    self.env.ref('base.group_system', raise_if_not_found=False),
-                ]
-                commands = [(3, g.id) for g in erp_groups if g and g.id in user.groups_id.ids]
-                pos_mgr = self.env.ref('point_of_sale.group_pos_manager', raise_if_not_found=False)
+            commands = []
+            if has_admin:
+                for gid in admin_group_ids:
+                    if gid not in user.groups_id.ids:
+                        commands.append((4, gid))
                 if pos_mgr and pos_mgr.id not in user.groups_id.ids:
                     commands.append((4, pos_mgr.id))
-                if commands:
-                    user.sudo().write({'groups_id': commands})
-            elif role_code == 'ceo':
-                for xmlid in ['base.group_system', 'base.group_erp_manager', 'point_of_sale.group_pos_manager']:
-                    grp = self.env.ref(xmlid, raise_if_not_found=False)
-                    if grp and grp.id not in user.groups_id.ids:
-                        user.sudo().write({'groups_id': [(4, grp.id)]})
+            elif has_manager:
+                for gid in admin_group_ids:
+                    if gid in user.groups_id.ids:
+                        commands.append((3, gid))
+                if pos_mgr and pos_mgr.id not in user.groups_id.ids:
+                    commands.append((4, pos_mgr.id))
+            else:
+                for gid in admin_group_ids:
+                    if gid in user.groups_id.ids:
+                        commands.append((3, gid))
+                if pos_mgr and pos_mgr.id in user.groups_id.ids:
+                    commands.append((3, pos_mgr.id))
+
+            if pos_user and pos_user.id not in user.groups_id.ids:
+                commands.append((4, pos_user.id))
+
+            if commands:
+                user.sudo().write({'groups_id': commands})
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -301,14 +348,31 @@ class ResUsers(models.Model):
 
     def write(self, vals):
         res = super(ResUsers, self).write(vals)
-        if 'utrecar_role_id' in vals:
+        if 'utrecar_role_ids' in vals or 'utrecar_role_id' in vals:
             self._sync_utrecar_role_groups()
         return res
 
-    def has_utrecar_permission(self, perm_code):
+    def has_utrecar_permission(self, perm_code, company_id=None):
         self.ensure_one()
         if self._is_admin():
             return True
-        if not self.utrecar_role_id:
+        user_roles = self.utrecar_role_ids or (self.utrecar_role_id if self.utrecar_role_id else self.env['utrecar.role'])
+        if not user_roles:
             return False
-        return any(p.code == perm_code for p in self.utrecar_role_id.permission_ids)
+
+        perm = self.env['utrecar.permission'].sudo().search([('code', '=', perm_code)], limit=1)
+        if not perm:
+            return False
+
+        # Si se consulta para una empresa específica, buscar configuración propia de esa empresa
+        if company_id:
+            comp_perm = self.env['utrecar.company.role.permission'].sudo().search([
+                ('company_id', '=', int(company_id)),
+                ('role_id', 'in', user_roles.ids),
+                ('permission_id', '=', perm.id)
+            ], limit=1)
+            if comp_perm:
+                return comp_perm.granted
+
+        # Fallback a permisos base del rol
+        return any(perm in r.permission_ids for r in user_roles)

@@ -30,6 +30,7 @@ export class GasStationDashboard extends Component {
             selectedCompany: null,
             companyEmployees: [],
             allCompanies: [],
+            allRoles: [],
             searchTerm: "",
             filterAssignedOnly: false,
             updatingUserId: null,
@@ -165,6 +166,31 @@ export class GasStationDashboard extends Component {
         } catch (e) {
             console.error("Error toggling company access:", e);
             this.notification.add("Error de conexión al actualizar permisos", { type: "danger" });
+        } finally {
+            this.state.updatingUserId = null;
+        }
+    }
+
+        async changeEmployeeRole(emp, newRoleId) {
+        this.state.updatingUserId = emp.odoo_user_id;
+        try {
+            const roleIdInt = newRoleId ? parseInt(newRoleId) : false;
+            const res = await jsonrpc("/utrecar/permission_matrix/assign_user", {
+                user_id: emp.odoo_user_id,
+                role_id: roleIdInt
+            });
+            if (res.status === "success") {
+                emp.role_id = roleIdInt;
+                const found = (this.state.allRoles || []).find(r => r.id === roleIdInt);
+                emp.role_name = found ? found.name : "Sin Rol";
+                emp.is_employee = emp.role_name === "EMPLEADO";
+                this.notification.add(`Rol actualizado a ${emp.role_name} para ${emp.name}`, { type: "success" });
+            } else {
+                this.notification.add(res.message || "Error al actualizar rol", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error cambiando rol de empleado:", e);
+            this.notification.add("Error de conexión al cambiar rol", { type: "danger" });
         } finally {
             this.state.updatingUserId = null;
         }

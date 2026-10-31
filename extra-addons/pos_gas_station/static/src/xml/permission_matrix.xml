@@ -131,37 +131,50 @@
                             <button class="btn-close-modal" t-on-click="() => this.closeUserAssign()">✖</button>
                         </div>
                         <div class="assign-modal-body">
-                            <div class="p-2 border-bottom mb-2 bg-light rounded d-flex align-items-center gap-2">
-                                <i class="fa fa-search text-muted ms-1"/>
+                            <!-- BUSCADOR DESTACADO -->
+                            <div class="p-2 border-bottom mb-3 bg-light rounded d-flex align-items-center gap-2">
+                                <i class="fa fa-search text-primary ms-2 fs-5"/>
                                 <input type="text" 
-                                       class="form-control form-control-sm border-0 bg-transparent shadow-none" 
+                                       class="form-control form-control-lg border-0 bg-transparent shadow-none" 
                                        placeholder="Buscar usuario por nombre o correo (ej. Angel David)..." 
                                        t-model="state.assignModalSearch"/>
-                                <button t-if="state.assignModalSearch" class="btn btn-sm text-muted p-0 me-1" t-on-click="() => state.assignModalSearch = ''">✖</button>
+                                <button t-if="state.assignModalSearch" class="btn btn-sm text-muted p-0 me-2" t-on-click="() => state.assignModalSearch = ''">✖</button>
                             </div>
                             <div class="users-list-scroll">
                                 <t t-foreach="filteredAssignUsers" t-as="u" t-key="u.id">
-                                    <div class="user-card-item">
-                                        <div class="user-item-row" t-on-click="() => this.toggleUserRole(u, state.assignModalRole.id)">
-                                            <div class="user-info">
-                                                <strong class="user-fullname"><t t-esc="u.name"/></strong>
-                                                <span class="user-email"><t t-esc="u.login"/></span>
-                                            </div>
-                                            <div class="user-status-pill">
-                                                <t t-if="u.role_id === state.assignModalRole.id">
-                                                    <span class="badge bg-success">Asignado a este Rol ✔</span>
+                                    <div class="user-card-item d-flex justify-content-between align-items-center p-3 mb-2 rounded border"
+                                         t-attf-class="#{userHasModalRole(u) ? 'border-success bg-success-subtle' : 'border-light-subtle bg-white'}">
+                                        <div class="user-info">
+                                            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                                <strong class="user-fullname fs-6"><t t-esc="u.name"/></strong>
+                                                <!-- ROLES ACTUALES DEL USUARIO -->
+                                                <t t-if="u.role_names and u.role_names.length > 0">
+                                                    <t t-foreach="u.role_names" t-as="rn" t-key="rn">
+                                                        <span t-attf-class="badge #{rn === state.assignModalRole.name ? 'bg-success' : 'bg-primary-subtle text-primary border'}">
+                                                            <i t-if="rn === state.assignModalRole.name" class="fa fa-check me-1"/>
+                                                            <t t-esc="rn"/>
+                                                        </span>
+                                                    </t>
                                                 </t>
                                                 <t t-else="">
-                                                    <span class="badge bg-light text-dark"><t t-esc="u.role_name"/></span>
+                                                    <span class="badge bg-secondary">Sin Rol</span>
                                                 </t>
                                             </div>
+                                            <span class="user-email text-muted small"><t t-esc="u.login"/></span>
                                         </div>
-
-                                        <!-- INFORMACIÓN DE ACCESO POR EMPRESA -->
-                                        <div t-if="u.role_id === state.assignModalRole.id" class="user-stations-box" t-on-click.stop="">
-                                            <span class="stations-hint-text text-muted">
-                                                <i class="fa fa-building me-1"/> Los empleados acceden a todas las estaciones de las empresas a las que están autorizados.
-                                            </span>
+                                        <div class="user-action-btn">
+                                            <button t-if="userHasModalRole(u)" 
+                                                    class="btn btn-sm btn-outline-danger fw-bold d-flex align-items-center gap-1 shadow-sm"
+                                                    t-on-click="() => this.toggleUserRole(u, state.assignModalRole.id)"
+                                                    title="Haga clic para quitar este rol manteniendo los demás">
+                                                <i class="fa fa-times-circle"/> Quitar Rol <t t-esc="state.assignModalRole.name"/>
+                                            </button>
+                                            <button t-else="" 
+                                                    class="btn btn-sm btn-primary fw-bold d-flex align-items-center gap-1 shadow-sm"
+                                                    t-on-click="() => this.toggleUserRole(u, state.assignModalRole.id)"
+                                                    title="Haga clic para añadir este rol sin quitar los que ya tiene">
+                                                <i class="fa fa-plus-circle"/> Añadir Rol <t t-esc="state.assignModalRole.name"/>
+                                            </button>
                                         </div>
                                     </div>
                                 </t>
