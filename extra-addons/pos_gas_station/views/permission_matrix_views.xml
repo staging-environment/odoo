@@ -144,11 +144,11 @@
               action="action_utrecar_permission_matrix"
               sequence="1"/>
 
-    <menuitem id="menu_gas_station_sub_vpn_employees"
+<!-- <menuitem id="menu_gas_station_sub_vpn_employees"
               name="Usuarios por Estación (VPN)"
               parent="menu_gas_station_root"
               action="action_vpn_station_employees"
-              sequence="2"/>
+              sequence="2"/> -->
 
     <menuitem id="menu_gas_station_sub_customers"
               name="Clientes"

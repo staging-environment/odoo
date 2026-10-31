@@ -533,8 +533,8 @@ class PosConfig(models.Model):
         else:
             configs = self.search([
                 ('active', '=', True),
-                '|', ('id', 'in', user.pos_config_ids.ids),
-                     ('allowed_user_ids', 'in', [user.id])
+                '|', ('company_id', '=', False),
+                     ('company_id', 'in', user.company_ids.ids)
             ])
             if not configs and current_config_id:
                 configs = self.browse(current_config_id)

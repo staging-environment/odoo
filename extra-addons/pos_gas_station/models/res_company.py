@@ -63,15 +63,14 @@ class ResCompany(models.Model):
 
     @api.depends('pos_config_ids')
     def _compute_station_employee_count(self):
+        role_emp = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
         for company in self:
-            stations = company.pos_config_ids
-            if not stations:
-                company.station_employee_count = 0
-                continue
-            sessions = self.env['pos.session'].sudo().search([('config_id', 'in', stations.ids)])
-            session_users = sessions.mapped('user_id').filtered(lambda u: u.active)
-            assigned_users = self.env['res.users'].sudo().search([('pos_config_ids', 'in', stations.ids)]).filtered(lambda u: u.active)
-            employees = (session_users | assigned_users).filtered(lambda u: u.id != self.env.ref('base.user_root').id)
+            employees = self.env['res.users'].sudo().search([
+                ('company_ids', 'in', [company.id]),
+                ('active', '=', True),
+            ]).filtered(lambda u: not u._is_admin() and not u.has_group('base.group_erp_manager'))
+            if role_emp:
+                employees = employees.filtered(lambda u: u.utrecar_role_id.id == role_emp.id)
             company.station_employee_count = len(employees)
 
     def action_open_company_form(self):

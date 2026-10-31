@@ -187,7 +187,7 @@
                 <field name="company_address" string="Dirección"/>
                 <field name="phone" string="Teléfono"/>
                 <field name="pos_config_count" string="Estaciones Asociadas"/>
-                <field name="station_employee_count" string="Empleados en Estaciones"/>
+                <field name="station_employee_count" string="Empleados Autorizados"/>
                 <field name="edit_icon" widget="html" string="Acción"/>
             </xpath>
         </field>

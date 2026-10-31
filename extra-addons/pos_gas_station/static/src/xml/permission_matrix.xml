@@ -149,20 +149,10 @@
                                             </div>
                                         </div>
 
-                                        <!-- ASIGNACIÓN DE TIENDAS / PUNTOS DE VENTA SI ESTÁ ASIGNADO AL ROL -->
+                                        <!-- INFORMACIÓN DE ACCESO POR EMPRESA -->
                                         <div t-if="u.role_id === state.assignModalRole.id" class="user-stations-box" t-on-click.stop="">
-                                            <span class="stations-box-title"><i class="fa fa-map-marker me-1"/> Tiendas Autorizadas:</span>
-                                            <div class="station-pills-list">
-                                                <t t-foreach="state.stations" t-as="st" t-key="st.id">
-                                                    <button t-attf-class="station-pill #{u.pos_config_ids and u.pos_config_ids.includes(st.id) ? 'station-pill-active' : 'station-pill-inactive'}"
-                                                            t-on-click="(ev) => this.toggleUserStation(u, st.id, ev)">
-                                                        <i t-attf-class="fa #{u.pos_config_ids and u.pos_config_ids.includes(st.id) ? 'fa-check-circle' : 'fa-circle-o'} me-1"/>
-                                                        <t t-esc="st.name"/>
-                                                    </button>
-                                                </t>
-                                            </div>
-                                            <span t-if="!u.pos_config_ids or u.pos_config_ids.length === 0" class="stations-hint-text">
-                                                * Acceso a todas las tiendas de su empresa
+                                            <span class="stations-hint-text text-muted">
+                                                <i class="fa fa-building me-1"/> Los empleados acceden a todas las estaciones de las empresas a las que están autorizados.
                                             </span>
                                         </div>
                                     </div>

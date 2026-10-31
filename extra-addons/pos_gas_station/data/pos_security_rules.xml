@@ -6,10 +6,10 @@
 
     <!-- REGLA DE SEGURIDAD: LOS EMPLEADOS DE PISTA SOLO VEN LAS ESTACIONES VINCULADAS -->
     <record id="rule_pos_config_employee_restricted" model="ir.rule">
-        <field name="name">Restricción de Estación para Empleados de Pista</field>
+        <field name="name">Acceso a Estaciones por Empresa para Empleados de Pista</field>
         <field name="model_id" ref="point_of_sale.model_pos_config"/>
         <field name="groups" eval="[(4, ref('point_of_sale.group_pos_user'))]"/>
-        <field name="domain_force">['|', ('id', 'in', user.pos_config_ids.ids), ('allowed_user_ids', 'in', [user.id])]</field>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', user.company_ids.ids)]</field>
     </record>
 
     <record id="rule_pos_config_manager_all" model="ir.rule">
@@ -21,10 +21,10 @@
 
     <!-- REGLA DE SEGURIDAD: CLIENTES SEPARADOS POR ESTACIÓN SEGÚN PERMISOS DE USUARIO -->
     <record id="rule_res_partner_station_restricted" model="ir.rule">
-        <field name="name">Restricción de Clientes por Estación de Servicio</field>
+        <field name="name">Restricción de Clientes por Empresa</field>
         <field name="model_id" ref="base.model_res_partner"/>
         <field name="groups" eval="[(4, ref('point_of_sale.group_pos_user'))]"/>
-        <field name="domain_force">['|', ('station_id', '=', False), ('station_id', 'in', user.pos_config_ids.ids)]</field>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', user.company_ids.ids)]</field>
     </record>
 
     <record id="rule_res_partner_station_manager_all" model="ir.rule">
