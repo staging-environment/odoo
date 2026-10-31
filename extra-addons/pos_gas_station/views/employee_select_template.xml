@@ -567,6 +567,7 @@
             <script id="stationEmployeesData" type="application/json" t-out="employees_json"/>
 
             <script type="text/javascript"><![CDATA[
+            (function() {
                 // Lista de empleados con rol Empleado
                 var EMPLOYEES = [];
                 try {
@@ -789,6 +790,10 @@
                         dropdown.style.display = 'none';
                     }
                 });
+
+                // Exponer selectEmployeeById al ámbito global para el onclick
+                window.selectEmployeeById = selectEmployeeById;
+            })();
             ]]></script>
         </body>
         </html>
