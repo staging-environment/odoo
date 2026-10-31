@@ -117,6 +117,10 @@ class ResCompany(models.Model):
 
     def unlink(self):
         for company in self:
+            if company.id == 4 or 'trieste' in (company.name or '').lower():
+                raise UserError(_(
+                    '¡PROTECCIÓN DEL SISTEMA ACTIVADA! La empresa "%s" es la empresa principal activa en producción y no se puede borrar bajo ningún concepto.'
+                ) % company.name)
             if company.pos_config_ids:
                 raise UserError(_(
                     'No se puede eliminar la empresa "%s" porque contiene %s estación(es) de servicio asociada(s). '

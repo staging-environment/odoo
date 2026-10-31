@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- TEMPLATE FLOTANTE: SELECCIÓN DE EMPLEADO Y APERTURA DE TURNO EN ESTACIÓN -->
-    <template id="station_employee_select_modal" name="Utrecar - Selección de Empleado de Pista">
+    <!-- VENTANA PRINCIPAL TÁCTIL PARA AUTENTICACIÓN DE EMPLEADOS Y APERTURA DE TURNO -->
+    <template id="station_employee_select_modal" name="Selector Táctil de Empleado Estación">
         &lt;!DOCTYPE html&gt;
         <html lang="es">
         <head>
             <meta charset="utf-8"/>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-            <title><t t-esc="station.name"/> - Apertura de Turno UTRECAR</title>
+            <title>Terminal de pista - Identificación de Empleado</title>
             <link rel="preconnect" href="https://fonts.googleapis.com"/>
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
             <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
@@ -19,6 +19,7 @@
                     --card-border: rgba(255, 255, 255, 0.08);
                     --accent-cyan: #06b6d4;
                     --accent-blue: #3b82f6;
+                    --accent-emerald: #10b981;
                     --text-main: #f8fafc;
                     --text-muted: #94a3b8;
                 }
@@ -36,7 +37,7 @@
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    padding: 20px;
+                    padding: 24px 20px;
                     overflow-x: hidden;
                 }
                 .ambient-glow {
@@ -44,9 +45,9 @@
                     top: 10%;
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 600px;
-                    height: 350px;
-                    background: radial-gradient(ellipse at center, rgba(6, 182, 212, 0.15), transparent 70%);
+                    width: 650px;
+                    height: 380px;
+                    background: radial-gradient(ellipse at center, rgba(6, 182, 212, 0.16), transparent 70%);
                     pointer-events: none;
                     z-index: 0;
                 }
@@ -54,23 +55,23 @@
                     position: relative;
                     z-index: 1;
                     width: 100%;
-                    max-width: 960px;
-                    background: rgba(15, 23, 42, 0.85);
+                    max-width: 780px;
+                    background: rgba(15, 23, 42, 0.88);
                     backdrop-filter: blur(28px);
                     -webkit-backdrop-filter: blur(28px);
                     border: 1px solid var(--card-border);
                     border-radius: 28px;
-                    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
-                    padding: 40px;
+                    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+                    padding: 40px 38px 32px 38px;
                     animation: modalFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
                 }
                 @keyframes modalFadeIn {
-                    from { opacity: 0; transform: translateY(20px) scale(0.98); }
+                    from { opacity: 0; transform: translateY(18px) scale(0.98); }
                     to { opacity: 1; transform: translateY(0) scale(1); }
                 }
                 .modal-header {
                     text-align: center;
-                    margin-bottom: 32px;
+                    margin-bottom: 28px;
                 }
                 .brand-badge {
                     display: inline-flex;
@@ -80,12 +81,12 @@
                     border: 1px solid rgba(6, 182, 212, 0.25);
                     padding: 6px 16px;
                     border-radius: 9999px;
-                    font-size: 0.85rem;
+                    font-size: 0.82rem;
                     font-weight: 700;
                     color: var(--accent-cyan);
                     letter-spacing: 0.5px;
                     text-transform: uppercase;
-                    margin-bottom: 14px;
+                    margin-bottom: 12px;
                 }
                 .pulse-dot {
                     width: 8px;
@@ -101,25 +102,27 @@
                     100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
                 }
                 .station-title {
-                    font-size: 2.2rem;
+                    font-size: 2.15rem;
                     font-weight: 800;
                     letter-spacing: -0.5px;
                     color: #ffffff;
-                    margin-bottom: 8px;
+                    margin-bottom: 6px;
                     text-shadow: 0 2px 10px rgba(0,0,0,0.3);
                 }
                 .station-subtitle {
-                    font-size: 1rem;
+                    font-size: 0.95rem;
                     color: var(--text-muted);
-                    max-width: 600px;
+                    max-width: 580px;
                     margin: 0 auto;
+                    line-height: 1.45;
                 }
                 .station-meta-bar {
                     display: flex;
                     justify-content: center;
-                    gap: 20px;
+                    flex-wrap: wrap;
+                    gap: 12px;
                     margin-top: 14px;
-                    font-size: 0.85rem;
+                    font-size: 0.82rem;
                     color: #cbd5e1;
                 }
                 .meta-tag {
@@ -127,134 +130,287 @@
                     align-items: center;
                     gap: 6px;
                     background: rgba(255, 255, 255, 0.05);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
                     padding: 4px 12px;
                     border-radius: 8px;
                 }
-                .search-box-wrap {
-                    margin-bottom: 24px;
+
+                /* BUSCADORES Y FILTROS */
+                .search-panel {
+                    margin-top: 10px;
+                    margin-bottom: 18px;
                     position: relative;
+                }
+                .search-inputs-row {
+                    display: flex;
+                    gap: 14px;
+                }
+                @media (max-width: 640px) {
+                    .search-inputs-row {
+                        flex-direction: column;
+                    }
+                    .modal-container {
+                        padding: 28px 20px;
+                    }
+                }
+                .field-col {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+                .flex-name {
+                    flex: 1.6;
+                }
+                .flex-code {
+                    flex: 1;
+                }
+                .field-label {
+                    font-size: 0.78rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    color: var(--text-muted);
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .field-label .text-accent {
+                    color: var(--accent-cyan);
+                }
+                .input-wrap {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                }
+                .input-icon {
+                    position: absolute;
+                    left: 16px;
+                    color: var(--text-muted);
+                    font-size: 0.95rem;
+                    pointer-events: none;
+                    transition: color 0.2s;
                 }
                 .search-input {
                     width: 100%;
-                    padding: 14px 20px 14px 46px;
-                    background: rgba(15, 23, 42, 0.6);
-                    border: 1px solid rgba(255, 255, 255, 0.12);
-                    border-radius: 16px;
+                    height: 52px;
+                    padding: 0 42px 0 46px;
+                    background: rgba(15, 23, 42, 0.7);
+                    border: 1px solid rgba(255, 255, 255, 0.14);
+                    border-radius: 14px;
                     color: #fff;
-                    font-size: 0.95rem;
+                    font-size: 0.96rem;
                     font-family: inherit;
                     outline: none;
-                    transition: all 0.2s;
+                    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .search-input::placeholder {
+                    color: #64748b;
+                    font-size: 0.9rem;
                 }
                 .search-input:focus {
                     border-color: var(--accent-cyan);
-                    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
-                    background: rgba(15, 23, 42, 0.9);
+                    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.18);
+                    background: rgba(15, 23, 42, 0.95);
                 }
-                .search-icon {
+                .search-input:focus + .input-icon,
+                .input-wrap:focus-within .input-icon {
+                    color: var(--accent-cyan);
+                }
+                .clear-input-btn {
                     position: absolute;
-                    left: 18px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    color: var(--text-muted);
-                    font-size: 0.95rem;
+                    right: 14px;
+                    background: transparent;
+                    border: none;
+                    color: #64748b;
+                    font-size: 0.9rem;
+                    cursor: pointer;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    transition: all 0.15s;
                 }
-                .employees-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-                    gap: 16px;
-                    max-height: 460px;
+                .clear-input-btn:hover {
+                    color: #fff;
+                    background: rgba(255, 255, 255, 0.1);
+                }
+
+                .code-input-wrap .search-input {
+                    padding-right: 90px;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                }
+                .btn-code-enter {
+                    position: absolute;
+                    right: 6px;
+                    height: 40px;
+                    padding: 0 14px;
+                    background: linear-gradient(135deg, #06b6d4, #0284c7);
+                    border: none;
+                    border-radius: 10px;
+                    color: #fff;
+                    font-weight: 700;
+                    font-size: 0.85rem;
+                    font-family: inherit;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    transition: all 0.18s ease;
+                    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+                }
+                .btn-code-enter:hover {
+                    background: linear-gradient(135deg, #0891b2, #0369a1);
+                    transform: translateY(-1px);
+                    box-shadow: 0 6px 16px rgba(6, 182, 212, 0.4);
+                }
+                .btn-code-enter:active {
+                    transform: translateY(0) scale(0.97);
+                }
+
+                /* DROPDOWN AUTOCOMPLETE */
+                .autocomplete-dropdown {
+                    position: absolute;
+                    top: calc(100% + 8px);
+                    left: 0;
+                    right: 0;
+                    background: rgba(15, 23, 42, 0.96);
+                    backdrop-filter: blur(24px);
+                    -webkit-backdrop-filter: blur(24px);
+                    border: 1px solid rgba(6, 182, 212, 0.35);
+                    border-radius: 18px;
+                    box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+                    max-height: 380px;
                     overflow-y: auto;
-                    padding: 4px 4px 12px 4px;
+                    padding: 8px;
+                    z-index: 50;
+                    animation: dropdownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
                 }
-                .employees-grid::-webkit-scrollbar {
+                @keyframes dropdownFade {
+                    from { opacity: 0; transform: translateY(-6px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .autocomplete-dropdown::-webkit-scrollbar {
                     width: 6px;
                 }
-                .employees-grid::-webkit-scrollbar-thumb {
+                .autocomplete-dropdown::-webkit-scrollbar-thumb {
                     background: rgba(255, 255, 255, 0.2);
                     border-radius: 3px;
                 }
-                .employee-card {
-                    background: var(--card-bg);
-                    border: 1px solid var(--card-border);
-                    border-radius: 20px;
-                    padding: 18px;
+                .autocomplete-item {
                     display: flex;
                     align-items: center;
-                    gap: 16px;
+                    gap: 14px;
+                    padding: 12px 14px;
+                    border-radius: 12px;
                     cursor: pointer;
-                    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-                    text-decoration: none;
-                    color: inherit;
-                    position: relative;
-                    overflow: hidden;
+                    transition: all 0.16s ease;
+                    border: 1px solid transparent;
                     user-select: none;
                 }
-                .employee-card:hover {
-                    background: rgba(51, 65, 85, 0.7);
-                    border-color: rgba(6, 182, 212, 0.4);
-                    transform: translateY(-3px);
-                    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(6, 182, 212, 0.2);
+                .autocomplete-item:hover,
+                .autocomplete-item.active {
+                    background: rgba(6, 182, 212, 0.12);
+                    border-color: rgba(6, 182, 212, 0.3);
+                    transform: translateX(4px);
                 }
-                .employee-card:active {
-                    transform: translateY(0) scale(0.98);
+                .autocomplete-item:active {
+                    transform: scale(0.98);
                 }
-                .avatar-wrap {
-                    width: 54px;
-                    height: 54px;
-                    border-radius: 16px;
+                .item-avatar {
+                    width: 46px;
+                    height: 46px;
+                    border-radius: 13px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     font-weight: 800;
-                    font-size: 1.15rem;
+                    font-size: 1.05rem;
                     color: #fff;
                     flex-shrink: 0;
-                    box-shadow: 0 6px 14px -3px rgba(0, 0, 0, 0.35);
-                    position: relative;
+                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
                 }
-                .avatar-img {
-                    width: 100%;
-                    height: 100%;
-                    border-radius: 16px;
-                    object-fit: cover;
-                }
-                .emp-info {
+                .item-info {
                     flex: 1;
                     min-width: 0;
                 }
-                .emp-name {
+                .item-name-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-bottom: 3px;
+                }
+                .item-name {
                     font-weight: 700;
-                    font-size: 1.05rem;
+                    font-size: 0.98rem;
                     color: #ffffff;
-                    margin-bottom: 4px;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
-                .emp-role {
-                    font-size: 0.8rem;
-                    font-weight: 500;
-                    color: var(--accent-cyan);
-                    display: inline-block;
-                    margin-bottom: 2px;
+                .item-code-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 3px;
+                    background: rgba(6, 182, 212, 0.18);
+                    color: #38bdf8;
+                    border: 1px solid rgba(6, 182, 212, 0.3);
+                    padding: 2px 7px;
+                    border-radius: 6px;
+                    font-size: 0.72rem;
+                    font-weight: 800;
+                    letter-spacing: 0.3px;
                 }
-                .emp-dni {
-                    font-size: 0.75rem;
+                .item-meta-row {
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    font-size: 0.76rem;
                     color: var(--text-muted);
                 }
-                .card-arrow {
-                    color: rgba(255, 255, 255, 0.3);
-                    font-size: 1.1rem;
-                    transition: transform 0.2s, color 0.2s;
+                .item-role {
+                    color: var(--accent-cyan);
+                    font-weight: 600;
                 }
-                .employee-card:hover .card-arrow {
+                .item-dni {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    color: #94a3b8;
+                }
+                .item-action-icon {
+                    color: rgba(255, 255, 255, 0.3);
+                    font-size: 0.95rem;
+                    transition: all 0.2s;
+                    padding-right: 4px;
+                }
+                .autocomplete-item:hover .item-action-icon,
+                .autocomplete-item.active .item-action-icon {
                     color: var(--accent-cyan);
                     transform: translateX(4px);
                 }
+                .dropdown-no-results {
+                    padding: 26px 16px;
+                    text-align: center;
+                    color: #94a3b8;
+                }
+                .dropdown-no-results i {
+                    font-size: 1.8rem;
+                    color: #64748b;
+                    margin-bottom: 8px;
+                    display: block;
+                }
+                .dropdown-no-results p {
+                    font-size: 0.9rem;
+                    margin: 0;
+                }
+
                 .modal-footer {
-                    margin-top: 30px;
-                    padding-top: 20px;
+                    margin-top: 24px;
+                    padding-top: 18px;
                     border-top: 1px solid rgba(255, 255, 255, 0.08);
                     display: flex;
                     justify-content: space-between;
@@ -265,7 +421,7 @@
                 .admin-link {
                     color: var(--text-muted);
                     text-decoration: none;
-                    font-size: 0.85rem;
+                    font-size: 0.83rem;
                     display: inline-flex;
                     align-items: center;
                     gap: 6px;
@@ -275,25 +431,25 @@
                     color: #ffffff;
                 }
                 .footer-badge {
-                    font-size: 0.8rem;
+                    font-size: 0.78rem;
                     color: #64748b;
                 }
                 .loading-overlay {
                     display: none;
                     position: absolute;
                     inset: 0;
-                    background: rgba(15, 23, 42, 0.9);
+                    background: rgba(15, 23, 42, 0.92);
                     border-radius: 28px;
-                    backdrop-filter: blur(10px);
-                    z-index: 10;
+                    backdrop-filter: blur(12px);
+                    z-index: 100;
                     align-items: center;
                     justify-content: center;
                     flex-direction: column;
                     gap: 16px;
                 }
                 .spinner {
-                    width: 44px;
-                    height: 44px;
+                    width: 46px;
+                    height: 46px;
                     border: 3px solid rgba(6, 182, 212, 0.2);
                     border-top-color: var(--accent-cyan);
                     border-radius: 50%;
@@ -310,103 +466,330 @@
             <div class="modal-container">
                 <div id="loadingOverlay" class="loading-overlay">
                     <div class="spinner"></div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">Iniciando turno y conectando TPV...</div>
-                    <div style="font-size: 0.9rem; color: #94a3b8;">Sincronizando con estación de servicio</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: #fff;">Iniciando turno y conectando TPV...</div>
+                    <div style="font-size: 0.88rem; color: #94a3b8;">Sincronizando con estación de servicio</div>
                 </div>
 
                 <div class="modal-header">
-                    <div class="brand-badge">
-                        <span class="pulse-dot"></span>
-                        Terminal de Pista UTRECAR
-                    </div>
-                    <h1 class="station-title"><t t-esc="station.name"/></h1>
-                    <p class="station-subtitle">Seleccione su usuario de empleado para iniciar el turno de caja y cargar el punto de venta.</p>
-                    <div class="station-meta-bar">
-                        <span class="meta-tag">
-                            <i class="fa fa-network-wired text-info me-1"></i> VPN IP: <strong><t t-esc="client_ip"/></strong>
-                        </span>
-                        <span class="meta-tag">
-                            <i class="fa fa-users text-primary me-1"></i> <strong><t t-esc="len(employees)"/></strong> Empleados vinculados
-                        </span>
-                        <span class="meta-tag">
-                            <i class="fa fa-building text-warning me-1"></i> <t t-esc="station.company_id.name"/>
-                        </span>
-                    </div>
-                </div>
-
-                <div class="search-box-wrap">
-                    <i class="fa fa-search search-icon"></i>
-                    <input type="text" id="searchEmployeeInput" class="search-input" placeholder="Buscar por nombre o DNI de empleado..." autocomplete="off" autofocus="autofocus"/>
-                </div>
-
-                <form id="employeeLoginForm" action="/pos_gas_station/station_login" method="POST">
-                    <input type="hidden" name="csrf_token" t-att-value="csrf_token"/>
-                    <input type="hidden" name="station_id" t-att-value="station.id"/>
-                    <input type="hidden" name="employee_id" id="selectedEmployeeId" value=""/>
-                    
-                    <div class="employees-grid" id="employeesGrid">
-                        <t t-foreach="employees" t-as="emp">
-                            <div class="employee-card" t-att-data-emp-id="emp['id']" t-att-data-name="emp['full_name'].lower()" t-att-data-dni="emp['dni'].lower()" onclick="selectEmployee(this)">
-                                <div class="avatar-wrap" t-attf-style="background: {{ emp['avatar_gradient'] }};">
-                                    <t t-if="emp.get('photo')">
-                                        <img t-attf-src="/web/image?model=pos.config&amp;id={{ station.id }}&amp;field=logo" class="avatar-img" alt="foto"/>
-                                    </t>
-                                    <t t-else="">
-                                        <t t-esc="emp['initials']"/>
-                                    </t>
-                                </div>
-                                <div class="emp-info">
-                                    <div class="emp-name"><t t-esc="emp['full_name']"/></div>
-                                    <div class="emp-role"><t t-esc="emp['puesto']"/></div>
-                                    <div class="emp-dni"><i class="fa fa-id-card me-1"></i><t t-esc="emp['dni'] or 'Personal de Pista'"/></div>
-                                </div>
-                                <div class="card-arrow">
-                                    <i class="fa fa-chevron-right"></i>
+                    <t t-if="has_tpv">
+                        <div class="brand-badge">
+                            <span class="pulse-dot"></span>
+                            Terminal de pista • <t t-esc="company_name"/>
+                        </div>
+                        <h1 class="station-title"><t t-esc="station.name"/></h1>
+                        <p class="station-subtitle">Identifíquese con su código o buscando por nombre/DNI para abrir turno en esta estación de <strong class="text-white"><t t-esc="company_name"/></strong>.</p>
+                        <div class="station-meta-bar">
+                            <span class="meta-tag">
+                                <i class="fa fa-users text-primary me-1"></i> <strong><t t-esc="len(employees)"/></strong> Empleados de <t t-esc="company_name"/> autorizados
+                            </span>
+                            <span class="meta-tag">
+                                <i class="fa fa-network-wired text-info me-1"></i> VPN Pista: <t t-esc="client_ip"/>
+                            </span>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div class="brand-badge" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.35); color: #f59e0b;">
+                            <i class="fa fa-exclamation-triangle"></i> Estación no creada en Odoo
+                        </div>
+                        <h1 class="station-title text-warning">Puesto de Trabajo Pendiente</h1>
+                        <div class="alert alert-warning border border-warning shadow-sm mt-3 mb-3 text-start" role="alert" style="border-radius: 14px; background: rgba(245, 158, 11, 0.12); color: #fde68a;">
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="fa fa-exclamation-circle fa-2x text-warning"></i>
+                                <div>
+                                    <div class="fw-bold fs-6 text-white mb-1">Esta estación de trabajo aún no está creada en Odoo</div>
+                                    <div class="small" style="color: #cbd5e1;">
+                                        Esta terminal está conectada desde la IP de VPN <strong class="font-monospace text-warning"><t t-esc="client_ip"/></strong>, pero aún no tiene un Punto de Venta (TPV) dado de alta en Odoo. Para poder abrir turnos y operar el TPV, un administrador debe dar de alta la estación en Odoo.
+                                    </div>
                                 </div>
                             </div>
-                        </t>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- BUSCADOR CON AUTOCOMPLETE Y FILTRO POR CÓDIGO -->
+                <t t-if="has_tpv">
+                    <div class="search-panel">
+                        <div class="search-inputs-row">
+                            <!-- Filtro 1: Nombre o DNI con Autocomplete -->
+                            <div class="field-col flex-name">
+                                <label class="field-label" for="searchEmployeeInput">
+                                    <i class="fa fa-search text-accent"></i> Buscar por Nombre o DNI
+                                </label>
+                                <div class="input-wrap">
+                                    <i class="fa fa-user input-icon"></i>
+                                    <input type="text" id="searchEmployeeInput" class="search-input" placeholder="Escriba nombre o DNI de empleado..." autocomplete="off" autofocus="autofocus"/>
+                                    <button type="button" id="clearNameBtn" class="clear-input-btn" title="Limpiar"><i class="fa fa-times"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- Filtro 2: Código de Usuario -->
+                            <div class="field-col flex-code">
+                                <label class="field-label" for="searchCodeInput">
+                                    <i class="fa fa-hashtag text-accent"></i> Código de Usuario
+                                </label>
+                                <div class="input-wrap code-input-wrap">
+                                    <i class="fa fa-id-badge input-icon"></i>
+                                    <input type="text" id="searchCodeInput" class="search-input" placeholder="Ej: 101" autocomplete="off" inputmode="numeric"/>
+                                    <button type="button" id="submitCodeBtn" class="btn-code-enter" title="Acceder con código">
+                                        <span>Entrar</span>
+                                        <i class="fa fa-arrow-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Autocomplete desplegable flotante -->
+                        <div id="autocompleteDropdown" class="autocomplete-dropdown" style="display: none;"></div>
                     </div>
-                </form>
+
+                    <!-- Formulario invisible para autenticar y abrir turno -->
+                    <form id="employeeLoginForm" action="/pos_gas_station/station_login" method="POST">
+                        <input type="hidden" name="csrf_token" t-att-value="csrf_token"/>
+                        <input type="hidden" name="station_id" t-att-value="station.id if station else ''"/>
+                        <input type="hidden" name="employee_id" id="selectedEmployeeId" value=""/>
+                    </form>
+                </t>
 
                 <div class="modal-footer">
-                    <a href="/web/login?admin=1" class="admin-link">
+                    <a href="/web?admin=1" class="admin-link" id="adminLoginLink">
                         <i class="fa fa-shield-alt"></i> Acceso manual de Administrador
                     </a>
-                    <a href="/web#action=pos_gas_station.action_gas_station_dashboard" class="admin-link" style="color: #38bdf8;">
+                    <a href="/web?admin=1#action=pos_gas_station.action_gas_station_dashboard" class="admin-link" style="color: #38bdf8;">
                         <i class="fa fa-arrow-left"></i> Volver a Gestión de Gasolineras
                     </a>
                     <div class="footer-badge">
-                        UTRECAR ERP 17.0 • Mando Central de Pista
+                        ERP 17.0 • Terminal de Pista
                     </div>
                 </div>
             </div>
 
-            <script>
-                function selectEmployee(card) {
-                    const empId = card.getAttribute('data-emp-id');
+            <!-- Inyección segura de datos de empleados autorizados -->
+            <script id="stationEmployeesData" type="application/json" t-out="employees_json"/>
+
+            <script type="text/javascript"><![CDATA[
+                // Lista de empleados con rol Empleado
+                var EMPLOYEES = [];
+                try {
+                    var scriptEl = document.getElementById('stationEmployeesData');
+                    var rawData = scriptEl ? (scriptEl.textContent || scriptEl.innerText || '').trim() : '';
+                    if (rawData) {
+                        try {
+                            EMPLOYEES = JSON.parse(rawData);
+                        } catch (err1) {
+                            var txt = document.createElement("textarea");
+                            txt.innerHTML = rawData;
+                            EMPLOYEES = JSON.parse(txt.value || '[]');
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error al parsear datos de empleados:", err);
+                    EMPLOYEES = [];
+                }
+
+                var searchNameInput = document.getElementById('searchEmployeeInput');
+                var clearNameBtn = document.getElementById('clearNameBtn');
+                var searchCodeInput = document.getElementById('searchCodeInput');
+                var submitCodeBtn = document.getElementById('submitCodeBtn');
+                var dropdown = document.getElementById('autocompleteDropdown');
+                if (!searchNameInput) {
+                    return;
+                }
+                var activeIndex = -1;
+                var currentFiltered = [];
+
+                function selectEmployeeById(empId) {
                     if (!empId) return;
                     document.getElementById('selectedEmployeeId').value = empId;
                     document.getElementById('loadingOverlay').style.display = 'flex';
                     document.getElementById('employeeLoginForm').submit();
                 }
 
-                // Filtro rápido de búsqueda
-                const searchInput = document.getElementById('searchEmployeeInput');
-                const cards = document.querySelectorAll('.employee-card');
-                
-                searchInput.addEventListener('input', function(e) {
-                    const term = e.target.value.toLowerCase().trim();
-                    cards.forEach(card => {
-                        const name = card.getAttribute('data-name') || '';
-                        const dni = card.getAttribute('data-dni') || '';
-                        if (!term || name.includes(term) || dni.includes(term)) {
-                            card.style.display = 'flex';
+                function filterEmployees() {
+                    var nameTerm = searchNameInput.value.toLowerCase().trim();
+                    var codeTerm = searchCodeInput.value.toLowerCase().trim();
+
+                    if (!nameTerm && !codeTerm) {
+                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '';
+                        currentFiltered = [];
+                        activeIndex = -1;
+                        clearNameBtn.style.display = 'none';
+                        return;
+                    }
+
+                    clearNameBtn.style.display = nameTerm ? 'flex' : 'none';
+
+                    currentFiltered = EMPLOYEES.filter(function(emp) {
+                        var matchName = true;
+                        if (nameTerm) {
+                            var name = (emp.full_name || '').toLowerCase();
+                            var dni = (emp.dni || '').toLowerCase();
+                            matchName = (name.indexOf(nameTerm) !== -1) || (dni.indexOf(nameTerm) !== -1);
+                        }
+
+                        var matchCode = true;
+                        if (codeTerm) {
+                            var code = String(emp.code || '').toLowerCase();
+                            var virtus = String(emp.virtus_codigo || '').toLowerCase();
+                            var idStr = String(emp.id || '').toLowerCase();
+                            matchCode = (code === codeTerm) || (code.indexOf(codeTerm) === 0) || (virtus === codeTerm) || (idStr === codeTerm);
+                        }
+
+                        return matchName && matchCode;
+                    });
+
+                    renderDropdown(currentFiltered);
+                }
+
+                function renderDropdown(items) {
+                    if (!items.length) {
+                        dropdown.innerHTML = '<div class="dropdown-no-results"><i class="fa fa-user-slash"></i><p>No se encontró ningún empleado con ese criterio.</p></div>';
+                        dropdown.style.display = 'block';
+                        activeIndex = -1;
+                        return;
+                    }
+
+                    var html = '';
+                    items.forEach(function(emp, idx) {
+                        var codeDisplay = emp.code ? ('#' + emp.code) : ('#' + emp.id);
+                        var dniDisplay = emp.dni || 'Sin DNI';
+                        var roleDisplay = emp.puesto || 'Expendedor de Pista';
+
+                        html += '<div class="autocomplete-item ' + (idx === activeIndex ? 'active' : '') + '" data-index="' + idx + '" data-id="' + emp.id + '" onclick="selectEmployeeById(\'' + emp.id + '\')">' +
+                                '<div class="item-avatar" style="background: ' + emp.avatar_gradient + ';">' +
+                                    escapeHtml(emp.initials || 'EM') +
+                                '</div>' +
+                                '<div class="item-info">' +
+                                    '<div class="item-name-row">' +
+                                        '<span class="item-name">' + escapeHtml(emp.full_name) + '</span>' +
+                                        '<span class="item-code-badge"><i class="fa fa-hashtag"></i> ' + escapeHtml(codeDisplay) + '</span>' +
+                                    '</div>' +
+                                    '<div class="item-meta-row">' +
+                                        '<span class="item-role">' + escapeHtml(roleDisplay) + '</span>' +
+                                        '<span class="item-dni"><i class="fa fa-id-card"></i> ' + escapeHtml(dniDisplay) + '</span>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="item-action-icon">' +
+                                    '<i class="fa fa-chevron-right"></i>' +
+                                '</div>' +
+                            '</div>';
+                    });
+
+                    dropdown.innerHTML = html;
+                    dropdown.style.display = 'block';
+                }
+
+                function escapeHtml(text) {
+                    if (!text) return '';
+                    var div = document.createElement('div');
+                    div.textContent = String(text);
+                    return div.innerHTML;
+                }
+
+                // Eventos de entrada
+                searchNameInput.addEventListener('input', function() {
+                    activeIndex = -1;
+                    filterEmployees();
+                });
+
+                searchCodeInput.addEventListener('input', function() {
+                    activeIndex = -1;
+                    filterEmployees();
+                });
+
+                clearNameBtn.addEventListener('click', function() {
+                    searchNameInput.value = '';
+                    searchNameInput.focus();
+                    filterEmployees();
+                });
+
+                // Acción de tecla Enter en el input de código
+                function handleCodeSubmit() {
+                    var code = searchCodeInput.value.trim();
+                    if (!code) {
+                        searchCodeInput.focus();
+                        return;
+                    }
+
+                    // 1. Buscar coincidencia exacta por código
+                    var exact = EMPLOYEES.find(function(e) {
+                        return String(e.code) === code || String(e.virtus_codigo) === code || String(e.id) === code;
+                    });
+                    if (exact) {
+                        selectEmployeeById(exact.id);
+                        return;
+                    }
+
+                    // 2. Si hay 1 único resultado filtrado, seleccionarlo
+                    if (currentFiltered.length === 1) {
+                        selectEmployeeById(currentFiltered[0].id);
+                        return;
+                    }
+
+                    // 3. Si hay varios o ninguno, enfocar dropdown
+                    filterEmployees();
+                }
+
+                submitCodeBtn.addEventListener('click', handleCodeSubmit);
+
+                searchCodeInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleCodeSubmit();
+                    }
+                });
+
+                // Navegación por teclado en el autocomplete
+                searchNameInput.addEventListener('keydown', function(e) {
+                    if (dropdown.style.display === 'none' || !currentFiltered.length) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (currentFiltered.length === 1) {
+                                selectEmployeeById(currentFiltered[0].id);
+                            }
+                        }
+                        return;
+                    }
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        activeIndex = (activeIndex + 1) % currentFiltered.length;
+                        updateActiveItem();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        activeIndex = (activeIndex - 1 + currentFiltered.length) % currentFiltered.length;
+                        updateActiveItem();
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (activeIndex >= 0 && activeIndex < currentFiltered.length) {
+                            selectEmployeeById(currentFiltered[activeIndex].id);
+                        } else if (currentFiltered.length === 1) {
+                            selectEmployeeById(currentFiltered[0].id);
+                        }
+                    } else if (e.key === 'Escape') {
+                        dropdown.style.display = 'none';
+                    }
+                });
+
+                function updateActiveItem() {
+                    var items = dropdown.querySelectorAll('.autocomplete-item');
+                    items.forEach(function(item, idx) {
+                        if (idx === activeIndex) {
+                            item.classList.add('active');
+                            item.scrollIntoView({ block: 'nearest' });
                         } else {
-                            card.style.display = 'none';
+                            item.classList.remove('active');
                         }
                     });
+                }
+
+                // Cerrar autocomplete si se hace clic fuera
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.search-panel')) {
+                        dropdown.style.display = 'none';
+                    }
                 });
-            </script>
+            ]]></script>
         </body>
         </html>
     </template>

@@ -104,19 +104,14 @@ class PosConfig(models.Model):
         return False
 
     def get_admin_platform_employees(self):
-        """Consulta la base de datos de admin-platform en MariaDB de producción y devuelve los empleados activos para esta estación."""
+        """Consulta admin-platform en MariaDB y devuelve los empleados con rol Empleado autorizados para la EMPRESA de esta estación."""
         self.ensure_one()
-        import pymysql
-        import pymysql.cursors
-
         ICP = self.env['ir.config_parameter'].sudo()
         host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
         port = int(ICP.get_param('admin_platform.db_port', 3306))
         user = ICP.get_param('admin_platform.db_user', 'db')
         password = ICP.get_param('admin_platform.db_password', 'db')
         database = ICP.get_param('admin_platform.db_name', 'db')
-
-        target_code = self.get_admin_platform_code()
 
         color_palette = [
             'linear-gradient(135deg, #2563eb, #1d4ed8)',
@@ -129,8 +124,16 @@ class PosConfig(models.Model):
             'linear-gradient(135deg, #4f46e5, #4338ca)',
         ]
 
+        # Empresa de esta estación de servicio
+        is_trieste_station = (self.company_id.id == 4 or 'trieste' in (self.company_id.name or '').lower())
+        trieste_comp = self.env['res.company'].sudo().browse(4)
+        utrecar_comp = self.env['res.company'].sudo().browse(1)
+
         employees = []
         try:
+            import pymysql
+            import pymysql.cursors
+            import json
             conn = pymysql.connect(
                 host=host,
                 port=port,
@@ -147,13 +150,14 @@ class PosConfig(models.Model):
                 has_odoo_perm_def = cur.fetchone()
 
                 if has_odoo_perm_def:
-                    # Filtrar solo aquellos empleados autorizados con 'acceso_odoo' en admin-platform
-                    # (bien directamente a su usuario o mediante su rol en la Matriz de Permisos)
                     sql = """
-                        SELECT e.id, e.nombre, e.apellidos, e.dni, e.email, e.puesto, e.gasolinera_codigo, e.foto
+                        SELECT DISTINCT e.id, e.virtus_codigo, e.nombre, e.apellidos, e.dni, e.email, e.puesto, e.gasolinera_codigo, e.gasolineras_codigos, e.foto
                         FROM empleados e
                         JOIN users u ON e.email = u.email
+                        JOIN model_has_roles mhr ON mhr.model_id = u.id AND mhr.model_type LIKE '%%User'
+                        JOIN roles r ON mhr.role_id = r.id
                         WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
+                          AND LOWER(TRIM(r.name)) = 'empleado'
                           AND (
                               EXISTS (
                                   SELECT 1 FROM model_has_permissions mhp
@@ -161,27 +165,49 @@ class PosConfig(models.Model):
                                   WHERE mhp.model_id = u.id AND mhp.model_type LIKE '%%User' AND p.name = 'acceso_odoo'
                               )
                               OR EXISTS (
-                                  SELECT 1 FROM model_has_roles mhr
-                                  JOIN role_has_permissions rhp ON mhr.role_id = rhp.role_id
+                                  SELECT 1 FROM role_has_permissions rhp
                                   JOIN permissions p ON rhp.permission_id = p.id
-                                  WHERE mhr.model_id = u.id AND mhr.model_type LIKE '%%User' AND p.name = 'acceso_odoo'
+                                  WHERE rhp.role_id = r.id AND p.name = 'acceso_odoo'
                               )
                           )
                         ORDER BY e.nombre, e.apellidos
                     """
                 else:
                     sql = """
-                        SELECT id, nombre, apellidos, dni, email, puesto, gasolinera_codigo, foto
-                        FROM empleados
-                        WHERE estado = 'Alta' AND (deleted_at IS NULL)
-                        ORDER BY nombre, apellidos
+                        SELECT DISTINCT e.id, e.virtus_codigo, e.nombre, e.apellidos, e.dni, e.email, e.puesto, e.gasolinera_codigo, e.gasolineras_codigos, e.foto
+                        FROM empleados e
+                        JOIN users u ON e.email = u.email
+                        JOIN model_has_roles mhr ON mhr.model_id = u.id AND mhr.model_type LIKE '%%User'
+                        JOIN roles r ON mhr.role_id = r.id
+                        WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
+                          AND LOWER(TRIM(r.name)) = 'empleado'
+                        ORDER BY e.nombre, e.apellidos
                     """
                 cur.execute(sql)
                 rows = cur.fetchall()
 
-                matched_rows = [r for r in rows if self._match_employee_station(r.get('gasolinera_codigo'), target_code)]
-                if not matched_rows:
-                    matched_rows = rows
+                # Filtrar empleados estrictamente por EMPRESA de la estación:
+                # - Estación de A.R. Trieste (id 4): solo empleados asignados a A.R. Trieste
+                # - Estación de Utrecar (id 1): solo empleados asignados a Utrecar
+                role_emp = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+                matched_rows = []
+                for r in rows:
+                    email = (r.get('email') or '').strip().lower()
+                    odoo_u = self.env['res.users'].sudo().search(['|', ('login', '=ilike', email), ('email', '=ilike', email)], limit=1)
+                    if not odoo_u:
+                        continue
+
+                    # NUNCA usuarios administradores en el TPV de pista
+                    if odoo_u._is_admin() or odoo_u.has_group('base.group_erp_manager') or odoo_u.has_group('base.group_system'):
+                        continue
+
+                    # Solo usuarios con rol empleado en Odoo
+                    if role_emp and odoo_u.utrecar_role_id and odoo_u.utrecar_role_id.id != role_emp.id:
+                        continue
+
+                    # Pertenencia estricta a la empresa de esta estación
+                    if self.company_id.id in odoo_u.company_ids.ids:
+                        matched_rows.append(r)
 
                 for idx, r in enumerate(matched_rows):
                     nombre = (r.get('nombre') or '').strip()
@@ -195,6 +221,8 @@ class PosConfig(models.Model):
                     email = (r.get('email') or '').strip()
                     dni = (r.get('dni') or '').strip()
                     login = email or dni or f"empleado_{r['id']}@utrecar.com"
+                    virtus_cod = r.get('virtus_codigo') or ''
+                    code = str(virtus_cod) if virtus_cod else str(r['id'])
 
                     employees.append({
                         'id': r['id'],
@@ -202,6 +230,8 @@ class PosConfig(models.Model):
                         'first_name': nombre,
                         'last_name': apellidos,
                         'dni': dni,
+                        'code': code,
+                        'virtus_codigo': str(virtus_cod) if virtus_cod else '',
                         'email': email,
                         'login': login,
                         'puesto': (r.get('puesto') or 'Expendedor de Pista').strip().title(),
@@ -211,26 +241,34 @@ class PosConfig(models.Model):
                         'gasolinera_codigo': r.get('gasolinera_codigo'),
                     })
             conn.close()
-        except Exception:
-            for idx, u in enumerate(self.allowed_user_ids or self.env['res.users'].sudo().search([('active', '=', True), ('share', '=', False)])):
+        except Exception as e:
+            _logger.exception("Error consultando empleados para estacion %s: %s", self.name, e)
+            role_emp = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+            domain = [('active', '=', True), ('share', '=', False), ('company_ids', 'in', [self.company_id.id])]
+            odoo_users = self.env['res.users'].sudo().search(domain)
+            for idx, u in enumerate(odoo_users):
                 parts = u.name.split()
                 initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'U'
+                u_code = getattr(u, 'barcode', '') or str(u.id)
                 employees.append({
                     'id': u.id,
                     'full_name': u.name,
                     'first_name': parts[0] if parts else u.name,
                     'last_name': " ".join(parts[1:]) if len(parts) > 1 else '',
                     'dni': getattr(u, 'dni', '') or '',
-                    'email': u.email or u.login,
+                    'code': u_code,
+                    'virtus_codigo': u_code,
+                    'email': u.email or '',
                     'login': u.login,
-                    'puesto': 'Expendedor Odoo',
+                    'puesto': 'Empleado',
                     'initials': initials.upper(),
                     'avatar_gradient': color_palette[idx % len(color_palette)],
                     'photo': False,
-                    'gasolinera_codigo': target_code,
+                    'gasolinera_codigo': None,
                 })
 
         return employees
+
 
     def sync_or_get_odoo_user_for_employee(self, emp_data):
         """Garantiza la existencia y vinculación de un usuario en res.users para el empleado de admin-platform."""
@@ -348,6 +386,10 @@ class PosConfig(models.Model):
 
     def unlink(self):
         for config in self:
+            if config.id == 7 or 'repsol' in (config.name or '').lower():
+                raise UserError(_(
+                    '¡PROTECCIÓN DEL SISTEMA ACTIVADA! La estación de servicio "%s" es la estación principal activa y operativa en producción y no se puede borrar bajo ningún concepto.'
+                ) % config.name)
             associated_records = []
 
             # 1. Turnos y Sesiones del TPV (pos.session)

@@ -1693,6 +1693,9 @@ class PosGasStationController(http.Controller):
             if not config.exists():
                 return {'status': 'error', 'message': 'La estación no existe.'}
 
+            if config.id == 7 or 'repsol' in (config.name or '').lower():
+                return {'status': 'error', 'message': '¡ESTACIÓN PROTEGIDA! E.S. Repsol es la estación principal activa en producción y no se puede borrar bajo ningún concepto.'}
+
             name = config.name
             # config.unlink() ejecuta la validación exhaustiva de trazabilidad e integridad del modelo
             config.unlink()
@@ -1710,6 +1713,9 @@ class PosGasStationController(http.Controller):
             comp = env['res.company'].sudo().browse(int(company_id))
             if not comp.exists():
                 return {'status': 'error', 'message': 'La empresa no existe.'}
+
+            if comp.id == 4 or 'trieste' in (comp.name or '').lower():
+                return {'status': 'error', 'message': '¡EMPRESA PROTEGIDA! A.R. Trieste es la empresa principal activa en producción y no se puede borrar bajo ningún concepto.'}
 
             stations_count = env['pos.config'].sudo().search_count([('company_id', '=', comp.id)])
             if stations_count > 0:
@@ -1858,21 +1864,27 @@ class PosGasStationController(http.Controller):
 
     @http.route('/pos_gas_station/vpn_employees_data', type='json', auth='user', methods=['POST'], csrf=False)
     def get_vpn_station_employees_data(self):
-        """Devuelve todas las estaciones, sus IPs de VPN WireGuard y sus empleados vinculados desde admin-platform."""
+        """Devuelve el directorio de usuarios con asignación por empresa y el catálogo de estaciones de trabajo con sus VPN."""
         env = request.env
         PosConfig = env['pos.config'].sudo()
         stations = PosConfig.search([('active', 'in', [True, False])], order='id')
         
         stations_data = []
         all_users = []
-        total_employees = 0
-
         default_map = PosConfig._get_default_station_vpn_mapping()
 
-        # 1. Incluir administradores y usuarios clave del ERP
+        trieste_comp = env['res.company'].sudo().browse(4)
+        utrecar_comp = env['res.company'].sudo().browse(1)
+
+        # 1. Administradores únicos de Odoo
+        admin_emails = set()
         admin_users = env['res.users'].sudo().search([('active', '=', True)], order='id')
         for u in admin_users:
-            if u._is_admin():
+            if u._is_admin() or u.has_group('base.group_erp_manager') or u.has_group('base.group_system'):
+                if u.login in ['__system__', 'default']:
+                    continue
+                email = (u.email or u.login).lower().strip()
+                admin_emails.add(email)
                 parts = u.name.split()
                 initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'AD'
                 all_users.append({
@@ -1881,52 +1893,147 @@ class PosGasStationController(http.Controller):
                     'dni': getattr(u, 'dni', '') or '-',
                     'email': u.email or u.login,
                     'login': u.login,
-                    'puesto': 'Administrador General',
+                    'puesto': 'Administrador',
+                    'odoo_role': 'Administrador',
                     'initials': initials.upper(),
                     'avatar_gradient': 'linear-gradient(135deg, #1e293b, #0f172a)',
-                    'station_id': 'all',
-                    'station_name': 'Todas las Estaciones',
-                    'company_name': 'Central UTRECAR',
-                    'vpn_ips_str': '10.8.0.2, 10.8.0.19 (VPN Central)',
-                    'access_type': 'Administrador Global (VPN Central)',
+                    'company_name': 'Multi-Empresa (Central)',
+                    'access_scope': 'Administración Central y ERP',
                     'is_admin': True,
                 })
 
-        for st in stations:
-            # Solo incluir estaciones reales de gasolinera (evitar tiendas genéricas o de prueba)
-            if st.id not in default_map and 'e.s.' not in (st.name or '').lower() and 'repsol' not in (st.name or '').lower():
-                continue
+        # Estaciones de gasolinera válidas
+        gas_stations = [st for st in stations if st.id in default_map or 'e.s.' in (st.name or '').lower() or 'repsol' in (st.name or '').lower()]
 
+        # 2. Consultar empleados de admin-platform en MariaDB
+        emp_rows = []
+        try:
+            import pymysql
+            import pymysql.cursors
+            import json
+            ICP = env['ir.config_parameter'].sudo()
+            host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
+            port = int(ICP.get_param('admin_platform.db_port', 3306))
+            user = ICP.get_param('admin_platform.db_user', 'db')
+            password = ICP.get_param('admin_platform.db_password', 'db')
+            database = ICP.get_param('admin_platform.db_name', 'db')
+            conn = pymysql.connect(
+                host=host, port=port, user=user, password=password, database=database,
+                charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor, connect_timeout=4
+            )
+            with conn.cursor() as cur:
+                sql = """
+                    SELECT DISTINCT e.id, e.virtus_codigo, e.nombre, e.apellidos, e.dni, e.email, e.gasolinera_codigo, e.gasolineras_codigos, e.foto
+                    FROM empleados e
+                    JOIN users u ON e.email = u.email
+                    WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
+                    ORDER BY e.nombre, e.apellidos
+                """
+                cur.execute(sql)
+                emp_rows = cur.fetchall()
+            conn.close()
+        except Exception as ex_db:
+            _logger.warning("Error consultando empleados en MariaDB: %s", ex_db)
+
+        # 3. Asignación y limitación de empleados POR EMPRESA
+        color_palette = [
+            'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            'linear-gradient(135deg, #059669, #047857)',
+            'linear-gradient(135deg, #d97706, #b45309)',
+            'linear-gradient(135deg, #7c3aed, #6d28d9)',
+            'linear-gradient(135deg, #0891b2, #0e7490)',
+            'linear-gradient(135deg, #db2777, #be185d)',
+            'linear-gradient(135deg, #ea580c, #c2410c)',
+            'linear-gradient(135deg, #4f46e5, #4338ca)',
+        ]
+        seen_emails = set(admin_emails)
+        trieste_emp_count = 0
+        utrecar_emp_count = 0
+
+        for idx, r in enumerate(emp_rows):
+            email = (r.get('email') or '').lower().strip()
+            if not email or email in seen_emails:
+                continue
+            seen_emails.add(email)
+
+            nombre = (r.get('nombre') or '').strip()
+            apellidos = (r.get('apellidos') or '').strip()
+            full_name = f"{nombre} {apellidos}".strip() or f"Empleado #{r['id']}"
+            parts = full_name.split()
+            initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'EM'
+
+            # Determinar asignación por empresa
+            codes = []
+            if r.get('gasolineras_codigos'):
+                try:
+                    raw = r['gasolineras_codigos']
+                    if isinstance(raw, str):
+                        codes = json.loads(raw)
+                    elif isinstance(raw, list):
+                        codes = raw
+                except Exception:
+                    pass
+            if not codes and r.get('gasolinera_codigo'):
+                try:
+                    codes = [int(r['gasolinera_codigo'])]
+                except Exception:
+                    pass
+
+            has_trieste_code = (5 in codes)
+            has_utrecar_code = any(c in [1, 2, 3, 4] for c in codes)
+
+            odoo_u = env['res.users'].sudo().search(['|', ('login', '=ilike', email), ('email', '=ilike', email)], limit=1)
+            u_comps = odoo_u.company_ids if odoo_u else []
+
+            is_trieste = (trieste_comp in u_comps) or has_trieste_code
+            is_utrecar = (utrecar_comp in u_comps) or has_utrecar_code or (not codes and not u_comps)
+
+            if is_trieste and not is_utrecar:
+                company_label = 'A.R. Trieste'
+                access_scope = 'Todas las Estaciones de A.R. Trieste (E.S. Repsol)'
+                trieste_emp_count += 1
+            elif is_utrecar and not is_trieste:
+                company_label = 'Utrecar S.L.'
+                access_scope = 'Todas las Estaciones de Utrecar (Vistalegre, Ronda Norte, Rodalabota, Atenas)'
+                utrecar_emp_count += 1
+            elif is_trieste and is_utrecar:
+                company_label = 'Multi-Empresa: A.R. Trieste y Utrecar'
+                access_scope = 'Todas las Estaciones del Grupo (A.R. Trieste y Utrecar)'
+                trieste_emp_count += 1
+                utrecar_emp_count += 1
+            else:
+                company_label = 'Utrecar S.L.'
+                access_scope = 'Todas las Estaciones de Utrecar (Vistalegre, Ronda Norte, Rodalabota, Atenas)'
+                utrecar_emp_count += 1
+
+            emp_dict = {
+                'id': f"emp_{r['id']}",
+                'raw_id': r['id'],
+                'full_name': full_name,
+                'dni': r.get('dni') or '-',
+                'email': r.get('email') or '',
+                'login': r.get('email') or '',
+                'puesto': 'Empleado',
+                'odoo_role': 'Empleado',
+                'initials': initials.upper(),
+                'avatar_gradient': color_palette[idx % len(color_palette)],
+                'company_name': company_label,
+                'access_scope': access_scope,
+                'is_admin': False,
+            }
+            all_users.append(emp_dict)
+
+        # 4. Información de Estaciones de Servicio y sus IPs de VPN
+        for st in gas_stations:
             vpn_ips = [x.strip() for x in (st.vpn_ip or '').split(',') if x.strip()]
             if not vpn_ips and st.id in default_map:
                 vpn_ips = default_map[st.id]['vpn_ips']
-
-            admin_code = st.get_admin_platform_code()
-            employees = st.get_admin_platform_employees()
-            total_employees += len(employees)
-
             vpn_str = ", ".join(vpn_ips) if vpn_ips else 'Sin IP asignada'
 
-            for emp in employees:
-                all_users.append({
-                    'id': f"st_{st.id}_emp_{emp['id']}",
-                    'full_name': emp['full_name'],
-                    'dni': emp.get('dni') or '-',
-                    'email': emp.get('email') or emp.get('login'),
-                    'login': emp.get('login') or emp.get('email'),
-                    'puesto': emp.get('puesto') or 'Expendedor de Pista',
-                    'initials': emp.get('initials') or 'EM',
-                    'avatar_gradient': emp.get('avatar_gradient') or 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                    'station_id': st.id,
-                    'station_name': st.name,
-                    'company_name': st.company_id.name or 'UTRECAR S.L.',
-                    'vpn_ips_str': vpn_str,
-                    'access_type': f'Pista ({vpn_str})',
-                    'is_admin': False,
-                })
+            is_trieste_st = (st.company_id.id == 4 or 'trieste' in (st.company_id.name or '').lower())
+            st_emp_count = trieste_emp_count if is_trieste_st else utrecar_emp_count
 
-            # Estado del controlador de pista
-            has_controller = (st.id == 7) # Solo Repsol tiene actualmente concentrador físico en COM3
+            has_controller = (st.id == 7)
             controller_status = {
                 'active': has_controller,
                 'label': 'Controlador MÁSTER Activo 24/7 (COM3 - SDES)' if has_controller else 'Pendiente de Controlador Físico',
@@ -1942,10 +2049,12 @@ class PosGasStationController(http.Controller):
                 'company_id': st.company_id.id if st.company_id else False,
                 'vpn_ips': vpn_ips,
                 'vpn_ips_str': vpn_str,
-                'admin_platform_code': admin_code,
+                'has_tpv': True,
+                'tpv_status': 'TPV Activo en Odoo',
+                'admin_platform_code': st.get_admin_platform_code(),
                 'controller_status': controller_status,
-                'employees_count': len(employees),
-                'employees': employees
+                'employees_count': st_emp_count,
+                'allowed_access': f'Cualquier empleado con rol Empleado de {st.company_id.name} vía VPN {vpn_str}',
             })
 
         return {
@@ -1954,12 +2063,11 @@ class PosGasStationController(http.Controller):
             'all_users': all_users,
             'stats': {
                 'total_stations': len(stations_data),
-                'total_employees': total_employees,
+                'total_employees': len(all_users) - len(admin_emails),
                 'total_users': len(all_users),
                 'active_controllers': 1,
             }
         }
-
 
 
     @http.route('/pos_gas_station/sync_employees_now', type='json', auth='user', methods=['POST'], csrf=False)

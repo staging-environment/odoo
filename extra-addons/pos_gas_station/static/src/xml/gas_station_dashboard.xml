@@ -99,7 +99,7 @@
                                             <i class="fa fa-pencil me-1"/> Editar Empresa
                                         </button>
                                         <button class="btn btn-sm btn-outline-danger" 
-                                                t-if="comp.stations_count === 0"
+                                                t-if="comp.id !== 4 and comp.stations_count === 0"
                                                 t-on-click="() => this.deleteCompany(comp)" 
                                                 title="Eliminar empresa vacía">
                                             <i class="fa fa-trash me-1"/> Borrar
@@ -180,7 +180,7 @@
                                                             <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.openConfig(st.id)" title="Ajustes de esta estación">
                                                                 <i class="fa fa-sliders"/> Ajustes
                                                             </button>
-                                                            <button class="btn btn-sm btn-outline-danger" t-on-click="() => this.deleteStation(st)" title="Eliminar estación">
+                                                            <button class="btn btn-sm btn-outline-danger" t-if="st.id !== 7" t-on-click="() => this.deleteStation(st)" title="Eliminar estación">
                                                                 <i class="fa fa-trash"/> Borrar
                                                             </button>
                                                         </div>

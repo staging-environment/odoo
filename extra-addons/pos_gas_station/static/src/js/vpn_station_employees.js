@@ -95,8 +95,8 @@ export class VpnStationEmployeesView extends Component {
                    (u.email && u.email.toLowerCase().includes(term)) ||
                    (u.login && u.login.toLowerCase().includes(term)) ||
                    (u.puesto && u.puesto.toLowerCase().includes(term)) ||
-                   (u.station_name && u.station_name.toLowerCase().includes(term)) ||
-                   (u.vpn_ips_str && u.vpn_ips_str.toLowerCase().includes(term));
+                   (u.company_name && u.company_name.toLowerCase().includes(term)) ||
+                   (u.access_scope && u.access_scope.toLowerCase().includes(term));
         });
     }
 

@@ -105,6 +105,7 @@
                                     type="object" 
                                     icon="fa-trash" 
                                     class="btn btn-sm btn-outline-danger py-0 px-2 text-danger" 
+                                    invisible="id == 7"
                                     confirm="¿Está seguro de que desea eliminar esta estación de servicio? Se verificará que no tenga información ni registros asociados antes de proceder."/>
                         </tree>
                     </field>
