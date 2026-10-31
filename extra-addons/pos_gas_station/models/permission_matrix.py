@@ -27,6 +27,21 @@ ROLE_DEFAULT_GROUPS = {
     ],
 }
 
+class UtrecarEmployeeCompanyAccess(models.Model):
+    _name = 'utrecar.employee.company.access'
+    _description = 'Acceso y Rol de Empleado por Empresa'
+    _order = 'company_id, user_id'
+
+    user_id = fields.Many2one('res.users', string='Usuario / Empleado', required=True, ondelete='cascade', index=True)
+    company_id = fields.Many2one('res.company', string='Empresa', required=True, ondelete='cascade', index=True)
+    role_id = fields.Many2one('utrecar.role', string='Rol en esta Empresa', ondelete='set null')
+    active_access = fields.Boolean(string='Acceso Habilitado', default=True)
+
+    _sql_constraints = [
+        ('uniq_user_company_access', 'unique(user_id, company_id)', 'Solo puede existir una configuracion de acceso por usuario y empresa.')
+    ]
+
+
 class UtrecarCompanyRolePermission(models.Model):
     _name = 'utrecar.company.role.permission'
     _description = 'Permiso de Rol por Empresa UTRECAR'
@@ -217,6 +232,29 @@ class PosConfig(models.Model):
 
 class ResUsers(models.Model):
     _inherit = 'res.users'
+
+    company_access_ids = fields.One2many(
+        'utrecar.employee.company.access',
+        'user_id',
+        string='Accesos y Roles por Empresa'
+    )
+
+    def get_company_role(self, company_id):
+        self.ensure_one()
+        access = self.company_access_ids.filtered(lambda a: a.company_id.id == company_id and a.active_access)
+        return access.role_id if access else False
+
+    def is_employee_for_company(self, company_id):
+        self.ensure_one()
+        role = self.get_company_role(company_id)
+        role_emp = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+        if role and role_emp and role.id == role_emp.id:
+            return True
+        # Fallback de compatibilidad
+        if role_emp and (role_emp in self.utrecar_role_ids or self.utrecar_role_id == role_emp):
+            return company_id in self.company_ids.ids
+        return False
+
 
     utrecar_role_ids = fields.Many2many(
         'utrecar.role',

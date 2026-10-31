@@ -201,12 +201,9 @@ class PosConfig(models.Model):
                     if odoo_u.id in [1, 2] or odoo_u.login in ['__system__', 'jarodriguezbonilla@gmail.com']:
                         continue
 
-                    # Solo usuarios con rol empleado en Odoo
-                    if role_emp and not (role_emp in odoo_u.utrecar_role_ids or odoo_u.utrecar_role_id == role_emp):
-                        continue
-
-                    # Pertenencia estricta a la empresa de esta estación
-                    if self.company_id.id in odoo_u.company_ids.ids:
+                    # Verificación multi-empresa y multi-rol:
+                    # El empleado debe estar autorizado Y tener rol Empleado para la empresa de esta estación
+                    if odoo_u.is_employee_for_company(self.company_id.id):
                         matched_rows.append(r)
 
                 for idx, r in enumerate(matched_rows):

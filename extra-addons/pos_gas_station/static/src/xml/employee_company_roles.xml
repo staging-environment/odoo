@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="pos_gas_station.EmployeeCompanyRolesView" owl="1">
+        <div class="emp-roles-page container-fluid py-4 px-4 bg-light" style="min-height: 100vh;">
+
+            <!-- CABECERA SUPERIOR -->
+            <div class="bg-white p-4 rounded-3 shadow-sm border mb-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1">
+                                <i class="fa fa-id-badge me-1"></i> Control de Accesos y Seguridad
+                            </span>
+                        </div>
+                        <h2 class="fw-bold mb-1" style="color: #0f172a;">
+                            <i class="fa fa-users text-primary me-2"></i> Personal, Empresas y Roles
+                        </h2>
+                        <p class="text-muted small mb-0">
+                            Gestión centralizada de asignación multi-empresa y roles específicos de cada empleado en A.R. Trieste y Utrecar S.L.
+                        </p>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary d-flex align-items-center gap-2 fw-bold" t-on-click="() => this.openDashboard()">
+                            <i class="fa fa-arrow-left"></i> Panel de Gasolineras
+                        </button>
+                        <button class="btn btn-outline-primary d-flex align-items-center gap-2 fw-bold" t-on-click="() => this.openMatrix()">
+                            <i class="fa fa-shield"></i> Matriz de Permisos
+                        </button>
+                        <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold shadow-sm" t-on-click="() => this.loadData()">
+                            <i class="fa fa-refresh" t-att-class="state.loading ? 'fa-spin' : ''"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI CARDS SUMMARY -->
+                <div class="row g-3 mt-3">
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">
+                                <i class="fa fa-users fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Total Personal</span>
+                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.total_users || state.users.length"/></h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #059669, #047857);">
+                                <i class="fa fa-building fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Personal en A.R. Trieste</span>
+                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.trieste_count || 0"/></h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #d97706, #b45309);">
+                                <i class="fa fa-building-o fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Personal en Utrecar S.L.</span>
+                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.utrecar_count || 0"/></h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #7c3aed, #6d28d9);">
+                                <i class="fa fa-exchange fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Personal Multi-Empresa</span>
+                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.multi_count || 0"/></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BARRA DE BÚSQUEDA Y FILTROS -->
+            <div class="bg-white p-3 rounded-3 shadow-sm border mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 500px;">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0">
+                            <i class="fa fa-search text-muted"></i>
+                        </span>
+                        <input type="text"
+                               class="form-control border-start-0 bg-light"
+                               placeholder="Buscar por nombre, email o DNI..."
+                               t-model="state.searchTerm"/>
+                        <button t-if="state.searchTerm" class="btn btn-outline-secondary border-start-0 bg-light" t-on-click="() => state.searchTerm = ''">
+                            ✖
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FILTROS POR EMPRESA -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="text-muted small fw-bold">Empresa:</span>
+                    <div class="btn-group btn-group-sm shadow-none" role="group">
+                        <button type="button"
+                                t-attf-class="btn #{state.filterCompany === 'all' ? 'btn-primary' : 'btn-outline-secondary'}"
+                                t-on-click="() => this.setCompanyFilter('all')">
+                            Todas
+                        </button>
+                        <button type="button"
+                                t-attf-class="btn #{state.filterCompany === 'trieste' ? 'btn-primary' : 'btn-outline-secondary'}"
+                                t-on-click="() => this.setCompanyFilter('trieste')">
+                            A.R. Trieste
+                        </button>
+                        <button type="button"
+                                t-attf-class="btn #{state.filterCompany === 'utrecar' ? 'btn-primary' : 'btn-outline-secondary'}"
+                                t-on-click="() => this.setCompanyFilter('utrecar')">
+                            Utrecar S.L.
+                        </button>
+                        <button type="button"
+                                t-attf-class="btn #{state.filterCompany === 'multi' ? 'btn-primary' : 'btn-outline-secondary'}"
+                                t-on-click="() => this.setCompanyFilter('multi')">
+                            Multi-Empresa
+                        </button>
+                    </div>
+
+                    <!-- FILTRO POR ROL -->
+                    <span class="text-muted small fw-bold ms-3">Rol:</span>
+                    <select class="form-select form-select-sm" style="width: auto;" t-model="state.filterRole">
+                        <option value="all">Todos los roles</option>
+                        <option value="employee">EMPLEADO</option>
+                        <option value="manager">GESTOR</option>
+                        <option value="ceo">CEO</option>
+                        <option value="admin_hr">ADMINISTRACION</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- TABLA PRINCIPAL DE ASIGNACIÓN MULTI-EMPRESA Y MULTI-ROL -->
+            <div class="bg-white rounded-3 shadow-sm border overflow-hidden">
+                <t t-if="state.loading">
+                    <div class="text-center py-5">
+                        <i class="fa fa-circle-o-notch fa-spin fa-3x text-primary mb-3"></i>
+                        <p class="text-muted">Cargando directorio de personal y permisos...</p>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light border-bottom">
+                                <tr>
+                                    <th style="width: 45px;" class="text-center"></th>
+                                    <th style="min-width: 250px;">Empleado / Usuario</th>
+                                    <th style="min-width: 140px;">Identificación</th>
+                                    
+                                    <!-- COLUMNA A.R. TRIESTE -->
+                                    <th style="min-width: 320px;" class="border-start bg-blue-subtle text-center">
+                                        <div class="d-flex align-items-center justify-content-center gap-2">
+                                            <span class="badge bg-primary fs-6 px-3 py-1">
+                                                <i class="fa fa-building me-1"/> A.R. Trieste
+                                            </span>
+                                        </div>
+                                        <span class="text-muted small font-monospace d-block mt-1">E.S. Repsol (Pista)</span>
+                                    </th>
+
+                                    <!-- COLUMNA UTRECAR S.L. -->
+                                    <th style="min-width: 320px;" class="border-start bg-warning-subtle text-center">
+                                        <div class="d-flex align-items-center justify-content-center gap-2">
+                                            <span class="badge bg-dark fs-6 px-3 py-1">
+                                                <i class="fa fa-building-o me-1"/> Utrecar S.L.
+                                            </span>
+                                        </div>
+                                        <span class="text-muted small font-monospace d-block mt-1">Vistalegre, Ronda Norte, etc.</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="filteredUsers.length === 0">
+                                    <tr>
+                                        <td colspan="5" class="text-center py-5 text-muted">
+                                            <i class="fa fa-info-circle fa-2x mb-2 d-block text-secondary"></i>
+                                            No se encontraron empleados con los filtros aplicados.
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="filteredUsers" t-as="u" t-key="u.odoo_user_id">
+                                    <tr>
+                                        <!-- AVATAR -->
+                                        <td class="text-center">
+                                            <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm"
+                                                 t-attf-style="background: #{u.avatar_gradient}; width: 38px; height: 38px; font-size: 0.85rem;">
+                                                <t t-esc="u.initials"/>
+                                            </div>
+                                        </td>
+
+                                        <!-- NOMBRE Y CORREO -->
+                                        <td>
+                                            <div class="fw-bold text-dark fs-6"><t t-esc="u.name"/></div>
+                                            <div class="text-muted small"><t t-esc="u.email"/></div>
+                                        </td>
+
+                                        <!-- DNI Y CÓDIGO -->
+                                        <td>
+                                            <span class="badge bg-light text-dark border font-monospace me-1">
+                                                <i class="fa fa-id-card me-1"/> <t t-esc="u.dni"/>
+                                            </span>
+                                            <span class="text-muted small font-monospace">#<t t-esc="u.code"/></span>
+                                        </td>
+
+                                        <!-- EMPRESA 1: A.R. TRIESTE (ID 4) -->
+                                        <td class="border-start text-center p-3" t-attf-class="#{u.company_access and u.company_access[4] and u.company_access[4].active ? 'bg-primary-subtle bg-opacity-25' : ''}">
+                                            <t t-set="accTrieste" t-value="u.company_access and u.company_access[4]"/>
+                                            <div class="d-flex align-items-center justify-content-center gap-3">
+                                                <!-- SWITCH ACCESO -->
+                                                <div class="form-check form-switch m-0" title="Activar o desactivar acceso a A.R. Trieste">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           style="width: 2.8rem; height: 1.4rem; cursor: pointer;"
+                                                           t-att-checked="accTrieste and accTrieste.active"
+                                                           t-att-disabled="state.updatingKey === u.odoo_user_id + '_4'"
+                                                           t-on-click="() => this.toggleCompanyAccess(u, 4, accTrieste ? accTrieste.active : false)"/>
+                                                </div>
+
+                                                <!-- SELECTOR DE ROL ESPECÍFICO EN TRIESTE -->
+                                                <div style="width: 170px;">
+                                                    <select class="form-select form-select-sm fw-bold shadow-none"
+                                                            t-attf-class="#{accTrieste and accTrieste.active ? 'border-primary text-primary' : 'border-secondary-subtle text-muted'}"
+                                                            t-att-value="accTrieste ? accTrieste.role_id : false"
+                                                            t-att-disabled="!accTrieste or !accTrieste.active or state.updatingKey === u.odoo_user_id + '_4'"
+                                                            t-on-change="(ev) => this.changeCompanyRole(u, 4, ev.target.value)"
+                                                            title="Rol en A.R. Trieste">
+                                                        <t t-foreach="state.roles" t-as="r" t-key="r.id">
+                                                            <option t-att-value="r.id" t-att-selected="accTrieste and accTrieste.role_id === r.id">
+                                                                <t t-esc="r.name"/>
+                                                            </option>
+                                                        </t>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-1 small">
+                                                <span t-if="accTrieste and accTrieste.active" class="badge bg-success-subtle text-success">
+                                                    <i class="fa fa-check me-1"/> Autorizado en Trieste
+                                                </span>
+                                                <span t-else="" class="text-muted small">
+                                                    <i class="fa fa-ban me-1"/> Sin acceso
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        <!-- EMPRESA 2: UTRECAR S.L. (ID 1) -->
+                                        <td class="border-start text-center p-3" t-attf-class="#{u.company_access and u.company_access[1] and u.company_access[1].active ? 'bg-warning-subtle bg-opacity-25' : ''}">
+                                            <t t-set="accUtrecar" t-value="u.company_access and u.company_access[1]"/>
+                                            <div class="d-flex align-items-center justify-content-center gap-3">
+                                                <!-- SWITCH ACCESO -->
+                                                <div class="form-check form-switch m-0" title="Activar o desactivar acceso a Utrecar S.L.">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           style="width: 2.8rem; height: 1.4rem; cursor: pointer;"
+                                                           t-att-checked="accUtrecar and accUtrecar.active"
+                                                           t-att-disabled="state.updatingKey === u.odoo_user_id + '_1'"
+                                                           t-on-click="() => this.toggleCompanyAccess(u, 1, accUtrecar ? accUtrecar.active : false)"/>
+                                                </div>
+
+                                                <!-- SELECTOR DE ROL ESPECÍFICO EN UTRECAR -->
+                                                <div style="width: 170px;">
+                                                    <select class="form-select form-select-sm fw-bold shadow-none"
+                                                            t-attf-class="#{accUtrecar and accUtrecar.active ? 'border-dark text-dark' : 'border-secondary-subtle text-muted'}"
+                                                            t-att-value="accUtrecar ? accUtrecar.role_id : false"
+                                                            t-att-disabled="!accUtrecar or !accUtrecar.active or state.updatingKey === u.odoo_user_id + '_1'"
+                                                            t-on-change="(ev) => this.changeCompanyRole(u, 1, ev.target.value)"
+                                                            title="Rol en Utrecar S.L.">
+                                                        <t t-foreach="state.roles" t-as="r" t-key="r.id">
+                                                            <option t-att-value="r.id" t-att-selected="accUtrecar and accUtrecar.role_id === r.id">
+                                                                <t t-esc="r.name"/>
+                                                            </option>
+                                                        </t>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-1 small">
+                                                <span t-if="accUtrecar and accUtrecar.active" class="badge bg-dark-subtle text-dark">
+                                                    <i class="fa fa-check me-1"/> Autorizado en Utrecar
+                                                </span>
+                                                <span t-else="" class="text-muted small">
+                                                    <i class="fa fa-ban me-1"/> Sin acceso
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </div>
+
+            <!-- NOTA AL PIE -->
+            <div class="mt-3 p-3 bg-white rounded-3 border d-flex align-items-center gap-3">
+                <i class="fa fa-info-circle text-primary fs-4"></i>
+                <div class="small text-muted">
+                    <strong>Integración automática con TPV y aperturas de turno:</strong>
+                    Los empleados autorizados con rol <strong>EMPLEADO</strong> en cada empresa aparecerán automáticamente en las pantallas táctiles de apertura de turno de todas las estaciones de esa empresa. Si un usuario tiene rol <strong>GESTOR</strong> o <strong>CEO</strong>, sus permisos se sincronizan inmediatamente para administración y supervisión.
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

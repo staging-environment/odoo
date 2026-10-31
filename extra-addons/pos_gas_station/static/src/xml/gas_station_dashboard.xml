@@ -30,6 +30,9 @@
 
                 <div class="topbar-actions">
 
+                                        <button class="btn btn-outline-info btn-sm me-2" t-on-click="() => this.openEmployeeCompanyRoles()" title="Gestión de Personal, Empresas y Roles">
+                        <i class="fa fa-users me-1"/> Personal y Roles
+                    </button>
                     <button class="btn btn-outline-primary btn-sm me-2" t-on-click="() => this.openNewCompany()" t-if="state.isManager">
                         <i class="fa fa-plus me-1"/> Nueva Empresa
                     </button>

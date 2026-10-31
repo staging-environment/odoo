@@ -217,6 +217,10 @@ export class GasStationDashboard extends Component {
         });
     }
 
+    openEmployeeCompanyRoles() {
+        this.actionService.doAction("pos_gas_station.action_employee_company_roles");
+    }
+
     openMatrix() {
         this.actionService.doAction("pos_gas_station.action_utrecar_permission_matrix");
     }

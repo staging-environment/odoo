@@ -2290,3 +2290,222 @@ class PosGasStationController(http.Controller):
         """Dispara manualmente la sincronización de empleados de admin-platform y alta en res.users."""
         res = request.env['pos.config'].sudo().cron_sync_admin_platform_employees()
         return res
+
+    # ==================== GESTIÓN DE PERSONAL Y ROLES MULTI-EMPRESA ====================
+    @http.route('/pos_gas_station/employee_company_roles/data', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_employee_company_roles_data(self):
+        """Devuelve el catálogo completo de personal con su rol y acceso específico por cada empresa."""
+        env = request.env
+        User = env['res.users'].sudo()
+        Company = env['res.company'].sudo()
+        Role = env['utrecar.role'].sudo()
+        Access = env['utrecar.employee.company.access'].sudo()
+        role_emp = env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+
+        companies = Company.search([], order='id')
+        companies_list = [{'id': c.id, 'name': c.name} for c in companies]
+
+        roles = Role.search([], order='sequence, id')
+        roles_list = [{'id': r.id, 'name': r.name, 'code': r.code, 'color': r.color} for r in roles]
+
+        # Consultar empleados de admin-platform en MariaDB
+        ICP = env['ir.config_parameter'].sudo()
+        host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
+        port = int(ICP.get_param('admin_platform.db_port', 3306))
+        user_db = ICP.get_param('admin_platform.db_user', 'db')
+        pwd_db = ICP.get_param('admin_platform.db_password', 'db')
+        dbname = ICP.get_param('admin_platform.db_name', 'db')
+
+        color_palette = [
+            'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            'linear-gradient(135deg, #059669, #047857)',
+            'linear-gradient(135deg, #d97706, #b45309)',
+            'linear-gradient(135deg, #7c3aed, #6d28d9)',
+            'linear-gradient(135deg, #0891b2, #0e7490)',
+            'linear-gradient(135deg, #db2777, #be185d)',
+            'linear-gradient(135deg, #ea580c, #c2410c)',
+            'linear-gradient(135deg, #4f46e5, #4338ca)',
+        ]
+
+        emp_meta = {}
+        try:
+            import pymysql
+            import pymysql.cursors
+            conn = pymysql.connect(
+                host=host, port=port, user=user_db, password=pwd_db, database=dbname,
+                charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor, connect_timeout=3
+            )
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT e.id, e.nombre, e.apellidos, e.dni, e.email, e.virtus_codigo
+                    FROM empleados e
+                    WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
+                """)
+                for r in cur.fetchall():
+                    em = (r.get('email') or '').strip().lower()
+                    if em:
+                        emp_meta[em] = r
+            conn.close()
+        except Exception as ex:
+            _logger.warning("Error consultando MariaDB: %s", ex)
+
+        # Buscar usuarios activos de Odoo (excluyendo super admins del sistema 1 y 2)
+        users = User.search([('id', 'not in', [1, 2]), ('active', '=', True)], order='name')
+
+        users_data = []
+        trieste_count = 0
+        utrecar_count = 0
+        multi_count = 0
+
+        for idx, u in enumerate(users):
+            if u.login in ['__system__', 'default', 'jarodriguezbonilla@gmail.com']:
+                continue
+
+            email_lower = (u.email or u.login or '').strip().lower()
+            meta = emp_meta.get(email_lower, {})
+            nombre = f"{meta.get('nombre', '')} {meta.get('apellidos', '')}".strip() if meta else u.name
+            dni = meta.get('dni') or getattr(u, 'dni', '') or '-'
+            code = meta.get('virtus_codigo') or str(meta.get('id', '')) or str(u.id)
+
+            parts = nombre.split()
+            initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'US'
+
+            # Construir accesos por empresa
+            comp_access = {}
+            active_comp_count = 0
+
+            for comp in companies:
+                # Buscar o inicializar registro en utrecar.employee.company.access
+                acc = Access.search([('user_id', '=', u.id), ('company_id', '=', comp.id)], limit=1)
+                if not acc:
+                    # Inicializar en función de user.company_ids y user.utrecar_role_id
+                    is_in_comp = comp.id in u.company_ids.ids
+                    def_role = u.utrecar_role_id or role_emp
+                    acc = Access.create({
+                        'user_id': u.id,
+                        'company_id': comp.id,
+                        'active_access': is_in_comp,
+                        'role_id': def_role.id if def_role else False
+                    })
+
+                r_obj = acc.role_id
+                comp_access[comp.id] = {
+                    'active': acc.active_access,
+                    'role_id': r_obj.id if r_obj else False,
+                    'role_name': r_obj.name if r_obj else 'Sin Rol',
+                    'role_code': r_obj.code if r_obj else '',
+                    'role_color': r_obj.color if r_obj else '#64748b',
+                }
+                if acc.active_access:
+                    active_comp_count += 1
+                    if comp.id == 4:
+                        trieste_count += 1
+                    elif comp.id == 1:
+                        utrecar_count += 1
+
+            if active_comp_count > 1:
+                multi_count += 1
+
+            users_data.append({
+                'odoo_user_id': u.id,
+                'name': nombre,
+                'email': u.email or u.login,
+                'login': u.login,
+                'dni': dni,
+                'code': code,
+                'initials': initials.upper(),
+                'avatar_gradient': color_palette[idx % len(color_palette)],
+                'company_access': comp_access,
+                'active_company_count': active_comp_count,
+            })
+
+        return {
+            'status': 'success',
+            'companies': companies_list,
+            'roles': roles_list,
+            'users': users_data,
+            'stats': {
+                'total_users': len(users_data),
+                'trieste_count': trieste_count,
+                'utrecar_count': utrecar_count,
+                'multi_count': multi_count,
+            }
+        }
+
+    @http.route('/pos_gas_station/employee_company_roles/update', type='json', auth='user', methods=['POST'], csrf=False)
+    def update_employee_company_access(self, user_id, company_id, active=None, role_id=None):
+        """Actualiza el acceso y/o rol específico de un empleado en una empresa."""
+        env = request.env
+        User = env['res.users'].sudo()
+        Access = env['utrecar.employee.company.access'].sudo()
+        Role = env['utrecar.role'].sudo()
+
+        user = User.browse(int(user_id))
+        if not user.exists():
+            return {'status': 'error', 'message': 'Usuario no encontrado'}
+
+        cid = int(company_id)
+        acc = Access.search([('user_id', '=', user.id), ('company_id', '=', cid)], limit=1)
+        if not acc:
+            acc = Access.create({
+                'user_id': user.id,
+                'company_id': cid,
+                'active_access': bool(active) if active is not None else True,
+                'role_id': int(role_id) if role_id else False
+            })
+
+        vals = {}
+        if active is not None:
+            new_active = bool(active)
+            if not new_active:
+                # Evitar dejar al usuario sin ninguna empresa asignada en Odoo
+                active_accesses = Access.search([
+                    ('user_id', '=', user.id),
+                    ('active_access', '=', True),
+                    ('company_id', '!=', cid)
+                ])
+                if not active_accesses:
+                    return {
+                        'status': 'warning',
+                        'message': f'{user.name} debe pertenecer al menos a una empresa.',
+                        'active': True
+                    }
+                # Desactivar en Odoo
+                vals['active_access'] = False
+                user.write({'company_ids': [(3, cid)]})
+            else:
+                vals['active_access'] = True
+                user.write({'company_ids': [(4, cid)]})
+
+        if role_id is not None:
+            vals['role_id'] = int(role_id) if role_id else False
+
+        if vals:
+            acc.write(vals)
+
+        # Recalcular utrecar_role_ids como la unión de todos los roles activos del usuario
+        active_roles = Access.search([
+            ('user_id', '=', user.id),
+            ('active_access', '=', True),
+            ('role_id', '!=', False)
+        ]).mapped('role_id')
+
+        user.write({
+            'utrecar_role_ids': [(6, 0, active_roles.ids)],
+            'utrecar_role_id': active_roles[0].id if active_roles else False
+        })
+        user._sync_utrecar_role_groups()
+
+        r_obj = acc.role_id
+        return {
+            'status': 'success',
+            'user_id': user.id,
+            'company_id': cid,
+            'active': acc.active_access,
+            'role_id': r_obj.id if r_obj else False,
+            'role_name': r_obj.name if r_obj else 'Sin Rol',
+            'role_code': r_obj.code if r_obj else '',
+            'role_color': r_obj.color if r_obj else '#64748b',
+            'all_role_names': [r.name for r in active_roles],
+            'message': f'Acceso de {user.name} actualizado correctamente'
+        }

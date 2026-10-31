@@ -125,6 +125,13 @@
         <field name="target">current</field>
     </record>
 
+        <!-- ACCION CLIENTE: GESTION DE PERSONAL Y ROLES MULTI-EMPRESA -->
+    <record id="action_employee_company_roles" model="ir.actions.client">
+        <field name="name">Personal y Roles Multi-Empresa</field>
+        <field name="tag">employee_company_roles</field>
+        <field name="target">current</field>
+    </record>
+
     <record id="action_gas_station_dashboard" model="ir.actions.client">
         <field name="name">Gestión de gasolineras</field>
         <field name="tag">gas_station_dashboard</field>
@@ -138,6 +145,12 @@
               sequence="1"/>
 
     <!-- SUBMENÚS VISIBLES EN LA BARRA SUPERIOR (SIMPLIFICADA: SIN PRODUCTOS, PEDIDOS NI INFORMES) -->
+        <menuitem id="menu_gas_station_sub_employee_roles"
+              name="Personal y Roles"
+              parent="menu_gas_station_root"
+              action="action_employee_company_roles"
+              sequence="2"/>
+
     <menuitem id="menu_gas_station_sub_matrix"
               name="Matriz de Permisos"
               parent="menu_gas_station_root"
