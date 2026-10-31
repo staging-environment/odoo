@@ -1221,6 +1221,12 @@ class PosGasStationController(http.Controller):
             if not accessible_stations and not is_manager:
                 continue
 
+            role_emp = env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+            emp_domain = [('active', '=', True), ('company_ids', 'in', [c.id])]
+            if role_emp:
+                emp_domain.append(('utrecar_role_id', '=', role_emp.id))
+            c_emps_count = env['res.users'].sudo().search_count(emp_domain)
+
             companies_data.append({
                 'id': c.id,
                 'name': c.name,
@@ -1231,7 +1237,8 @@ class PosGasStationController(http.Controller):
                 'has_logo': has_logo,
                 'logo_url': f'/web/image?model=res.company&id={c.id}&field=logo' if has_logo else None,
                 'stations': accessible_stations,
-                'stations_count': len(accessible_stations)
+                'stations_count': len(accessible_stations),
+                'employees_count': c_emps_count,
             })
 
         return {
@@ -1245,6 +1252,132 @@ class PosGasStationController(http.Controller):
                 'total_open_sessions': total_open_sessions
             }
         }
+
+    @http.route('/pos_gas_station/company_employees_data', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_company_employees_data(self, company_id=None):
+        """Retorna todos los empleados con rol Empleado y las empresas a las que tienen acceso."""
+        env = request.env
+        role_emp = env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+
+        # 1. Todas las empresas activas
+        all_companies = env['res.company'].sudo().search([], order='id')
+        companies_list = [{'id': c.id, 'name': c.name} for c in all_companies]
+
+        # 2. Consultar empleados de admin-platform en MariaDB
+        ICP = env['ir.config_parameter'].sudo()
+        host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
+        port = int(ICP.get_param('admin_platform.db_port', 3306))
+        user_db = ICP.get_param('admin_platform.db_user', 'db')
+        pwd_db = ICP.get_param('admin_platform.db_password', 'db')
+        dbname = ICP.get_param('admin_platform.db_name', 'db')
+
+        color_palette = [
+            'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            'linear-gradient(135deg, #059669, #047857)',
+            'linear-gradient(135deg, #d97706, #b45309)',
+            'linear-gradient(135deg, #7c3aed, #6d28d9)',
+            'linear-gradient(135deg, #0891b2, #0e7490)',
+            'linear-gradient(135deg, #db2777, #be185d)',
+            'linear-gradient(135deg, #ea580c, #c2410c)',
+            'linear-gradient(135deg, #4f46e5, #4338ca)',
+        ]
+
+        emp_rows = []
+        try:
+            import pymysql
+            import pymysql.cursors
+            conn = pymysql.connect(
+                host=host, port=port, user=user_db, password=pwd_db, database=dbname,
+                charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor, connect_timeout=3
+            )
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT e.id, e.nombre, e.apellidos, e.dni, e.email, e.virtus_codigo
+                    FROM empleados e
+                    JOIN users u ON e.email = u.email
+                    JOIN model_has_roles mhr ON mhr.model_id = u.id AND mhr.model_type LIKE '%%User'
+                    JOIN roles r ON mhr.role_id = r.id
+                    WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL) AND LOWER(TRIM(r.name)) = 'empleado'
+                    ORDER BY e.nombre, e.apellidos
+                """)
+                emp_rows = cur.fetchall()
+            conn.close()
+        except Exception as ex:
+            _logger.warning("Error consultando MariaDB en company_employees_data: %s", ex)
+
+        employees_data = []
+        for idx, r in enumerate(emp_rows):
+            email = (r.get('email') or '').strip().lower()
+            odoo_u = env['res.users'].sudo().search(['|', ('login', '=ilike', email), ('email', '=ilike', email)], limit=1)
+            if not odoo_u:
+                continue
+
+            # Excluir administradores
+            if odoo_u._is_admin() or odoo_u.has_group('base.group_erp_manager') or odoo_u.has_group('base.group_system'):
+                continue
+
+            # Excluir si no tiene rol empleado
+            if role_emp and odoo_u.utrecar_role_id and odoo_u.utrecar_role_id.id != role_emp.id:
+                continue
+
+            name = f"{r.get('nombre', '')} {r.get('apellidos', '')}".strip() or odoo_u.name
+            parts = name.split()
+            initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'EM'
+
+            employees_data.append({
+                'odoo_user_id': odoo_u.id,
+                'name': name,
+                'dni': r.get('dni') or '-',
+                'code': r.get('virtus_codigo') or str(r.get('id', '')),
+                'email': email,
+                'initials': initials.upper(),
+                'avatar_gradient': color_palette[idx % len(color_palette)],
+                'company_ids': odoo_u.company_ids.ids,
+            })
+
+        return {
+            'status': 'success',
+            'companies': companies_list,
+            'employees': employees_data,
+        }
+
+    @http.route('/pos_gas_station/toggle_employee_company_access', type='json', auth='user', methods=['POST'], csrf=False)
+    def toggle_employee_company_access(self, user_id, company_id, assigned):
+        """Asigna o revoca el acceso de un empleado a una empresa (afecta en tiempo real al selector TPV de todas sus estaciones)."""
+        try:
+            env = request.env
+            user = env['res.users'].sudo().browse(int(user_id))
+            company = env['res.company'].sudo().browse(int(company_id))
+
+            if not user.exists() or not company.exists():
+                return {'status': 'error', 'message': 'Usuario o empresa no encontrados'}
+
+            current_comp_ids = set(user.company_ids.ids)
+            if assigned:
+                current_comp_ids.add(company.id)
+            else:
+                if len(current_comp_ids) <= 1 and company.id in current_comp_ids:
+                    return {
+                        'status': 'warning',
+                        'message': f'{user.name} debe pertenecer al menos a una empresa.',
+                        'company_ids': list(current_comp_ids)
+                    }
+                current_comp_ids.discard(company.id)
+
+            vals = {'company_ids': [(6, 0, list(current_comp_ids))]}
+            if user.company_id.id not in current_comp_ids:
+                vals['company_id'] = list(current_comp_ids)[0]
+            user.write(vals)
+
+            _logger.info("Actualizada asignación de empresa para empleado %s: empresas=%s", user.name, list(current_comp_ids))
+            return {
+                'status': 'success',
+                'company_ids': list(current_comp_ids),
+                'message': f"Acceso de {user.name} a {company.name} {'concedido' if assigned else 'revocado'}."
+            }
+        except Exception as ex:
+            _logger.exception("Error en toggle_employee_company_access: %s", ex)
+            return {'status': 'error', 'message': str(ex)}
 
     @http.route('/pos_gas_station/open_station', type='json', auth='user', methods=['POST'], csrf=False)
     def open_gas_station(self, config_id):

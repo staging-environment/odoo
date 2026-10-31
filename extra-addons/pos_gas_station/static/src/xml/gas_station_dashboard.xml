@@ -72,11 +72,14 @@
                                         </div>
                                         <div class="company-titles">
                                             <div class="company-name-row">
-                                                <h3 class="company-name-text" t-on-click="() => this.openCompany(comp.id)">
+                                                <h3 class="company-name-text cursor-pointer" t-on-click="() => this.openCompanyEmployees(comp)" title="Ver y gestionar empleados con acceso a esta empresa">
                                                     <t t-esc="comp.name"/>
                                                 </h3>
-                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">
                                                     <t t-esc="comp.stations_count"/> <t t-if="comp.stations_count === 1">Estación</t><t t-else="">Estaciones</t>
+                                                </span>
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle cursor-pointer" t-on-click="() => this.openCompanyEmployees(comp)" title="Ver y gestionar empleados con acceso a esta empresa">
+                                                    <i class="fa fa-users me-1"/> <t t-esc="comp.employees_count || 0"/> Empleados autorizados
                                                 </span>
                                             </div>
                                             <div class="company-meta-row">
@@ -88,6 +91,11 @@
                                     </div>
 
                                     <div class="company-header-tools" t-if="state.isManager">
+                                        <button class="btn btn-sm btn-outline-info me-2" 
+                                                t-on-click="() => this.openCompanyEmployees(comp)" 
+                                                title="Gestionar asignación de empleados para esta empresa">
+                                            <i class="fa fa-users me-1"/> Empleados (<t t-esc="comp.employees_count || 0"/>)
+                                        </button>
                                         <button class="btn btn-sm btn-outline-primary me-2" 
                                                 t-on-click="() => this.openNewStation(comp.id)" 
                                                 title="Crear nueva estación en esta empresa">
@@ -158,23 +166,19 @@
                                                         </t>
                                                     </div>
 
-                                                    <!-- BOTÓN PRINCIPAL DE ACCESO DIRECTO / APERTURA DE TURNO -->
+                                                    <!-- ACCIONES DE ESTACIÓN (APERTURA SE REALIZA DESDE PISTA / HOME) -->
                                                     <div class="station-actions-box">
-                                                        <button t-attf-class="btn btn-access-pos #{st.has_active_session ? 'btn-session-open' : 'btn-session-closed'}"
-                                                                t-on-click="() => this.openStation(st.id)">
-                                                            <t t-if="st.has_active_session">
+                                                        <t t-if="st.has_active_session">
+                                                            <button class="btn btn-access-pos btn-session-open"
+                                                                    t-on-click="() => this.openStation(st.id)">
                                                                 <i class="fa fa-bolt me-1"/> Continuar Turno / Entrar al TPV
-                                                            </t>
-                                                            <t t-else="">
-                                                                <i class="fa fa-play-circle me-1"/> Abrir Turno y Entrar al TPV
-                                                            </t>
-                                                        </button>
-                                                        <button t-if="st.has_active_session" 
-                                                                class="btn btn-sm btn-outline-primary ms-1" 
-                                                                t-on-click="() => this.selectEmployeeForStation(st.id)" 
-                                                                title="Cambiar de empleado o reabrir selección de turno">
-                                                            <i class="fa fa-user-circle me-1"/> Cambiar Empleado
-                                                        </button>
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-primary ms-1" 
+                                                                    t-on-click="() => this.selectEmployeeForStation(st.id)" 
+                                                                    title="Cambiar de empleado o reabrir selección de turno">
+                                                                <i class="fa fa-user-circle me-1"/> Cambiar Empleado
+                                                            </button>
+                                                        </t>
 
                                                         <div class="station-sub-actions" t-if="state.isManager">
                                                             <button class="btn btn-sm btn-outline-secondary" t-on-click="() => this.openConfig(st.id)" title="Ajustes de esta estación">
@@ -196,5 +200,132 @@
                 </t>
             </div>
         </div>
+
+            <!-- MODAL DE GESTIÓN DE EMPLEADOS POR EMPRESA -->
+            <t t-if="state.showEmployeesModal">
+                <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1050;" role="dialog">
+                    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                                        <i class="fa fa-building text-warning"/>
+                                        <span>Empleados y Acceso al TPV — <t t-esc="state.selectedCompany ? state.selectedCompany.name : ''"/></span>
+                                    </h5>
+                                    <p class="mb-0 small text-white-50 mt-1">
+                                        Active o desactive las empresas a las que cada empleado tiene autorización para abrir turno en sus TPVs.
+                                    </p>
+                                </div>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeEmployeesModal()" aria-label="Cerrar"></button>
+                            </div>
+
+                            <div class="modal-body p-4" style="max-height: 65vh; overflow-y: auto;">
+                                <!-- BARRA DE BÚSQUEDA Y FILTRO RÁPIDO -->
+                                <div class="d-flex gap-3 mb-3">
+                                    <div class="input-group flex-grow-1">
+                                        <span class="input-group-text bg-light border-end-0"><i class="fa fa-search text-muted"/></span>
+                                        <input type="text" 
+                                               class="form-control bg-light border-start-0" 
+                                               placeholder="Buscar por nombre o DNI de empleado..." 
+                                               t-att-value="state.searchTerm"
+                                               t-on-input="(ev) => this.onSearchInput(ev)"/>
+                                        <button t-if="state.searchTerm" 
+                                                class="btn btn-outline-secondary border-start-0" 
+                                                type="button" 
+                                                t-on-click="() => this.clearSearch()">
+                                            <i class="fa fa-times"/>
+                                        </button>
+                                    </div>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" 
+                                                t-attf-class="btn btn-sm #{state.filterAssignedOnly ? 'btn-outline-primary' : 'btn-primary'}"
+                                                t-on-click="() => this.setFilter(false)">
+                                            Todos (<t t-esc="state.companyEmployees.length"/>)
+                                        </button>
+                                        <button type="button" 
+                                                t-attf-class="btn btn-sm #{state.filterAssignedOnly ? 'btn-primary' : 'btn-outline-primary'}"
+                                                t-on-click="() => this.setFilter(true)">
+                                            Solo de esta empresa (<t t-esc="this.getAssignedCount()"/>)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- TABLA DE EMPLEADOS CON CHECKBOXES POR EMPRESA -->
+                                <div class="table-responsive border rounded-3">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-3 py-3" style="width: 45%;">Empleado (Rol Empleado)</th>
+                                                <th class="py-3" style="width: 20%;">DNI / Código</th>
+                                                <t t-foreach="state.allCompanies" t-as="comp" t-key="comp.id">
+                                                    <th class="text-center py-3" t-att-style="'width: ' + (35 / (state.allCompanies.length || 1)) + '%;'">
+                                                        <span class="badge" t-attf-style="#{comp.id === (state.selectedCompany ? state.selectedCompany.id : 0) ? 'background: #3b82f6; color: white;' : 'background: #e2e8f0; color: #475569;'}">
+                                                            <t t-esc="comp.name"/>
+                                                        </span>
+                                                    </th>
+                                                </t>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-set="filteredEmps" t-value="this.getFilteredEmployees()"/>
+                                            <t t-if="filteredEmps.length === 0">
+                                                <tr>
+                                                    <td t-att-colspan="2 + (state.allCompanies.length || 1)" class="text-center py-4 text-muted">
+                                                        <i class="fa fa-user-slash fa-2x mb-2 d-block text-secondary"/>
+                                                        No se han encontrado empleados que coincidan con la búsqueda.
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                            <t t-foreach="filteredEmps" t-as="emp" t-key="emp.odoo_user_id">
+                                                <tr>
+                                                    <td class="ps-3 py-2">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                                                                 t-att-style="'width: 34px; height: 34px; font-size: 12px; background: ' + (emp.avatar_gradient || '#2563eb') + ';'">
+                                                                <t t-esc="emp.initials || 'EM'"/>
+                                                            </div>
+                                                            <div>
+                                                                <div class="fw-semibold text-dark"><t t-esc="emp.name"/></div>
+                                                                <div class="text-muted small" style="font-size: 0.78rem;"><t t-esc="emp.email"/></div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="py-2">
+                                                        <span class="badge bg-light text-dark border"><i class="fa fa-id-card-o me-1"/> <t t-esc="emp.dni || '-'"/></span>
+                                                        <span class="badge bg-secondary-subtle text-secondary ms-1">#<t t-esc="emp.code"/></span>
+                                                    </td>
+                                                    <t t-foreach="state.allCompanies" t-as="comp" t-key="comp.id">
+                                                        <td class="text-center py-2">
+                                                            <div class="form-check form-switch d-inline-block">
+                                                                <input class="form-check-input cursor-pointer" 
+                                                                       type="checkbox" 
+                                                                       role="switch"
+                                                                       t-att-id="'switch_' + emp.odoo_user_id + '_' + comp.id"
+                                                                       t-att-checked="emp.company_ids.includes(comp.id)"
+                                                                       t-att-disabled="state.updatingUserId === emp.odoo_user_id"
+                                                                       t-on-change="(ev) => this.toggleCompanyAccess(emp, comp.id, ev.target.checked)"/>
+                                                            </div>
+                                                        </td>
+                                                    </t>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between align-items-center">
+                                <div class="small text-muted d-flex align-items-center gap-2">
+                                    <i class="fa fa-check-circle text-success"/>
+                                    <span>Asignación multi-empresa activa: el empleado aparecerá en el inicio de turno de las gasolineras correspondientes.</span>
+                                </div>
+                                <button type="button" class="btn btn-secondary px-4 fw-semibold" t-on-click="() => this.closeEmployeesModal()">
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
     </t>
 </templates>

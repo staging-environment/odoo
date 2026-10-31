@@ -24,7 +24,16 @@ export class GasStationDashboard extends Component {
                 total_companies: 0,
                 total_stations: 0,
                 total_open_sessions: 0
-            }
+            },
+            // Modal de asignación de empleados por empresa
+            showEmployeesModal: false,
+            selectedCompany: null,
+            companyEmployees: [],
+            allCompanies: [],
+            searchTerm: "",
+            filterAssignedOnly: false,
+            updatingUserId: null,
+            modalLoading: false,
         });
 
         onMounted(() => {
@@ -71,6 +80,94 @@ export class GasStationDashboard extends Component {
 
     selectEmployeeForStation(stationId) {
         window.location.href = `/pos_gas_station/select_employee?station_id=${stationId}`;
+    }
+
+    async openCompanyEmployees(comp) {
+        this.state.selectedCompany = comp;
+        this.state.showEmployeesModal = true;
+        this.state.modalLoading = true;
+        this.state.searchTerm = "";
+        this.state.filterAssignedOnly = false;
+        try {
+            const data = await jsonrpc("/pos_gas_station/company_employees_data", {
+                company_id: comp.id
+            });
+            if (data.status === "success") {
+                this.state.allCompanies = data.companies;
+                this.state.companyEmployees = data.employees;
+            }
+        } catch (e) {
+            console.error("Error loading company employees:", e);
+            this.notification.add("Error al cargar listado de empleados", { type: "danger" });
+        } finally {
+            this.state.modalLoading = false;
+        }
+    }
+
+    closeEmployeesModal() {
+        this.state.showEmployeesModal = false;
+        this.loadDashboardData();
+    }
+
+    onSearchInput(ev) {
+        this.state.searchTerm = (ev.target.value || "").toLowerCase();
+    }
+
+    clearSearch() {
+        this.state.searchTerm = "";
+    }
+
+    setFilter(assignedOnly) {
+        this.state.filterAssignedOnly = assignedOnly;
+    }
+
+    getAssignedCount() {
+        if (!this.state.selectedCompany) return 0;
+        const compId = this.state.selectedCompany.id;
+        return (this.state.companyEmployees || []).filter(e => e.company_ids.includes(compId)).length;
+    }
+
+    getFilteredEmployees() {
+        let list = this.state.companyEmployees || [];
+        if (this.state.filterAssignedOnly && this.state.selectedCompany) {
+            const compId = this.state.selectedCompany.id;
+            list = list.filter(e => e.company_ids.includes(compId));
+        }
+        if (this.state.searchTerm) {
+            const q = this.state.searchTerm.trim().toLowerCase();
+            list = list.filter(e => {
+                const nameMatch = (e.name || "").toLowerCase().includes(q);
+                const dniMatch = (e.dni || "").toLowerCase().includes(q);
+                const codeMatch = String(e.code || "").toLowerCase().includes(q);
+                return nameMatch || dniMatch || codeMatch;
+            });
+        }
+        return list;
+    }
+
+    async toggleCompanyAccess(emp, compId, assigned) {
+        this.state.updatingUserId = emp.odoo_user_id;
+        try {
+            const res = await jsonrpc("/pos_gas_station/toggle_employee_company_access", {
+                user_id: emp.odoo_user_id,
+                company_id: compId,
+                assigned: assigned
+            });
+            if (res.status === "success") {
+                emp.company_ids = res.company_ids;
+                this.notification.add(res.message, { type: "success" });
+            } else if (res.status === "warning") {
+                this.notification.add(res.message, { type: "warning" });
+                emp.company_ids = res.company_ids || emp.company_ids;
+            } else {
+                this.notification.add(res.message || "Error al actualizar permisos", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error toggling company access:", e);
+            this.notification.add("Error de conexión al actualizar permisos", { type: "danger" });
+        } finally {
+            this.state.updatingUserId = null;
+        }
     }
 
     openCompany(companyId) {
