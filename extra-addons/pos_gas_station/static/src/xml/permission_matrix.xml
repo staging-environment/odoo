@@ -68,13 +68,8 @@
                                 <th class="col-permission-header">PERMISO</th>
                                 <t t-foreach="state.roles" t-as="role" t-key="role.id">
                                     <th class="col-role-header">
-                                        <div class="role-header-content">
-                                            <span class="role-title-text"><t t-esc="role.name"/></span>
-                                            <button class="btn-role-users-tag" 
-                                                    t-on-click="() => this.openUserAssign(role)"
-                                                    title="Gestionar usuarios asignados a este rol">
-                                                <i class="fa fa-users me-1"/> <t t-esc="role.user_count"/> usuarios
-                                            </button>
+                                        <div class="role-header-content py-2">
+                                            <span class="role-title-text fw-bold fs-6"><t t-esc="role.name"/></span>
                                         </div>
                                     </th>
                                 </t>

@@ -36,7 +36,7 @@
 
                 <!-- KPI CARDS SUMMARY -->
                 <div class="row g-3 mt-3">
-                    <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="col-12 col-sm-6 col-xl">
                         <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
                             <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">
                                 <i class="fa fa-users fs-3"></i>
@@ -48,38 +48,50 @@
                         </div>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="col-12 col-sm-6 col-xl">
                         <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
-                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #059669, #047857);">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #1d4ed8, #1e40af);">
                                 <i class="fa fa-building fs-3"></i>
                             </div>
                             <div>
-                                <span class="text-muted small fw-semibold d-block">Personal en A.R. Trieste</span>
+                                <span class="text-muted small fw-semibold d-block">En A.R. Trieste</span>
                                 <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.trieste_count || 0"/></h3>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="col-12 col-sm-6 col-xl">
                         <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
-                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #d97706, #b45309);">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #b45309, #92400e);">
                                 <i class="fa fa-building-o fs-3"></i>
                             </div>
                             <div>
-                                <span class="text-muted small fw-semibold d-block">Personal en Utrecar S.L.</span>
+                                <span class="text-muted small fw-semibold d-block">En Utrecar S.L.</span>
                                 <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.utrecar_count || 0"/></h3>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="col-12 col-sm-6 col-xl">
                         <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
                             <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #7c3aed, #6d28d9);">
                                 <i class="fa fa-exchange fs-3"></i>
                             </div>
                             <div>
-                                <span class="text-muted small fw-semibold d-block">Personal Multi-Empresa</span>
+                                <span class="text-muted small fw-semibold d-block">Multi-Empresa</span>
                                 <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.multi_count || 0"/></h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #dc2626, #991b1b);">
+                                <i class="fa fa-user-times fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Sin Asignación</span>
+                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.none_count || 0"/></h3>
                             </div>
                         </div>
                     </div>
@@ -127,6 +139,11 @@
                                 t-on-click="() => this.setCompanyFilter('multi')">
                             Multi-Empresa
                         </button>
+                        <button type="button"
+                                t-attf-class="btn #{state.filterCompany === 'none' ? 'btn-danger' : 'btn-outline-secondary'}"
+                                t-on-click="() => this.setCompanyFilter('none')">
+                            Sin Asignación
+                        </button>
                     </div>
 
                     <!-- FILTRO POR ROL -->
@@ -159,23 +176,23 @@
                                     <th style="min-width: 140px;">Identificación</th>
                                     
                                     <!-- COLUMNA A.R. TRIESTE -->
-                                    <th style="min-width: 320px;" class="border-start bg-blue-subtle text-center">
-                                        <div class="d-flex align-items-center justify-content-center gap-2">
-                                            <span class="badge bg-primary fs-6 px-3 py-1">
-                                                <i class="fa fa-building me-1"/> A.R. Trieste
+                                    <th style="min-width: 320px;" class="company-header-trieste text-center py-3">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <span class="badge-company-trieste">
+                                                <i class="fa fa-building me-1"/> A.R. TRIESTE
                                             </span>
                                         </div>
-                                        <span class="text-muted small font-monospace d-block mt-1">E.S. Repsol (Pista)</span>
+                                        <span class="text-secondary small fw-semibold font-monospace d-block mt-1">Estación: E.S. Repsol (Pista)</span>
                                     </th>
 
                                     <!-- COLUMNA UTRECAR S.L. -->
-                                    <th style="min-width: 320px;" class="border-start bg-warning-subtle text-center">
-                                        <div class="d-flex align-items-center justify-content-center gap-2">
-                                            <span class="badge bg-dark fs-6 px-3 py-1">
-                                                <i class="fa fa-building-o me-1"/> Utrecar S.L.
+                                    <th style="min-width: 320px;" class="company-header-utrecar text-center py-3">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <span class="badge-company-utrecar">
+                                                <i class="fa fa-building-o me-1"/> UTRECAR S.L.
                                             </span>
                                         </div>
-                                        <span class="text-muted small font-monospace d-block mt-1">Vistalegre, Ronda Norte, etc.</span>
+                                        <span class="text-secondary small fw-semibold font-monospace d-block mt-1">Estaciones: Vistalegre, Ronda Norte, etc.</span>
                                     </th>
                                 </tr>
                             </thead>
@@ -200,7 +217,12 @@
 
                                         <!-- NOMBRE Y CORREO -->
                                         <td>
-                                            <div class="fw-bold text-dark fs-6"><t t-esc="u.name"/></div>
+                                            <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-2">
+                                                <t t-esc="u.name"/>
+                                                <span t-if="u.active_company_count === 0" class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style="font-size: 0.72rem;">
+                                                    <i class="fa fa-ban me-1"/> Sin empresa (Inactivo)
+                                                </span>
+                                            </div>
                                             <div class="text-muted small"><t t-esc="u.email"/></div>
                                         </td>
 
@@ -244,10 +266,10 @@
                                             </div>
 
                                             <div class="mt-1 small">
-                                                <span t-if="accTrieste and accTrieste.active" class="badge bg-success-subtle text-success">
+                                                <span t-if="accTrieste and accTrieste.active" class="status-badge-active-trieste">
                                                     <i class="fa fa-check me-1"/> Autorizado en Trieste
                                                 </span>
-                                                <span t-else="" class="text-muted small">
+                                                <span t-else="" class="status-badge-inactive">
                                                     <i class="fa fa-ban me-1"/> Sin acceso
                                                 </span>
                                             </div>
@@ -285,10 +307,10 @@
                                             </div>
 
                                             <div class="mt-1 small">
-                                                <span t-if="accUtrecar and accUtrecar.active" class="badge bg-dark-subtle text-dark">
+                                                <span t-if="accUtrecar and accUtrecar.active" class="status-badge-active-utrecar">
                                                     <i class="fa fa-check me-1"/> Autorizado en Utrecar
                                                 </span>
-                                                <span t-else="" class="text-muted small">
+                                                <span t-else="" class="status-badge-inactive">
                                                     <i class="fa fa-ban me-1"/> Sin acceso
                                                 </span>
                                             </div>

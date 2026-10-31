@@ -35,6 +35,7 @@
             'pos_gas_station/static/src/xml/permission_matrix.xml',
             'pos_gas_station/static/src/css/gas_station_dashboard.css',
             'pos_gas_station/static/src/js/gas_station_dashboard.js',
+            'pos_gas_station/static/src/css/employee_company_roles.css',
             'pos_gas_station/static/src/js/employee_company_roles.js',
             'pos_gas_station/static/src/xml/gas_station_dashboard.xml',
             'pos_gas_station/static/src/xml/employee_company_roles.xml',

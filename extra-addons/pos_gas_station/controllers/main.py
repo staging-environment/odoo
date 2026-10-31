@@ -2429,6 +2429,7 @@ class PosGasStationController(http.Controller):
                 'trieste_count': trieste_count,
                 'utrecar_count': utrecar_count,
                 'multi_count': multi_count,
+                'none_count': sum(1 for u in users_data if u['active_company_count'] == 0),
             }
         }
 
@@ -2457,25 +2458,19 @@ class PosGasStationController(http.Controller):
         vals = {}
         if active is not None:
             new_active = bool(active)
+            vals['active_access'] = new_active
+            # Permitir desactivar el acceso en todas las empresas
             if not new_active:
-                # Evitar dejar al usuario sin ninguna empresa asignada en Odoo
-                active_accesses = Access.search([
-                    ('user_id', '=', user.id),
-                    ('active_access', '=', True),
-                    ('company_id', '!=', cid)
-                ])
-                if not active_accesses:
-                    return {
-                        'status': 'warning',
-                        'message': f'{user.name} debe pertenecer al menos a una empresa.',
-                        'active': True
-                    }
-                # Desactivar en Odoo
-                vals['active_access'] = False
-                user.write({'company_ids': [(3, cid)]})
+                if len(user.company_ids) > 1 and cid in user.company_ids.ids:
+                    try:
+                        user.write({'company_ids': [(3, cid)]})
+                    except Exception:
+                        pass
             else:
-                vals['active_access'] = True
-                user.write({'company_ids': [(4, cid)]})
+                try:
+                    user.write({'company_ids': [(4, cid)]})
+                except Exception:
+                    pass
 
         if role_id is not None:
             vals['role_id'] = int(role_id) if role_id else False

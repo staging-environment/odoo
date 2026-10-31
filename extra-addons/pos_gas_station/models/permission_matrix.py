@@ -245,14 +245,15 @@ class ResUsers(models.Model):
         return access.role_id if access else False
 
     def is_employee_for_company(self, company_id):
+        """Verifica si el usuario está activo en la empresa y tiene asignado el rol EMPLEADO para esa empresa."""
         self.ensure_one()
-        role = self.get_company_role(company_id)
-        role_emp = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
-        if role and role_emp and role.id == role_emp.id:
-            return True
-        # Fallback de compatibilidad
-        if role_emp and (role_emp in self.utrecar_role_ids or self.utrecar_role_id == role_emp):
-            return company_id in self.company_ids.ids
+        access = self.company_access_ids.filtered(lambda a: a.company_id.id == company_id)
+        if access:
+            # Si existe registro para la empresa, respetar estrictamente el switch de activo
+            if not access[0].active_access:
+                return False
+            role_emp = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+            return bool(role_emp and access[0].role_id and access[0].role_id.id == role_emp.id)
         return False
 
 

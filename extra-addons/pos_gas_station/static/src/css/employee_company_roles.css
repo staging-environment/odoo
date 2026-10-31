@@ -1,0 +1,94 @@
+/* ==========================================================================
+   PERSONAL, EMPRESAS Y ROLES - GESTIÓN MULTI-EMPRESA UTRECAR
+   ========================================================================== */
+
+/* Habilitar scroll completo en el contenedor de acción de Odoo 17 */
+.o_content:has(.emp-roles-page),
+.o_client_action:has(.emp-roles-page),
+.o_action_manager:has(.emp-roles-page) {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+.emp-roles-page {
+    min-height: 100% !important;
+    background-color: #f8fafc !important;
+    padding-bottom: 90px !important;
+    box-sizing: border-box !important;
+}
+
+/* Cabeceras de empresas: Alta legibilidad y contraste profesional */
+.company-header-trieste {
+    background-color: #f0f7ff !important;
+    border-left: 2px solid #93c5fd !important;
+}
+
+.badge-company-trieste {
+    background-color: #1d4ed8 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 0.9rem !important;
+    padding: 6px 16px !important;
+    border-radius: 6px !important;
+    letter-spacing: 0.5px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    box-shadow: 0 2px 4px rgba(29, 78, 216, 0.25) !important;
+}
+
+.company-header-utrecar {
+    background-color: #fffbeb !important;
+    border-left: 2px solid #fcd34d !important;
+}
+
+.badge-company-utrecar {
+    background-color: #b45309 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 0.9rem !important;
+    padding: 6px 16px !important;
+    border-radius: 6px !important;
+    letter-spacing: 0.5px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    box-shadow: 0 2px 4px rgba(180, 83, 9, 0.25) !important;
+}
+
+/* Badges de estado de acceso */
+.status-badge-active-trieste {
+    background-color: #ecfdf5 !important;
+    color: #047857 !important;
+    font-weight: 600 !important;
+    font-size: 0.78rem !important;
+    padding: 3px 8px !important;
+    border-radius: 4px !important;
+    border: 1px solid #a7f3d0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.status-badge-active-utrecar {
+    background-color: #fefce8 !important;
+    color: #854d0e !important;
+    font-weight: 600 !important;
+    font-size: 0.78rem !important;
+    padding: 3px 8px !important;
+    border-radius: 4px !important;
+    border: 1px solid #fef08a !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.status-badge-inactive {
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+    font-weight: 500 !important;
+    font-size: 0.78rem !important;
+    padding: 3px 8px !important;
+    border-radius: 4px !important;
+    border: 1px solid #e2e8f0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}

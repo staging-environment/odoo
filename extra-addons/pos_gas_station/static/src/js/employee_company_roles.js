@@ -64,6 +64,8 @@ export class EmployeeCompanyRolesView extends Component {
             list = list.filter(u => u.company_access && u.company_access[1] && u.company_access[1].active);
         } else if (this.state.filterCompany === "multi") {
             list = list.filter(u => u.active_company_count > 1);
+        } else if (this.state.filterCompany === "none") {
+            list = list.filter(u => u.active_company_count === 0);
         }
 
         // Filtro por rol
