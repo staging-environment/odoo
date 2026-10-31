@@ -1312,8 +1312,8 @@ class PosGasStationController(http.Controller):
             if not odoo_u:
                 continue
 
-            # Excluir administradores
-            if odoo_u._is_admin() or odoo_u.has_group('base.group_erp_manager') or odoo_u.has_group('base.group_system'):
+            # Excluir super administradores del sistema (IDs 1 y 2)
+            if odoo_u.id in [1, 2] or odoo_u.login in ['__system__', 'jarodriguezbonilla@gmail.com']:
                 continue
 
             # Excluir si no tiene rol empleado

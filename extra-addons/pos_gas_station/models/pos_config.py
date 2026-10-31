@@ -197,8 +197,8 @@ class PosConfig(models.Model):
                     if not odoo_u:
                         continue
 
-                    # NUNCA usuarios administradores en el TPV de pista
-                    if odoo_u._is_admin() or odoo_u.has_group('base.group_erp_manager') or odoo_u.has_group('base.group_system'):
+                    # NUNCA super administradores del sistema en el TPV de pista
+                    if odoo_u.id in [1, 2] or odoo_u.login in ['__system__', 'jarodriguezbonilla@gmail.com']:
                         continue
 
                     # Solo usuarios con rol empleado en Odoo

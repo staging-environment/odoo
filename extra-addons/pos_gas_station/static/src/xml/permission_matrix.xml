@@ -131,8 +131,16 @@
                             <button class="btn-close-modal" t-on-click="() => this.closeUserAssign()">✖</button>
                         </div>
                         <div class="assign-modal-body">
+                            <div class="p-2 border-bottom mb-2 bg-light rounded d-flex align-items-center gap-2">
+                                <i class="fa fa-search text-muted ms-1"/>
+                                <input type="text" 
+                                       class="form-control form-control-sm border-0 bg-transparent shadow-none" 
+                                       placeholder="Buscar usuario por nombre o correo (ej. Angel David)..." 
+                                       t-model="state.assignModalSearch"/>
+                                <button t-if="state.assignModalSearch" class="btn btn-sm text-muted p-0 me-1" t-on-click="() => state.assignModalSearch = ''">✖</button>
+                            </div>
                             <div class="users-list-scroll">
-                                <t t-foreach="state.users" t-as="u" t-key="u.id">
+                                <t t-foreach="filteredAssignUsers" t-as="u" t-key="u.id">
                                     <div class="user-card-item">
                                         <div class="user-item-row" t-on-click="() => this.toggleUserRole(u, state.assignModalRole.id)">
                                             <div class="user-info">

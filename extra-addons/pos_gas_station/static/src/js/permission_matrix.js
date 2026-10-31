@@ -23,6 +23,7 @@ export class UtrecarPermissionMatrix extends Component {
             searchTerm: "",
             selectedCategoryFilter: "all",
             showUserAssignModal: false,
+            assignModalSearch: "",
             assignModalRole: null,
             savingCell: null
         });
@@ -111,6 +112,17 @@ export class UtrecarPermissionMatrix extends Component {
                 return { ...cat, permissions: perms };
             })
             .filter(cat => cat.permissions.length > 0);
+    }
+
+        get filteredAssignUsers() {
+        if (!this.state.assignModalSearch) {
+            return this.state.users;
+        }
+        const term = this.state.assignModalSearch.toLowerCase().trim();
+        return this.state.users.filter(u => 
+            (u.name || "").toLowerCase().includes(term) || 
+            (u.login || "").toLowerCase().includes(term)
+        );
     }
 
     openUserAssign(role) {

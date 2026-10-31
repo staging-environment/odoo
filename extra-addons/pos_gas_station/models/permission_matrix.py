@@ -254,17 +254,44 @@ class ResUsers(models.Model):
 
     def _sync_utrecar_role_groups(self):
         for user in self:
+            # Nunca alterar super administradores del sistema (ID 1 y ID 2)
+            if user.id in [1, 2] or user.login in ['__system__', 'jarodriguezbonilla@gmail.com']:
+                continue
             if not user.utrecar_role_id:
                 continue
-            role_code = user.utrecar_role_id.code
-            group_xmlids = ROLE_DEFAULT_GROUPS.get(role_code, [])
-            groups_to_add = []
-            for xmlid in group_xmlids:
-                grp = self.env.ref(xmlid, raise_if_not_found=False)
-                if grp:
-                    groups_to_add.append(grp.id)
-            if groups_to_add:
-                user.sudo().write({'groups_id': [(4, gid) for gid in groups_to_add]})
+            role_code = (user.utrecar_role_id.code or '').lower()
+
+            admin_groups = [
+                self.env.ref('base.group_erp_manager', raise_if_not_found=False),
+                self.env.ref('base.group_system', raise_if_not_found=False),
+                self.env.ref('point_of_sale.group_pos_manager', raise_if_not_found=False),
+            ]
+            admin_group_ids = [g.id for g in admin_groups if g]
+
+            if role_code in ['employee', 'empleado']:
+                # Retirar privilegios administrativos y asegurar rol de cajero TPV
+                commands = [(3, gid) for gid in admin_group_ids if gid in user.groups_id.ids]
+                pos_user = self.env.ref('point_of_sale.group_pos_user', raise_if_not_found=False)
+                if pos_user and pos_user.id not in user.groups_id.ids:
+                    commands.append((4, pos_user.id))
+                if commands:
+                    user.sudo().write({'groups_id': commands})
+            elif role_code in ['manager', 'gestor']:
+                erp_groups = [
+                    self.env.ref('base.group_erp_manager', raise_if_not_found=False),
+                    self.env.ref('base.group_system', raise_if_not_found=False),
+                ]
+                commands = [(3, g.id) for g in erp_groups if g and g.id in user.groups_id.ids]
+                pos_mgr = self.env.ref('point_of_sale.group_pos_manager', raise_if_not_found=False)
+                if pos_mgr and pos_mgr.id not in user.groups_id.ids:
+                    commands.append((4, pos_mgr.id))
+                if commands:
+                    user.sudo().write({'groups_id': commands})
+            elif role_code == 'ceo':
+                for xmlid in ['base.group_system', 'base.group_erp_manager', 'point_of_sale.group_pos_manager']:
+                    grp = self.env.ref(xmlid, raise_if_not_found=False)
+                    if grp and grp.id not in user.groups_id.ids:
+                        user.sudo().write({'groups_id': [(4, grp.id)]})
 
     @api.model_create_multi
     def create(self, vals_list):
