@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Utrecar AI Sales SDR - Demo Agente Comercial B2B</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="brand-section">
+        <div class="brand-logo">
+          <span class="logo-icon">⚡</span>
+          <div class="logo-text">
+            <h1>UTRECAR <span class="highlight">AI SDR</span></h1>
+            <p class="tagline">Agente Autónomo de Ventas B2B • Control Horario & Gestión de Equipos</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="header-badges">
+        <div class="status-pill active">
+          <span class="pulsing-dot"></span>
+          <span>Motor IA Conectado (LLM Commercial Engine)</span>
+        </div>
+        <div class="status-pill odoo">
+          <span class="odoo-icon">🟣</span>
+          <span>Odoo 17 CRM Sincronizado</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPI Summary Bar -->
+    <section class="kpi-banner">
+      <div class="kpi-card">
+        <div class="kpi-icon blue">🎯</div>
+        <div class="kpi-info">
+          <span class="kpi-title">Prospectos Cualificados</span>
+          <span class="kpi-value" id="kpi-prospects">148</span>
+          <span class="kpi-change positive">+24 hoy</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon cyan">✉️</div>
+        <div class="kpi-info">
+          <span class="kpi-title">Mensajes Enviados</span>
+          <span class="kpi-value" id="kpi-sent">122</span>
+          <span class="kpi-change positive">82% entrega limpia</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon purple">💬</div>
+        <div class="kpi-info">
+          <span class="kpi-title">Tasa de Respuesta</span>
+          <span class="kpi-value" id="kpi-replies">31.4%</span>
+          <span class="kpi-change positive">38 respuestas B2B</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon green">📅</div>
+        <div class="kpi-info">
+          <span class="kpi-title">Demos & Pruebas Cerradas</span>
+          <span class="kpi-value" id="kpi-demos">14</span>
+          <span class="kpi-change positive">9.8% ratio de conversión</span>
+        </div>
+      </div>
+      <div class="kpi-card highlight-card">
+        <div class="kpi-icon gold">💶</div>
+        <div class="kpi-info">
+          <span class="kpi-title">MRR Potencial Generado</span>
+          <span class="kpi-value" id="kpi-pipeline">1.940 €/mes</span>
+          <span class="kpi-change positive">23.280 € ARR anual</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" id="main-nav">
+      <button class="nav-tab active" data-tab="tab-pipeline" id="tab-btn-pipeline">
+        <span class="tab-icon">⚡</span>
+        <span>1. Prospección & Redacción IA</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-inbox" id="tab-btn-inbox">
+        <span class="tab-icon">💬</span>
+        <span>2. Simulador de Respuestas & Objeciones</span>
+        <span class="tab-badge" id="inbox-badge">3</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-odoo" id="tab-btn-odoo">
+        <span class="tab-icon">🟣</span>
+        <span>3. Integración Odoo 17 CRM</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-roi" id="tab-btn-roi">
+        <span class="tab-icon">📈</span>
+        <span>4. Calculadora ROI para Clientes</span>
+      </button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="content-container">
+
+      <!-- TAB 1: PIPELINE DE PROSPECCIÓN & REDACCIÓN -->
+      <section class="tab-pane active" id="tab-pipeline">
+        <div class="grid-2col">
+          <!-- Left: Prospect Selection & Analysis -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title-wrap">
+                <span class="step-num">Paso 1</span>
+                <h2>Selección de Prospecto B2B</h2>
+              </div>
+              <span class="badge-subtle">Base de Datos & Scraping</span>
+            </div>
+
+            <p class="panel-desc">Elige una empresa de prueba o escribe los datos de una empresa real para que el agente la analice y construya la estrategia comercial.</p>
+
+            <!-- Preset Companies -->
+            <div class="company-presets">
+              <label class="input-label">Casos por sector de alto impacto en Andalucía:</label>
+              <div class="preset-cards">
+                <div class="preset-card active" data-company="clima">
+                  <div class="preset-badge">Instalaciones & Obras</div>
+                  <h4>Climatizaciones Guadalquivir SL</h4>
+                  <p class="preset-meta">Sevilla • 28 empleados (técnicos en furgonetas)</p>
+                  <span class="pain-tag">Dolor: Fichaje en movilidad & horas extras</span>
+                </div>
+
+                <div class="preset-card" data-company="gastro">
+                  <div class="preset-badge">Hostelería</div>
+                  <h4>Grupo Restauración Al-Andalus</h4>
+                  <p class="preset-meta">Sevilla & Aljarafe • 52 empleados (camareros/cocina)</p>
+                  <span class="pain-tag">Dolor: Turnos rotativos & inspección laboral</span>
+                </div>
+
+                <div class="preset-card" data-company="logistica">
+                  <div class="preset-badge">Transporte & Reparto</div>
+                  <h4>Trans-Utrera Distribuciones</h4>
+                  <p class="preset-meta">Utrera • 19 repartidores (flota ligera)</p>
+                  <span class="pain-tag">Dolor: Geolocalización & cómputo legal de jornada</span>
+                </div>
+
+                <div class="preset-card" data-company="asesoria">
+                  <div class="preset-badge">Canal Asesoría / Partner</div>
+                  <h4>Gestoría & Asesoría Laboral Triana</h4>
+                  <p class="preset-meta">Sevilla • 14 asesores + 180 pymes clientes</p>
+                  <span class="pain-tag">Oportunidad: Canal de prescripción a sus pymes</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Custom Company Form Toggle -->
+            <details class="custom-company-details">
+              <summary>✏️ O probar con otra empresa personalizada...</summary>
+              <div class="custom-form-grid">
+                <div class="form-group">
+                  <label>Nombre de la Empresa:</label>
+                  <input type="text" id="custom-name" value="Talleres Mecánicos y Grúas Sur" placeholder="Ej: Talleres Mecánicos Gómez">
+                </div>
+                <div class="form-group">
+                  <label>Sector / Actividad:</label>
+                  <input type="text" id="custom-sector" value="Automoción y auxilio en carretera" placeholder="Ej: Clínica Dental, Fábrica...">
+                </div>
+                <div class="form-group">
+                  <label>Empleados estimados:</label>
+                  <input type="number" id="custom-employees" value="22" min="5" max="500">
+                </div>
+                <div class="form-group">
+                  <label>Ubicación:</label>
+                  <input type="text" id="custom-city" value="Sevilla / Dos Hermanas">
+                </div>
+                <button type="button" class="btn-secondary" id="btn-apply-custom">Cargar Datos</button>
+              </div>
+            </details>
+
+            <!-- Action Button -->
+            <div class="action-btn-area">
+              <button class="btn-primary" id="btn-run-agent">
+                <span class="btn-icon">⚡</span>
+                <span>Analizar con IA y Generar Propuesta</span>
+              </button>
+            </div>
+
+            <!-- Scan Animation Box -->
+            <div class="scan-box" id="scan-box" style="display: none;">
+              <div class="scan-header">
+                <span class="radar-spinner"></span>
+                <span id="scan-status-text">Analizando web corporativa y perfiles públicos...</span>
+              </div>
+              <div class="scan-steps">
+                <div class="scan-step" id="scan-step-1">1. Extracción de datos web, ubicación y actividad principal...</div>
+                <div class="scan-step" id="scan-step-2">2. Identificación del responsable de operaciones / RRHH...</div>
+                <div class="scan-step" id="scan-step-3">3. Detección de riesgos normativos (Inspección de Trabajo / Registro diario)...</div>
+                <div class="scan-step" id="scan-step-4">4. Adaptación del gancho de valor de Utrecar Control Horario...</div>
+              </div>
+            </div>
+
+            <!-- Target Profile Card (Visible after scan) -->
+            <div class="profile-card" id="target-profile-card">
+              <div class="profile-header">
+                <div class="avatar-ph">🏢</div>
+                <div>
+                  <h3 id="prof-company">Climatizaciones Guadalquivir SL</h3>
+                  <p id="prof-decisor"><strong>Decisor detectado:</strong> Manuel Rivas • Director de Operaciones</p>
+                </div>
+              </div>
+              <div class="profile-chips">
+                <span class="chip" id="prof-chip-sector">Sector: Climatización / SAT</span>
+                <span class="chip" id="prof-chip-emp">Plantilla: ~28 operarios</span>
+                <span class="chip">Canal prioritario: Email + WhatsApp B2B</span>
+                <span class="chip highlight">Riesgo ITSS: Alto (personal en calle)</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right: Realtime Generated Message -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title-wrap">
+                <span class="step-num">Paso 2</span>
+                <h2>Generación del Mensaje por la IA</h2>
+              </div>
+              <!-- Channel Selector -->
+              <div class="channel-toggle">
+                <button class="toggle-btn active" data-channel="email" id="btn-chan-email">
+                  <span>✉️ Email Frío</span>
+                </button>
+                <button class="toggle-btn" data-channel="whatsapp" id="btn-chan-wa">
+                  <span>📱 WhatsApp B2B</span>
+                </button>
+              </div>
+            </div>
+
+            <p class="panel-desc">El LLM redacta un mensaje hiperpersonalizado evitando plantillas genéricas. Se enfoca en resolver su dolor específico y ofrecer una prueba o demo de 10 min.</p>
+
+            <!-- Quality Badges -->
+            <div class="copy-metrics">
+              <div class="metric-pill">
+                <span>🎯 Nivel Personalización:</span>
+                <strong>98%</strong>
+              </div>
+              <div class="metric-pill">
+                <span>⚖️ Argumento Legal:</span>
+                <strong>RD-ley 8/2019 + Trazabilidad</strong>
+              </div>
+              <div class="metric-pill">
+                <span>📈 Apertura Estimada:</span>
+                <strong class="text-green">76%</strong>
+              </div>
+            </div>
+
+            <!-- Preview Card (Email View) -->
+            <div class="message-preview-container email-mode" id="message-container">
+              <!-- Email Header Meta -->
+              <div class="email-meta" id="email-meta-block">
+                <div class="meta-row">
+                  <span class="meta-label">De:</span>
+                  <span class="meta-val">Utrecar Soluciones Digitales &lt;comercial@utrecar.com&gt;</span>
+                </div>
+                <div class="meta-row">
+                  <span class="meta-label">Para:</span>
+                  <span class="meta-val" id="email-to-val">manuel.rivas@climagualdaquivir.es (Manuel Rivas)</span>
+                </div>
+                <div class="meta-row">
+                  <span class="meta-label">Asunto:</span>
+                  <span class="meta-val subject" id="email-subject-val">Control horario y partes de trabajo de Climatizaciones Guadalquivir (evitar sanciones ITSS)</span>
+                </div>
+              </div>
+
+              <!-- Message Body with Typewriter Effect -->
+              <div class="message-body" id="message-body-text">
+                Haz clic en "Analizar con IA y Generar Propuesta" para ver la redacción del agente en tiempo real...
+              </div>
+
+              <!-- Attachment / Offer banner -->
+              <div class="message-footer-cta">
+                <div class="cta-badge">🎁 Propuesta de Valor:</div>
+                <span>14 días de prueba sin compromiso + Configuración gratuita de turnos en 24h.</span>
+              </div>
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="message-actions">
+              <button class="btn-outline" id="btn-copy-msg">
+                <span>📋 Copiar Texto</span>
+              </button>
+              <button class="btn-success" id="btn-send-sim">
+                <span>🚀 Simular Envío y Ver Respuesta</span>
+              </button>
+            </div>
+            
+            <div class="simulation-alert" id="sim-alert" style="display: none;">
+              ✅ <strong>Mensaje despachado con éxito.</strong> El cliente ha abierto el correo y ha respondido interesándose. Haz clic en la pestaña <strong>2. Simulador de Respuestas</strong> para interactuar en el chat.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: SIMULADOR DE RESPUESTAS & MANEJO DE OBJECIONES -->
+      <section class="tab-pane" id="tab-inbox">
+        <div class="inbox-layout">
+          <!-- Sidebar: Prospects Conversations -->
+          <div class="inbox-sidebar">
+            <div class="sidebar-search">
+              <input type="text" placeholder="Bandeja de entrada comercial..." readonly>
+            </div>
+            <div class="chat-threads-list">
+              <div class="thread-item active" data-thread="clima">
+                <div class="thread-avatar">CR</div>
+                <div class="thread-info">
+                  <div class="thread-top">
+                    <span class="thread-name">Manuel Rivas (Clima)</span>
+                    <span class="thread-time">Ahora</span>
+                  </div>
+                  <p class="thread-snippet">"¿Cuánto nos costaría para 28 operarios?"</p>
+                  <span class="intent-tag interest">Interés Alto</span>
+                </div>
+              </div>
+
+              <div class="thread-item" data-thread="gastro">
+                <div class="thread-avatar">AL</div>
+                <div class="thread-info">
+                  <div class="thread-top">
+                    <span class="thread-name">Elena Vega (Al-Andalus)</span>
+                    <span class="thread-time">Hace 18 min</span>
+                  </div>
+                  <p class="thread-snippet">"¿Cómo gestionáis turnos partidos en hostelería?"</p>
+                  <span class="intent-tag doubts">Duda Operativa</span>
+                </div>
+              </div>
+
+              <div class="thread-item" data-thread="logistica">
+                <div class="thread-avatar">TU</div>
+                <div class="thread-info">
+                  <div class="thread-top">
+                    <span class="thread-name">Joaquín B. (Trans-Utrera)</span>
+                    <span class="thread-time">Hace 1 h</span>
+                  </div>
+                  <p class="thread-snippet">"¿Fichan por GPS o cómo es?"</p>
+                  <span class="intent-tag tech">Duda Técnica</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Chat Window -->
+          <div class="chat-main">
+            <!-- Chat Header -->
+            <div class="chat-header">
+              <div class="chat-lead-info">
+                <div class="chat-avatar-lg" id="chat-header-avatar">CR</div>
+                <div>
+                  <h3 id="chat-title">Manuel Rivas • Director de Operaciones</h3>
+                  <p id="chat-subtitle">Climatizaciones Guadalquivir SL • 28 empleados • Sevilla</p>
+                </div>
+              </div>
+              <div class="chat-actions">
+                <button class="btn-odoo-action" id="btn-push-odoo-chat">
+                  <span>🟣 Ver Oportunidad en Odoo 17</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Chat Message Feed -->
+            <div class="chat-feed" id="chat-messages-container">
+              <!-- AI Initial message -->
+              <div class="chat-msg ai-msg">
+                <div class="msg-bubble">
+                  <div class="msg-author">Agente IA Utrecar (Outbound)</div>
+                  <p>Hola Manuel, te escribía porque con 28 técnicos en ruta, sabemos lo complicado que es el registro diario de jornada y partes de trabajo. Nuestra app permite fichar en 2 segundos desde el móvil con geolocalización o tablet en almacén, garantizando el 100% de cumplimiento legal ante Inspección de Trabajo sin papeles ni excels. ¿Te vendría bien una demo rápida de 10 min o una prueba gratuita?</p>
+                  <span class="msg-time">10:14</span>
+                </div>
+              </div>
+
+              <!-- Prospect reply -->
+              <div class="chat-msg prospect-msg">
+                <div class="msg-bubble">
+                  <div class="msg-author">Manuel Rivas</div>
+                  <p>Hola, nos podría interesar porque ahora mismo usamos hojas de papel y es un desastre. ¿Cuánto nos costaría al mes para los 28 técnicos y qué pasa si no tienen móvil de empresa?</p>
+                  <span class="msg-time">10:18</span>
+                </div>
+              </div>
+
+              <!-- AI Automated answer -->
+              <div class="chat-msg ai-msg">
+                <div class="msg-bubble">
+                  <div class="msg-author">Agente IA Utrecar (Respuesta Inmediata)</div>
+                  <p>¡Hola Manuel! Para 28 técnicos el plan tiene un coste muy accesible de <strong>2,50 € por empleado/mes</strong> (unos 70 €/mes en total, amortizados con creces ahorrando multas y horas de gestión).</p>
+                  <p>Respecto al móvil: <strong>no hace falta que tengan móvil de empresa</strong>. La app cumple con la normativa de privacidad (RGPD) y solo registra el punto de fichaje al entrar y salir, sin rastreo continuo. Si algún operario no quiere usar su móvil, pueden fichar en una <strong>tablet quiosco con PIN o reconocimiento facial</strong> instalada en vuestro almacén de salida o mediante código QR.</p>
+                  <p>¿Qué te parece si te activo un <strong>acceso de prueba gratuito de 14 días</strong> para que lo probéis con 3 o 4 técnicos esta misma semana? O si prefieres, te enseño la pantalla en una videollamada de 10 min.</p>
+                  <span class="msg-time">10:19 • <em>Respuesta autónoma en 1.1s</em></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Objection Pill Bar -->
+            <div class="quick-objections">
+              <span class="objection-label">Prueba cómo responde el agente a otras preguntas:</span>
+              <div class="pills-scroll">
+                <button class="pill-btn" data-query="legal">⚖️ "¿Cumple con la nueva inspección digital y control de horas extras?"</button>
+                <button class="pill-btn" data-query="vacaciones">🏖️ "¿Cómo se gestionan las vacaciones y cuadrantes de turnos?"</button>
+                <button class="pill-btn" data-query="gestoria">📑 "¿Se pueden exportar los datos para enviárselos a mi asesoría/gestoría?"</button>
+                <button class="pill-btn" data-query="demo">📅 "De acuerdo, hagamos una videollamada mañana a las 11:30h."</button>
+              </div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div class="chat-input-area">
+              <input type="text" id="chat-input" placeholder="Escribe cualquier objeción o duda como si fueras el cliente..." />
+              <button class="btn-send-chat" id="btn-send-user-msg">
+                <span>Enviar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: ODOO 17 CRM LEAD VIEWER -->
+      <section class="tab-pane" id="tab-odoo">
+        <div class="odoo-container">
+          <div class="odoo-topbar">
+            <div class="odoo-breadcrumbs">
+              <span class="odoo-app-name">CRM</span>
+              <span class="sep">/</span>
+              <span class="active-crumb">Oportunidades</span>
+              <span class="sep">/</span>
+              <span id="odoo-lead-name">Control Horario - Climatizaciones Guadalquivir SL (28 Empleados)</span>
+            </div>
+            <div class="odoo-stage-pipeline">
+              <span class="stage">Nuevo</span>
+              <span class="stage">Cualificado</span>
+              <span class="stage current">Demo Agendada</span>
+              <span class="stage">Propuesta Enviada</span>
+              <span class="stage">Ganado</span>
+            </div>
+          </div>
+
+          <!-- Odoo Lead Form Card -->
+          <div class="odoo-form-sheet">
+            <div class="odoo-sheet-header">
+              <div class="odoo-title-group">
+                <span class="odoo-tag-badge">IA-Outbound SDR</span>
+                <span class="odoo-tag-badge success">Lead Score: 94/100</span>
+                <h1 id="odoo-sheet-title">Control Horario & Turnos - Climatizaciones Guadalquivir SL</h1>
+                <div class="odoo-lead-priority">⭐⭐⭐ Alta Prioridad</div>
+              </div>
+
+              <div class="odoo-revenue-box">
+                <div class="rev-row">
+                  <span class="rev-label">Ingreso Recurrente (MRR):</span>
+                  <span class="rev-val" id="odoo-mrr-val">70,00 € / mes</span>
+                </div>
+                <div class="rev-row">
+                  <span class="rev-label">Valor Anual (ARR):</span>
+                  <span class="rev-val" id="odoo-arr-val">840,00 € / año</span>
+                </div>
+                <div class="rev-row">
+                  <span class="rev-label">Probabilidad estimada:</span>
+                  <span class="rev-val text-green">85%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Form Fields Grid -->
+            <div class="odoo-fields-grid">
+              <div class="field-col">
+                <div class="field-item">
+                  <label>Empresa / Cliente:</label>
+                  <span class="field-content link" id="odoo-field-company">Climatizaciones Guadalquivir SL</span>
+                </div>
+                <div class="field-item">
+                  <label>Contacto Principal:</label>
+                  <span class="field-content" id="odoo-field-contact">Manuel Rivas (Director de Operaciones)</span>
+                </div>
+                <div class="field-item">
+                  <label>Correo Electrónico:</label>
+                  <span class="field-content" id="odoo-field-email">manuel.rivas@climagualdaquivir.es</span>
+                </div>
+                <div class="field-item">
+                  <label>Teléfono:</label>
+                  <span class="field-content" id="odoo-field-phone">+34 954 81 29 00 / 647 88 12 34</span>
+                </div>
+              </div>
+
+              <div class="field-col">
+                <div class="field-item">
+                  <label>Comercial Asignado:</label>
+                  <span class="field-content">Equipo Ventas Utrecar (Asignación Automática)</span>
+                </div>
+                <div class="field-item">
+                  <label>Equipo de Ventas:</label>
+                  <span class="field-content">Software & Soluciones Digitales</span>
+                </div>
+                <div class="field-item">
+                  <label>Siguiente Actividad:</label>
+                  <span class="field-content highlight-act" id="odoo-field-nextact">📅 Videollamada Demo (Jueves 11:30h)</span>
+                </div>
+                <div class="field-item">
+                  <label>Fuente del Lead:</label>
+                  <span class="field-content">Agente IA Autónomo (Outbound Scraping + Mail)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- AI Summary Notes -->
+            <div class="odoo-notes-section">
+              <h3>📝 Resumen Cualificado por el Agente de IA</h3>
+              <div class="ai-generated-notes" id="odoo-ai-notes">
+                <p><strong>• Situación actual:</strong> Llevan el control de jornada en partes de papel físico. Tienen 28 técnicos desplazados en furgonetas y sufren continuos desfases en el cómputo de horas extras y turnos.</p>
+                <p><strong>• Dolor clave:</strong> Preocupación por una posible inspección de trabajo y la imposibilidad de saber si los partes se firman a posteriori.</p>
+                <p><strong>• Solución propuesta:</strong> Licencia SaaS 28 usuarios (2,50€/u/m) con geofencing ligero y exportación a PDF para la asesoría. Interesados en activar los 14 días de prueba gratis tras la videollamada demo.</p>
+              </div>
+            </div>
+
+            <!-- Technical Payload Viewer -->
+            <details class="payload-details">
+              <summary>💻 Ver Payload JSON/XML-RPC que el agente envía a Odoo 17</summary>
+              <pre class="json-code" id="odoo-payload-code">
+{
+  "model": "crm.lead",
+  "method": "create",
+  "args": [{
+    "name": "Control Horario - Climatizaciones Guadalquivir SL (28 Empleados)",
+    "partner_name": "Climatizaciones Guadalquivir SL",
+    "contact_name": "Manuel Rivas",
+    "email_from": "manuel.rivas@climagualdaquivir.es",
+    "phone": "+34 954 81 29 00",
+    "expected_revenue": 840.00,
+    "recurring_revenue_monthly": 70.00,
+    "probability": 85,
+    "stage_id": 3,
+    "tag_ids": [12, 18],
+    "description": "Lead cualificado por el Agente IA de Ventas Utrecar. Demostración agendada para el jueves a las 11:30h."
+  }]
+}
+              </pre>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: CALCULADORA DE ROI -->
+      <section class="tab-pane" id="tab-roi">
+        <div class="roi-container">
+          <div class="roi-header">
+            <h2>Calculadora de Rentabilidad para el Cliente</h2>
+            <p>El argumento de cierre definitivo que utiliza el agente: demostrarle al cliente cómo la app se paga sola desde el primer mes.</p>
+          </div>
+
+          <div class="roi-grid">
+            <!-- Controls -->
+            <div class="roi-controls panel">
+              <div class="slider-group">
+                <div class="slider-header">
+                  <label for="slider-emp">Número de Empleados en Plantilla:</label>
+                  <span class="slider-val" id="val-emp-display">28</span>
+                </div>
+                <input type="range" id="slider-emp" min="5" max="150" value="28" step="1">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <label for="slider-hours">Horas al mes perdidas en gestionar turnos/papeles:</label>
+                  <span class="slider-val" id="val-hours-display">12 h</span>
+                </div>
+                <input type="range" id="slider-hours" min="2" max="40" value="12" step="1">
+              </div>
+
+              <div class="slider-group">
+                <div class="slider-header">
+                  <label for="slider-wage">Coste hora promedio de administración/gestión:</label>
+                  <span class="slider-val" id="val-wage-display">20 €/h</span>
+                </div>
+                <input type="range" id="slider-wage" min="12" max="45" value="20" step="1">
+              </div>
+
+              <div class="price-tier-box">
+                <div class="tier-label">Precio Licencia Utrecar:</div>
+                <div class="tier-val">2,50 € / empleado / mes</div>
+                <div class="tier-sub">(Incluye app móvil iOS/Android, tablet quiosco y panel web)</div>
+              </div>
+            </div>
+
+            <!-- Results Display -->
+            <div class="roi-results panel highlight-panel">
+              <div class="roi-metric-item">
+                <span class="metric-desc">Coste Mensual de la App:</span>
+                <span class="metric-num text-cyan" id="roi-app-cost">70 € / mes</span>
+              </div>
+
+              <div class="roi-metric-item">
+                <span class="metric-desc">Ahorro en tiempo administrativo:</span>
+                <span class="metric-num text-green" id="roi-time-saving">240 € / mes</span>
+              </div>
+
+              <div class="roi-metric-item">
+                <span class="metric-desc">Sanciones de Inspección evitadas (hasta):</span>
+                <span class="metric-num text-gold">7.500 €</span>
+                <span class="metric-sub">(Infracciones graves LISOS por registro deficiente)</span>
+              </div>
+
+              <hr class="divider">
+
+              <div class="roi-metric-item big-result">
+                <span class="metric-desc">Beneficio Neto Estimado Primer Año:</span>
+                <span class="metric-num text-emerald" id="roi-net-benefit">+2.040 €</span>
+                <span class="roi-multiplier" id="roi-return-mult">Retorno de inversión: 342%</span>
+              </div>
+
+              <div class="roi-cta-box">
+                <p>El agente genera este cálculo exacto en el email de seguimiento para desarmar la objeción del precio.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span>© 2026 Utrecar Soluciones Digitales • Odoo 17 Ecosystem</span>
+      </div>
+      <div class="footer-right">
+        <span>Diseñado para captación autónoma B2B de software SaaS</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

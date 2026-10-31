@@ -3000,6 +3000,54 @@ patch(PaymentScreen.prototype, {
         });
     },
 
+    addNewPaymentLine(paymentMethod) {
+        if (!this.currentOrder) return false;
+        const lines = [...this.currentOrder.get_paymentlines()];
+        // Si hay una única línea de pago y se pulsa otro método de pago (por ej. cambiar de Efectivo a Tarjeta o Cuenta),
+        // sustituir limpiamente para no acumular líneas con 0,00 € que bloqueen la calculadora
+        if (lines.length === 1 && lines[0].payment_method.id !== paymentMethod.id) {
+            for (const l of lines) {
+                this.currentOrder.remove_paymentline(l);
+            }
+        } else if (lines.length > 1) {
+            // Limpiar líneas redundantes a 0,00 €
+            for (const l of lines) {
+                if (l.amount === 0 && l.payment_method.id !== paymentMethod.id) {
+                    this.currentOrder.remove_paymentline(l);
+                }
+            }
+        }
+        const res = super.addNewPaymentLine(paymentMethod);
+        if (this.currentOrder.selected_paymentline) {
+            this.numberBuffer.reset();
+        }
+        return res;
+    },
+
+    updateSelectedPaymentline(amount = false) {
+        if (!this.currentOrder) return;
+
+        // Si la línea seleccionada tiene importe 0 y hay otra con importe (o de efectivo),
+        // enfocar la línea que tiene el importe real
+        let line = this.selectedPaymentLine;
+        if (!line) {
+            const firstLine = this.paymentLines[0];
+            if (firstLine) {
+                this.currentOrder.select_paymentline(firstLine);
+                line = firstLine;
+            }
+        } else if (line.amount === 0 && this.paymentLines.length > 1) {
+            const validLine = this.paymentLines.find(l => l !== line && l.amount > 0);
+            if (validLine) {
+                this.currentOrder.remove_paymentline(line);
+                this.currentOrder.select_paymentline(validLine);
+                line = validLine;
+            }
+        }
+
+        super.updateSelectedPaymentline(amount);
+    },
+
     get nextScreen() {
         return "ProductScreen";
     },

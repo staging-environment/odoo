@@ -5738,3 +5738,22 @@
 .btn-close-stations-modal:hover {
     opacity: 0.9 !important;
 }
+
+/* Resaltado visual destacado de línea de pago activa para la calculadora */
+.paymentlines .paymentline.selected {
+    background-color: #eff6ff !important;
+    border: 2px solid #2563eb !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+}
+
+.paymentlines .paymentline {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    margin-bottom: 6px !important;
+    transition: all 0.2s ease !important;
+}
+
+.paymentlines .paymentline:hover {
+    border-color: #93c5fd !important;
+}

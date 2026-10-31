@@ -2369,9 +2369,11 @@
                         <span class="badge bg-secondary text-white ms-2" style="font-size: 11px;">ORDINARIA</span>
                     </t>
                 </t>
-                <t t-else="">Customer</t>
+                <t t-else="">Cliente</t>
             </span>
         </xpath>
+        <!-- ELIMINAR BOTÓN DUPLICADO DE FACTURA A LA DERECHA (CENTRALIZADO EN EL BOTÓN INFERIOR FACTURA NIF/CIF) -->
+        <xpath expr="//button[hasclass('js_invoice')]" position="replace" />
     </t>
 
     <!-- SOBRESCRIBIR ORDERRECEIPT: MOSTRAR CABECERA CON FACTURA SIMPLIFICADA O ALBARÁN DE CRÉDITO -->
