@@ -26,17 +26,11 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div>
                             <h4 class="fw-bold mb-1" style="color: #0f172a;">
-                                <i class="fa fa-users me-2 text-primary"></i> Personal, Empleados y Permisos Autorizados en esta Estación
+                                <i class="fa fa-users me-2 text-primary"></i> Personal y Empleados Autorizados en esta Estación
                             </h4>
                             <p class="text-muted small mb-0">
-                                Empleados asignados a operar en esta estación. En función del Rol en la Matriz de Permisos, las facultades de cobro, precios y restricciones en el TPV se aplican de forma inmediata.
+                                Empleados autorizados con rol Empleado activo para apertura de turnos y operativa completa en el TPV.
                             </p>
-                        </div>
-                        <div>
-                            <button name="action_open_permission_matrix"
-                                    type="object"
-                                    string="🛡 Abrir Matriz de Permisos"
-                                    class="btn btn-sm btn-outline-primary fw-bold shadow-sm"/>
                         </div>
                     </div>
                     <field name="allowed_user_ids" options="{'no_create': True}">
@@ -145,42 +139,23 @@
               sequence="1"/>
 
     <!-- SUBMENÚS VISIBLES EN LA BARRA SUPERIOR (SIMPLIFICADA: SIN PRODUCTOS, PEDIDOS NI INFORMES) -->
-        <menuitem id="menu_gas_station_sub_employee_roles"
+    <menuitem id="menu_gas_station_sub_employee_roles"
               name="Personal y Roles"
               parent="menu_gas_station_root"
               action="action_employee_company_roles"
-              sequence="2"/>
-
-    <menuitem id="menu_gas_station_sub_matrix"
-              name="Matriz de Permisos"
-              parent="menu_gas_station_root"
-              action="action_utrecar_permission_matrix"
               sequence="1"/>
-
-<!-- <menuitem id="menu_gas_station_sub_vpn_employees"
-              name="Usuarios por Estación (VPN)"
-              parent="menu_gas_station_root"
-              action="action_vpn_station_employees"
-              sequence="2"/> -->
 
     <menuitem id="menu_gas_station_sub_customers"
               name="Clientes"
               parent="menu_gas_station_root"
               action="action_gas_station_customers"
-              sequence="3"/>
+              sequence="2"/>
 
     <menuitem id="menu_gas_station_sub_companies"
               name="Empresas y estaciones de servicio"
               parent="menu_gas_station_root"
               action="base.action_res_company_form"
-              sequence="4"/>
-
-    <!-- MENÚ EN AJUSTES > USUARIOS Y COMPANIAS -->
-    <menuitem id="menu_utrecar_permission_matrix_settings"
-              name="Matriz de Permisos UTRECAR"
-              parent="base.menu_users"
-              action="action_utrecar_permission_matrix"
-              sequence="15"/>
+              sequence="3"/>
 
     <!-- RELEGAR CONVERSACIONES AL FINAL PARA QUE NO SEA EL DEFAULT -->
     <record id="mail.menu_root_discuss" model="ir.ui.menu">

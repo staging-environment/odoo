@@ -415,14 +415,24 @@ class ResUsers(models.Model):
                 for gid in admin_group_ids:
                     if gid in user.groups_id.ids:
                         commands.append((3, gid))
-                if pos_mgr and pos_mgr.id in user.groups_id.ids:
-                    commands.append((3, pos_mgr.id))
+                # Los empleados con rol activo en TPV tienen point_of_sale.group_pos_manager para poder operar con plenas facultades en el TPV
+                if pos_mgr and pos_mgr.id not in user.groups_id.ids:
+                    commands.append((4, pos_mgr.id))
 
             if pos_user and pos_user.id not in user.groups_id.ids:
                 commands.append((4, pos_user.id))
 
             if commands:
                 user.sudo().write({'groups_id': commands})
+
+    def is_ceo(self):
+        """Verifica si el usuario tiene asignado el rol CEO o es Administrador."""
+        self.ensure_one()
+        if self._is_admin():
+            return True
+        roles = self.utrecar_role_ids or (self.utrecar_role_id if self.utrecar_role_id else self.env['utrecar.role'])
+        role_codes = [(r.code or '').lower() for r in roles]
+        return 'ceo' in role_codes
 
     @api.model_create_multi
     def create(self, vals_list):

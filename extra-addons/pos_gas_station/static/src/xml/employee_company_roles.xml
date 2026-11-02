@@ -28,9 +28,6 @@
                         <button class="btn btn-outline-secondary d-flex align-items-center gap-2 fw-bold" t-on-click="() => this.openDashboard()">
                             <i class="fa fa-arrow-left"></i> Panel de Gasolineras
                         </button>
-                        <button class="btn btn-outline-primary d-flex align-items-center gap-2 fw-bold" t-on-click="() => this.openMatrix()">
-                            <i class="fa fa-shield"></i> Matriz de Permisos
-                        </button>
                         <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold shadow-sm" t-on-click="() => this.loadData()">
                             <i class="fa fa-refresh" t-att-class="state.loading ? 'fa-spin' : ''"></i> Actualizar
                         </button>
@@ -464,8 +461,8 @@
             <div class="mt-3 p-3 bg-white rounded-3 border d-flex align-items-center gap-3">
                 <i class="fa fa-info-circle text-primary fs-4"></i>
                 <div class="small text-muted">
-                    <strong>Integración automática con TPV y aperturas de turno:</strong>
-                    Los empleados autorizados con rol <strong>EMPLEADO</strong> en cada empresa aparecerán automáticamente en las pantallas táctiles de apertura de turno de todas las estaciones de esa empresa. Si un usuario tiene rol <strong>GESTOR</strong> o <strong>CEO</strong>, sus permisos se sincronizan inmediatamente para administración y supervisión.
+                    <strong>Integración con TPV y Seguridad:</strong>
+                    Los empleados con rol <strong>EMPLEADO</strong> activo en cada empresa son los únicos que pueden acceder y abrir turno en las terminales de esa empresa, contando con facultades completas para operar el TPV. El rol <strong>CEO</strong> habilita el acceso directo a la administración del sistema desde la pantalla principal de identificación.
                 </div>
             </div>
         </div>

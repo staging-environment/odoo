@@ -36,9 +36,6 @@
                     <button class="btn btn-outline-primary btn-sm me-2" t-on-click="() => this.openNewCompany()" t-if="state.isManager">
                         <i class="fa fa-plus me-1"/> Nueva Empresa
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm me-2" t-on-click="() => this.openMatrix()" title="Matriz de Roles y Permisos">
-                        <i class="fa fa-shield me-1"/> Roles y Permisos
-                    </button>
                     <button class="btn btn-primary btn-sm" t-on-click="() => this.loadDashboardData()" title="Actualizar datos">
                         <i class="fa fa-refresh me-1"/> Actualizar
                     </button>

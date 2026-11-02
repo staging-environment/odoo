@@ -279,6 +279,7 @@ class PosConfig(models.Model):
             user = User.search([('login', '=', emp_data['dni'])], limit=1)
 
         role_employee = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+        group_pos_manager = self.env.ref('point_of_sale.group_pos_manager', raise_if_not_found=False)
         group_pos_user = self.env.ref('point_of_sale.group_pos_user', raise_if_not_found=False)
         group_internal = self.env.ref('base.group_user', raise_if_not_found=False)
 
@@ -297,6 +298,8 @@ class PosConfig(models.Model):
             if role_employee:
                 vals['utrecar_role_id'] = role_employee.id
             groups = []
+            if group_pos_manager:
+                groups.append(group_pos_manager.id)
             if group_pos_user:
                 groups.append(group_pos_user.id)
             if group_internal:
@@ -317,6 +320,8 @@ class PosConfig(models.Model):
                 vals['utrecar_role_id'] = role_employee.id
             
             groups_to_add = []
+            if group_pos_manager and group_pos_manager.id not in user.groups_id.ids:
+                groups_to_add.append(group_pos_manager.id)
             if group_pos_user and group_pos_user.id not in user.groups_id.ids:
                 groups_to_add.append(group_pos_user.id)
             if group_internal and group_internal.id not in user.groups_id.ids:
