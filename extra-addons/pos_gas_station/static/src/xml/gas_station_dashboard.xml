@@ -96,17 +96,12 @@
                                     </div>
 
                                     <div class="company-header-tools" t-if="state.isManager">
-                                        <button class="btn btn-sm btn-outline-primary me-2 fw-semibold" 
+                                        <button class="btn btn-sm btn-outline-primary fw-semibold" 
                                                 t-on-click="() => this.openNewStation(comp.id, comp.name)" 
                                                 title="Crear nueva estación en esta empresa">
                                             <i class="fa fa-plus me-1"/> Nueva Estación
                                         </button>
-                                        <button class="btn btn-sm btn-outline-info me-2 fw-semibold" 
-                                                t-on-click="() => this.openEmployeeCompanyRoles()" 
-                                                title="Gestionar empleados activos en esta empresa">
-                                            <i class="fa fa-users me-1"/> Personal y Empresas
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger" 
+                                        <button class="btn btn-sm btn-outline-danger ms-2" 
                                                 t-if="comp.id !== 4 and comp.stations_count === 0"
                                                 t-on-click="() => this.deleteCompany(comp)" 
                                                 title="Eliminar empresa vacía">
@@ -149,7 +144,7 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <span class="badge bg-light text-secondary border px-2 py-1 font-monospace flex-shrink-0" style="font-size: 11px;">
+                                                            <span class="badge border px-2 py-1 flex-shrink-0" style="font-size: 11px; background: #f1f5f9; color: #1e293b; border-color: #cbd5e1 !important; font-weight: 700;">
                                                                 <i class="fa fa-tachometer me-1 text-primary"/> <t t-esc="st.pumps_count"/> Surt.
                                                             </span>
                                                         </div>

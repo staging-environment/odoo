@@ -205,13 +205,16 @@
 }
 
 .stations-cards-grid {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)) !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
     gap: 16px !important;
     align-items: stretch !important;
 }
 
 .station-card {
+    flex: 1 1 290px !important;
+    max-width: 360px !important;
+    min-width: 280px !important;
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 10px !important;
