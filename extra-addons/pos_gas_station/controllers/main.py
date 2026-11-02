@@ -2448,8 +2448,8 @@ class PosGasStationController(http.Controller):
         }
 
     @http.route('/pos_gas_station/employee_company_roles/update', type='json', auth='user', methods=['POST'], csrf=False)
-    def update_employee_company_access(self, user_id, company_id, active=None, role_id=None, role_ids=None, action=None):
-        """Actualiza el acceso y/o roles específicos de un empleado en una empresa."""
+    def update_employee_company_access(self, user_id, company_id, active=None, **kw):
+        """Actualiza el acceso activo de un empleado en una empresa para el TPV."""
         env = request.env
         User = env['res.users'].sudo()
         Access = env['utrecar.employee.company.access'].sudo()
@@ -2462,101 +2462,63 @@ class PosGasStationController(http.Controller):
 
         cid = int(company_id)
         comp = Company.browse(cid)
+        role_emp = env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+        if not role_emp:
+            role_emp = Role.search([('code', '=', 'employee')], limit=1)
+
         acc = Access.search([('user_id', '=', user.id), ('company_id', '=', cid)], limit=1)
         if not acc:
             acc = Access.create({
                 'user_id': user.id,
                 'company_id': cid,
                 'active_access': bool(active) if active is not None else True,
+                'role_id': role_emp.id if role_emp else False,
+                'role_ids': [(6, 0, [role_emp.id])] if role_emp else [],
             })
 
-        vals = {}
-        if active is not None:
-            new_active = bool(active)
-            vals['active_access'] = new_active
-            # Permitir desactivar el acceso en todas las empresas
-            if not new_active:
-                if len(user.company_ids) > 1 and cid in user.company_ids.ids:
-                    try:
-                        user.write({'company_ids': [(3, cid)]})
-                    except Exception:
-                        pass
-            else:
+        new_active = bool(active) if active is not None else not acc.active_access
+        vals = {'active_access': new_active}
+        if role_emp and (not acc.role_ids or not acc.role_id):
+            vals['role_id'] = role_emp.id
+            vals['role_ids'] = [(6, 0, [role_emp.id])]
+        acc.write(vals)
+
+        # Actualizar asignación de empresas en el usuario
+        if not new_active:
+            if len(user.company_ids) > 1 and cid in user.company_ids.ids:
                 try:
-                    user.write({'company_ids': [(4, cid)]})
+                    user.write({'company_ids': [(3, cid)]})
                 except Exception:
                     pass
+        else:
+            try:
+                user.write({'company_ids': [(4, cid)]})
+            except Exception:
+                pass
 
-        # Gestión multi-rol: role_ids (lista explícita) o role_id + action ('toggle', 'add', 'remove', 'set')
-        current_rids = acc.role_ids.ids if acc.role_ids else ([acc.role_id.id] if acc.role_id else [])
-        if role_ids is not None:
-            rids = [int(x) for x in role_ids if str(x).isdigit()]
-            vals['role_ids'] = [(6, 0, rids)]
-            vals['role_id'] = rids[0] if rids else False
-        elif role_id is not None:
-            rid = int(role_id) if role_id else False
-            if action == 'toggle':
-                if rid in current_rids:
-                    new_rids = [x for x in current_rids if x != rid]
-                else:
-                    new_rids = current_rids + [rid]
-                vals['role_ids'] = [(6, 0, new_rids)]
-                vals['role_id'] = new_rids[0] if new_rids else False
-            elif action == 'add':
-                if rid and rid not in current_rids:
-                    new_rids = current_rids + [rid]
-                    vals['role_ids'] = [(6, 0, new_rids)]
-                    vals['role_id'] = new_rids[0] if new_rids else False
-            elif action == 'remove':
-                if rid and rid in current_rids:
-                    new_rids = [x for x in current_rids if x != rid]
-                    vals['role_ids'] = [(6, 0, new_rids)]
-                    vals['role_id'] = new_rids[0] if new_rids else False
-            else:
-                # Reemplazo directo
-                vals['role_ids'] = [(6, 0, [rid] if rid else [])]
-                vals['role_id'] = rid
-
-        if vals:
-            acc.write(vals)
-
-        # Recalcular utrecar_role_ids como la unión de todos los roles activos del usuario en todas sus empresas
+        # Asegurar asignación de rol EMPLEADO si tiene alguna empresa activa
         active_accesses = Access.search([
             ('user_id', '=', user.id),
             ('active_access', '=', True)
         ])
-        all_active_roles = active_accesses.mapped('role_ids')
-        if not all_active_roles:
-            all_active_roles = active_accesses.mapped('role_id')
-
-        user.write({
-            'utrecar_role_ids': [(6, 0, all_active_roles.ids)],
-            'utrecar_role_id': all_active_roles[0].id if all_active_roles else False
-        })
+        if active_accesses and role_emp:
+            user.write({
+                'utrecar_role_ids': [(6, 0, [role_emp.id])],
+                'utrecar_role_id': role_emp.id
+            })
+        elif not active_accesses:
+            user.write({
+                'utrecar_role_ids': [(5, 0, 0)],
+                'utrecar_role_id': False
+            })
         user._sync_utrecar_role_groups()
 
-        assigned_roles = acc.role_ids or (acc.role_id if acc.role_id else Role)
-        roles_info = [{
-            'id': r.id,
-            'name': r.name,
-            'code': r.code,
-            'color': r.color or '#64748b'
-        } for r in assigned_roles]
-
         comp_name = comp.name if comp.exists() else 'la empresa'
+        action_text = "activado" if new_active else "desactivado"
         return {
             'status': 'success',
             'user_id': user.id,
             'company_id': cid,
-            'active': acc.active_access,
-            'role_ids': assigned_roles.ids,
-            'roles': roles_info,
-            'role_names': [r.name for r in assigned_roles],
-            'role_codes': [(r.code or '').lower() for r in assigned_roles],
-            'role_id': assigned_roles[0].id if assigned_roles else False,
-            'role_name': ", ".join([r.name for r in assigned_roles]) if assigned_roles else 'Sin Rol',
-            'role_code': assigned_roles[0].code if assigned_roles else '',
-            'role_color': assigned_roles[0].color if assigned_roles else '#64748b',
-            'all_role_names': [r.name for r in all_active_roles],
-            'message': f'Roles de {user.name} en {comp_name} actualizados correctamente'
+            'active': new_active,
+            'message': f'Acceso de {user.name} en {comp_name} {action_text} correctamente'
         }

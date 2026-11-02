@@ -285,16 +285,11 @@ class ResUsers(models.Model):
         return roles[:1] if roles else False
 
     def is_employee_for_company(self, company_id):
-        """Verifica si el usuario está activo en la empresa y tiene asignado el rol EMPLEADO para esa empresa."""
+        """Verifica si el usuario está activo para esa empresa y puede operar el TPV."""
         self.ensure_one()
         access = self.company_access_ids.filtered(lambda a: a.company_id.id == company_id)
         if access:
-            # Si existe registro para la empresa, respetar estrictamente el switch de activo
-            if not access[0].active_access:
-                return False
-            role_emp = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
-            roles = access[0].role_ids or (access[0].role_id if access[0].role_id else self.env['utrecar.role'])
-            return bool(role_emp and role_emp in roles)
+            return bool(access[0].active_access)
         return False
 
 
@@ -426,13 +421,9 @@ class ResUsers(models.Model):
                 user.sudo().write({'groups_id': commands})
 
     def is_ceo(self):
-        """Verifica si el usuario tiene asignado el rol CEO o es Administrador."""
+        """Verifica si el usuario es Administrador del sistema."""
         self.ensure_one()
-        if self._is_admin():
-            return True
-        roles = self.utrecar_role_ids or (self.utrecar_role_id if self.utrecar_role_id else self.env['utrecar.role'])
-        role_codes = [(r.code or '').lower() for r in roles]
-        return 'ceo' in role_codes
+        return self._is_admin()
 
     @api.model_create_multi
     def create(self, vals_list):

@@ -22,12 +22,11 @@ export class EmployeeCompanyRolesView extends Component {
                 trieste_count: 0,
                 utrecar_count: 0,
                 multi_count: 0,
+                none_count: 0,
             },
             searchTerm: "",
             filterCompany: "all",
-            filterRole: "all",
             updatingKey: null,
-            activeDropdownKey: null
         });
 
         onMounted(() => {
@@ -49,7 +48,7 @@ export class EmployeeCompanyRolesView extends Component {
             }
         } catch (e) {
             console.error("Error loading employee company roles:", e);
-            this.notification.add("Error de conexión al cargar personal y roles", { type: "danger" });
+            this.notification.add("Error de conexión al cargar personal", { type: "danger" });
         } finally {
             this.state.loading = false;
         }
@@ -67,19 +66,6 @@ export class EmployeeCompanyRolesView extends Component {
             list = list.filter(u => u.active_company_count > 1);
         } else if (this.state.filterCompany === "none") {
             list = list.filter(u => u.active_company_count === 0);
-        }
-
-        // Filtro por rol (soporta multi-rol)
-        if (this.state.filterRole !== "all") {
-            const targetRoleCode = this.state.filterRole.toLowerCase();
-            list = list.filter(u => {
-                if (!u.company_access) return false;
-                return Object.values(u.company_access).some(acc => {
-                    if (!acc.active) return false;
-                    const codes = acc.role_codes || (acc.role_code ? [acc.role_code.toLowerCase()] : []);
-                    return codes.includes(targetRoleCode);
-                });
-            });
         }
 
         // Búsqueda en tiempo real
@@ -114,15 +100,14 @@ export class EmployeeCompanyRolesView extends Component {
                     user.company_access[companyId] = {};
                 }
                 user.company_access[companyId].active = res.active;
-                user.company_access[companyId].role_name = res.role_name;
-                user.company_access[companyId].role_code = res.role_code;
-                user.company_access[companyId].role_color = res.role_color;
 
-                // Recalcular contador activo
+                // Recalcular contador activo del usuario
                 user.active_company_count = Object.values(user.company_access).filter(a => a.active).length;
+
+                // Recalcular estadísticas globales
+                this._recomputeStats();
+
                 this.notification.add(res.message, { type: "success" });
-            } else if (res.status === "warning") {
-                this.notification.add(res.message, { type: "warning" });
             } else {
                 this.notification.add(res.message || "Error al actualizar acceso", { type: "danger" });
             }
@@ -134,126 +119,36 @@ export class EmployeeCompanyRolesView extends Component {
         }
     }
 
-    toggleDropdown(key) {
-        if (this.state.activeDropdownKey === key) {
-            this.state.activeDropdownKey = null;
-        } else {
-            this.state.activeDropdownKey = key;
+    _recomputeStats() {
+        let trieste = 0;
+        let utrecar = 0;
+        let multi = 0;
+        let none = 0;
+
+        for (const u of this.state.users) {
+            const isTrieste = u.company_access && u.company_access[4] && u.company_access[4].active;
+            const isUtrecar = u.company_access && u.company_access[1] && u.company_access[1].active;
+            if (isTrieste) trieste++;
+            if (isUtrecar) utrecar++;
+            if (isTrieste && isUtrecar) multi++;
+            if (!isTrieste && !isUtrecar) none++;
         }
-    }
 
-    closeDropdown() {
-        this.state.activeDropdownKey = null;
-    }
-
-    hasCompanyRole(user, companyId, roleId) {
-        const acc = user.company_access && user.company_access[companyId];
-        if (!acc || !acc.active) return false;
-        if (acc.role_ids && acc.role_ids.includes(roleId)) return true;
-        if (acc.roles && acc.roles.some(r => r.id === roleId)) return true;
-        return acc.role_id === roleId;
-    }
-
-    async toggleCompanyRole(user, companyId, roleId) {
-        const key = `${user.odoo_user_id}_${companyId}`;
-        this.state.updatingKey = key;
-
-        try {
-            const res = await jsonrpc("/pos_gas_station/employee_company_roles/update", {
-                user_id: user.odoo_user_id,
-                company_id: companyId,
-                role_id: roleId,
-                action: "toggle"
-            });
-
-            if (res.status === "success") {
-                if (!user.company_access[companyId]) {
-                    user.company_access[companyId] = {};
-                }
-                const acc = user.company_access[companyId];
-                acc.role_ids = res.role_ids || [];
-                acc.roles = res.roles || [];
-                acc.role_names = res.role_names || [];
-                acc.role_codes = res.role_codes || [];
-                acc.role_id = res.role_id;
-                acc.role_name = res.role_name;
-                acc.role_color = res.role_color;
-
-                const roleObj = (this.state.roles || []).find(r => r.id === roleId);
-                const roleName = roleObj ? roleObj.name : "Rol";
-                const isAssigned = acc.role_ids.includes(roleId);
-                const companyName = companyId === 4 ? "A.R. Trieste" : "Utrecar S.L.";
-
-                this.notification.add(
-                    isAssigned 
-                        ? `Rol ${roleName} añadido a ${user.name} en ${companyName}`
-                        : `Rol ${roleName} retirado de ${user.name} en ${companyName}`,
-                    { type: "success" }
-                );
-            } else {
-                this.notification.add(res.message || "Error al actualizar rol", { type: "danger" });
-            }
-        } catch (e) {
-            console.error("Error toggling company role:", e);
-            this.notification.add("Error de conexión al actualizar rol", { type: "danger" });
-        } finally {
-            this.state.updatingKey = null;
-        }
-    }
-
-    async changeCompanyRole(user, companyId, newRoleId) {
-        const key = `${user.odoo_user_id}_${companyId}`;
-        this.state.updatingKey = key;
-
-        try {
-            const res = await jsonrpc("/pos_gas_station/employee_company_roles/update", {
-                user_id: user.odoo_user_id,
-                company_id: companyId,
-                role_id: newRoleId ? parseInt(newRoleId) : false
-            });
-
-            if (res.status === "success") {
-                if (!user.company_access[companyId]) {
-                    user.company_access[companyId] = {};
-                }
-                const acc = user.company_access[companyId];
-                acc.role_ids = res.role_ids || [];
-                acc.roles = res.roles || [];
-                acc.role_names = res.role_names || [];
-                acc.role_codes = res.role_codes || [];
-                acc.role_id = res.role_id;
-                acc.role_name = res.role_name;
-                acc.role_color = res.role_color;
-
-                this.notification.add(
-                    `Rol en ${res.company_id === 4 ? 'A.R. Trieste' : 'Utrecar'} actualizado a ${res.role_name} para ${user.name}`,
-                    { type: "success" }
-                );
-            } else {
-                this.notification.add(res.message || "Error al actualizar rol", { type: "danger" });
-            }
-        } catch (e) {
-            console.error("Error changing company role:", e);
-            this.notification.add("Error de conexión al actualizar rol", { type: "danger" });
-        } finally {
-            this.state.updatingKey = null;
-        }
+        this.state.stats = {
+            total_users: this.state.users.length,
+            trieste_count: trieste,
+            utrecar_count: utrecar,
+            multi_count: multi,
+            none_count: none,
+        };
     }
 
     setCompanyFilter(filterVal) {
         this.state.filterCompany = filterVal;
     }
 
-    setRoleFilter(roleVal) {
-        this.state.filterRole = roleVal;
-    }
-
     openDashboard() {
         this.actionService.doAction("pos_gas_station.action_gas_station_dashboard");
-    }
-
-    openMatrix() {
-        this.actionService.doAction("pos_gas_station.action_utrecar_permission_matrix");
     }
 }
 

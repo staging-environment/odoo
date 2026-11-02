@@ -45,10 +45,10 @@ class UtrecarPosController(PosController):
 
 class UtrecarLogin(Home):
 
-    ADMIN_VPN_IPS = {'10.8.0.2', '10.8.0.19', '127.0.0.1'}
+    ADMIN_VPN_IPS = {'10.8.0.2', '10.8.0.3', '10.8.0.8', '10.8.0.19', '127.0.0.1'}
 
     def _is_admin_vpn_ip(self, ip):
-        """Comprueba si la IP corresponde a la VPN de Administrador (Jose/Bonilla o configurada en plataforma)."""
+        """Comprueba si la IP corresponde a la VPN de Administrador autorizada."""
         if not ip:
             return False
         clean_ip = str(ip).strip()
@@ -87,6 +87,8 @@ class UtrecarLogin(Home):
         if not ip:
             return False
         clean_ip = str(ip).strip()
+        if self._is_admin_vpn_ip(clean_ip):
+            return False
         PosConfig = request.env['pos.config'].sudo()
 
         station = PosConfig.get_station_by_vpn_ip(clean_ip)
@@ -94,8 +96,8 @@ class UtrecarLogin(Home):
             return True
 
         station_ips = {
-            '10.8.0.3', '10.8.0.4', '10.8.0.5', '10.8.0.6', '10.8.0.7',
-            '10.8.0.8', '10.8.0.9', '10.8.0.10', '10.8.0.11', '10.8.0.12',
+            '10.8.0.4', '10.8.0.5', '10.8.0.6', '10.8.0.7',
+            '10.8.0.9', '10.8.0.10', '10.8.0.11', '10.8.0.12',
             '10.8.0.13', '10.8.0.14', '10.8.0.15', '10.8.0.16', '10.8.0.17', '10.8.0.18'
         }
         return clean_ip in station_ips
@@ -112,45 +114,14 @@ class UtrecarLogin(Home):
         return False
 
     def _is_admin_user(self, user):
-        """Comprueba si el usuario tiene rol de Administrador o CEO en Odoo."""
+        """Comprueba si el usuario tiene rol de Administrador en Odoo."""
         if not user or not user.exists():
             return False
-        has_ceo_role = False
-        try:
-            roles = user.utrecar_role_ids or (user.utrecar_role_id if user.utrecar_role_id else request.env['utrecar.role'])
-            role_codes = [(r.code or '').lower() for r in roles]
-            has_ceo_role = 'ceo' in role_codes
-        except Exception:
-            pass
-
         return bool(
             user._is_admin() or 
-            has_ceo_role or
             user.has_group('base.group_erp_manager') or 
             user.has_group('base.group_system')
         )
-
-    def _has_ceo_configured(self, station=None):
-        """Comprueba si la empresa de la estación (o el sistema) tiene configurado un usuario activo con rol CEO."""
-        try:
-            Access = request.env['utrecar.employee.company.access'].sudo()
-            role_ceo = request.env.ref('pos_gas_station.role_ceo', raise_if_not_found=False)
-            if not role_ceo:
-                Role = request.env['utrecar.role'].sudo()
-                role_ceo = Role.search([('code', '=', 'ceo')], limit=1)
-            if not role_ceo:
-                return False
-            domain = [
-                ('active_access', '=', True),
-                '|',
-                ('role_ids', 'in', [role_ceo.id]),
-                ('role_id', '=', role_ceo.id)
-            ]
-            if station and station.exists() and station.company_id:
-                domain.append(('company_id', '=', station.company_id.id))
-            return bool(Access.search(domain, limit=1))
-        except Exception:
-            return False
 
     def _get_default_station(self, station_id=None):
         """Obtiene la estación activa: por ID o por IP VPN de la gasolinera."""
@@ -297,7 +268,7 @@ class UtrecarLogin(Home):
         employees = []
         company_name = ''
         warning_message = ''
-        is_admin_vpn = self._is_admin_vpn_ip(ip) or self._has_ceo_configured(station)
+        is_admin_vpn = self._is_admin_vpn_ip(ip)
 
         if has_tpv:
             company_name = station.company_id.name or 'Empresa'
@@ -340,12 +311,6 @@ class UtrecarLogin(Home):
             user = None
             if target_emp:
                 user = station.sync_or_get_odoo_user_for_employee(target_emp)
-            else:
-                # Comprobar si employee_id es un usuario/empleado de Odoo con rol CEO
-                User = request.env['res.users'].sudo()
-                u_cand = User.browse(int(employee_id)) if str(employee_id).isdigit() else User.search([('login', '=', employee_id)], limit=1)
-                if u_cand and u_cand.exists() and self._is_admin_user(u_cand):
-                    user = u_cand
 
             if not user:
                 _logger.warning("Empleado ID %s no autorizado para la empresa de la estación %s", employee_id, station.name)
@@ -356,14 +321,14 @@ class UtrecarLogin(Home):
             request.session.session_token = security.compute_session_token(request.session, request.env)
             request.session.rotate = True
 
-            # Si el usuario tiene rol CEO o es Administrador, redirige directamente a la administración /web
+            # Si el usuario es Administrador del sistema, redirige directamente a la administración /web
             if self._is_admin_user(user):
-                _logger.info("Usuario Administrador/CEO %s autenticado desde pantalla de estación %s -> /web", user.name, station.name)
+                _logger.info("Usuario Administrador %s autenticado desde pantalla de estación %s -> /web", user.name, station.name)
                 return request.redirect('/web')
 
-            # Para acceder al TPV debe tener rol EMPLEADO activo en la empresa de esta estación
+            # Para acceder al TPV debe estar activo en la empresa de esta estación
             if not user.is_employee_for_company(station.company_id.id):
-                _logger.warning("Usuario %s no tiene rol EMPLEADO activo para %s", user.name, station.company_id.name)
+                _logger.warning("Usuario %s no tiene acceso activo para %s", user.name, station.company_id.name)
                 request.session.logout()
                 return request.redirect(f'/pos_gas_station/select_employee?station_id={station.id}')
 

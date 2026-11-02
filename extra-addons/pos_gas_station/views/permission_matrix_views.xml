@@ -119,9 +119,9 @@
         <field name="target">current</field>
     </record>
 
-        <!-- ACCION CLIENTE: GESTION DE PERSONAL Y ROLES MULTI-EMPRESA -->
+        <!-- ACCION CLIENTE: GESTION DE PERSONAL Y EMPRESAS -->
     <record id="action_employee_company_roles" model="ir.actions.client">
-        <field name="name">Personal y Roles Multi-Empresa</field>
+        <field name="name">Personal y Empresas</field>
         <field name="tag">employee_company_roles</field>
         <field name="target">current</field>
     </record>
@@ -140,7 +140,7 @@
 
     <!-- SUBMENÚS VISIBLES EN LA BARRA SUPERIOR (SIMPLIFICADA: SIN PRODUCTOS, PEDIDOS NI INFORMES) -->
     <menuitem id="menu_gas_station_sub_employee_roles"
-              name="Personal y Roles"
+              name="Personal y Empresas"
               parent="menu_gas_station_root"
               action="action_employee_company_roles"
               sequence="1"/>
