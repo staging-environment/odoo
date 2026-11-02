@@ -34,12 +34,46 @@ class UtrecarEmployeeCompanyAccess(models.Model):
 
     user_id = fields.Many2one('res.users', string='Usuario / Empleado', required=True, ondelete='cascade', index=True)
     company_id = fields.Many2one('res.company', string='Empresa', required=True, ondelete='cascade', index=True)
-    role_id = fields.Many2one('utrecar.role', string='Rol en esta Empresa', ondelete='set null')
+    role_id = fields.Many2one('utrecar.role', string='Rol Principal en esta Empresa', ondelete='set null')
+    role_ids = fields.Many2many(
+        'utrecar.role',
+        'utrecar_emp_comp_role_rel',
+        'access_id',
+        'role_id',
+        string='Roles en esta Empresa'
+    )
     active_access = fields.Boolean(string='Acceso Habilitado', default=True)
 
     _sql_constraints = [
         ('uniq_user_company_access', 'unique(user_id, company_id)', 'Solo puede existir una configuracion de acceso por usuario y empresa.')
     ]
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'role_ids' in vals and vals['role_ids'] and not vals.get('role_id'):
+                rids = []
+                for cmd in vals['role_ids']:
+                    if cmd[0] == 6:
+                        rids.extend(cmd[2])
+                    elif cmd[0] == 4:
+                        rids.append(cmd[1])
+                if rids:
+                    vals['role_id'] = rids[0]
+            elif 'role_id' in vals and vals['role_id'] and not vals.get('role_ids'):
+                vals['role_ids'] = [(4, vals['role_id'])]
+        return super(UtrecarEmployeeCompanyAccess, self).create(vals_list)
+
+    def write(self, vals):
+        if 'role_ids' in vals and not vals.get('role_id'):
+            for cmd in vals.get('role_ids', []):
+                if cmd[0] == 6:
+                    vals['role_id'] = cmd[2][0] if cmd[2] else False
+                elif cmd[0] == 4:
+                    vals['role_id'] = cmd[1]
+        elif 'role_id' in vals and vals['role_id'] and not vals.get('role_ids'):
+            vals['role_ids'] = [(4, vals['role_id'])]
+        return super(UtrecarEmployeeCompanyAccess, self).write(vals)
 
 
 class UtrecarCompanyRolePermission(models.Model):
@@ -239,10 +273,16 @@ class ResUsers(models.Model):
         string='Accesos y Roles por Empresa'
     )
 
-    def get_company_role(self, company_id):
+    def get_company_roles(self, company_id):
         self.ensure_one()
         access = self.company_access_ids.filtered(lambda a: a.company_id.id == company_id and a.active_access)
-        return access.role_id if access else False
+        if not access:
+            return self.env['utrecar.role']
+        return access[0].role_ids or (access[0].role_id if access[0].role_id else self.env['utrecar.role'])
+
+    def get_company_role(self, company_id):
+        roles = self.get_company_roles(company_id)
+        return roles[:1] if roles else False
 
     def is_employee_for_company(self, company_id):
         """Verifica si el usuario está activo en la empresa y tiene asignado el rol EMPLEADO para esa empresa."""
@@ -253,7 +293,8 @@ class ResUsers(models.Model):
             if not access[0].active_access:
                 return False
             role_emp = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
-            return bool(role_emp and access[0].role_id and access[0].role_id.id == role_emp.id)
+            roles = access[0].role_ids or (access[0].role_id if access[0].role_id else self.env['utrecar.role'])
+            return bool(role_emp and role_emp in roles)
         return False
 
 
@@ -299,30 +340,34 @@ class ResUsers(models.Model):
         sanitize=False
     )
 
-    @api.depends('utrecar_role_id', 'utrecar_role_id.name', 'utrecar_role_id.color')
+    @api.depends('utrecar_role_id', 'utrecar_role_ids', 'utrecar_role_ids.name', 'utrecar_role_ids.color')
     def _compute_role_badge_html(self):
         for user in self:
-            if user.utrecar_role_id:
-                color = user.utrecar_role_id.color or '#0284c7'
-                name = user.utrecar_role_id.name
-                user.role_badge_html = f'<span class="badge text-white px-2 py-1 fw-bold" style="background-color: {color}; font-size: 0.85rem;"><i class="fa fa-shield me-1"></i> {name}</span>'
+            roles = user.utrecar_role_ids or (user.utrecar_role_id if user.utrecar_role_id else self.env['utrecar.role'])
+            if roles:
+                badges = []
+                for r in roles:
+                    color = r.color or '#0284c7'
+                    badges.append(f'<span class="badge text-white px-2 py-1 me-1 fw-bold" style="background-color: {color}; font-size: 0.85rem;"><i class="fa fa-shield me-1"></i> {r.name}</span>')
+                user.role_badge_html = "".join(badges)
             else:
                 user.role_badge_html = '<span class="badge text-bg-secondary px-2 py-1">Sin Rol</span>'
 
-    @api.depends('utrecar_role_id', 'utrecar_role_id.permission_ids', 'utrecar_role_id.name', 'utrecar_role_id.color')
+    @api.depends('utrecar_role_id', 'utrecar_role_ids', 'utrecar_role_ids.permission_ids')
     def _compute_permission_badges_html(self):
         for user in self:
-            if not user.utrecar_role_id:
+            roles = user.utrecar_role_ids or (user.utrecar_role_id if user.utrecar_role_id else self.env['utrecar.role'])
+            if not roles:
                 user.permission_badges_html = '<span class="badge text-bg-warning text-dark"><i class="fa fa-exclamation-triangle me-1"></i> Sin rol asignado</span>'
                 continue
-            perms = user.utrecar_role_id.permission_ids
+            perms = roles.mapped('permission_ids')
             if not perms:
                 user.permission_badges_html = '<span class="badge text-bg-secondary">Sin permisos activos</span>'
                 continue
 
             badges = []
-            role_code = user.utrecar_role_id.code
-            if role_code == 'ceo' or len(perms) >= 15:
+            role_codes = [(r.code or '').lower() for r in roles]
+            if 'ceo' in role_codes or len(perms) >= 15:
                 badges.append(f'<span class="badge text-bg-primary fw-bold me-1 mb-1" style="font-size: 0.8rem;"><i class="fa fa-star me-1"></i> Acceso Total ({len(perms)} permisos)</span>')
                 key_perms = perms.filtered(lambda p: any(k in p.name.lower() for k in ['tpv', 'pista', 'precios', 'surtidor', 'cierre', 'arqueo', 'factura', 'descuento']))
                 for p in key_perms[:4]:

@@ -8,7 +8,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='login']" position="after">
                 <group string="Perfil y Acceso UTRECAR">
-                    <field name="utrecar_role_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="utrecar_role_ids" widget="many2many_tags" options="{'no_create': True, 'color_field': 'color'}"/>
                     <field name="pos_config_ids" widget="many2many_tags" options="{'no_create': True}" placeholder="Dejar vacio para acceso a todas las tiendas de la empresa"/>
                 </group>
             </xpath>

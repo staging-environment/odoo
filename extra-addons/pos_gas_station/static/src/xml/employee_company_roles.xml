@@ -4,6 +4,9 @@
     <t t-name="pos_gas_station.EmployeeCompanyRolesView" owl="1">
         <div class="emp-roles-page container-fluid py-4 px-4 bg-light" style="min-height: 100vh;">
 
+            <!-- OVERLAY TRANSPARENTE PARA CERRAR SELECTOR MULTI-ROL -->
+            <div t-if="state.activeDropdownKey" class="dropdown-backdrop-transparent" t-on-click="() => this.closeDropdown()"/>
+
             <!-- CABECERA SUPERIOR -->
             <div class="bg-white p-4 rounded-3 shadow-sm border mb-4">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -235,8 +238,11 @@
                                         </td>
 
                                         <!-- EMPRESA 1: A.R. TRIESTE (ID 4) -->
-                                        <td class="border-start text-center p-3" t-attf-class="#{u.company_access and u.company_access[4] and u.company_access[4].active ? 'bg-primary-subtle bg-opacity-25' : ''}">
+                                        <td class="border-start text-center p-3 position-relative" t-attf-class="#{u.company_access and u.company_access[4] and u.company_access[4].active ? 'bg-primary-subtle bg-opacity-25' : ''}">
                                             <t t-set="accTrieste" t-value="u.company_access and u.company_access[4]"/>
+                                            <t t-set="isUpdatingTrieste" t-value="state.updatingKey === u.odoo_user_id + '_4'"/>
+                                            <t t-set="isOpenTrieste" t-value="state.activeDropdownKey === u.odoo_user_id + '_4'"/>
+
                                             <div class="d-flex align-items-center justify-content-center gap-3">
                                                 <!-- SWITCH ACCESO -->
                                                 <div class="form-check form-switch m-0" title="Activar o desactivar acceso a A.R. Trieste">
@@ -244,24 +250,88 @@
                                                            type="checkbox" 
                                                            style="width: 2.8rem; height: 1.4rem; cursor: pointer;"
                                                            t-att-checked="accTrieste and accTrieste.active"
-                                                           t-att-disabled="state.updatingKey === u.odoo_user_id + '_4'"
+                                                           t-att-disabled="isUpdatingTrieste"
                                                            t-on-click="() => this.toggleCompanyAccess(u, 4, accTrieste ? accTrieste.active : false)"/>
                                                 </div>
 
-                                                <!-- SELECTOR DE ROL ESPECÍFICO EN TRIESTE -->
-                                                <div style="width: 170px;">
-                                                    <select class="form-select form-select-sm fw-bold shadow-none"
-                                                            t-attf-class="#{accTrieste and accTrieste.active ? 'border-primary text-primary' : 'border-secondary-subtle text-muted'}"
-                                                            t-att-value="accTrieste ? accTrieste.role_id : false"
-                                                            t-att-disabled="!accTrieste or !accTrieste.active or state.updatingKey === u.odoo_user_id + '_4'"
-                                                            t-on-change="(ev) => this.changeCompanyRole(u, 4, ev.target.value)"
-                                                            title="Rol en A.R. Trieste">
-                                                        <t t-foreach="state.roles" t-as="r" t-key="r.id">
-                                                            <option t-att-value="r.id" t-att-selected="accTrieste and accTrieste.role_id === r.id">
-                                                                <t t-esc="r.name"/>
-                                                            </option>
-                                                        </t>
-                                                    </select>
+                                                <!-- SELECTOR MULTI-ROL EN TRIESTE -->
+                                                <div class="position-relative role-selector-container">
+                                                    <t t-if="accTrieste and accTrieste.active">
+                                                        <button type="button" 
+                                                                class="btn btn-sm role-selector-btn d-flex align-items-center justify-content-between gap-2 shadow-sm"
+                                                                t-attf-class="#{isOpenTrieste ? 'border-primary' : ''}"
+                                                                t-att-disabled="isUpdatingTrieste"
+                                                                t-on-click="() => this.toggleDropdown(u.odoo_user_id + '_4')"
+                                                                title="Haga clic para asignar o quitar roles en A.R. Trieste">
+                                                            
+                                                            <div class="d-flex align-items-center gap-1 flex-wrap text-start role-badges-summary">
+                                                                <t t-if="accTrieste.roles and accTrieste.roles.length > 0">
+                                                                    <t t-foreach="accTrieste.roles" t-as="r" t-key="r.id">
+                                                                        <span class="badge role-pill shadow-xs" 
+                                                                              t-attf-style="background-color: #{r.color || '#0284c7'}; color: #fff;">
+                                                                            <t t-esc="r.name"/>
+                                                                        </span>
+                                                                    </t>
+                                                                </t>
+                                                                <t t-elif="accTrieste.role_name and accTrieste.role_name !== 'Sin Rol'">
+                                                                    <span class="badge role-pill shadow-xs" 
+                                                                          t-attf-style="background-color: #{accTrieste.role_color || '#0284c7'}; color: #fff;">
+                                                                        <t t-esc="accTrieste.role_name"/>
+                                                                    </span>
+                                                                </t>
+                                                                <t t-else="">
+                                                                    <span class="badge bg-warning-subtle text-dark border px-2 py-1 font-monospace" style="font-size: 0.75rem;">
+                                                                        <i class="fa fa-exclamation-triangle text-warning me-1"/> Sin Rol
+                                                                    </span>
+                                                                </t>
+                                                            </div>
+
+                                                            <div class="ms-1 text-muted d-flex align-items-center">
+                                                                <i t-if="isUpdatingTrieste" class="fa fa-spin fa-spinner text-primary"/>
+                                                                <i t-else="" class="fa fa-caret-down fs-6" t-att-class="isOpenTrieste ? 'text-primary' : 'text-secondary'"/>
+                                                            </div>
+                                                        </button>
+
+                                                        <!-- DROPDOWN FLOTANTE MULTI-ROL -->
+                                                        <div t-if="isOpenTrieste" class="role-dropdown-popover shadow-lg border rounded-3 bg-white text-start">
+                                                            <div class="popover-header px-3 py-2 bg-light border-bottom d-flex align-items-center justify-content-between">
+                                                                <span class="fw-bold small text-dark">
+                                                                    <i class="fa fa-shield text-primary me-1"/> Roles en A.R. Trieste
+                                                                </span>
+                                                                <button type="button" class="btn btn-sm btn-link text-muted p-0 border-0" t-on-click="() => this.closeDropdown()">✖</button>
+                                                            </div>
+
+                                                            <div class="popover-body p-2">
+                                                                <t t-foreach="state.roles" t-as="r" t-key="r.id">
+                                                                    <t t-set="isRoleChecked" t-value="this.hasCompanyRole(u, 4, r.id)"/>
+                                                                    <div class="role-option-item d-flex align-items-center justify-content-between px-3 py-2 rounded mb-1 cursor-pointer"
+                                                                         t-attf-class="#{isRoleChecked ? 'bg-primary-subtle text-primary fw-bold' : 'text-dark'}"
+                                                                         t-on-click="() => this.toggleCompanyRole(u, 4, r.id)">
+                                                                        <div class="d-flex align-items-center gap-2">
+                                                                            <span class="role-dot rounded-circle" t-attf-style="background-color: #{r.color || '#0284c7'}; width: 10px; height: 10px; display: inline-block;"/>
+                                                                            <span class="role-name-text"><t t-esc="r.name"/></span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <i t-if="isRoleChecked" class="fa fa-check-square text-primary fs-5"/>
+                                                                            <i t-else="" class="fa fa-square-o text-muted fs-5"/>
+                                                                        </div>
+                                                                    </div>
+                                                                </t>
+                                                            </div>
+
+                                                            <div class="popover-footer px-3 py-2 bg-light border-top d-flex justify-content-between align-items-center">
+                                                                <small class="text-muted" style="font-size: 0.72rem;">Puede marcar más de un rol</small>
+                                                                <button type="button" class="btn btn-sm btn-primary py-1 px-3 fw-bold" style="font-size: 0.75rem;" t-on-click="() => this.closeDropdown()">
+                                                                    Listo
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <div class="btn btn-sm btn-light border text-muted disabled" style="min-width: 190px; opacity: 0.6; cursor: not-allowed;">
+                                                            <i class="fa fa-lock me-1"/> Sin acceso
+                                                        </div>
+                                                    </t>
                                                 </div>
                                             </div>
 
@@ -276,8 +346,11 @@
                                         </td>
 
                                         <!-- EMPRESA 2: UTRECAR S.L. (ID 1) -->
-                                        <td class="border-start text-center p-3" t-attf-class="#{u.company_access and u.company_access[1] and u.company_access[1].active ? 'bg-warning-subtle bg-opacity-25' : ''}">
+                                        <td class="border-start text-center p-3 position-relative" t-attf-class="#{u.company_access and u.company_access[1] and u.company_access[1].active ? 'bg-warning-subtle bg-opacity-25' : ''}">
                                             <t t-set="accUtrecar" t-value="u.company_access and u.company_access[1]"/>
+                                            <t t-set="isUpdatingUtrecar" t-value="state.updatingKey === u.odoo_user_id + '_1'"/>
+                                            <t t-set="isOpenUtrecar" t-value="state.activeDropdownKey === u.odoo_user_id + '_1'"/>
+
                                             <div class="d-flex align-items-center justify-content-center gap-3">
                                                 <!-- SWITCH ACCESO -->
                                                 <div class="form-check form-switch m-0" title="Activar o desactivar acceso a Utrecar S.L.">
@@ -285,24 +358,88 @@
                                                            type="checkbox" 
                                                            style="width: 2.8rem; height: 1.4rem; cursor: pointer;"
                                                            t-att-checked="accUtrecar and accUtrecar.active"
-                                                           t-att-disabled="state.updatingKey === u.odoo_user_id + '_1'"
+                                                           t-att-disabled="isUpdatingUtrecar"
                                                            t-on-click="() => this.toggleCompanyAccess(u, 1, accUtrecar ? accUtrecar.active : false)"/>
                                                 </div>
 
-                                                <!-- SELECTOR DE ROL ESPECÍFICO EN UTRECAR -->
-                                                <div style="width: 170px;">
-                                                    <select class="form-select form-select-sm fw-bold shadow-none"
-                                                            t-attf-class="#{accUtrecar and accUtrecar.active ? 'border-dark text-dark' : 'border-secondary-subtle text-muted'}"
-                                                            t-att-value="accUtrecar ? accUtrecar.role_id : false"
-                                                            t-att-disabled="!accUtrecar or !accUtrecar.active or state.updatingKey === u.odoo_user_id + '_1'"
-                                                            t-on-change="(ev) => this.changeCompanyRole(u, 1, ev.target.value)"
-                                                            title="Rol en Utrecar S.L.">
-                                                        <t t-foreach="state.roles" t-as="r" t-key="r.id">
-                                                            <option t-att-value="r.id" t-att-selected="accUtrecar and accUtrecar.role_id === r.id">
-                                                                <t t-esc="r.name"/>
-                                                            </option>
-                                                        </t>
-                                                    </select>
+                                                <!-- SELECTOR MULTI-ROL EN UTRECAR -->
+                                                <div class="position-relative role-selector-container">
+                                                    <t t-if="accUtrecar and accUtrecar.active">
+                                                        <button type="button" 
+                                                                class="btn btn-sm role-selector-btn d-flex align-items-center justify-content-between gap-2 shadow-sm"
+                                                                t-attf-class="#{isOpenUtrecar ? 'border-primary' : ''}"
+                                                                t-att-disabled="isUpdatingUtrecar"
+                                                                t-on-click="() => this.toggleDropdown(u.odoo_user_id + '_1')"
+                                                                title="Haga clic para asignar o quitar roles en Utrecar S.L.">
+                                                            
+                                                            <div class="d-flex align-items-center gap-1 flex-wrap text-start role-badges-summary">
+                                                                <t t-if="accUtrecar.roles and accUtrecar.roles.length > 0">
+                                                                    <t t-foreach="accUtrecar.roles" t-as="r" t-key="r.id">
+                                                                        <span class="badge role-pill shadow-xs" 
+                                                                              t-attf-style="background-color: #{r.color || '#0284c7'}; color: #fff;">
+                                                                            <t t-esc="r.name"/>
+                                                                        </span>
+                                                                    </t>
+                                                                </t>
+                                                                <t t-elif="accUtrecar.role_name and accUtrecar.role_name !== 'Sin Rol'">
+                                                                    <span class="badge role-pill shadow-xs" 
+                                                                          t-attf-style="background-color: #{accUtrecar.role_color || '#0284c7'}; color: #fff;">
+                                                                        <t t-esc="accUtrecar.role_name"/>
+                                                                    </span>
+                                                                </t>
+                                                                <t t-else="">
+                                                                    <span class="badge bg-warning-subtle text-dark border px-2 py-1 font-monospace" style="font-size: 0.75rem;">
+                                                                        <i class="fa fa-exclamation-triangle text-warning me-1"/> Sin Rol
+                                                                    </span>
+                                                                </t>
+                                                            </div>
+
+                                                            <div class="ms-1 text-muted d-flex align-items-center">
+                                                                <i t-if="isUpdatingUtrecar" class="fa fa-spin fa-spinner text-primary"/>
+                                                                <i t-else="" class="fa fa-caret-down fs-6" t-att-class="isOpenUtrecar ? 'text-primary' : 'text-secondary'"/>
+                                                            </div>
+                                                        </button>
+
+                                                        <!-- DROPDOWN FLOTANTE MULTI-ROL -->
+                                                        <div t-if="isOpenUtrecar" class="role-dropdown-popover shadow-lg border rounded-3 bg-white text-start">
+                                                            <div class="popover-header px-3 py-2 bg-light border-bottom d-flex align-items-center justify-content-between">
+                                                                <span class="fw-bold small text-dark">
+                                                                    <i class="fa fa-shield text-warning me-1"/> Roles en Utrecar S.L.
+                                                                </span>
+                                                                <button type="button" class="btn btn-sm btn-link text-muted p-0 border-0" t-on-click="() => this.closeDropdown()">✖</button>
+                                                            </div>
+
+                                                            <div class="popover-body p-2">
+                                                                <t t-foreach="state.roles" t-as="r" t-key="r.id">
+                                                                    <t t-set="isRoleChecked" t-value="this.hasCompanyRole(u, 1, r.id)"/>
+                                                                    <div class="role-option-item d-flex align-items-center justify-content-between px-3 py-2 rounded mb-1 cursor-pointer"
+                                                                         t-attf-class="#{isRoleChecked ? 'bg-primary-subtle text-primary fw-bold' : 'text-dark'}"
+                                                                         t-on-click="() => this.toggleCompanyRole(u, 1, r.id)">
+                                                                        <div class="d-flex align-items-center gap-2">
+                                                                            <span class="role-dot rounded-circle" t-attf-style="background-color: #{r.color || '#0284c7'}; width: 10px; height: 10px; display: inline-block;"/>
+                                                                            <span class="role-name-text"><t t-esc="r.name"/></span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <i t-if="isRoleChecked" class="fa fa-check-square text-primary fs-5"/>
+                                                                            <i t-else="" class="fa fa-square-o text-muted fs-5"/>
+                                                                        </div>
+                                                                    </div>
+                                                                </t>
+                                                            </div>
+
+                                                            <div class="popover-footer px-3 py-2 bg-light border-top d-flex justify-content-between align-items-center">
+                                                                <small class="text-muted" style="font-size: 0.72rem;">Puede marcar más de un rol</small>
+                                                                <button type="button" class="btn btn-sm btn-primary py-1 px-3 fw-bold" style="font-size: 0.75rem;" t-on-click="() => this.closeDropdown()">
+                                                                    Listo
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <div class="btn btn-sm btn-light border text-muted disabled" style="min-width: 190px; opacity: 0.6; cursor: not-allowed;">
+                                                            <i class="fa fa-lock me-1"/> Sin acceso
+                                                        </div>
+                                                    </t>
                                                 </div>
                                             </div>
 
