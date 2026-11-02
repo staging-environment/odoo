@@ -413,22 +413,28 @@
                     padding-top: 18px;
                     border-top: 1px solid rgba(255, 255, 255, 0.08);
                     display: flex;
-                    justify-content: space-between;
+                    justify-content: center;
                     align-items: center;
-                    flex-wrap: wrap;
                     gap: 14px;
                 }
                 .admin-link {
                     color: var(--text-muted);
                     text-decoration: none;
-                    font-size: 0.83rem;
+                    font-size: 0.85rem;
                     display: inline-flex;
                     align-items: center;
-                    gap: 6px;
-                    transition: color 0.2s;
+                    gap: 8px;
+                    padding: 8px 18px;
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.04);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
                 }
                 .admin-link:hover {
                     color: #ffffff;
+                    background: rgba(255, 255, 255, 0.08);
+                    border-color: rgba(6, 182, 212, 0.4);
+                    transform: translateY(-1px);
                 }
                 .footer-badge {
                     font-size: 0.78rem;
@@ -488,17 +494,17 @@
                         </div>
                     </t>
                     <t t-else="">
-                        <div class="brand-badge" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.35); color: #f59e0b;">
-                            <i class="fa fa-exclamation-triangle"></i> Estación no creada en Odoo
+                        <div class="brand-badge" style="background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8;">
+                            <i class="fa fa-desktop"></i> Conexión sin TPV de Pista
                         </div>
-                        <h1 class="station-title text-warning">Puesto de Trabajo Pendiente</h1>
-                        <div class="alert alert-warning border border-warning shadow-sm mt-3 mb-3 text-start" role="alert" style="border-radius: 14px; background: rgba(245, 158, 11, 0.12); color: #fde68a;">
+                        <h1 class="station-title" style="color: #f8fafc;">Acceso no disponible para TPV</h1>
+                        <div class="alert border shadow-sm mt-3 mb-3 text-start" role="alert" style="border-radius: 16px; background: rgba(30, 41, 59, 0.75); border-color: rgba(255, 255, 255, 0.12) !important; color: #cbd5e1; padding: 22px 24px;">
                             <div class="d-flex align-items-center gap-3">
-                                <i class="fa fa-exclamation-circle fa-2x text-warning"></i>
+                                <i class="fa fa-info-circle fa-2x text-info" style="opacity: 0.95;"></i>
                                 <div>
-                                    <div class="fw-bold fs-6 text-white mb-1">Esta estación de trabajo aún no está creada en Odoo</div>
-                                    <div class="small" style="color: #cbd5e1;">
-                                        Esta terminal está conectada desde la IP de VPN <strong class="font-monospace text-warning"><t t-esc="client_ip"/></strong>, pero aún no tiene un Punto de Venta (TPV) dado de alta en Odoo. Para poder abrir turnos y operar el TPV, un administrador debe dar de alta la estación en Odoo.
+                                    <div class="fw-bold fs-6 text-white mb-1">Te estás conectando desde un equipo sin acceso al TPV de gasolinera</div>
+                                    <div class="small" style="color: #94a3b8; line-height: 1.55;">
+                                        Esta conexión procede de la IP de VPN <strong class="font-monospace text-info"><t t-esc="client_ip"/></strong>, la cual no tiene asignado ningún Punto de Venta (TPV) de gasolinera. Para operar un turno y cobrar en pista, es necesario conectarse desde un puesto autorizado de estación de servicio.
                                     </div>
                                 </div>
                             </div>
@@ -550,16 +556,10 @@
                     </form>
                 </t>
 
-                <div class="modal-footer">
+                <div class="modal-footer" t-if="is_admin_vpn">
                     <a href="/web?admin=1" class="admin-link" id="adminLoginLink">
-                        <i class="fa fa-shield-alt"></i> Acceso manual de Administrador
+                        <i class="fa fa-shield-alt text-info"></i> Acceso administrador
                     </a>
-                    <a href="/web?admin=1#action=pos_gas_station.action_gas_station_dashboard" class="admin-link" style="color: #38bdf8;">
-                        <i class="fa fa-arrow-left"></i> Volver a Gestión de Gasolineras
-                    </a>
-                    <div class="footer-badge">
-                        ERP 17.0 • Terminal de Pista
-                    </div>
                 </div>
             </div>
 

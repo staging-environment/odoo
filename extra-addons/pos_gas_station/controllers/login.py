@@ -48,10 +48,19 @@ class UtrecarLogin(Home):
     ADMIN_VPN_IPS = {'10.8.0.2', '10.8.0.19', '127.0.0.1'}
 
     def _is_admin_vpn_ip(self, ip):
-        """Comprueba si la IP corresponde a la VPN de Administrador (Jose/Bonilla)."""
+        """Comprueba si la IP corresponde a la VPN de Administrador (Jose/Bonilla o configurada en plataforma)."""
         if not ip:
             return False
-        return str(ip).strip() in self.ADMIN_VPN_IPS
+        clean_ip = str(ip).strip()
+        try:
+            ICP = request.env['ir.config_parameter'].sudo()
+            param_ips = ICP.get_param('pos_gas_station.admin_vpn_ips', '')
+            admin_ips = set(self.ADMIN_VPN_IPS)
+            if param_ips:
+                admin_ips.update([x.strip() for x in param_ips.split(',') if x.strip()])
+            return clean_ip in admin_ips
+        except Exception:
+            return clean_ip in self.ADMIN_VPN_IPS
 
     def _auto_login_super_admin(self):
         """Autentica automáticamente como Super Administrador (Bonilla / id=2)."""
@@ -257,12 +266,13 @@ class UtrecarLogin(Home):
         employees = []
         company_name = ''
         warning_message = ''
+        is_admin_vpn = self._is_admin_vpn_ip(ip)
 
         if has_tpv:
             company_name = station.company_id.name or 'Empresa'
             employees = station.get_admin_platform_employees()
         else:
-            warning_message = f"Esta estación de trabajo (IP VPN: {ip}) aún no está creada en Odoo. Para poder abrir turnos y operar el TPV, un administrador debe dar de alta la estación en Odoo."
+            warning_message = f"Te estás conectando desde un equipo (IP de VPN: {ip}) que no tiene acceso al Punto de Venta (TPV) de ninguna gasolinera."
 
         return request.render('pos_gas_station.station_employee_select_modal', {
             'station': station,
@@ -272,6 +282,7 @@ class UtrecarLogin(Home):
             'employees': employees,
             'employees_json': Markup(json.dumps(employees)),
             'client_ip': (station.vpn_ip if station else '') or ip,
+            'is_admin_vpn': is_admin_vpn,
             'redirect': f'/pos/ui?config_id={station.id}' if has_tpv else '#',
             'csrf_token': request.csrf_token(),
         })
