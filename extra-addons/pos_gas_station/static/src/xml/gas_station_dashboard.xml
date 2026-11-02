@@ -178,42 +178,23 @@
                                                         </div>
                                                     </div>
 
-                                                    <!-- COMBUSTIBLES DISPONIBLES EN LA ESTACIÓN -->
-                                                    <div class="station-fuels-pills mb-3 d-flex gap-1 flex-wrap">
-                                                        <t t-foreach="st.fuels" t-as="fuel" t-key="fuel.code">
-                                                            <span class="fuel-mini-pill" t-attf-class="fuel-mini-pill fuel-code-#{fuel.code.toLowerCase()}">
-                                                                <t t-esc="fuel.name"/>
-                                                            </span>
-                                                        </t>
-                                                    </div>
-
-                                                    <!-- ACCIONES DE ESTACIÓN (APERTURA O CONTINUAR TURNO) -->
-                                                    <div class="station-actions-box d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
-                                                        <div class="d-flex align-items-center gap-2">
-                                                            <t t-if="st.has_active_session">
-                                                                <button class="btn btn-sm btn-success btn-access-pos fw-bold"
-                                                                        t-on-click="() => this.openStation(st.id)">
-                                                                    <i class="fa fa-bolt me-1"/> Continuar Turno / TPV
-                                                                </button>
-                                                                <button class="btn btn-sm btn-outline-primary" 
-                                                                        t-on-click="() => this.selectEmployeeForStation(st.id)" 
-                                                                        title="Cambiar de empleado o reabrir selección de turno">
-                                                                    <i class="fa fa-user-circle me-1"/> Cambiar Cajero
-                                                                </button>
-                                                            </t>
-                                                            <t t-else="">
-                                                                <button class="btn btn-sm btn-primary btn-access-pos fw-bold"
-                                                                        t-on-click="() => this.openStation(st.id)">
-                                                                    <i class="fa fa-play me-1"/> Abrir Turno / Entrar al TPV
-                                                                </button>
+                                                    <!-- COMBUSTIBLES DISPONIBLES EN LA ESTACIÓN Y ACCIONES -->
+                                                    <div class="station-fuels-pills mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                                                        <div class="d-flex gap-1 flex-wrap">
+                                                            <t t-foreach="st.fuels" t-as="fuel" t-key="fuel.code">
+                                                                <span class="fuel-mini-pill" t-attf-class="fuel-mini-pill fuel-code-#{fuel.code.toLowerCase()}">
+                                                                    <t t-esc="fuel.name"/>
+                                                                </span>
                                                             </t>
                                                         </div>
 
-                                                        <div class="station-sub-actions" t-if="state.isManager and st.id !== 7">
-                                                            <button class="btn btn-sm btn-outline-danger" 
+                                                        <!-- SOLO PERMITE BORRAR SI ES MANAGER Y NO TIENE INFORMACIÓN ASOCIADA -->
+                                                        <div t-if="state.isManager and st.can_delete">
+                                                            <button class="btn btn-sm btn-outline-danger py-0 px-2" 
+                                                                    style="font-size: 0.75rem;"
                                                                     t-on-click="() => this.deleteStation(st)" 
-                                                                    title="Eliminar estación">
-                                                                <i class="fa fa-trash"/> Borrar
+                                                                    title="Eliminar estación vacía sin información asociada">
+                                                                <i class="fa fa-trash me-1"/> Borrar
                                                             </button>
                                                         </div>
                                                     </div>

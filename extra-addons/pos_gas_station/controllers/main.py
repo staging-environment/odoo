@@ -1251,6 +1251,10 @@ class PosGasStationController(http.Controller):
                 last_closing_date = last_session.stop_at.strftime('%d/%m/%Y %H:%M') if (last_session and last_session.stop_at) else None
                 session_start = active_session.start_at.strftime('%d/%m/%Y %H:%M') if (active_session and active_session.start_at) else None
 
+                # Una estación solo puede borrarse si no tiene turnos ni ventas asociadas y no es Repsol
+                has_associated_data = bool(env['pos.session'].sudo().search_count([('config_id', '=', st.id)])) or bool(env['pos.order'].sudo().search_count([('config_id', '=', st.id)]))
+                can_delete = (st.id != 7 and not has_associated_data)
+
                 accessible_stations.append({
                     'id': st.id,
                     'name': st.name,
@@ -1265,6 +1269,7 @@ class PosGasStationController(http.Controller):
                     'session_start': session_start,
                     'last_closing_date': last_closing_date,
                     'fuels': fuels,
+                    'can_delete': can_delete,
                 })
 
             total_stations += len(accessible_stations)
@@ -1292,6 +1297,9 @@ class PosGasStationController(http.Controller):
                 'stations_count': len(accessible_stations),
                 'employees_count': c_emps_count,
             })
+
+        # Ordenar empresas: A.R. Trieste (ID 4 o con 'trieste' en nombre) SIEMPRE en PRIMER LUGAR
+        companies_data.sort(key=lambda c: (0 if (c['id'] == 4 or 'trieste' in c['name'].lower()) else 1, c['id']))
 
         return {
             'status': 'success',
@@ -1921,6 +1929,15 @@ class PosGasStationController(http.Controller):
 
             if config.id == 7 or 'repsol' in (config.name or '').lower():
                 return {'status': 'error', 'message': '¡ESTACIÓN PROTEGIDA! E.S. Repsol es la estación principal activa en producción y no se puede borrar bajo ningún concepto.'}
+
+            # Validar si tiene sesiones o tickets asociados
+            has_sessions = env['pos.session'].sudo().search_count([('config_id', '=', config.id)])
+            has_orders = env['pos.order'].sudo().search_count([('config_id', '=', config.id)])
+            if has_sessions or has_orders:
+                return {
+                    'status': 'error',
+                    'message': f'No se puede eliminar la estación "{config.name}" porque contiene datos asociados ({has_sessions} turnos, {has_orders} tickets).'
+                }
 
             name = config.name
             # config.unlink() ejecuta la validación exhaustiva de trazabilidad e integridad del modelo

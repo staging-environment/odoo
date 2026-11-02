@@ -75,29 +75,6 @@ export class GasStationDashboard extends Component {
         }
     }
 
-    async openStation(stationId) {
-        this.state.loading = true;
-        try {
-            const res = await jsonrpc("/pos_gas_station/open_station", {
-                config_id: stationId
-            });
-            if (res.status === "success" && res.url) {
-                window.location.href = res.url;
-            } else {
-                this.state.loading = false;
-                this.notification.add(res.message || "No se pudo abrir la sesión del punto de venta", { type: "danger" });
-            }
-        } catch (e) {
-            this.state.loading = false;
-            console.error("Error opening station:", e);
-            this.notification.add("Error de conexión al abrir el punto de venta", { type: "danger" });
-        }
-    }
-
-    selectEmployeeForStation(stationId) {
-        window.location.href = `/pos_gas_station/select_employee?station_id=${stationId}`;
-    }
-
     // ==================== GESTIÓN INLINE DE EMPRESAS ====================
     openNewCompany() {
         this.state.newCompanyName = "";
