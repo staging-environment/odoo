@@ -1205,9 +1205,10 @@ class PosGasStationController(http.Controller):
         user = env.user
         is_manager = user.has_group('point_of_sale.group_pos_manager') or user._is_admin()
 
-        companies = user.company_ids
-        if not companies:
-            companies = env['res.company'].search([])
+        if is_manager:
+            companies = env['res.company'].sudo().search([], order='id')
+        else:
+            companies = user.company_ids or env['res.company'].sudo().search([], order='id')
 
         companies_data = []
         total_stations = 0
@@ -1215,7 +1216,7 @@ class PosGasStationController(http.Controller):
 
         for c in companies:
             domain = [('company_id', '=', c.id)]
-            all_stations = env['pos.config'].sudo().search(domain)
+            all_stations = env['pos.config'].sudo().search(domain, order='id')
 
             accessible_stations = []
             for st in all_stations:
@@ -1231,6 +1232,11 @@ class PosGasStationController(http.Controller):
                     ('state', 'in', ['opened', 'opening_control'])
                 ], limit=1)
 
+                last_session = env['pos.session'].sudo().search([
+                    ('config_id', '=', st.id),
+                    ('state', '=', 'closed')
+                ], order='stop_at desc', limit=1)
+
                 if active_session:
                     total_open_sessions += 1
 
@@ -1238,21 +1244,26 @@ class PosGasStationController(http.Controller):
 
                 fuels = [
                     {'code': 'GA', 'name': 'Gasóleo A'},
-                    {'code': '95', 'name': 'Sin Plomo 95'}
+                    {'code': '95', 'name': 'Sin Plomo 95'},
+                    {'code': 'G+', 'name': 'Gasóleo Plus'}
                 ]
-                if 'repsol' in st.name.lower():
-                    fuels.append({'code': 'G+', 'name': 'Gasóleo Plus'})
+
+                last_closing_date = last_session.stop_at.strftime('%d/%m/%Y %H:%M') if (last_session and last_session.stop_at) else None
+                session_start = active_session.start_at.strftime('%d/%m/%Y %H:%M') if (active_session and active_session.start_at) else None
 
                 accessible_stations.append({
                     'id': st.id,
                     'name': st.name,
                     'company_id': c.id,
                     'company_name': c.name,
+                    'vpn_ip': st.vpn_ip or '',
                     'pumps_count': pumps_cnt,
                     'has_active_session': bool(active_session),
                     'session_state': active_session.state if active_session else 'closed',
                     'session_name': active_session.name if active_session else None,
                     'session_user': active_session.user_id.name if active_session else None,
+                    'session_start': session_start,
+                    'last_closing_date': last_closing_date,
                     'fuels': fuels,
                 })
 
@@ -1958,6 +1969,86 @@ class PosGasStationController(http.Controller):
             return {'status': 'success', 'message': f'Empresa "{name}" eliminada correctamente.'}
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/delete_company: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/rename_company', type='json', auth='user', methods=['POST'], csrf=False)
+    def rename_company(self, company_id, name):
+        try:
+            env = request.env
+            if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
+                return {'status': 'error', 'message': 'No tiene permisos para modificar la empresa.'}
+            comp = env['res.company'].sudo().browse(int(company_id))
+            if not comp.exists():
+                return {'status': 'error', 'message': 'La empresa no existe.'}
+            clean_name = (name or '').strip()
+            if not clean_name:
+                return {'status': 'error', 'message': 'El nombre de la empresa no puede estar vacío.'}
+            comp.write({'name': clean_name})
+            return {'status': 'success', 'name': clean_name, 'message': f'Empresa renombrada a "{clean_name}" correctamente.'}
+        except Exception as e:
+            _logger.exception("Error in rename_company: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/rename_station', type='json', auth='user', methods=['POST'], csrf=False)
+    def rename_station(self, config_id, name):
+        try:
+            env = request.env
+            if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
+                return {'status': 'error', 'message': 'No tiene permisos para modificar la estación.'}
+            st = env['pos.config'].sudo().browse(int(config_id))
+            if not st.exists():
+                return {'status': 'error', 'message': 'La estación no existe.'}
+            clean_name = (name or '').strip()
+            if not clean_name:
+                return {'status': 'error', 'message': 'El nombre de la estación no puede estar vacío.'}
+            st.write({'name': clean_name})
+            return {'status': 'success', 'name': clean_name, 'message': f'Estación renombrada a "{clean_name}" correctamente.'}
+        except Exception as e:
+            _logger.exception("Error in rename_station: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/create_company', type='json', auth='user', methods=['POST'], csrf=False)
+    def create_company_quick(self, name, vat=None):
+        try:
+            env = request.env
+            if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
+                return {'status': 'error', 'message': 'No tiene permisos para crear empresas.'}
+            clean_name = (name or '').strip()
+            if not clean_name:
+                return {'status': 'error', 'message': 'El nombre de la empresa es obligatorio.'}
+            comp = env['res.company'].sudo().create({
+                'name': clean_name,
+                'vat': (vat or '').strip() or False,
+            })
+            try:
+                env.user.sudo().write({'company_ids': [(4, comp.id)]})
+            except Exception:
+                pass
+            return {'status': 'success', 'company_id': comp.id, 'name': comp.name, 'message': f'Empresa "{comp.name}" creada con éxito.'}
+        except Exception as e:
+            _logger.exception("Error in create_company_quick: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/create_station', type='json', auth='user', methods=['POST'], csrf=False)
+    def create_station_quick(self, company_id, name, vpn_ip=None):
+        try:
+            env = request.env
+            if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
+                return {'status': 'error', 'message': 'No tiene permisos para crear estaciones.'}
+            comp = env['res.company'].sudo().browse(int(company_id))
+            if not comp.exists():
+                return {'status': 'error', 'message': 'Empresa no encontrada.'}
+            clean_name = (name or '').strip()
+            if not clean_name:
+                return {'status': 'error', 'message': 'El nombre de la estación es obligatorio.'}
+            st = env['pos.config'].sudo().with_company(comp).create({
+                'name': clean_name,
+                'company_id': comp.id,
+                'vpn_ip': (vpn_ip or '').strip() or False,
+            })
+            return {'status': 'success', 'config_id': st.id, 'name': st.name, 'message': f'Estación "{st.name}" creada con éxito en {comp.name}.'}
+        except Exception as e:
+            _logger.exception("Error in create_station_quick: %s", e)
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/register_extraction', type='json', auth='user', methods=['POST'], csrf=False)
