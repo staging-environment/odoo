@@ -223,3 +223,26 @@ Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempr
 - **Sincronización Automática con `res.users`**:
   - En Odoo, el usuario se vincula a todas las estaciones en `pos_config_ids` y se añade a `pos.config.allowed_user_ids` de cada terminal respectiva.
 - **Documentación de Detalle**: Consultar `docs/ARQUITECTURA_UBICACIONES_MULTIPLES_EMPLEADOS.md`.
+
+---
+
+## 👥 Sistema de Permisos y Asignación Multi-Rol por Empresa
+
+### 1. Modelo de Datos Multi-Rol
+- **`res.users`**:
+  - `utrecar_role_ids`: Many2many con `utrecar.role`. Almacena todos los roles activos del usuario.
+  - `utrecar_role_id`: Many2one compute/inverse al rol principal (primer rol asignado).
+  - `company_access_ids`: One2many con `utrecar.employee.company.access`.
+- **`utrecar.employee.company.access`**:
+  - `role_ids`: Many2many con `utrecar.role` (tabla relacional `utrecar_emp_comp_role_rel`). Permite múltiples roles para una misma empresa (ej. EMPLEADO + GESTOR en A.R. Trieste).
+  - `role_id`: Many2one compute/inverse al rol principal de la empresa.
+  - `active_access`: Boolean switch que habilita o deshabilita el acceso del empleado a dicha empresa.
+- **Métodos Clave**:
+  - `user.get_company_roles(company_id)`: Devuelve el recordset de todos los roles activos del usuario en esa empresa.
+  - `user.is_employee_for_company(company_id)`: Verifica si el usuario tiene asignado el rol EMPLEADO en la empresa consultada para autorizar su aparición en el selector de turnos táctil del TPV.
+  - `user.has_utrecar_permission(perm_code, company_id)`: Evalúa permisos considerando la configuración aislada por empresa (`utrecar.company.role.permission`) de cualquiera de los roles que el usuario posea.
+
+### 2. Pantalla "Personal, Empresas y Roles"
+- Componente OWL: `EmployeeCompanyRolesView` (`extra-addons/pos_gas_station/static/src/js/employee_company_roles.js` y `employee_company_roles.xml`).
+- Casillas interactivas con dropdown flotante multi-selección (`role-dropdown-popover`) para A.R. Trieste (ID 4) y Utrecar S.L. (ID 1).
+- Los badges se renderizan dinámicamente con sus colores correspondientes (`#0284c7`, etc.) reflejando de inmediato los roles asignados.
