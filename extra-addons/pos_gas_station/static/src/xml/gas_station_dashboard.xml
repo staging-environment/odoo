@@ -74,8 +74,8 @@
                                                 </h3>
                                                 <button class="btn btn-sm btn-link text-muted p-0" 
                                                         t-if="state.isManager" 
-                                                        t-on-click="() => this.promptRenameCompany(comp)" 
-                                                        title="Modificar nombre de la empresa">
+                                                        t-on-click="() => this.promptEditCompany(comp)" 
+                                                        title="Modificar datos de la empresa">
                                                     <i class="fa fa-pencil text-secondary"/>
                                                 </button>
                                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2">
@@ -87,10 +87,12 @@
                                                     <i class="fa fa-users me-1"/> <t t-esc="comp.employees_count || 0"/> Empleados activos
                                                 </span>
                                             </div>
-                                            <div class="company-meta-row mt-1">
-                                                <span t-if="comp.vat" class="company-vat"><i class="fa fa-id-card-o me-1"/> <t t-esc="comp.vat"/></span>
-                                                <span t-if="comp.city" class="company-city"><i class="fa fa-map-marker me-1"/> <t t-esc="comp.city"/></span>
-                                                <span t-if="comp.phone" class="company-phone"><i class="fa fa-phone me-1"/> <t t-esc="comp.phone"/></span>
+                                            <div class="company-meta-row mt-1 d-flex flex-wrap gap-2 text-muted small align-items-center">
+                                                <span t-if="comp.vat" class="company-vat badge bg-light text-dark border"><i class="fa fa-id-card-o me-1 text-primary"/> <t t-esc="comp.vat"/></span>
+                                                <span t-if="comp.street" class="company-street"><i class="fa fa-map-marker me-1 text-danger"/> <t t-esc="comp.street"/></span>
+                                                <span t-if="comp.zip or comp.city" class="company-city"><i class="fa fa-building-o me-1 text-secondary"/> <t t-esc="comp.zip ? (comp.zip + ' ') : ''"/><t t-esc="comp.city"/></span>
+                                                <span t-if="comp.phone" class="company-phone"><i class="fa fa-phone me-1 text-success"/> <t t-esc="comp.phone"/></span>
+                                                <span t-if="comp.email" class="company-email"><i class="fa fa-envelope-o me-1 text-info"/> <t t-esc="comp.email"/></span>
                                             </div>
                                         </div>
                                     </div>
@@ -224,8 +226,8 @@
             <!-- MODAL INLINE: CREAR NUEVA EMPRESA -->
             <t t-if="state.showCreateCompanyModal">
                 <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1060;" role="dialog">
-                    <div class="modal-dialog modal-dialog-centered" role="document">
-                        <div class="modal-content shadow-lg border-0" style="border-radius: 14px; overflow: hidden; background: #ffffff;">
+                    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
                             <div class="modal-header bg-primary text-white py-3 px-4 d-flex justify-content-between align-items-center">
                                 <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
                                     <i class="fa fa-building-o"/> Crear Nueva Empresa
@@ -233,16 +235,58 @@
                                 <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeCreateCompanyModal()" aria-label="Cerrar"></button>
                             </div>
                             <div class="modal-body p-4">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold text-dark">Nombre de la Empresa <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" placeholder="Ej: UTRECAR SUR S.L." t-model="state.newCompanyName"/>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold text-muted">CIF / NIF (Opcional)</label>
-                                    <input type="text" class="form-control" placeholder="Ej: B12345678" t-model="state.newCompanyVat"/>
+                                <div class="row g-3">
+                                    <!-- Identificación Fiscal -->
+                                    <div class="col-12">
+                                        <div class="text-uppercase text-primary fw-bold small pb-1 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa fa-id-card"/> Identificación Fiscal
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold text-dark small mb-1">Razón Social / Nombre <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" placeholder="Ej: UTRECAR SUR S.L." t-model="state.newCompanyName"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold text-dark small mb-1">CIF / NIF</label>
+                                        <input type="text" class="form-control text-uppercase" placeholder="Ej: B12345678" t-model="state.newCompanyVat"/>
+                                    </div>
+
+                                    <!-- Domicilio Fiscal -->
+                                    <div class="col-12 mt-3">
+                                        <div class="text-uppercase text-primary fw-bold small pb-1 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa fa-map-marker"/> Domicilio Fiscal
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Dirección Fiscal / Calle</label>
+                                        <input type="text" class="form-control" placeholder="Ej: Av. de la Industria, 14, Nave 3" t-model="state.newCompanyStreet"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Código Postal</label>
+                                        <input type="text" class="form-control font-monospace" placeholder="Ej: 41710" t-model="state.newCompanyZip"/>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Localidad / Población</label>
+                                        <input type="text" class="form-control" placeholder="Ej: Utrera" t-model="state.newCompanyCity"/>
+                                    </div>
+
+                                    <!-- Contacto y Facturación -->
+                                    <div class="col-12 mt-3">
+                                        <div class="text-uppercase text-primary fw-bold small pb-1 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa fa-phone"/> Contacto y Facturación
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Teléfono</label>
+                                        <input type="text" class="form-control" placeholder="Ej: 955 86 00 00" t-model="state.newCompanyPhone"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Correo Electrónico (Facturación)</label>
+                                        <input type="email" class="form-control" placeholder="Ej: administracion@utrecar.com" t-model="state.newCompanyEmail"/>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-end gap-2">
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end gap-2">
                                 <button type="button" class="btn btn-outline-secondary" t-on-click="() => this.closeCreateCompanyModal()">Cancelar</button>
                                 <button type="button" class="btn btn-primary fw-bold" t-att-disabled="state.actionLoading" t-on-click="() => this.submitCreateCompany()">
                                     <i class="fa fa-check me-1"/> Crear Empresa
@@ -286,27 +330,73 @@
                 </div>
             </t>
 
-            <!-- MODAL INLINE: RENOMBRAR EMPRESA -->
-            <t t-if="state.showRenameCompanyModal">
+            <!-- MODAL INLINE: MODIFICAR / EDITAR DATOS DE LA EMPRESA -->
+            <t t-if="state.showEditCompanyModal or state.showRenameCompanyModal">
                 <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1060;" role="dialog">
-                    <div class="modal-dialog modal-dialog-centered" role="document">
-                        <div class="modal-content shadow-lg border-0" style="border-radius: 14px; overflow: hidden; background: #ffffff;">
-                            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-primary text-white py-3 px-4 d-flex justify-content-between align-items-center">
                                 <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
-                                    <i class="fa fa-pencil text-warning"/> Modificar Nombre de la Empresa
+                                    <i class="fa fa-pencil text-white"/> Modificar Datos de la Empresa
                                 </h5>
-                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeRenameCompanyModal()" aria-label="Cerrar"></button>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeEditCompanyModal()" aria-label="Cerrar"></button>
                             </div>
                             <div class="modal-body p-4">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold text-dark">Nombre de la Empresa</label>
-                                    <input type="text" class="form-control" t-model="state.renameCompanyName"/>
+                                <div class="row g-3">
+                                    <!-- Identificación Fiscal -->
+                                    <div class="col-12">
+                                        <div class="text-uppercase text-primary fw-bold small pb-1 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa fa-id-card"/> Identificación Fiscal
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-bold text-dark small mb-1">Razón Social / Nombre <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" t-model="state.editCompanyName"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold text-dark small mb-1">CIF / NIF</label>
+                                        <input type="text" class="form-control text-uppercase" placeholder="Ej: B12345678" t-model="state.editCompanyVat"/>
+                                    </div>
+
+                                    <!-- Domicilio Fiscal -->
+                                    <div class="col-12 mt-3">
+                                        <div class="text-uppercase text-primary fw-bold small pb-1 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa fa-map-marker"/> Domicilio Fiscal
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Dirección Fiscal / Calle</label>
+                                        <input type="text" class="form-control" placeholder="Ej: Av. de la Industria, 14, Nave 3" t-model="state.editCompanyStreet"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Código Postal</label>
+                                        <input type="text" class="form-control font-monospace" placeholder="Ej: 41710" t-model="state.editCompanyZip"/>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Localidad / Población</label>
+                                        <input type="text" class="form-control" placeholder="Ej: Utrera" t-model="state.editCompanyCity"/>
+                                    </div>
+
+                                    <!-- Contacto y Facturación -->
+                                    <div class="col-12 mt-3">
+                                        <div class="text-uppercase text-primary fw-bold small pb-1 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa fa-phone"/> Contacto y Facturación
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Teléfono</label>
+                                        <input type="text" class="form-control" placeholder="Ej: 955 86 00 00" t-model="state.editCompanyPhone"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Correo Electrónico (Facturación)</label>
+                                        <input type="email" class="form-control" placeholder="Ej: administracion@utrecar.com" t-model="state.editCompanyEmail"/>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-outline-secondary" t-on-click="() => this.closeRenameCompanyModal()">Cancelar</button>
-                                <button type="button" class="btn btn-primary fw-bold" t-att-disabled="state.actionLoading" t-on-click="() => this.submitRenameCompany()">
-                                    <i class="fa fa-check me-1"/> Guardar Nombre
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-outline-secondary" t-on-click="() => this.closeEditCompanyModal()">Cancelar</button>
+                                <button type="button" class="btn btn-primary fw-bold" t-att-disabled="state.actionLoading" t-on-click="() => this.submitEditCompany()">
+                                    <i class="fa fa-check me-1"/> Guardar Cambios
                                 </button>
                             </div>
                         </div>

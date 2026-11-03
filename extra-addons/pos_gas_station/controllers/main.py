@@ -1290,7 +1290,9 @@ class PosGasStationController(http.Controller):
                 'vat': c.vat or '',
                 'city': c.city or '',
                 'street': c.street or '',
+                'zip': c.zip or '',
                 'phone': c.phone or '',
+                'email': c.email or '',
                 'has_logo': has_logo,
                 'logo_url': f'/web/image?model=res.company&id={c.id}&field=logo' if has_logo else None,
                 'stations': accessible_stations,
@@ -1989,7 +1991,11 @@ class PosGasStationController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/rename_company', type='json', auth='user', methods=['POST'], csrf=False)
-    def rename_company(self, company_id, name):
+    def rename_company(self, company_id, name, vat=None, street=None, zip=None, city=None, phone=None, email=None):
+        return self.update_company(company_id=company_id, name=name, vat=vat, street=street, zip=zip, city=city, phone=phone, email=email)
+
+    @http.route('/pos_gas_station/update_company', type='json', auth='user', methods=['POST'], csrf=False)
+    def update_company(self, company_id, name, vat=None, street=None, zip=None, city=None, phone=None, email=None):
         try:
             env = request.env
             if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
@@ -2000,32 +2006,23 @@ class PosGasStationController(http.Controller):
             clean_name = (name or '').strip()
             if not clean_name:
                 return {'status': 'error', 'message': 'El nombre de la empresa no puede estar vacío.'}
-            comp.write({'name': clean_name})
-            return {'status': 'success', 'name': clean_name, 'message': f'Empresa renombrada a "{clean_name}" correctamente.'}
+            vals = {
+                'name': clean_name,
+                'vat': (vat or '').strip() or False,
+                'street': (street or '').strip() or False,
+                'zip': (zip or '').strip() or False,
+                'city': (city or '').strip() or False,
+                'phone': (phone or '').strip() or False,
+                'email': (email or '').strip() or False,
+            }
+            comp.write(vals)
+            return {'status': 'success', 'name': clean_name, 'message': f'Empresa "{clean_name}" actualizada correctamente.'}
         except Exception as e:
-            _logger.exception("Error in rename_company: %s", e)
-            return {'status': 'error', 'message': str(e)}
-
-    @http.route('/pos_gas_station/rename_station', type='json', auth='user', methods=['POST'], csrf=False)
-    def rename_station(self, config_id, name):
-        try:
-            env = request.env
-            if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
-                return {'status': 'error', 'message': 'No tiene permisos para modificar la estación.'}
-            st = env['pos.config'].sudo().browse(int(config_id))
-            if not st.exists():
-                return {'status': 'error', 'message': 'La estación no existe.'}
-            clean_name = (name or '').strip()
-            if not clean_name:
-                return {'status': 'error', 'message': 'El nombre de la estación no puede estar vacío.'}
-            st.write({'name': clean_name})
-            return {'status': 'success', 'name': clean_name, 'message': f'Estación renombrada a "{clean_name}" correctamente.'}
-        except Exception as e:
-            _logger.exception("Error in rename_station: %s", e)
+            _logger.exception("Error in update_company: %s", e)
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/create_company', type='json', auth='user', methods=['POST'], csrf=False)
-    def create_company_quick(self, name, vat=None):
+    def create_company_quick(self, name, vat=None, street=None, zip=None, city=None, phone=None, email=None):
         try:
             env = request.env
             if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
@@ -2033,10 +2030,16 @@ class PosGasStationController(http.Controller):
             clean_name = (name or '').strip()
             if not clean_name:
                 return {'status': 'error', 'message': 'El nombre de la empresa es obligatorio.'}
-            comp = env['res.company'].sudo().create({
+            vals = {
                 'name': clean_name,
                 'vat': (vat or '').strip() or False,
-            })
+                'street': (street or '').strip() or False,
+                'zip': (zip or '').strip() or False,
+                'city': (city or '').strip() or False,
+                'phone': (phone or '').strip() or False,
+                'email': (email or '').strip() or False,
+            }
+            comp = env['res.company'].sudo().create(vals)
             try:
                 env.user.sudo().write({'company_ids': [(4, comp.id)]})
             except Exception:

@@ -27,15 +27,29 @@ export class GasStationDashboard extends Component {
             showCreateCompanyModal: false,
             showCreateStationModal: false,
             showRenameCompanyModal: false,
+            showEditCompanyModal: false,
             showRenameStationModal: false,
             newCompanyName: "",
             newCompanyVat: "",
+            newCompanyStreet: "",
+            newCompanyZip: "",
+            newCompanyCity: "",
+            newCompanyPhone: "",
+            newCompanyEmail: "",
             newStationCompanyId: null,
             newStationCompanyName: "",
             newStationName: "",
             newStationVpnIp: "",
             renameCompanyId: null,
             renameCompanyName: "",
+            editCompanyId: null,
+            editCompanyName: "",
+            editCompanyVat: "",
+            editCompanyStreet: "",
+            editCompanyZip: "",
+            editCompanyCity: "",
+            editCompanyPhone: "",
+            editCompanyEmail: "",
             renameStationId: null,
             renameStationName: "",
             actionLoading: false,
@@ -79,6 +93,11 @@ export class GasStationDashboard extends Component {
     openNewCompany() {
         this.state.newCompanyName = "";
         this.state.newCompanyVat = "";
+        this.state.newCompanyStreet = "";
+        this.state.newCompanyZip = "";
+        this.state.newCompanyCity = "";
+        this.state.newCompanyPhone = "";
+        this.state.newCompanyEmail = "";
         this.state.showCreateCompanyModal = true;
     }
 
@@ -96,7 +115,12 @@ export class GasStationDashboard extends Component {
         try {
             const res = await jsonrpc("/pos_gas_station/create_company", {
                 name: name,
-                vat: this.state.newCompanyVat
+                vat: this.state.newCompanyVat,
+                street: this.state.newCompanyStreet,
+                zip: this.state.newCompanyZip,
+                city: this.state.newCompanyCity,
+                phone: this.state.newCompanyPhone,
+                email: this.state.newCompanyEmail,
             });
             if (res.status === "success") {
                 this.notification.add(res.message, { type: "success" });
@@ -113,41 +137,65 @@ export class GasStationDashboard extends Component {
         }
     }
 
+    promptEditCompany(comp) {
+        this.state.editCompanyId = comp.id;
+        this.state.editCompanyName = comp.name || "";
+        this.state.editCompanyVat = comp.vat || "";
+        this.state.editCompanyStreet = comp.street || "";
+        this.state.editCompanyZip = comp.zip || "";
+        this.state.editCompanyCity = comp.city || "";
+        this.state.editCompanyPhone = comp.phone || "";
+        this.state.editCompanyEmail = comp.email || "";
+        this.state.showEditCompanyModal = true;
+    }
+
     promptRenameCompany(comp) {
-        this.state.renameCompanyId = comp.id;
-        this.state.renameCompanyName = comp.name;
-        this.state.showRenameCompanyModal = true;
+        this.promptEditCompany(comp);
+    }
+
+    closeEditCompanyModal() {
+        this.state.showEditCompanyModal = false;
     }
 
     closeRenameCompanyModal() {
-        this.state.showRenameCompanyModal = false;
+        this.closeEditCompanyModal();
     }
 
-    async submitRenameCompany() {
-        const name = (this.state.renameCompanyName || "").trim();
+    async submitEditCompany() {
+        const name = (this.state.editCompanyName || "").trim();
         if (!name) {
             this.notification.add("El nombre no puede estar vacío.", { type: "warning" });
             return;
         }
         this.state.actionLoading = true;
         try {
-            const res = await jsonrpc("/pos_gas_station/rename_company", {
-                company_id: this.state.renameCompanyId,
-                name: name
+            const res = await jsonrpc("/pos_gas_station/update_company", {
+                company_id: this.state.editCompanyId,
+                name: name,
+                vat: this.state.editCompanyVat,
+                street: this.state.editCompanyStreet,
+                zip: this.state.editCompanyZip,
+                city: this.state.editCompanyCity,
+                phone: this.state.editCompanyPhone,
+                email: this.state.editCompanyEmail,
             });
             if (res.status === "success") {
                 this.notification.add(res.message, { type: "success" });
-                this.closeRenameCompanyModal();
+                this.closeEditCompanyModal();
                 await this.loadDashboardData();
             } else {
-                this.notification.add(res.message || "Error al renombrar empresa", { type: "danger" });
+                this.notification.add(res.message || "Error al actualizar empresa", { type: "danger" });
             }
         } catch (e) {
-            console.error("Error renaming company:", e);
-            this.notification.add("Error de conexión al renombrar empresa", { type: "danger" });
+            console.error("Error updating company:", e);
+            this.notification.add("Error de conexión al actualizar empresa", { type: "danger" });
         } finally {
             this.state.actionLoading = false;
         }
+    }
+
+    async submitRenameCompany() {
+        return this.submitEditCompany();
     }
 
     async deleteCompany(comp) {
