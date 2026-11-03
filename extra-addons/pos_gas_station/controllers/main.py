@@ -1983,6 +1983,19 @@ class PosGasStationController(http.Controller):
                     'message': f'No se puede eliminar la empresa "{comp.name}" porque contiene {moves_count} asientos o facturas contables.'
                 }
 
+            # Eliminar almacenes creados automáticamente para esta empresa
+            warehouses = env['stock.warehouse'].sudo().search([('company_id', '=', comp.id)])
+            if warehouses:
+                warehouses.unlink()
+            # Desvincular de usuarios
+            users = env['res.users'].sudo().search([('company_ids', 'in', [comp.id])])
+            for u in users:
+                u.write({'company_ids': [(3, comp.id)]})
+            # Eliminar accesos de roles por empresa
+            accs = env['utrecar.employee.company.access'].sudo().search([('company_id', '=', comp.id)])
+            if accs:
+                accs.unlink()
+
             name = comp.name
             comp.unlink()
             return {'status': 'success', 'message': f'Empresa "{name}" eliminada correctamente.'}
@@ -2464,6 +2477,7 @@ class PosGasStationController(http.Controller):
         users = User.search([('id', 'not in', [1, 2]), ('active', '=', True)], order='name')
 
         users_data = []
+        companies_stats = {c.id: 0 for c in companies}
         trieste_count = 0
         utrecar_count = 0
         multi_count = 0
@@ -2523,6 +2537,7 @@ class PosGasStationController(http.Controller):
                 }
                 if acc.active_access:
                     active_comp_count += 1
+                    companies_stats[comp.id] = companies_stats.get(comp.id, 0) + 1
                     if comp.id == 4:
                         trieste_count += 1
                     elif comp.id == 1:
@@ -2551,6 +2566,7 @@ class PosGasStationController(http.Controller):
             'users': users_data,
             'stats': {
                 'total_users': len(users_data),
+                'company_counts': companies_stats,
                 'trieste_count': trieste_count,
                 'utrecar_count': utrecar_count,
                 'multi_count': multi_count,

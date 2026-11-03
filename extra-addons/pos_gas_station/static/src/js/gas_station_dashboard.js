@@ -40,6 +40,8 @@ export class GasStationDashboard extends Component {
             newStationCompanyName: "",
             newStationName: "",
             newStationVpnIp: "",
+            companyCreateError: null,
+            companyEditError: null,
             renameCompanyId: null,
             renameCompanyName: "",
             editCompanyId: null,
@@ -98,16 +100,20 @@ export class GasStationDashboard extends Component {
         this.state.newCompanyCity = "";
         this.state.newCompanyPhone = "";
         this.state.newCompanyEmail = "";
+        this.state.companyCreateError = null;
         this.state.showCreateCompanyModal = true;
     }
 
     closeCreateCompanyModal() {
+        this.state.companyCreateError = null;
         this.state.showCreateCompanyModal = false;
     }
 
     async submitCreateCompany() {
+        this.state.companyCreateError = null;
         const name = (this.state.newCompanyName || "").trim();
         if (!name) {
+            this.state.companyCreateError = "Por favor, introduzca el Nombre o Razón Social de la empresa.";
             this.notification.add("El nombre de la empresa es obligatorio.", { type: "warning" });
             return;
         }
@@ -127,10 +133,12 @@ export class GasStationDashboard extends Component {
                 this.closeCreateCompanyModal();
                 await this.loadDashboardData();
             } else {
+                this.state.companyCreateError = res.message || "Error al crear empresa";
                 this.notification.add(res.message || "Error al crear empresa", { type: "danger" });
             }
         } catch (e) {
             console.error("Error creating company:", e);
+            this.state.companyCreateError = "Error de conexión con el servidor al crear la empresa.";
             this.notification.add("Error de conexión al crear empresa", { type: "danger" });
         } finally {
             this.state.actionLoading = false;
@@ -146,6 +154,7 @@ export class GasStationDashboard extends Component {
         this.state.editCompanyCity = comp.city || "";
         this.state.editCompanyPhone = comp.phone || "";
         this.state.editCompanyEmail = comp.email || "";
+        this.state.companyEditError = null;
         this.state.showEditCompanyModal = true;
     }
 
@@ -154,6 +163,7 @@ export class GasStationDashboard extends Component {
     }
 
     closeEditCompanyModal() {
+        this.state.companyEditError = null;
         this.state.showEditCompanyModal = false;
     }
 
@@ -162,9 +172,11 @@ export class GasStationDashboard extends Component {
     }
 
     async submitEditCompany() {
+        this.state.companyEditError = null;
         const name = (this.state.editCompanyName || "").trim();
         if (!name) {
-            this.notification.add("El nombre no puede estar vacío.", { type: "warning" });
+            this.state.companyEditError = "El nombre de la empresa no puede estar vacío.";
+            this.notification.add("El nombre de la empresa no puede estar vacío.", { type: "warning" });
             return;
         }
         this.state.actionLoading = true;
@@ -184,10 +196,12 @@ export class GasStationDashboard extends Component {
                 this.closeEditCompanyModal();
                 await this.loadDashboardData();
             } else {
+                this.state.companyEditError = res.message || "Error al actualizar empresa";
                 this.notification.add(res.message || "Error al actualizar empresa", { type: "danger" });
             }
         } catch (e) {
             console.error("Error updating company:", e);
+            this.state.companyEditError = "Error de conexión con el servidor al actualizar la empresa.";
             this.notification.add("Error de conexión al actualizar empresa", { type: "danger" });
         } finally {
             this.state.actionLoading = false;

@@ -517,3 +517,8 @@
 .o_main_navbar .o_user_menu {
     display: none !important;
 }
+
+/* Notificaciones por encima de los modales (z-index modal es 1060) */
+.o_notification_manager {
+    z-index: 10000 !important;
+}

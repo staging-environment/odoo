@@ -235,6 +235,9 @@
                                 <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeCreateCompanyModal()" aria-label="Cerrar"></button>
                             </div>
                             <div class="modal-body p-4">
+                                <div t-if="state.companyCreateError" class="alert alert-danger py-2 px-3 small d-flex align-items-center gap-2 mb-3 rounded-2">
+                                    <i class="fa fa-exclamation-circle"/> <t t-esc="state.companyCreateError"/>
+                                </div>
                                 <div class="row g-3">
                                     <!-- Identificación Fiscal -->
                                     <div class="col-12">
@@ -342,6 +345,9 @@
                                 <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeEditCompanyModal()" aria-label="Cerrar"></button>
                             </div>
                             <div class="modal-body p-4">
+                                <div t-if="state.companyEditError" class="alert alert-danger py-2 px-3 small d-flex align-items-center gap-2 mb-3 rounded-2">
+                                    <i class="fa fa-exclamation-circle"/> <t t-esc="state.companyEditError"/>
+                                </div>
                                 <div class="row g-3">
                                     <!-- Identificación Fiscal -->
                                     <div class="col-12">

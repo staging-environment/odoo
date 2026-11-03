@@ -45,29 +45,19 @@
                         </div>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-xl">
-                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
-                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #1d4ed8, #1e40af);">
-                                <i class="fa fa-building fs-3"></i>
-                            </div>
-                            <div>
-                                <span class="text-muted small fw-semibold d-block">En A.R. Trieste</span>
-                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.trieste_count || 0"/></h3>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-sm-6 col-xl">
-                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
-                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #b45309, #92400e);">
-                                <i class="fa fa-building-o fs-3"></i>
-                            </div>
-                            <div>
-                                <span class="text-muted small fw-semibold d-block">En Utrecar S.L.</span>
-                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.utrecar_count || 0"/></h3>
+                    <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                        <div class="col-12 col-sm-6 col-xl">
+                            <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                                <div class="rounded-3 p-3 text-white" t-attf-style="background: #{comp.id === 4 ? 'linear-gradient(135deg, #1d4ed8, #1e40af)' : (comp.id === 1 ? 'linear-gradient(135deg, #b45309, #92400e)' : 'linear-gradient(135deg, #0284c7, #0369a1)')};">
+                                    <i class="fa fa-building fs-3"></i>
+                                </div>
+                                <div>
+                                    <span class="text-muted small fw-semibold d-block text-truncate" style="max-width: 150px;">En <t t-esc="comp.name"/></span>
+                                    <h3 class="fw-bold mb-0 text-dark"><t t-esc="(state.stats.company_counts and state.stats.company_counts[comp.id]) or (comp.id === 4 ? state.stats.trieste_count : (comp.id === 1 ? state.stats.utrecar_count : 0))"/></h3>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </t>
 
                     <div class="col-12 col-sm-6 col-xl">
                         <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
@@ -115,22 +105,19 @@
                 <!-- FILTROS POR EMPRESA -->
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <span class="text-muted small fw-bold">Empresa:</span>
-                    <div class="btn-group btn-group-sm shadow-none" role="group">
+                    <div class="btn-group btn-group-sm shadow-none flex-wrap" role="group">
                         <button type="button"
                                 t-attf-class="btn #{state.filterCompany === 'all' ? 'btn-primary' : 'btn-outline-secondary'}"
                                 t-on-click="() => this.setCompanyFilter('all')">
                             Todas
                         </button>
-                        <button type="button"
-                                t-attf-class="btn #{state.filterCompany === 'trieste' ? 'btn-primary' : 'btn-outline-secondary'}"
-                                t-on-click="() => this.setCompanyFilter('trieste')">
-                            A.R. Trieste
-                        </button>
-                        <button type="button"
-                                t-attf-class="btn #{state.filterCompany === 'utrecar' ? 'btn-primary' : 'btn-outline-secondary'}"
-                                t-on-click="() => this.setCompanyFilter('utrecar')">
-                            Utrecar S.L.
-                        </button>
+                        <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                            <button type="button"
+                                    t-attf-class="btn #{state.filterCompany === comp.id ? 'btn-primary' : 'btn-outline-secondary'}"
+                                    t-on-click="() => this.setCompanyFilter(comp.id)">
+                                <t t-esc="comp.name"/>
+                            </button>
+                        </t>
                         <button type="button"
                                 t-attf-class="btn #{state.filterCompany === 'multi' ? 'btn-primary' : 'btn-outline-secondary'}"
                                 t-on-click="() => this.setCompanyFilter('multi')">
@@ -162,31 +149,24 @@
                                     <th style="min-width: 250px;">Empleado / Usuario</th>
                                     <th style="min-width: 140px;">Identificación</th>
                                     
-                                    <!-- COLUMNA A.R. TRIESTE -->
-                                    <th style="min-width: 280px;" class="company-header-trieste text-center py-3">
-                                        <div class="d-flex align-items-center justify-content-center">
-                                            <span class="badge-company-trieste">
-                                                <i class="fa fa-building me-1"/> A.R. TRIESTE
-                                            </span>
-                                        </div>
-                                        <span class="text-secondary small fw-semibold font-monospace d-block mt-1">Estación: E.S. Repsol (Pista)</span>
-                                    </th>
-
-                                    <!-- COLUMNA UTRECAR S.L. -->
-                                    <th style="min-width: 280px;" class="company-header-utrecar text-center py-3">
-                                        <div class="d-flex align-items-center justify-content-center">
-                                            <span class="badge-company-utrecar">
-                                                <i class="fa fa-building-o me-1"/> UTRECAR S.L.
-                                            </span>
-                                        </div>
-                                        <span class="text-secondary small fw-semibold font-monospace d-block mt-1">Estaciones: Vistalegre, Ronda Norte, etc.</span>
-                                    </th>
+                                    <!-- COLUMNAS DINÁMICAS POR EMPRESA -->
+                                    <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                                        <th style="min-width: 260px;" class="text-center py-3"
+                                            t-attf-style="background-color: #{comp.id === 4 ? '#eff6ff' : (comp.id === 1 ? '#fffbeb' : '#f8fafc')};">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <span class="badge py-2 px-3 fw-bold shadow-sm"
+                                                      t-attf-style="background: #{comp.id === 4 ? '#1d4ed8' : (comp.id === 1 ? '#b45309' : '#0284c7')}; color: white; border-radius: 8px; font-size: 0.85rem;">
+                                                    <i class="fa fa-building me-1"/> <t t-esc="comp.name.toUpperCase()"/>
+                                                </span>
+                                            </div>
+                                        </th>
+                                    </t>
                                 </tr>
                             </thead>
                             <tbody>
                                 <t t-if="filteredUsers.length === 0">
                                     <tr>
-                                        <td colspan="5" class="text-center py-5 text-muted">
+                                        <td t-att-colspan="3 + state.companies.length" class="text-center py-5 text-muted">
                                             <i class="fa fa-info-circle fa-2x mb-2 d-block text-secondary"></i>
                                             No se encontraron empleados con los filtros aplicados.
                                         </td>
@@ -225,79 +205,44 @@
                                             </div>
                                         </td>
 
-                                        <!-- EMPRESA 1: A.R. TRIESTE (ID 4) -->
-                                        <td class="border-start text-center p-3" t-attf-class="#{u.company_access and u.company_access[4] and u.company_access[4].active ? 'bg-primary-subtle bg-opacity-10' : ''}">
-                                            <t t-set="accTrieste" t-value="u.company_access and u.company_access[4]"/>
-                                            <t t-set="isUpdatingTrieste" t-value="state.updatingKey === u.odoo_user_id + '_4'"/>
+                                        <!-- COLUMNAS DE ACCESO POR EMPRESA -->
+                                        <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                                            <t t-set="acc" t-value="u.company_access and u.company_access[comp.id]"/>
+                                            <t t-set="isUpdating" t-value="state.updatingKey === u.odoo_user_id + '_' + comp.id"/>
 
-                                            <div class="d-flex align-items-center justify-content-center gap-3">
-                                                <!-- SWITCH ACCESO -->
-                                                <div class="form-check form-switch m-0" title="Activar o desactivar acceso a A.R. Trieste">
-                                                    <input class="form-check-input" 
-                                                           type="checkbox" 
-                                                           style="width: 2.8rem; height: 1.4rem; cursor: pointer;"
-                                                           t-att-checked="accTrieste and accTrieste.active"
-                                                           t-att-disabled="isUpdatingTrieste"
-                                                           t-on-click="() => this.toggleCompanyAccess(u, 4, accTrieste ? accTrieste.active : false)"/>
+                                            <td class="border-start text-center p-3" t-attf-class="#{acc and acc.active ? 'bg-primary-subtle bg-opacity-10' : ''}">
+                                                <div class="d-flex align-items-center justify-content-center gap-3">
+                                                    <!-- SWITCH ACCESO -->
+                                                    <div class="form-check form-switch m-0" t-attf-title="Activar o desactivar acceso a #{comp.name}">
+                                                        <input class="form-check-input" 
+                                                               type="checkbox" 
+                                                               style="width: 2.8rem; height: 1.4rem; cursor: pointer;"
+                                                               t-att-checked="acc and acc.active"
+                                                               t-att-disabled="isUpdating"
+                                                               t-on-click="() => this.toggleCompanyAccess(u, comp.id, acc ? acc.active : false)"/>
+                                                    </div>
+
+                                                    <!-- BADGE ESTADO -->
+                                                    <div style="min-width: 140px;" class="text-start">
+                                                        <t t-if="isUpdating">
+                                                            <span class="badge bg-light text-primary border px-3 py-2 fw-semibold">
+                                                                <i class="fa fa-spin fa-spinner me-1"/> Actualizando...
+                                                            </span>
+                                                        </t>
+                                                        <t t-elif="acc and acc.active">
+                                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-semibold" style="font-size: 0.85rem;">
+                                                                <i class="fa fa-check-circle me-1"/> Activo (TPV)
+                                                            </span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span class="badge bg-light text-muted border px-3 py-2 fw-normal" style="font-size: 0.85rem; opacity: 0.75;">
+                                                                <i class="fa fa-ban me-1"/> Sin acceso
+                                                            </span>
+                                                        </t>
+                                                    </div>
                                                 </div>
-
-                                                <!-- BADGE ESTADO -->
-                                                <div style="min-width: 140px;" class="text-start">
-                                                    <t t-if="isUpdatingTrieste">
-                                                        <span class="badge bg-light text-primary border px-3 py-2 fw-semibold">
-                                                            <i class="fa fa-spin fa-spinner me-1"/> Actualizando...
-                                                        </span>
-                                                    </t>
-                                                    <t t-elif="accTrieste and accTrieste.active">
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-semibold" style="font-size: 0.85rem;">
-                                                            <i class="fa fa-check-circle me-1"/> Activo (TPV)
-                                                        </span>
-                                                    </t>
-                                                    <t t-else="">
-                                                        <span class="badge bg-light text-muted border px-3 py-2 fw-normal" style="font-size: 0.85rem; opacity: 0.75;">
-                                                            <i class="fa fa-ban me-1"/> Sin acceso
-                                                        </span>
-                                                    </t>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        <!-- EMPRESA 2: UTRECAR S.L. (ID 1) -->
-                                        <td class="border-start text-center p-3" t-attf-class="#{u.company_access and u.company_access[1] and u.company_access[1].active ? 'bg-warning-subtle bg-opacity-10' : ''}">
-                                            <t t-set="accUtrecar" t-value="u.company_access and u.company_access[1]"/>
-                                            <t t-set="isUpdatingUtrecar" t-value="state.updatingKey === u.odoo_user_id + '_1'"/>
-
-                                            <div class="d-flex align-items-center justify-content-center gap-3">
-                                                <!-- SWITCH ACCESO -->
-                                                <div class="form-check form-switch m-0" title="Activar o desactivar acceso a Utrecar S.L.">
-                                                    <input class="form-check-input" 
-                                                           type="checkbox" 
-                                                           style="width: 2.8rem; height: 1.4rem; cursor: pointer;"
-                                                           t-att-checked="accUtrecar and accUtrecar.active"
-                                                           t-att-disabled="isUpdatingUtrecar"
-                                                           t-on-click="() => this.toggleCompanyAccess(u, 1, accUtrecar ? accUtrecar.active : false)"/>
-                                                </div>
-
-                                                <!-- BADGE ESTADO -->
-                                                <div style="min-width: 140px;" class="text-start">
-                                                    <t t-if="isUpdatingUtrecar">
-                                                        <span class="badge bg-light text-primary border px-3 py-2 fw-semibold">
-                                                            <i class="fa fa-spin fa-spinner me-1"/> Actualizando...
-                                                        </span>
-                                                    </t>
-                                                    <t t-elif="accUtrecar and accUtrecar.active">
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-semibold" style="font-size: 0.85rem;">
-                                                            <i class="fa fa-check-circle me-1"/> Activo (TPV)
-                                                        </span>
-                                                    </t>
-                                                    <t t-else="">
-                                                        <span class="badge bg-light text-muted border px-3 py-2 fw-normal" style="font-size: 0.85rem; opacity: 0.75;">
-                                                            <i class="fa fa-ban me-1"/> Sin acceso
-                                                        </span>
-                                                    </t>
-                                                </div>
-                                            </div>
-                                        </td>
+                                            </td>
+                                        </t>
                                     </tr>
                                 </t>
                             </tbody>

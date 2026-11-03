@@ -15,6 +15,8 @@ class ResPartner(models.Model):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
+        if self.env.context.get('res_company_partner_create') or self.env.context.get('skip_partner_company_default') or self.env.context.get('default_company_id') is False:
+            return res
         if 'company_id' in fields_list and not res.get('company_id'):
             res['company_id'] = self.env.company.id
         if 'station_id' in fields_list and not res.get('station_id'):
@@ -57,8 +59,14 @@ class ResPartner(models.Model):
                 st = self.env['pos.config'].browse(vals['station_id'])
                 if st.exists() and st.company_id:
                     vals['company_id'] = st.company_id.id
-            # Si no tiene empresa asignada, usar la empresa actual en contexto
-            if not vals.get('company_id') and self.env.company:
+            # Si se está creando una compañía o se pide omitir compañía por defecto, no forzar self.env.company
+            skip = (
+                self.env.context.get('res_company_partner_create') or 
+                self.env.context.get('skip_partner_company_default') or 
+                self.env.context.get('default_company_id') is False or
+                vals.get('company_id') is False
+            )
+            if not skip and not vals.get('company_id') and self.env.company:
                 vals['company_id'] = self.env.company.id
         return super().create(vals_list)
 

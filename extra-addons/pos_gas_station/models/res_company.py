@@ -28,6 +28,18 @@ class ResCompany(models.Model):
         sanitize=False
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        companies = super(ResCompany, self.with_context(
+            res_company_partner_create=True,
+            skip_partner_company_default=True,
+            default_company_id=False,
+        )).create(vals_list)
+        for comp in companies:
+            if comp.partner_id and comp.partner_id.company_id != comp:
+                comp.partner_id.sudo().write({'company_id': comp.id})
+        return companies
+
     def _compute_edit_icon(self):
         for company in self:
             company.edit_icon = f'<a class="btn btn-sm btn-outline-primary py-1 px-2 fw-bold" href="#id={company.id}&amp;model=res.company&amp;view_type=form" style="display: inline-flex; align-items: center; border-color: #0284c7; color: #0284c7;"><i class="fa fa-pencil me-1"></i> Editar</a>'
