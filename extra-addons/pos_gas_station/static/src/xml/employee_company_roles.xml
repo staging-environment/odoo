@@ -31,10 +31,10 @@
                     </div>
                 </div>
 
-                <!-- KPI CARDS SUMMARY -->
-                <div class="row g-3 mt-3">
-                    <div class="col-12 col-sm-6 col-xl">
-                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                <!-- KPI CARDS SUMMARY (SCROLL HORIZONTAL SI HAY MUCHAS EMPRESAS) -->
+                <div class="d-flex flex-nowrap overflow-auto gap-3 mt-3 pb-2 kpi-cards-scroll-container">
+                    <div style="flex: 0 0 220px;">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3 h-100">
                             <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">
                                 <i class="fa fa-users fs-3"></i>
                             </div>
@@ -46,21 +46,21 @@
                     </div>
 
                     <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
-                        <div class="col-12 col-sm-6 col-xl">
-                            <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                        <div style="flex: 0 0 240px;">
+                            <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3 h-100">
                                 <div class="rounded-3 p-3 text-white" t-attf-style="background: #{comp.id === 4 ? 'linear-gradient(135deg, #1d4ed8, #1e40af)' : (comp.id === 1 ? 'linear-gradient(135deg, #b45309, #92400e)' : 'linear-gradient(135deg, #0284c7, #0369a1)')};">
                                     <i class="fa fa-building fs-3"></i>
                                 </div>
                                 <div>
-                                    <span class="text-muted small fw-semibold d-block text-truncate" style="max-width: 150px;">En <t t-esc="comp.name"/></span>
+                                    <span class="text-muted small fw-semibold d-block text-truncate" style="max-width: 150px;" t-att-title="comp.name">En <t t-esc="comp.name"/></span>
                                     <h3 class="fw-bold mb-0 text-dark"><t t-esc="(state.stats.company_counts and state.stats.company_counts[comp.id]) or (comp.id === 4 ? state.stats.trieste_count : (comp.id === 1 ? state.stats.utrecar_count : 0))"/></h3>
                                 </div>
                             </div>
                         </div>
                     </t>
 
-                    <div class="col-12 col-sm-6 col-xl">
-                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                    <div style="flex: 0 0 220px;">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3 h-100">
                             <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #7c3aed, #6d28d9);">
                                 <i class="fa fa-exchange fs-3"></i>
                             </div>
@@ -71,8 +71,8 @@
                         </div>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-xl">
-                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3">
+                    <div style="flex: 0 0 220px;">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3 h-100">
                             <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #dc2626, #991b1b);">
                                 <i class="fa fa-user-times fs-3"></i>
                             </div>
@@ -141,17 +141,17 @@
                     </div>
                 </t>
                 <t t-else="">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light border-bottom">
+                    <div class="employee-roles-table-wrapper table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="min-width: 100%;">
+                            <thead class="table-light border-bottom position-sticky top-0" style="z-index: 10;">
                                 <tr>
-                                    <th style="width: 45px;" class="text-center"></th>
-                                    <th style="min-width: 250px;">Empleado / Usuario</th>
-                                    <th style="min-width: 140px;">Identificación</th>
+                                    <th style="width: 50px; min-width: 50px; left: 0; z-index: 12;" class="sticky-cell text-center"></th>
+                                    <th style="width: 280px; min-width: 280px; left: 50px; z-index: 12;" class="sticky-cell">Empleado / Usuario</th>
+                                    <th style="width: 170px; min-width: 170px; left: 330px; z-index: 12;" class="sticky-cell sticky-cell-divider">Identificación</th>
                                     
                                     <!-- COLUMNAS DINÁMICAS POR EMPRESA -->
                                     <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
-                                        <th style="min-width: 260px;" class="text-center py-3"
+                                        <th style="min-width: 280px; width: 280px;" class="text-center py-3"
                                             t-attf-style="background-color: #{comp.id === 4 ? '#eff6ff' : (comp.id === 1 ? '#fffbeb' : '#f8fafc')};">
                                             <div class="d-flex align-items-center justify-content-center">
                                                 <span class="badge py-2 px-3 fw-bold shadow-sm"
@@ -174,16 +174,16 @@
                                 </t>
                                 <t t-foreach="filteredUsers" t-as="u" t-key="u.odoo_user_id">
                                     <tr>
-                                        <!-- AVATAR -->
-                                        <td class="text-center">
+                                        <!-- AVATAR (STICKY) -->
+                                        <td class="sticky-cell text-center" style="left: 0; z-index: 5;">
                                             <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm"
                                                  t-attf-style="background: #{u.avatar_gradient}; width: 38px; height: 38px; font-size: 0.85rem;">
                                                 <t t-esc="u.initials"/>
                                             </div>
                                         </td>
 
-                                        <!-- NOMBRE Y CORREO -->
-                                        <td>
+                                        <!-- NOMBRE Y CORREO (STICKY) -->
+                                        <td class="sticky-cell" style="left: 50px; z-index: 5;">
                                             <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-2">
                                                 <t t-esc="u.name"/>
                                                 <span t-if="u.active_company_count === 0" class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style="font-size: 0.72rem;">
@@ -193,8 +193,8 @@
                                             <div class="text-muted small"><t t-esc="u.email"/></div>
                                         </td>
 
-                                        <!-- DNI Y CÓDIGO -->
-                                        <td>
+                                        <!-- DNI Y CÓDIGO (STICKY CON BORDE DERECHO VISIBLE) -->
+                                        <td class="sticky-cell sticky-cell-divider" style="left: 330px; z-index: 5;">
                                             <div class="d-flex align-items-center gap-1 flex-wrap">
                                                 <span t-if="u.dni and u.dni !== '-'" class="badge bg-light text-dark border font-monospace">
                                                     <i class="fa fa-id-card-o text-muted me-1"/> <t t-esc="u.dni"/>
