@@ -1983,47 +1983,57 @@ class PosGasStationController(http.Controller):
                     'message': f'No se puede eliminar la empresa "{comp.name}" porque contiene {moves_count} asientos o facturas contables.'
                 }
 
+            cid = comp.id
+            partner = comp.partner_id
+            name = comp.name
+            partner_id = partner.id if partner else None
+
             # 1. Reglas de stock (deben eliminarse antes de los almacenes para evitar ForeignKeyViolation con stock_picking_type)
-            rules = env['stock.rule'].sudo().search([('company_id', '=', comp.id)])
+            rules = env['stock.rule'].sudo().search([('company_id', '=', cid)])
             if rules:
                 rules.unlink()
 
             # 2. Almacenes creados automáticamente para esta empresa
-            warehouses = env['stock.warehouse'].sudo().search([('company_id', '=', comp.id)])
+            warehouses = env['stock.warehouse'].sudo().search([('company_id', '=', cid)])
             if warehouses:
                 warehouses.unlink()
 
-            # 3. Propiedades de configuración (ir.property) para evitar colisión en ir_property_unique_index
-            properties = env['ir.property'].sudo().search([('company_id', '=', comp.id)])
-            if properties:
-                properties.unlink()
+            # 3. Propiedades de configuración (ir.property): ELIMINAR DIRECTAMENTE VÍA SQL
+            # En Odoo ir.property sobreescribe search() para filtrar por contexto multi-compañía
+            # lo que impedía que ORM unlink borrara las filas antes de que PostgreSQL activara
+            # el ON DELETE SET NULL, provocando colisión en el índice único "ir_property_unique_index".
+            env.cr.execute("DELETE FROM ir_property WHERE company_id = %s", [cid])
+            env.cr.execute("DELETE FROM ir_property WHERE res_id = %s", [f'res.company,{cid}'])
+            if partner_id:
+                env.cr.execute("DELETE FROM ir_property WHERE res_id = %s", [f'res.partner,{partner_id}'])
 
             # 4. Tipos de albarán, ubicaciones y rutas de stock asociadas
-            env['stock.picking.type'].sudo().search([('company_id', '=', comp.id)]).unlink()
-            env['stock.location'].sudo().search([('company_id', '=', comp.id)]).unlink()
-            env['stock.route'].sudo().search([('company_id', '=', comp.id)]).unlink()
+            env['stock.picking.type'].sudo().search([('company_id', '=', cid)]).unlink()
+            env['stock.location'].sudo().search([('company_id', '=', cid)]).unlink()
+            env['stock.route'].sudo().search([('company_id', '=', cid)]).unlink()
 
             # 5. Secuencias generadas para la empresa
-            env['ir.sequence'].sudo().search([('company_id', '=', comp.id)]).unlink()
+            env['ir.sequence'].sudo().search([('company_id', '=', cid)]).unlink()
 
             # 6. Desvincular de usuarios
-            users = env['res.users'].sudo().search([('company_ids', 'in', [comp.id])])
+            users = env['res.users'].sudo().search([('company_ids', 'in', [cid])])
             for u in users:
-                u.write({'company_ids': [(3, comp.id)]})
+                u.write({'company_ids': [(3, cid)]})
 
             # 7. Eliminar accesos de roles por empresa
-            accs = env['utrecar.employee.company.access'].sudo().search([('company_id', '=', comp.id)])
+            accs = env['utrecar.employee.company.access'].sudo().search([('company_id', '=', cid)])
             if accs:
                 accs.unlink()
 
-            partner = comp.partner_id
-            name = comp.name
+            # 8. Unlink de la compañía
             comp.unlink()
 
-            # 8. Eliminar el partner creado para la empresa si no tiene usuarios vinculados y no es del sistema
-            if partner and not partner.user_ids and partner.id not in [1, 2, 41, 2254, 2255]:
+            # 9. Eliminar el partner creado para la empresa si no tiene usuarios vinculados y no es del sistema
+            if partner_id and partner_id not in [1, 2, 41, 2254, 2255]:
                 try:
-                    partner.unlink()
+                    p = env['res.partner'].sudo().browse(partner_id)
+                    if p.exists() and not p.user_ids:
+                        p.unlink()
                 except Exception:
                     pass
             return {'status': 'success', 'message': f'Empresa "{name}" eliminada correctamente.'}
