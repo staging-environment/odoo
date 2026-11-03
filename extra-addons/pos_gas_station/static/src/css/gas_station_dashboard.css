@@ -506,3 +506,14 @@
     background: #0284c7 !important;
     color: #ffffff !important;
 }
+
+/* ==========================================================================
+   OCULTAR TODOS LOS ELEMENTOS DE LA BARRA SUPERIOR DERECHA (SYSTRAY)
+   (Chat / Mensajes, Reloj de Actividades, Selector de Empresa y Menú de Usuario)
+   ========================================================================== */
+.o_main_navbar .o_menu_systray,
+.o_main_navbar .o_menu_systray_item,
+.o_main_navbar .o_switch_company_menu,
+.o_main_navbar .o_user_menu {
+    display: none !important;
+}
