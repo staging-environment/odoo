@@ -362,11 +362,11 @@ class PosConfig(models.Model):
                     'admin_platform_checkout_done': False,
                 })
         else:
-            session = Session.create({
+            session = Session.with_context(skip_admin_platform_checkin=True).create({
                 'user_id': user.id,
                 'config_id': self.id,
             })
-            session.action_pos_session_open()
+            session.with_context(skip_admin_platform_checkin=True).action_pos_session_open()
             if session.state == 'opening_control':
                 session.write({'state': 'opened'})
 

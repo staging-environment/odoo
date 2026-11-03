@@ -57,10 +57,12 @@ class PosSession(models.Model):
             return None
 
     def _clean_coordinate(self, coord):
-        if coord is None or coord is False or coord == '':
+        if coord is None or coord is False or coord == '' or coord == 0 or coord == 0.0:
             return None
         try:
             val = float(coord)
+            if abs(val) < 0.0001:
+                return None
             return round(val, 8)
         except (ValueError, TypeError):
             return None
@@ -93,31 +95,32 @@ class PosSession(models.Model):
         if not conn:
             return None
 
-        fichaje_id = None
+        fichaje_id = self.admin_platform_fichaje_id
         try:
             with conn.cursor() as cur:
-                # Comprobar si ya existe un fichaje activo hoy sin hora de salida
-                cur.execute("""
-                    SELECT id, hora_entrada, checkin_latitude, checkin_longitude
-                    FROM empleado_fichajes
-                    WHERE empleado_id = %s AND fecha = %s AND hora_salida IS NULL AND deleted_at IS NULL
-                    ORDER BY id DESC LIMIT 1
-                """, (emp_id, today_str))
-                existing = cur.fetchone()
-
-                if existing:
-                    fichaje_id = existing['id']
-                    if lat_val is not None and lng_val is not None and not existing.get('checkin_latitude'):
+                if fichaje_id:
+                    # Esta sesión ya tiene su fichaje asignado; actualizar coordenadas si faltaban
+                    if lat_val is not None and lng_val is not None:
                         cur.execute("""
                             UPDATE empleado_fichajes
-                            SET checkin_latitude = %s,
-                                checkin_longitude = %s,
+                            SET checkin_latitude = COALESCE(%s, checkin_latitude),
+                                checkin_longitude = COALESCE(%s, checkin_longitude),
                                 updated_at = %s
                             WHERE id = %s
                         """, (lat_val, lng_val, now_str, fichaje_id))
-                    _logger.info("[admin-platform] Fichaje checkin ya existente ID %s para empleado %s (ID %s). Reutilizado.",
+                    _logger.info("[admin-platform] Fichaje checkin ya vinculado ID %s para empleado %s (ID %s). Coordenadas actualizadas.",
                                  fichaje_id, target_user.name, emp_id)
                 else:
+                    # Cerrar cualquier turno previo que haya quedado abierto sin salida
+                    cur.execute("""
+                        UPDATE empleado_fichajes
+                        SET hora_salida = %s,
+                            server_checkout_at = %s,
+                            updated_at = %s
+                        WHERE empleado_id = %s AND hora_salida IS NULL AND deleted_at IS NULL
+                    """, (time_str, now_str, now_str, emp_id))
+
+                    # Crear SIEMPRE un nuevo fichaje con la hora actual del servidor y manual idénticas
                     cur.execute("""
                         INSERT INTO empleado_fichajes (
                             empleado_id, fecha, hora_entrada, server_checkin_at,
@@ -126,11 +129,11 @@ class PosSession(models.Model):
                         ) VALUES (%s, %s, %s, %s, %s, %s, 0, 0, %s, %s)
                     """, (emp_id, today_str, time_str, now_str, lat_val, lng_val, now_str, now_str))
                     fichaje_id = cur.lastrowid
-                    _logger.info("[admin-platform] Checkin CREADO con éxito (Fichaje ID %s) para empleado %s (ID %s) a las %s (GPS: %s, %s).",
+                    _logger.info("[admin-platform] Checkin NUEVO CREADO con éxito (Fichaje ID %s) para empleado %s (ID %s) a las %s (GPS: %s, %s).",
                                  fichaje_id, target_user.name, emp_id, time_str, lat_val, lng_val)
             conn.close()
 
-            if fichaje_id:
+            if fichaje_id and self.admin_platform_fichaje_id != fichaje_id:
                 self.sudo().write({
                     'admin_platform_fichaje_id': fichaje_id,
                     'admin_platform_checkout_done': False,
@@ -240,7 +243,7 @@ class PosSession(models.Model):
     def action_pos_session_open(self):
         res = super().action_pos_session_open()
         for session in self:
-            if not session.admin_platform_fichaje_id and session.user_id:
+            if not session.admin_platform_fichaje_id and not self.env.context.get('skip_admin_platform_checkin') and session.user_id:
                 session.register_admin_platform_checkin()
         return res
 
