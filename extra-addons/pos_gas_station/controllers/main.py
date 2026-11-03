@@ -1983,21 +1983,45 @@ class PosGasStationController(http.Controller):
                     'message': f'No se puede eliminar la empresa "{comp.name}" porque contiene {moves_count} asientos o facturas contables.'
                 }
 
-            # Eliminar almacenes creados automáticamente para esta empresa
+            # 1. Almacenes creados automáticamente para esta empresa
             warehouses = env['stock.warehouse'].sudo().search([('company_id', '=', comp.id)])
             if warehouses:
                 warehouses.unlink()
-            # Desvincular de usuarios
+
+            # 2. Propiedades de configuración (ir.property) para evitar colisión en ir_property_unique_index
+            properties = env['ir.property'].sudo().search([('company_id', '=', comp.id)])
+            if properties:
+                properties.unlink()
+
+            # 3. Reglas, tipos de albarán, ubicaciones y rutas de stock asociadas
+            env['stock.rule'].sudo().search([('company_id', '=', comp.id)]).unlink()
+            env['stock.picking.type'].sudo().search([('company_id', '=', comp.id)]).unlink()
+            env['stock.location'].sudo().search([('company_id', '=', comp.id)]).unlink()
+            env['stock.route'].sudo().search([('company_id', '=', comp.id)]).unlink()
+
+            # 4. Secuencias generadas para la empresa
+            env['ir.sequence'].sudo().search([('company_id', '=', comp.id)]).unlink()
+
+            # 5. Desvincular de usuarios
             users = env['res.users'].sudo().search([('company_ids', 'in', [comp.id])])
             for u in users:
                 u.write({'company_ids': [(3, comp.id)]})
-            # Eliminar accesos de roles por empresa
+
+            # 6. Eliminar accesos de roles por empresa
             accs = env['utrecar.employee.company.access'].sudo().search([('company_id', '=', comp.id)])
             if accs:
                 accs.unlink()
 
+            partner = comp.partner_id
             name = comp.name
             comp.unlink()
+
+            # 7. Eliminar el partner creado para la empresa si no tiene usuarios vinculados y no es del sistema
+            if partner and not partner.user_ids and partner.id not in [1, 2, 41, 2254, 2255]:
+                try:
+                    partner.unlink()
+                except Exception:
+                    pass
             return {'status': 'success', 'message': f'Empresa "{name}" eliminada correctamente.'}
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/delete_company: %s", e)
