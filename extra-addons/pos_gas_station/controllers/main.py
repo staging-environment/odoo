@@ -1983,31 +1983,35 @@ class PosGasStationController(http.Controller):
                     'message': f'No se puede eliminar la empresa "{comp.name}" porque contiene {moves_count} asientos o facturas contables.'
                 }
 
-            # 1. Almacenes creados automáticamente para esta empresa
+            # 1. Reglas de stock (deben eliminarse antes de los almacenes para evitar ForeignKeyViolation con stock_picking_type)
+            rules = env['stock.rule'].sudo().search([('company_id', '=', comp.id)])
+            if rules:
+                rules.unlink()
+
+            # 2. Almacenes creados automáticamente para esta empresa
             warehouses = env['stock.warehouse'].sudo().search([('company_id', '=', comp.id)])
             if warehouses:
                 warehouses.unlink()
 
-            # 2. Propiedades de configuración (ir.property) para evitar colisión en ir_property_unique_index
+            # 3. Propiedades de configuración (ir.property) para evitar colisión en ir_property_unique_index
             properties = env['ir.property'].sudo().search([('company_id', '=', comp.id)])
             if properties:
                 properties.unlink()
 
-            # 3. Reglas, tipos de albarán, ubicaciones y rutas de stock asociadas
-            env['stock.rule'].sudo().search([('company_id', '=', comp.id)]).unlink()
+            # 4. Tipos de albarán, ubicaciones y rutas de stock asociadas
             env['stock.picking.type'].sudo().search([('company_id', '=', comp.id)]).unlink()
             env['stock.location'].sudo().search([('company_id', '=', comp.id)]).unlink()
             env['stock.route'].sudo().search([('company_id', '=', comp.id)]).unlink()
 
-            # 4. Secuencias generadas para la empresa
+            # 5. Secuencias generadas para la empresa
             env['ir.sequence'].sudo().search([('company_id', '=', comp.id)]).unlink()
 
-            # 5. Desvincular de usuarios
+            # 6. Desvincular de usuarios
             users = env['res.users'].sudo().search([('company_ids', 'in', [comp.id])])
             for u in users:
                 u.write({'company_ids': [(3, comp.id)]})
 
-            # 6. Eliminar accesos de roles por empresa
+            # 7. Eliminar accesos de roles por empresa
             accs = env['utrecar.employee.company.access'].sudo().search([('company_id', '=', comp.id)])
             if accs:
                 accs.unlink()
@@ -2016,7 +2020,7 @@ class PosGasStationController(http.Controller):
             name = comp.name
             comp.unlink()
 
-            # 7. Eliminar el partner creado para la empresa si no tiene usuarios vinculados y no es del sistema
+            # 8. Eliminar el partner creado para la empresa si no tiene usuarios vinculados y no es del sistema
             if partner and not partner.user_ids and partner.id not in [1, 2, 41, 2254, 2255]:
                 try:
                     partner.unlink()
