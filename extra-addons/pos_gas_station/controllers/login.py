@@ -316,7 +316,10 @@ class UtrecarLogin(Home):
                 request.session.logout()
                 return request.redirect(f'/pos_gas_station/select_employee?station_id={station.id}')
 
-            station.open_shift_for_user(user)
+            lat = kw.get('lat')
+            lng = kw.get('lng')
+            emp_id = int(target_emp['id']) if target_emp and target_emp.get('id') else None
+            station.open_shift_for_user(user, latitude=lat, longitude=lng, employee_id=emp_id)
 
             dest_url = f'/pos/ui?config_id={station.id}'
             _logger.info("Empleado %s (ID %s) autenticado con éxito en %s. Turno listo -> %s", user.name, user.id, station.name, dest_url)

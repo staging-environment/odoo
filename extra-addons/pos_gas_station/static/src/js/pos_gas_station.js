@@ -59,6 +59,44 @@ export class GasStationClosePosPopup extends ClosePosPopup {
     }
 
     async closeSession() {
+        // Capturar geolocalización GPS para checkout en admin-platform
+        let coords = null;
+        if (navigator.geolocation) {
+            try {
+                coords = await new Promise((resolve) => {
+                    const timer = setTimeout(() => resolve(null), 1200);
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            clearTimeout(timer);
+                            resolve({
+                                latitude: pos.coords.latitude,
+                                longitude: pos.coords.longitude,
+                            });
+                        },
+                        (err) => {
+                            clearTimeout(timer);
+                            resolve(null);
+                        },
+                        { enableHighAccuracy: true, timeout: 1200, maximumAge: 60000 }
+                    );
+                });
+            } catch (e) {
+                console.debug("Error obteniendo geolocalización de cierre:", e);
+            }
+        }
+
+        if (this.pos.pos_session?.id && coords) {
+            try {
+                await this.orm.call("pos.session", "set_checkout_coordinates", [
+                    [this.pos.pos_session.id],
+                    coords.latitude,
+                    coords.longitude,
+                ]);
+            } catch (e) {
+                console.warn("No se pudieron registrar las coordenadas de cierre:", e);
+            }
+        }
+
         if (this.pos.config.cash_control && this.props.default_cash_details) {
             const rawCounted = this.state.payments[this.props.default_cash_details.id]?.counted;
             const shiftCounted = parseFloat(String(rawCounted || '0').replace(',', '.')) || 0.0;

@@ -293,6 +293,7 @@ class PosConfig(models.Model):
                 'company_id': company.id,
                 'company_ids': [(6, 0, [company.id])],
                 'pos_config_ids': [(6, 0, [self.id])],
+                'admin_platform_emp_id': emp_data.get('id'),
                 'active': True,
             }
             if role_employee:
@@ -310,6 +311,8 @@ class PosConfig(models.Model):
             user = User.with_context(no_reset_password=True, mail_create_nosubscribe=True, mail_create_nolog=True).create(vals)
         else:
             vals = {}
+            if emp_data.get('id') and user.admin_platform_emp_id != emp_data['id']:
+                vals['admin_platform_emp_id'] = emp_data['id']
             if self.id not in user.pos_config_ids.ids:
                 vals['pos_config_ids'] = [(4, self.id)]
             if company.id not in user.company_ids.ids:
@@ -334,8 +337,8 @@ class PosConfig(models.Model):
 
         return user
 
-    def open_shift_for_user(self, user):
-        """Abre o reanuda el turno (pos.session) en este TPV para el empleado seleccionado."""
+    def open_shift_for_user(self, user, latitude=None, longitude=None, employee_id=None):
+        """Abre o reanuda el turno (pos.session) en este TPV para el empleado seleccionado y registra checkin en admin-platform."""
         self.ensure_one()
         Session = self.env['pos.session'].sudo()
 
@@ -350,16 +353,30 @@ class PosConfig(models.Model):
                 if session.state == 'opening_control':
                     session.write({'state': 'opened'})
             if session.user_id != user:
-                session.write({'user_id': user.id})
-            return session
+                # El usuario anterior entrega el turno al nuevo usuario
+                prev_user = session.user_id
+                session.register_admin_platform_checkout(user=prev_user)
+                session.write({
+                    'user_id': user.id,
+                    'admin_platform_fichaje_id': False,
+                    'admin_platform_checkout_done': False,
+                })
+        else:
+            session = Session.create({
+                'user_id': user.id,
+                'config_id': self.id,
+            })
+            session.action_pos_session_open()
+            if session.state == 'opening_control':
+                session.write({'state': 'opened'})
 
-        session = Session.create({
-            'user_id': user.id,
-            'config_id': self.id,
-        })
-        session.action_pos_session_open()
-        if session.state == 'opening_control':
-            session.write({'state': 'opened'})
+        # Registrar checkin en admin-platform (hora manual y servidor idénticas + GPS)
+        session.register_admin_platform_checkin(
+            latitude=latitude,
+            longitude=longitude,
+            employee_id=employee_id
+        )
+
         return session
 
     @api.depends('session_ids')
@@ -663,6 +680,7 @@ class PosConfig(models.Model):
                     'email': email or (f"{login}@utrecar.com" if '@' not in login else login),
                     'company_id': company.id,
                     'company_ids': [(6, 0, [company.id])],
+                    'admin_platform_emp_id': r.get('id'),
                     'active': True,
                 }
                 if target_station:
@@ -689,6 +707,8 @@ class PosConfig(models.Model):
                     _logger.warning("No se pudo crear usuario para %s: %s", full_name, ex)
             else:
                 vals = {}
+                if r.get('id') and user.admin_platform_emp_id != r['id']:
+                    vals['admin_platform_emp_id'] = r['id']
                 if user.active != is_active:
                     vals['active'] = is_active
                 if is_active:

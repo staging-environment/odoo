@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import logging
 from odoo import models, fields, api
+
+_logger = logging.getLogger(__name__)
 
 ROLE_DEFAULT_GROUPS = {
     'ceo': [
@@ -266,6 +269,54 @@ class PosConfig(models.Model):
 
 class ResUsers(models.Model):
     _inherit = 'res.users'
+
+    admin_platform_emp_id = fields.Integer(
+        string='ID Empleado Admin Platform',
+        index=True,
+        help='ID correspondiente en la tabla empleados de admin-platform'
+    )
+
+    def get_admin_platform_emp_id(self):
+        self.ensure_one()
+        if self.admin_platform_emp_id:
+            return self.admin_platform_emp_id
+
+        ICP = self.env['ir.config_parameter'].sudo()
+        host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
+        port = int(ICP.get_param('admin_platform.db_port', 3306))
+        user_db = ICP.get_param('admin_platform.db_user', 'db')
+        password = ICP.get_param('admin_platform.db_password', 'db')
+        database = ICP.get_param('admin_platform.db_name', 'db')
+
+        try:
+            import pymysql
+            import pymysql.cursors
+            conn = pymysql.connect(
+                host=host,
+                port=port,
+                user=user_db,
+                password=password,
+                database=database,
+                charset='utf8mb4',
+                cursorclass=pymysql.cursors.DictCursor,
+                connect_timeout=3
+            )
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id FROM empleados
+                    WHERE (email = %s OR dni = %s OR email = %s) AND deleted_at IS NULL
+                    ORDER BY id ASC LIMIT 1
+                """, (self.email or '', self.login or '', self.login or ''))
+                row = cur.fetchone()
+                if row:
+                    emp_id = row['id']
+                    self.sudo().write({'admin_platform_emp_id': emp_id})
+                    conn.close()
+                    return emp_id
+            conn.close()
+        except Exception as e:
+            _logger.warning("Error buscando empleado_id en admin-platform para %s: %s", self.name, e)
+        return None
 
     company_access_ids = fields.One2many(
         'utrecar.employee.company.access',

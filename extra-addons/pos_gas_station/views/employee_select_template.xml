@@ -550,6 +550,8 @@
                         <input type="hidden" name="csrf_token" t-att-value="csrf_token"/>
                         <input type="hidden" name="station_id" t-att-value="station.id if station else ''"/>
                         <input type="hidden" name="employee_id" id="selectedEmployeeId" value=""/>
+                        <input type="hidden" name="lat" id="employeeLat" value=""/>
+                        <input type="hidden" name="lng" id="employeeLng" value=""/>
                     </form>
                 </t>
 
@@ -595,11 +597,69 @@
                 var activeIndex = -1;
                 var currentFiltered = [];
 
+                // Pre-obtener geolocalización GPS para checkin en admin-platform
+                var userCoords = { lat: null, lng: null };
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            userCoords.lat = position.coords.latitude;
+                            userCoords.lng = position.coords.longitude;
+                            var latInput = document.getElementById('employeeLat');
+                            var lngInput = document.getElementById('employeeLng');
+                            if (latInput) latInput.value = userCoords.lat;
+                            if (lngInput) lngInput.value = userCoords.lng;
+                        },
+                        function(error) {
+                            console.debug("Geolocalización GPS no disponible o denegada:", error);
+                        },
+                        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+                    );
+                }
+
                 function selectEmployeeById(empId) {
                     if (!empId) return;
                     document.getElementById('selectedEmployeeId').value = empId;
                     document.getElementById('loadingOverlay').style.display = 'flex';
-                    document.getElementById('employeeLoginForm').submit();
+
+                    function submitForm() {
+                        var latInput = document.getElementById('employeeLat');
+                        var lngInput = document.getElementById('employeeLng');
+                        if (latInput && userCoords.lat) latInput.value = userCoords.lat;
+                        if (lngInput && userCoords.lng) lngInput.value = userCoords.lng;
+                        document.getElementById('employeeLoginForm').submit();
+                    }
+
+                    if (!userCoords.lat && navigator.geolocation) {
+                        var submitted = false;
+                        var timeoutId = setTimeout(function() {
+                            if (!submitted) {
+                                submitted = true;
+                                submitForm();
+                            }
+                        }, 1200);
+
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                if (!submitted) {
+                                    submitted = true;
+                                    clearTimeout(timeoutId);
+                                    userCoords.lat = position.coords.latitude;
+                                    userCoords.lng = position.coords.longitude;
+                                    submitForm();
+                                }
+                            },
+                            function(err) {
+                                if (!submitted) {
+                                    submitted = true;
+                                    clearTimeout(timeoutId);
+                                    submitForm();
+                                }
+                            },
+                            { enableHighAccuracy: true, timeout: 1200, maximumAge: 60000 }
+                        );
+                    } else {
+                        submitForm();
+                    }
                 }
 
                 function filterEmployees() {

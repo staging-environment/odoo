@@ -1,8 +1,262 @@
 # -*- coding: utf-8 -*-
-from odoo import models, api
+import logging
+import pytz
+import datetime
+from odoo import models, fields, api
+
+_logger = logging.getLogger(__name__)
 
 class PosSession(models.Model):
     _inherit = 'pos.session'
+
+    admin_platform_fichaje_id = fields.Integer(
+        string='ID Fichaje Admin Platform',
+        copy=False,
+        help='ID del registro de fichaje en la tabla empleado_fichajes de admin-platform'
+    )
+    admin_platform_checkout_done = fields.Boolean(
+        string='Checkout Admin Platform Realizado',
+        copy=False,
+        default=False
+    )
+    checkout_latitude = fields.Float(
+        string='Latitud Cierre',
+        digits=(10, 8),
+        copy=False
+    )
+    checkout_longitude = fields.Float(
+        string='Longitud Cierre',
+        digits=(11, 8),
+        copy=False
+    )
+
+    def _get_admin_platform_conn(self):
+        """Devuelve una conexión abierta a la base de datos MariaDB de admin-platform."""
+        ICP = self.env['ir.config_parameter'].sudo()
+        host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
+        port = int(ICP.get_param('admin_platform.db_port', 3306))
+        user_db = ICP.get_param('admin_platform.db_user', 'db')
+        password = ICP.get_param('admin_platform.db_password', 'db')
+        database = ICP.get_param('admin_platform.db_name', 'db')
+        try:
+            import pymysql
+            import pymysql.cursors
+            return pymysql.connect(
+                host=host,
+                port=port,
+                user=user_db,
+                password=password,
+                database=database,
+                charset='utf8mb4',
+                cursorclass=pymysql.cursors.DictCursor,
+                connect_timeout=5,
+                autocommit=True
+            )
+        except Exception as e:
+            _logger.error("Error conectando a MariaDB admin-platform: %s", e)
+            return None
+
+    def _clean_coordinate(self, coord):
+        if coord is None or coord is False or coord == '':
+            return None
+        try:
+            val = float(coord)
+            return round(val, 8)
+        except (ValueError, TypeError):
+            return None
+
+    def register_admin_platform_checkin(self, latitude=None, longitude=None, employee_id=None):
+        """Registra el checkin (entrada) en la tabla empleado_fichajes de admin-platform.
+        Pone la hora manual (hora_entrada) y la del servidor (server_checkin_at) la misma,
+        e intenta almacenar las coordenadas GPS.
+        """
+        self.ensure_one()
+        target_user = self.user_id
+        if not target_user:
+            return None
+
+        emp_id = employee_id or target_user.get_admin_platform_emp_id()
+        if not emp_id:
+            _logger.warning("No se pudo registrar checkin en admin-platform: usuario %s sin ID de empleado.", target_user.name)
+            return None
+
+        lat_val = self._clean_coordinate(latitude)
+        lng_val = self._clean_coordinate(longitude)
+
+        tz = pytz.timezone('Europe/Madrid')
+        now = datetime.datetime.now(tz)
+        today_str = now.strftime('%Y-%m-%d')
+        time_str = now.strftime('%H:%M:%S')
+        now_str = now.strftime('%Y-%m-%d %H:%M:%S')
+
+        conn = self._get_admin_platform_conn()
+        if not conn:
+            return None
+
+        fichaje_id = None
+        try:
+            with conn.cursor() as cur:
+                # Comprobar si ya existe un fichaje activo hoy sin hora de salida
+                cur.execute("""
+                    SELECT id, hora_entrada, checkin_latitude, checkin_longitude
+                    FROM empleado_fichajes
+                    WHERE empleado_id = %s AND fecha = %s AND hora_salida IS NULL AND deleted_at IS NULL
+                    ORDER BY id DESC LIMIT 1
+                """, (emp_id, today_str))
+                existing = cur.fetchone()
+
+                if existing:
+                    fichaje_id = existing['id']
+                    if lat_val is not None and lng_val is not None and not existing.get('checkin_latitude'):
+                        cur.execute("""
+                            UPDATE empleado_fichajes
+                            SET checkin_latitude = %s,
+                                checkin_longitude = %s,
+                                updated_at = %s
+                            WHERE id = %s
+                        """, (lat_val, lng_val, now_str, fichaje_id))
+                    _logger.info("[admin-platform] Fichaje checkin ya existente ID %s para empleado %s (ID %s). Reutilizado.",
+                                 fichaje_id, target_user.name, emp_id)
+                else:
+                    cur.execute("""
+                        INSERT INTO empleado_fichajes (
+                            empleado_id, fecha, hora_entrada, server_checkin_at,
+                            checkin_latitude, checkin_longitude, is_retroactive, is_edited,
+                            created_at, updated_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, 0, 0, %s, %s)
+                    """, (emp_id, today_str, time_str, now_str, lat_val, lng_val, now_str, now_str))
+                    fichaje_id = cur.lastrowid
+                    _logger.info("[admin-platform] Checkin CREADO con éxito (Fichaje ID %s) para empleado %s (ID %s) a las %s (GPS: %s, %s).",
+                                 fichaje_id, target_user.name, emp_id, time_str, lat_val, lng_val)
+            conn.close()
+
+            if fichaje_id:
+                self.sudo().write({
+                    'admin_platform_fichaje_id': fichaje_id,
+                    'admin_platform_checkout_done': False,
+                })
+        except Exception as e:
+            _logger.error("Error registrando checkin en MariaDB admin-platform: %s", e)
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+        return fichaje_id
+
+    def set_checkout_coordinates(self, latitude=None, longitude=None):
+        """Guarda las coordenadas GPS del cierre desde la interfaz del TPV antes de cerrar."""
+        lat_val = self._clean_coordinate(latitude)
+        lng_val = self._clean_coordinate(longitude)
+        for session in self:
+            vals = {}
+            if lat_val is not None:
+                vals['checkout_latitude'] = lat_val
+            if lng_val is not None:
+                vals['checkout_longitude'] = lng_val
+            if vals:
+                session.sudo().write(vals)
+        return True
+
+    def register_admin_platform_checkout(self, latitude=None, longitude=None, user=None):
+        """Registra el checkout (salida) en la tabla empleado_fichajes de admin-platform.
+        Pone la hora manual (hora_salida) y la del servidor (server_checkout_at) exactamente la misma,
+        e intenta almacenar las coordenadas GPS.
+        """
+        self.ensure_one()
+        target_user = user or self.user_id
+        if not target_user:
+            return False
+
+        emp_id = target_user.get_admin_platform_emp_id()
+        if not emp_id:
+            _logger.warning("No se pudo registrar checkout en admin-platform: usuario %s sin ID de empleado.", target_user.name)
+            return False
+
+        lat_val = self._clean_coordinate(latitude) or self._clean_coordinate(self.checkout_latitude)
+        lng_val = self._clean_coordinate(longitude) or self._clean_coordinate(self.checkout_longitude)
+
+        tz = pytz.timezone('Europe/Madrid')
+        now = datetime.datetime.now(tz)
+        time_str = now.strftime('%H:%M:%S')
+        now_str = now.strftime('%Y-%m-%d %H:%M:%S')
+
+        conn = self._get_admin_platform_conn()
+        if not conn:
+            return False
+
+        success = False
+        try:
+            with conn.cursor() as cur:
+                target_fichaje_id = self.admin_platform_fichaje_id
+                if target_fichaje_id:
+                    cur.execute("""
+                        SELECT id FROM empleado_fichajes
+                        WHERE id = %s AND hora_salida IS NULL AND deleted_at IS NULL
+                    """, (target_fichaje_id,))
+                    row = cur.fetchone()
+                    if not row:
+                        target_fichaje_id = None
+
+                if not target_fichaje_id:
+                    # Buscar el último fichaje abierto del empleado
+                    cur.execute("""
+                        SELECT id FROM empleado_fichajes
+                        WHERE empleado_id = %s AND hora_salida IS NULL AND deleted_at IS NULL
+                        ORDER BY id DESC LIMIT 1
+                    """, (emp_id,))
+                    row = cur.fetchone()
+                    if row:
+                        target_fichaje_id = row['id']
+
+                if target_fichaje_id:
+                    cur.execute("""
+                        UPDATE empleado_fichajes
+                        SET hora_salida = %s,
+                            server_checkout_at = %s,
+                            checkout_latitude = %s,
+                            checkout_longitude = %s,
+                            updated_at = %s
+                        WHERE id = %s
+                    """, (time_str, now_str, lat_val, lng_val, now_str, target_fichaje_id))
+                    _logger.info("[admin-platform] Checkout REGISTRADO con éxito (Fichaje ID %s) para empleado %s (ID %s) a las %s (GPS: %s, %s).",
+                                 target_fichaje_id, target_user.name, emp_id, time_str, lat_val, lng_val)
+                    success = True
+                else:
+                    _logger.warning("[admin-platform] No se encontró turno abierto pendiente de checkout para empleado %s (ID %s).",
+                                   target_user.name, emp_id)
+            conn.close()
+
+            self.sudo().write({'admin_platform_checkout_done': True})
+        except Exception as e:
+            _logger.error("Error registrando checkout en MariaDB admin-platform: %s", e)
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+        return success
+
+    def action_pos_session_open(self):
+        res = super().action_pos_session_open()
+        for session in self:
+            if not session.admin_platform_fichaje_id and session.user_id:
+                session.register_admin_platform_checkin()
+        return res
+
+    def _validate_session(self, balancing_account=False, amount_to_balance=0, bank_payment_method_diffs=None):
+        res = super()._validate_session(balancing_account=balancing_account, amount_to_balance=amount_to_balance, bank_payment_method_diffs=bank_payment_method_diffs)
+        for session in self:
+            if session.state == 'closed' and not session.admin_platform_checkout_done:
+                session.register_admin_platform_checkout()
+        return res
+
+    def close_session_from_ui(self, bank_payment_method_diff_pairs=None):
+        res = super().close_session_from_ui(bank_payment_method_diff_pairs=bank_payment_method_diff_pairs)
+        for session in self:
+            if session.state == 'closed' and not session.admin_platform_checkout_done:
+                session.register_admin_platform_checkout()
+        return res
 
     def _loader_params_res_partner(self):
         result = super()._loader_params_res_partner()
