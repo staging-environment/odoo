@@ -181,32 +181,24 @@ class UtrecarLogin(Home):
             _logger.warning("Bloqueado intento de acceso a /web desde IP de estación de pista %s.", ip)
             return request.redirect(target)
 
-        # Si el acceso es desde la IP VPN del Super Administrador:
-        if self._is_admin_vpn_ip(ip):
-            if not request.session.uid or not self._is_admin_user(request.env['res.users'].sudo().browse(request.session.uid)):
-                self._auto_login_super_admin()
-            return super(UtrecarLogin, self).web_client(s_action=s_action, **kw)
-
-        # Si se solicita acceso de administrador explícito:
+        # Si se solicita acceso de administrador explícito (?admin=1):
         if request.params.get('admin') == '1':
-            if request.session.uid:
-                user = request.env['res.users'].sudo().browse(request.session.uid)
-                if self._is_admin_user(user):
-                    return super(UtrecarLogin, self).web_client(s_action=s_action, **kw)
-                else:
-                    _logger.info("Cerrando sesión no-admin para permitir login de administrador.")
-                    request.session.logout()
-            return request.redirect('/web/login?admin=1')
-
-        # Si ya hay una sesión activa:
-        if request.session.uid:
-            user = request.env['res.users'].sudo().browse(request.session.uid)
-            if self._is_admin_user(user):
+            if self._is_admin_vpn_ip(ip):
+                if not request.session.uid or not self._is_admin_user(request.env['res.users'].sudo().browse(request.session.uid)):
+                    self._auto_login_super_admin()
                 return super(UtrecarLogin, self).web_client(s_action=s_action, **kw)
             else:
-                request.session.logout()
-                return request.redirect('/pos_gas_station/select_employee')
+                if request.session.uid:
+                    user = request.env['res.users'].sudo().browse(request.session.uid)
+                    if self._is_admin_user(user):
+                        return super(UtrecarLogin, self).web_client(s_action=s_action, **kw)
+                    else:
+                        _logger.info("Cerrando sesión no-admin para permitir login de administrador.")
+                        request.session.logout()
+                return request.redirect('/web/login?admin=1')
 
+        # Si no viene ?admin=1, redirigir siempre a select_employee para mostrar
+        # la pantalla de TPV (indicando que no es estación y ofreciendo el enlace de administración):
         station = self._get_default_station(request.params.get('station_id'))
         target = f'/pos_gas_station/select_employee?station_id={station.id}' if station else '/pos_gas_station/select_employee'
         return request.redirect(target)
@@ -220,17 +212,17 @@ class UtrecarLogin(Home):
             target = f'/pos_gas_station/select_employee?station_id={station.id}' if station else '/pos_gas_station/select_employee'
             return request.redirect(target)
 
-        # Si el acceso es desde la IP VPN del Super Administrador:
-        if self._is_admin_vpn_ip(ip):
+        # Si el acceso es desde la IP VPN de Administrador con ?admin=1:
+        if self._is_admin_vpn_ip(ip) and request.params.get('admin') == '1':
             self._auto_login_super_admin()
-            return request.redirect(redirect or '/web')
+            return request.redirect(redirect or '/web?admin=1')
 
         # Petición con admin=1 o envío de credenciales POST:
         if request.params.get('admin') == '1' or request.httprequest.method == 'POST':
             if request.session.uid:
                 user = request.env['res.users'].sudo().browse(request.session.uid)
                 if self._is_admin_user(user):
-                    return request.redirect(redirect or '/web')
+                    return request.redirect(redirect or '/web?admin=1')
                 else:
                     # Cerrar la sesión de empleado para permitir loguearse como administrador
                     request.session.logout()
@@ -240,22 +232,14 @@ class UtrecarLogin(Home):
             if request.session.uid:
                 user = request.env['res.users'].sudo().browse(request.session.uid)
                 if self._is_admin_user(user):
-                    return request.redirect(redirect or '/web')
+                    return request.redirect(redirect or '/web?admin=1')
                 else:
                     _logger.warning("Usuario %s no tiene rol Administrador. Bloqueando acceso a /web.", user.login)
                     request.session.logout()
                     return request.redirect('/pos_gas_station/select_employee')
             return response
 
-        # Si entra a /web/login sin admin=1:
-        if request.session.uid:
-            user = request.env['res.users'].sudo().browse(request.session.uid)
-            if self._is_admin_user(user):
-                return request.redirect(redirect or '/web')
-            else:
-                request.session.logout()
-                return request.redirect('/pos_gas_station/select_employee')
-
+        # Si entra a /web/login sin admin=1 ni POST:
         return request.redirect('/pos_gas_station/select_employee')
 
     @http.route(['/pos_gas_station/select_employee'], type='http', auth="none", sitemap=False)

@@ -132,9 +132,10 @@ Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempr
 
 ## 🛡️ Autenticación VPN, Simplificación de Menú y Control de Empleados por Estación (Actualizado)
 
-### 1. Acceso Protegido por VPN y Auto-login Administrador:
-- Al estar el servidor de producción protegido por WireGuard VPN interna, cualquier acceso a `https://odoo.utrecar.com/` desde IPs que no son puestos de gasolinera entra directamente autenticado con el usuario Administrador (`jarodriguezbonilla@gmail.com`).
-- Se mantiene el bypass manual con `?admin=1` para acceso administrativo explícito.
+### 1. Acceso Protegido por VPN y Acceso Administrativo Explícito (?admin=1):
+- Cualquier acceso general a `https://odoo.utrecar.com/` muestra por defecto la pantalla de TPV (`select_employee`).
+- Si la IP de VPN no pertenece a un puesto de gasolinera (incluidas las IPs de VPN autorizadas para administración: `10.8.0.2`, `10.8.0.3`, `10.8.0.8`, `10.8.0.19`), se muestra la pantalla informativa indicando que el equipo no tiene acceso a TPV de pista, desplegando abajo el enlace **"Acceso administrador"**.
+- Al pulsar dicho enlace (o navegar con `?admin=1`), se valida la IP de VPN autorizada y se realiza el auto-login directo como Super Administrador (`jarodriguezbonilla@gmail.com`), accediendo al backend `/web?admin=1`.
 
 ### 2. Detección de Estación por IP de WireGuard VPN:
 - Los equipos de las gasolineras tienen asignadas IPs fijas en WireGuard:
