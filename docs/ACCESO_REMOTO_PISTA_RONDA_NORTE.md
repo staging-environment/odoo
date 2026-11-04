@@ -66,3 +66,21 @@ Host rondanorte-tpv2 rondanorte2
    - **TPV 2:** Configurado como **estática (DHCP: no)** en `192.168.1.64`.
    - **Resultado:** Ambos puestos son **100% inmunes a reinicios o apagones del router**, conservando siempre la misma configuración de acceso.
 
+---
+
+## 🛑 Incidencia Activa y Diagnóstico Forense: Bloqueos y Congelaciones en TPV 2
+
+- **Estado Actual:** **PAUSADO / EN ESPERA DE AUTORIZACIÓN EXPRESA DEL USUARIO**.
+- **Diagnóstico Realizado (04/11/2026):** Auditoría remota 100% no invasiva sin reinicio de servicios.
+- **Causas Raíz Detectadas:**
+  1. **Colisión de Series Fiscales:** Ambos TPVs comparten la misma serie `TTRN` / `FTRN` en `virtusgesnet.seriesportpv`. Bloqueo mutuo de fila en MySQL al cobrar.
+  2. **Tormenta de Bloqueos en MySQL:** `EOVGNET` reintentando en bucle cada 10-15s (error FK y registro duplicado `RRN-2021000001-1`), bloqueando 18 tablas a la vez.
+  3. **Ahorro de Energía en NIC Realtek (TPV 2):** `MSPower_DeviceEnable: True` y `Energy Efficient Ethernet (EEE)` activados, causando micro-cortes y spikes de latencia en los sockets TCP con TPV 1.
+  4. **Fuga de Memoria en VirtusTPV:** Proceso en TPV 2 acumulando 1.58 GB RAM tras 6 días continuos sin reinicio; problemas en `combit.ListLabel18` y puerto WSD de impresora Epson WF-M5299.
+  5. **Inversión de Identificadores:** TPV 1 ejecutándose con código 2 y TPV 2 con código 1.
+- **Alineación con el PRD de Odoo 17 POS:** La incidencia demuestra la obsolescencia técnica de la arquitectura cliente-servidor MySQL de Aseproda y valida los requisitos del PRD de Odoo (sesiones web aisladas, numeradores particionados, broker WebSocket de pista y tolerancia offline).
+- **Informes Asociados:**
+  - `docs/INFORME_TECNICO_DIAGNOSTICO_CONFLICTO_TPVS_RONDA_NORTE.md`
+  - `docs/Informe_Tecnico_Diagnostico_Conflicto_TPVs_Ronda_Norte.pdf`
+
+

@@ -51,6 +51,17 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
     - **Usuario Windows:** `madic-tpv` (`madic-tpv-iot\madic-tpv`)
     - **Puerto SSH:** `22` (OpenSSH Windows Service)
     - **Acceso transparente:** `ssh rondanorte-tpv2` (ProxyJump automático a través de TPV 1)
+  - **Diagnóstico de Conflicto y Bloqueos en TPV 2 (Estado: PAUSADO / OBSERVACIÓN PURA):**
+    - **Problema diagnosticado:** TPV 2 se congela intermitentemente en pantalla táctil al cobrar o atender surtidores.
+    - **Causas raíz demostradas (Auditoría Forense 04/11/2026):**
+      1. *Colisión de series fiscales:* Ambos TPVs comparten la misma serie `TTRN` / `FTRN` en `virtusgesnet.seriesportpv`, provocando contención por locks de fila exclusivos en MySQL.
+      2. *Tormenta de Deadlocks:* El servicio `EOVGNET` en TPV 1 está atrapado en un bucle infinito cada 10-15s (error FK y duplicado `RRN-2021000001-1`), bloqueando hasta 18 tablas simultáneamente.
+      3. *Ahorro de energía agresivo:* NIC Realtek GbE de TPV 2 con `MSPower_DeviceEnable: True` y `Energy Efficient Ethernet (EEE)` activados, causando micro-cortes y latencias en sockets TCP (`:3306` y `:8777`).
+      4. *Fuga de memoria y spooler:* Proceso `VirtusTPVNet.exe` acumulando 1.58 GB RAM tras 6 días de uptime; fallos en `combit.ListLabel18` y puerto WSD de impresora Epson WF-M5299.
+      5. *Inversión de identificadores:* TPV 1 ejecuta internamente `CodigoTPV = 2` y TPV 2 ejecuta `CodigoTPV = 1`.
+    - **Alineación con el PRD de Odoo 17 POS:** Este conflicto demuestra la inviabilidad del modelo de base de datos local compartida de Aseproda y valida las especificaciones del PRD de Odoo: sesiones multi-cajero desacopladas (`pos.session`), numeración fiscal particionada por terminal, broker de pista asíncrono vía WebSockets y buffer local offline.
+    - **Documentación completa:** `docs/INFORME_TECNICO_DIAGNOSTICO_CONFLICTO_TPVS_RONDA_NORTE.md` e `docs/Informe_Tecnico_Diagnostico_Conflicto_TPVs_Ronda_Norte.pdf`.
+    - **Directriz Operativa:** **NO APLICAR CAMBIOS SIN AUTORIZACIÓN EXPRESA DEL USUARIO**.
 
 ---
 
