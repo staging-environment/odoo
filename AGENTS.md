@@ -40,6 +40,18 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
     - Acceso directo en escritorio: `Odoo TPV - Gasolinera Repsol.lnk` para apertura en modo aplicación de `https://odoo.utrecar.com/pos/ui?config_id=7`.
   - **Documentación detallada:** `docs/ACCESO_REMOTO_PISTA_REPSOL_TRIESTE.md`
 
+- **E.S. Ronda Norte (Utrera):**
+  - **TPV 1 (Puesto Principal con VPN WireGuard):**
+    - **IP WireGuard VPN:** `10.8.0.6` (IP Local LAN: `192.168.1.20`)
+    - **Usuario Windows:** `jarod` (`desktop-jl2ul2j\jarod`)
+    - **Puerto SSH:** `22` (OpenSSH Windows Service)
+    - **Acceso directo:** `ssh rondanorte` o `ssh rondanorte-tpv1`
+  - **TPV 2 (Puesto Secundario LAN):**
+    - **IP Local LAN:** `192.168.1.64`
+    - **Usuario Windows:** `madic-tpv` (`madic-tpv-iot\madic-tpv`)
+    - **Puerto SSH:** `22` (OpenSSH Windows Service)
+    - **Acceso transparente:** `ssh rondanorte-tpv2` (ProxyJump automático a través de TPV 1)
+
 ---
 
 ## ⛽ Arquitectura de Pista y Estrategia de Control (IMPORTANTE)
