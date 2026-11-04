@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inyectar PWA en el Punto de Venta (POS) -->
+    <template id="pos_index_pwa_inherit" inherit_id="point_of_sale.index">
+        <xpath expr="//head" position="inside">
+            <link rel="manifest" href="/manifest.json"/>
+            <meta name="theme-color" content="#d97706"/>
+            <meta name="apple-mobile-web-app-capable" content="yes"/>
+            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+            <meta name="apple-mobile-web-app-title" content="Utrecar TPV"/>
+            <link rel="apple-touch-icon" href="/pos_gas_station/static/src/img/pwa/ronda_norte_icon_192.png"/>
+            <script type="text/javascript" src="/pos_gas_station/static/src/js/pwa_installer.js"></script>
+        </xpath>
+    </template>
+
+    <!-- Inyectar PWA en el Layout General de Odoo (/web y /web/login) -->
+    <template id="web_layout_pwa_inherit" inherit_id="web.layout">
+        <xpath expr="//head" position="inside">
+            <link rel="manifest" href="/manifest.json"/>
+            <meta name="theme-color" content="#d97706"/>
+            <meta name="apple-mobile-web-app-capable" content="yes"/>
+            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+            <meta name="apple-mobile-web-app-title" content="Utrecar TPV"/>
+            <link rel="apple-touch-icon" href="/pos_gas_station/static/src/img/pwa/ronda_norte_icon_192.png"/>
+            <script type="text/javascript" src="/pos_gas_station/static/src/js/pwa_installer.js"></script>
+        </xpath>
+    </template>
+</odoo>

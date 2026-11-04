@@ -7,6 +7,14 @@
         <head>
             <meta charset="utf-8"/>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+            <!-- PWA Manifest & Meta Tags -->
+            <link rel="manifest" href="/manifest.json"/>
+            <meta name="theme-color" content="#d97706"/>
+            <meta name="apple-mobile-web-app-capable" content="yes"/>
+            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+            <meta name="apple-mobile-web-app-title" content="Utrecar TPV"/>
+            <link rel="apple-touch-icon" href="/pos_gas_station/static/src/img/pwa/ronda_norte_icon_192.png"/>
+            <script type="text/javascript" src="/pos_gas_station/static/src/js/pwa_installer.js"></script>
             <title>Terminal de pista - Identificación de Empleado</title>
             <link rel="preconnect" href="https://fonts.googleapis.com"/>
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
