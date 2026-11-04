@@ -25,7 +25,9 @@ Este documento detalla la infraestructura de red, parámetros de acceso remoto S
 ### 2. TPV 2 - Puesto Secundario (Red Local LAN)
 - **Hostname Windows:** `MADIC-TPV-IOT`
 - **Usuario de Windows:** `madic-tpv`
-- **IP Local LAN:** `192.168.1.64` (Interfaz `Ethernet 2`)
+- **IP Local LAN:** `192.168.1.64` (Fija / Estática, interfaz `Ethernet 2`, DHCP: No)
+- **Puerta de Enlace:** `192.168.1.1`
+- **DNS:** `80.58.61.250`, `8.8.8.8`
 - **Puerto SSH:** `22` (Servicio: `OpenSSH SSH Server` en Windows, inicio automático `Automatic`)
 - **Autenticación:** Clave pública RSA autorizada en `C:\ProgramData\ssh\administrators_authorized_keys`
 - **Acceso Remoto Transparente (ProxyJump a través de TPV 1):**
@@ -45,7 +47,7 @@ Host rondanorte rondanorte-tpv1
     User jarod
     IdentityFile ~/.ssh/id_rsa
 
-Host rondanorte-tpv2
+Host rondanorte-tpv2 rondanorte2
     HostName 192.168.1.64
     User madic-tpv
     IdentityFile ~/.ssh/id_rsa
@@ -60,5 +62,7 @@ Host rondanorte-tpv2
    - Configurado en ambos equipos con tipo de inicio `Automatic`. Arranca solo a nivel de sistema antes de iniciar sesión.
 
 2. **Direccionamiento IP:**
-   - **TPV 1:** Tanto la IP de WireGuard (`10.8.0.6`) como la IP Ethernet (`192.168.1.20`) están configuradas como **estáticas (DHCP: no)**. Es 100% inmune a reinicios.
-   - **TPV 2:** Tiene asignada `192.168.1.64` por DHCP. Para blindar el acceso y evitar que el router cambie la IP tras un apagón, se puede fijar de forma estática en la tarjeta de red o asignar el túnel WireGuard `10.8.0.7`.
+   - **TPV 1:** Tanto la IP de WireGuard (`10.8.0.6`) como la IP Ethernet (`192.168.1.20`) están configuradas como **estáticas (DHCP: no)**.
+   - **TPV 2:** Configurado como **estática (DHCP: no)** en `192.168.1.64`.
+   - **Resultado:** Ambos puestos son **100% inmunes a reinicios o apagones del router**, conservando siempre la misma configuración de acceso.
+
