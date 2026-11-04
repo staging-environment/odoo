@@ -15,8 +15,8 @@ class UtrecarPWAController(http.Controller):
     def get_manifest(self, **kwargs):
         """Devuelve el manifiesto PWA oficial de Utrecar con alcance global."""
         manifest = {
-            "name": "Utrecar TPV - Gasolineras",
-            "short_name": "Utrecar",
+            "name": "Estaciones de servicio",
+            "short_name": "Estaciones",
             "description": "Terminal de Punto de Venta y Gestión de Estaciones de Servicio Utrecar",
             "start_url": "/",
             "scope": "/",
@@ -100,3 +100,4 @@ self.addEventListener('fetch', (event) => {
                 ('Cache-Control', 'no-cache, no-store, must-revalidate'),
             ]
         )
+

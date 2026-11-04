@@ -84,7 +84,7 @@
                      alt="Utrecar" />
                 <div style="min-width: 0;">
                     <div style="display: flex; align-items: center; gap: 6px;">
-                        <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Instalar Utrecar POS</h4>
+                        <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Instalar Estaciones de servicio</h4>
                         <span style="background: rgba(217, 119, 6, 0.25); color: #fbbf24; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(217, 119, 6, 0.4);">App</span>
                     </div>
                     <p style="margin: 3px 0 0 0; font-size: 11.5px; color: #94a3b8; line-height: 1.3;">Instala la app en el escritorio o móvil para acceso rápido a pista.</p>
@@ -160,7 +160,7 @@
                     </button>
                     <img src="/pos_gas_station/static/src/img/pwa/ronda_norte_icon_192.png" style="width: 56px; height: 56px; object-fit: contain; margin: 0 auto 14px auto; border-radius: 14px; display: block;" />
                     <h3 style="margin: 0 0 6px 0; font-size: 17px; font-weight: 800; color: #0f172a;">Instalar en iPhone o iPad</h3>
-                    <p style="margin: 0 0 18px 0; font-size: 13px; color: #64748b; line-height: 1.4;">Añade el TPV de Utrecar a tu pantalla de inicio en dos pasos:</p>
+                    <p style="margin: 0 0 18px 0; font-size: 13px; color: #64748b; line-height: 1.4;">Añade Estaciones de servicio a tu pantalla de inicio en dos pasos:</p>
                     <div style="display: flex; flex-direction: column; gap: 14px; text-align: left; margin-bottom: 22px;">
                         <div style="display: flex; align-items: flex-start; gap: 12px;">
                             <div style="background: #fef3c7; color: #d97706; font-weight: 800; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px;">1</div>
@@ -216,3 +216,4 @@
         showBanner();
     }
 })();
+

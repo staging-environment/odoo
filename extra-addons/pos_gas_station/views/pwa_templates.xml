@@ -7,7 +7,7 @@
             <meta name="theme-color" content="#d97706"/>
             <meta name="apple-mobile-web-app-capable" content="yes"/>
             <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-            <meta name="apple-mobile-web-app-title" content="Utrecar TPV"/>
+            <meta name="apple-mobile-web-app-title" content="Estaciones de servicio"/>
             <link rel="apple-touch-icon" href="/pos_gas_station/static/src/img/pwa/ronda_norte_icon_192.png"/>
             <script type="text/javascript" src="/pos_gas_station/static/src/js/pwa_installer.js"></script>
         </xpath>
@@ -20,7 +20,7 @@
             <meta name="theme-color" content="#d97706"/>
             <meta name="apple-mobile-web-app-capable" content="yes"/>
             <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-            <meta name="apple-mobile-web-app-title" content="Utrecar TPV"/>
+            <meta name="apple-mobile-web-app-title" content="Estaciones de servicio"/>
             <link rel="apple-touch-icon" href="/pos_gas_station/static/src/img/pwa/ronda_norte_icon_192.png"/>
             <script type="text/javascript" src="/pos_gas_station/static/src/js/pwa_installer.js"></script>
         </xpath>
@@ -33,7 +33,7 @@
             <meta name="theme-color" content="#d97706"/>
             <meta name="apple-mobile-web-app-capable" content="yes"/>
             <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-            <meta name="apple-mobile-web-app-title" content="Utrecar TPV"/>
+            <meta name="apple-mobile-web-app-title" content="Estaciones de servicio"/>
             <link rel="apple-touch-icon" href="/pos_gas_station/static/src/img/pwa/ronda_norte_icon_192.png"/>
             <script type="text/javascript" src="/pos_gas_station/static/src/js/pwa_installer.js"></script>
         </xpath>
