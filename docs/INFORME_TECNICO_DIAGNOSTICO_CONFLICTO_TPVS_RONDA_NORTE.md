@@ -129,19 +129,64 @@ Para mantener la estación operativa con Aseproda hasta la entrada en servicio d
 │ 1    │ Crear series TTRN2 / FTRN2 en MySQL y     │ CRÍTICA    │ Nulo        │ En espera de aprobación  │
 │      │ asignarlas al TPV 2 en seriesportpv       │            │ (En calma)  │                          │
 ├──────┼───────────────────────────────────────────┼────────────┼─────────────┼──────────────────────────┤
-│ 2    │ Desactivar EEE, Green Ethernet y Ahorro   │ ALTA       │ Nulo        │ En espera de aprobación  │
+│ 2    │ Desactivar EEE, Green Ethernet y Ahorro   │ ALTA       │ Nulo        │ COMPLETADO (05/11/2026)  │
 │      │ de Energía en NIC Realtek del TPV 2       │            │ (1 segundo) │                          │
 ├──────┼───────────────────────────────────────────┼────────────┼─────────────┼──────────────────────────┤
-│ 3    │ Purgar registro RRN-2021000001-1 y FKs    │ ALTA       │ Nulo        │ En espera de aprobación  │
+│ 3    │ Purgar registro RRN-2021000001-1 y FKs    │ ALTA       │ Nulo        │ COMPLETADO (05/11/2026)  │
 │      │ corruptas para detener bucle EOVGNET      │            │             │                          │
 ├──────┼───────────────────────────────────────────┼────────────┼─────────────┼──────────────────────────┤
 │ 4    │ Cambiar puerto EPSON de WSD a TCP/IP      │ MEDIA      │ Nulo        │ En espera de aprobación  │
 │      │ estándar fijo con su dirección IP local   │            │             │                          │
 ├──────┼───────────────────────────────────────────┼────────────┼─────────────┼──────────────────────────┤
-│ 5    │ Programar tarea de reinicio diario 05:00AM│ PREVENTIVA │ Nulo        │ En espera de aprobación  │
+│ 5    │ Programar tarea de reinicio diario 05:00AM│ PREVENTIVA │ Nulo        │ COMPLETADO (05/11/2026)  │
 │      │ de VirtusTPVNet para evitar fugas de RAM  │            │ (Automático)│                          │
 └──────┴───────────────────────────────────────────┴────────────┴─────────────┴──────────────────────────┘
 ```
+
+### 5.1. Detalle de Implementación de la Tarea Programada de Reciclaje (Paso 5)
+
+* **Propósito:** Purgar diariamente la fuga de memoria de `VirtusTPVNet.exe` (que alcanzaba >1.65 GB RAM) y vaciar la cola de impresión antes de la apertura.
+* **Hora de ejecución programada:** Diariamente a las **05:00 AM**.
+* **Ubicación del script:** `C:\Utrecar\reciclar_virtustpv.bat` en TPV 1 y TPV 2.
+* **Archivo de registro de ejecuciones:** `C:\Utrecar\reciclaje_tpv.log`.
+* **Nombre de la tarea en Windows:** `ReciclajeVirtusTPV`.
+
+#### Procedimiento para Deshacer o Desactivar la Tarea Programada (Rollback):
+
+Si en algún momento fuera necesario pausar o eliminar esta tarea programada, ejecutar por SSH:
+
+* **Para desactivar temporalmente (sin borrar):**
+  ```cmd
+  # En TPV 1:
+  ssh rondanorte "schtasks /Change /TN ReciclajeVirtusTPV /Disable"
+
+  # En TPV 2:
+  ssh rondanorte-tpv2 "schtasks /Change /TN ReciclajeVirtusTPV /Disable"
+  ```
+
+* **Para volver a activar:**
+  ```cmd
+  # En TPV 1:
+  ssh rondanorte "schtasks /Change /TN ReciclajeVirtusTPV /Enable"
+
+  # En TPV 2:
+  ssh rondanorte-tpv2 "schtasks /Change /TN ReciclajeVirtusTPV /Enable"
+  ```
+
+* **Para eliminarla definitivamente:**
+  ```cmd
+  # En TPV 1:
+  ssh rondanorte "schtasks /Delete /TN ReciclajeVirtusTPV /F"
+
+  # En TPV 2:
+  ssh rondanorte-tpv2 "schtasks /Delete /TN ReciclajeVirtusTPV /F"
+  ```
+
+* **Para consultar su estado y hora de próxima ejecución:**
+  ```cmd
+  ssh rondanorte "schtasks /Query /TN ReciclajeVirtusTPV /FO LIST"
+  ssh rondanorte-tpv2 "schtasks /Query /TN ReciclajeVirtusTPV /FO LIST"
+  ```
 
 ---
 
