@@ -56,7 +56,7 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
     - **Acciones Quirúrgicas Aplicadas (05/11/2026):**
       1. *Ahorro de energía en NIC Realtek (TPV 2):* Desactivados `*EEE`, `EnableGreenEthernet`, `GigaLite`, `PowerSavingMode` y `AllowComputerToTurnOffDevice: Disabled` (`MSPower_DeviceEnable: False`). Conectividad TCP a `:3306` y `:8777` 100% estable a 1 Gbps.
       2. *Bucle infinito EOVGNET (TPV 1):* Actualizada marca `UltimaSincronizacionConBDCentral = '2021-12-29 17:49:36'` en registro histórico `RRN-2021000001` de `regularizacionesdealmacen`. El bucle de reintentos continuos cada 10-15s en `SyncReg.log` ha cesado por completo.
-      3. *Reciclaje nocturno de VirtusTPV (TPV 1 y TPV 2):* Creada tarea programada diaria a las 05:00 AM para purgar fugas de RAM (proceso acumulando >1.6 GB) y limpiar cola de impresión/temporales.
+      3. *Reciclaje nocturno de VirtusTPV (TPV 1 y TPV 2):* Creada tarea programada diaria a las 04:00 AM para purgar fugas de RAM (proceso acumulando >1.6 GB) y limpiar cola de impresión/temporales.
     - **Procedimiento de Reversión / Deshacer Tarea Programada (Rollback):**
       - Tarea programada: `ReciclajeVirtusTPV`
       - Script ejecutado: `C:\Utrecar\reciclar_virtustpv.bat` (log en `C:\Utrecar\reciclaje_tpv.log`)
