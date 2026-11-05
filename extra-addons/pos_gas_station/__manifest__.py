@@ -13,12 +13,13 @@
         - Matriz Visual de Roles y Permisos (Sistema y TPV)
         - Dashboard Multi-Empresa de Estaciones de Servicio
     """,
-    'depends': ['point_of_sale', 'mail'],
+    'depends': ['point_of_sale', 'mail', 'digest'],
     'data': [
         'security/ir.model.access.csv',
         'data/permission_matrix_data.xml',
         'data/pos_security_rules.xml',
         'data/sync_cron.xml',
+        'data/disable_digest.xml',
         'views/res_partner_views.xml',
         'views/permission_matrix_views.xml',
         'views/res_company_views.xml',

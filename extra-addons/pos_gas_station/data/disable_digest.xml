@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Desactivar el cron de correos de resumen periódico de Odoo -->
+        <record id="digest.ir_cron_digest_scheduler_action" model="ir.cron">
+            <field name="active" eval="False"/>
+        </record>
+
+        <!-- Desactivar el resumen periódico por defecto y desvincular usuarios -->
+        <record id="digest.digest_digest_default" model="digest.digest">
+            <field name="state">deactivated</field>
+            <field name="user_ids" eval="[(5, 0, 0)]"/>
+        </record>
+
+        <!-- Desactivar el parámetro de auto-suscripción para nuevos usuarios -->
+        <record id="param_disable_digest_emails" model="ir.config_parameter">
+            <field name="key">digest.default_digest_emails</field>
+            <field name="value">False</field>
+        </record>
+    </data>
+</odoo>
