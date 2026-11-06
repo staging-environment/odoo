@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_partner_customer_code" model="ir.sequence">
+        <field name="name">Secuencia de Código de Cliente Gasolinera</field>
+        <field name="code">res.partner.customer.code</field>
+        <field name="padding">1</field>
+        <field name="number_next">1958</field>
+        <field name="number_increment">1</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

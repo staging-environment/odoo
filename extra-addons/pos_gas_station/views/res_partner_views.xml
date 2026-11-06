@@ -7,6 +7,9 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="priority">25</field>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='vat']" position="before">
+                <field name="ref" string="Código de Cliente" placeholder="Automático (correlativo)"/>
+            </xpath>
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="company_id" options="{'no_create': True}" string="Empresa / Compañía"/>
                 <field name="station_id" domain="[('company_id', '=', company_id)]" options="{'no_create': True}" string="Estación de Servicio"/>
@@ -37,6 +40,7 @@
         <field name="priority">25</field>
         <field name="arch" type="xml">
             <tree string="Clientes de Estaciones de Servicio" sample="1">
+                <field name="ref" string="Código" decoration-bf="1"/>
                 <field name="display_name" string="Nombre / Razón Social"/>
                 <field name="vat" string="CIF / NIF"/>
                 <field name="customer_type" widget="badge" 

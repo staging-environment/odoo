@@ -28,6 +28,21 @@ class ResPartner(models.Model):
         return res
 
     @api.model
+    def _get_next_customer_code(self):
+        """Genera el siguiente código secuencial numérico para clientes de gasolinera."""
+        code = self.env['ir.sequence'].next_by_code('res.partner.customer.code')
+        if not code:
+            # Fallback robusto en base a la base de datos
+            self.env.cr.execute("""
+                SELECT COALESCE(MAX(CAST(ref AS INTEGER)), 1957) + 1
+                FROM res_partner
+                WHERE ref ~ '^[0-9]+$' AND CAST(ref AS INTEGER) < 9999;
+            """)
+            next_num = self.env.cr.fetchone()[0]
+            code = str(next_num)
+        return code
+
+    @api.model
     def create_from_ui(self, partner):
         # Auto-asignar estación si se crea cliente desde el TPV
         if not partner.get('station_id'):
@@ -38,6 +53,7 @@ class ResPartner(models.Model):
             if session and session.config_id:
                 partner['station_id'] = session.config_id.id
                 partner['company_id'] = session.config_id.company_id.id
+        partner['customer_rank'] = 1
         return super().create_from_ui(partner)
 
     @api.onchange('station_id')
@@ -68,6 +84,23 @@ class ResPartner(models.Model):
             )
             if not skip and not vals.get('company_id') and self.env.company:
                 vals['company_id'] = self.env.company.id
+
+            # Asignación automática de código numérico correlativo a clientes
+            if not vals.get('ref'):
+                is_customer = (
+                    vals.get('customer_rank', 0) > 0 or 
+                    self.env.context.get('default_customer_rank', 0) > 0 or
+                    self.env.context.get('res_partner_search_mode') == 'customer' or
+                    self.env.context.get('search_default_filter_customer') == 1
+                )
+                is_internal = (
+                    self.env.context.get('res_users_partner_create') or
+                    self.env.context.get('res_company_partner_create') or
+                    vals.get('user_ids')
+                )
+                if is_customer and not is_internal:
+                    vals['ref'] = self._get_next_customer_code()
+
         return super().create(vals_list)
 
     def write(self, vals):
@@ -76,3 +109,10 @@ class ResPartner(models.Model):
             if st.exists() and st.company_id:
                 vals['company_id'] = st.company_id.id
         return super().write(vals)
+
+    def action_assign_customer_code(self):
+        """Asigna manualmente el siguiente código numérico a clientes que no lo tengan."""
+        for partner in self:
+            if not partner.ref and partner.customer_rank > 0:
+                partner.ref = self._get_next_customer_code()
+        return True
