@@ -1102,15 +1102,13 @@
                         
                         <!-- 1. VISTA LISTADO DE PEDIDOS DEL TURNO -->
                         <t t-if="!state.selectedShiftOrder">
-                            <!-- HEADER DEL MODAL -->
+                            <!-- HEADER DEL MODAL FLOTANTE -->
                             <div class="shift-modal-header">
                                 <div class="shift-modal-header-left">
-                                    <button class="shift-btn-back" t-on-click="() => this.closeShiftOrdersModal()">
-                                        <i class="fa fa-arrow-left me-1"/> ⬅ Volver al TPV
-                                    </button>
+                                    <div class="shift-modal-icon-badge">⏱</div>
                                     <div class="shift-header-titles">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <h2 class="shift-title">⏱ Pedidos realizados en este turno</h2>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h2 class="shift-title">Historial de Pedidos del Turno</h2>
                                             <t t-if="state.shiftSessionInfo.prevId">
                                                 <div class="shift-session-switcher">
                                                     <button t-attf-class="btn-shift-pill #{state.shiftSessionInfo.isCurrent ? 'active' : ''}" 
@@ -1127,16 +1125,16 @@
                                             </t>
                                         </div>
                                         <span class="shift-subtitle">
-                                            Viendo Sesión: <strong t-esc="state.shiftSessionInfo.viewName || (pos.pos_session ? pos.pos_session.name : '')"/> | 
+                                            Sesión: <strong t-esc="state.shiftSessionInfo.viewName || (pos.pos_session ? pos.pos_session.name : '')"/> | 
                                             TPV: <strong t-esc="pos.config ? pos.config.name : ''"/>
                                         </span>
                                     </div>
                                 </div>
                                 <div class="shift-modal-header-right">
-                                    <button class="shift-btn-refresh" t-on-click="() => this.loadShiftOrders()" title="Refrescar datos">
+                                    <button class="shift-btn-refresh" t-on-click="() => this.loadShiftOrders()" title="Refrescar operaciones">
                                         <i class="fa fa-refresh me-1"/> Actualizar
                                     </button>
-                                    <button class="shift-btn-close" t-on-click="() => this.closeShiftOrdersModal()">✖</button>
+                                    <button class="shift-btn-close" t-on-click="() => this.closeShiftOrdersModal()" title="Cerrar ventana flotante (Esc)">✖</button>
                                 </div>
                             </div>
 
@@ -1279,6 +1277,16 @@
                                     </table>
                                 </t>
                             </div>
+
+                            <!-- FOOTER DE LA VENTANA FLOTANTE (LISTADO) -->
+                            <div class="shift-modal-footer">
+                                <div class="shift-footer-tip">
+                                    <span>💡 <strong>Ventana flotante:</strong> Estás en el TPV. Clic en una fila para ver el ticket detallado o fuera de la ventana para cerrarla.</span>
+                                </div>
+                                <button class="btn-shift-footer-close" t-on-click="() => this.closeShiftOrdersModal()" title="Cerrar ventana flotante (Esc)">
+                                    Cerrar ventana
+                                </button>
+                            </div>
                         </t>
 
                         <!-- 2. VISTA DETALLE DEL PEDIDO (IDÉNTICO A CAPTURA 2 NATIVA DE ODOO) -->
@@ -1286,11 +1294,11 @@
                             <!-- HEADER DEL DETALLE CON BREADCRUMBS Y ESTADOS -->
                             <div class="shift-detail-header">
                                 <div class="shift-detail-breadcrumbs">
-                                    <button class="shift-btn-back" t-on-click="() => this.backToShiftOrdersList()">
-                                        <i class="fa fa-arrow-left me-1"/> ⬅ Volver a Pedidos
+                                    <button class="shift-btn-back" t-on-click="() => this.backToShiftOrdersList()" title="Volver al listado de pedidos">
+                                        <i class="fa fa-arrow-left me-1"/> Volver a la lista
                                     </button>
                                     <div class="breadcrumb-text">
-                                        <span class="text-muted">Pedidos / </span>
+                                        <span class="text-muted">Historial / </span>
                                         <strong><t t-esc="state.selectedShiftOrder.name"/></strong>
                                     </div>
                                 </div>
@@ -1306,7 +1314,7 @@
                                             <span t-attf-class="ribbon-step #{state.selectedShiftOrder.is_invoiced ? 'active' : ''}">Publicado</span>
                                         </t>
                                     </div>
-                                    <button class="shift-btn-close" t-on-click="() => this.closeShiftOrdersModal()" title="Cerrar ventana y volver al TPV">✖</button>
+                                    <button class="shift-btn-close" t-on-click="() => this.closeShiftOrdersModal()" title="Cerrar ventana flotante (Esc)">✖</button>
                                 </div>
                             </div>
 
@@ -1589,6 +1597,16 @@
                                         </div>
                                     </div>
                                 </t>
+                            </div>
+
+                            <!-- FOOTER DE LA VENTANA FLOTANTE (DETALLE) -->
+                            <div class="shift-modal-footer">
+                                <button class="shift-btn-back" t-on-click="() => this.backToShiftOrdersList()" title="Volver al listado de pedidos">
+                                    <i class="fa fa-arrow-left me-1"/> Volver a la lista
+                                </button>
+                                <button class="btn-shift-footer-close" t-on-click="() => this.closeShiftOrdersModal()" title="Cerrar ventana flotante (Esc)">
+                                    Cerrar ventana
+                                </button>
                             </div>
                         </t>
 

@@ -220,6 +220,27 @@ export class UtrecarMainScreen extends Component {
         this.barcodeTimeout = null;
 
         this.onGlobalKeyDown = (ev) => {
+            if (ev.key === 'Escape') {
+                if (this.state.isShiftOrdersModalOpen) {
+                    if (this.state.selectedShiftOrder) {
+                        this.backToShiftOrdersList();
+                    } else {
+                        this.closeShiftOrdersModal();
+                    }
+                    ev.preventDefault();
+                    return;
+                }
+                if (this.state.isStoreModalOpen) {
+                    this.closeStoreModal();
+                    ev.preventDefault();
+                    return;
+                }
+                if (this.state.isClientModalOpen) {
+                    this.closeClientModal();
+                    ev.preventDefault();
+                    return;
+                }
+            }
             if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA')) {
                 return;
             }

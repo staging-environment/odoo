@@ -4298,7 +4298,7 @@
 
 
 /* ==========================================================================
-   MODAL DE PEDIDOS REALIZADOS EN ESTE TURNO Y DETALLE (ESTILO CAPTURA 2 ODOO)
+   MODAL FLOTANTE DE HISTORIAL DE PEDIDOS DEL TURNO Y DETALLE (TPV PERSISTENTE)
    ========================================================================== */
 
 .shift-orders-modal-backdrop {
@@ -4307,33 +4307,46 @@
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    background: rgba(15, 23, 42, 0.75) !important;
-    backdrop-filter: blur(4px) !important;
+    background: rgba(15, 23, 42, 0.45) !important;
+    backdrop-filter: blur(2px) !important;
     z-index: 10500 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 16px !important;
+    padding: 20px !important;
 }
 
 .shift-orders-modal-window {
-    width: 96vw !important;
-    max-width: 1350px !important;
-    height: 92vh !important;
-    background: #f8fafc !important;
+    width: 980px !important;
+    max-width: 92vw !important;
+    height: 76vh !important;
+    max-height: 720px !important;
+    background: #ffffff !important;
     border-radius: 14px !important;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
     border: 1px solid #cbd5e1 !important;
+    animation: shiftModalFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes shiftModalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 /* 1. HEADER LISTADO */
 .shift-modal-header {
     background: #ffffff !important;
     border-bottom: 1px solid #e2e8f0 !important;
-    padding: 12px 20px !important;
+    padding: 10px 18px !important;
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
@@ -4342,17 +4355,31 @@
 .shift-modal-header-left {
     display: flex !important;
     align-items: center !important;
-    gap: 16px !important;
+    gap: 12px !important;
+}
+
+.shift-modal-icon-badge {
+    background: #eff6ff !important;
+    color: #0284c7 !important;
+    border: 1.5px solid #bfdbfe !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 9px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 18px !important;
+    flex-shrink: 0 !important;
 }
 
 .shift-btn-back {
     background: #f1f5f9 !important;
     border: 1.5px solid #cbd5e1 !important;
     color: #1e293b !important;
-    font-size: 13px !important;
+    font-size: 12.5px !important;
     font-weight: 700 !important;
-    padding: 8px 14px !important;
-    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
 }
@@ -4364,30 +4391,30 @@
 
 .shift-title {
     margin: 0 !important;
-    font-size: 18px !important;
+    font-size: 16px !important;
     font-weight: 800 !important;
     color: #0f172a !important;
 }
 
 .shift-subtitle {
-    font-size: 12px !important;
+    font-size: 11.5px !important;
     color: #64748b !important;
 }
 
 .shift-modal-header-right {
     display: flex !important;
     align-items: center !important;
-    gap: 10px !important;
+    gap: 8px !important;
 }
 
 .shift-btn-refresh {
     background: #ffffff !important;
     border: 1.5px solid #cbd5e1 !important;
     color: #0284c7 !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
     font-weight: 700 !important;
-    padding: 8px 14px !important;
-    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
     cursor: pointer !important;
 }
 
@@ -4399,11 +4426,12 @@
 .shift-btn-close {
     background: transparent !important;
     border: none !important;
-    font-size: 20px !important;
+    font-size: 18px !important;
     color: #64748b !important;
     cursor: pointer !important;
     padding: 4px 8px !important;
     border-radius: 6px !important;
+    line-height: 1 !important;
 }
 
 .shift-btn-close:hover {
@@ -4415,35 +4443,35 @@
 .shift-kpi-banner {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 12px !important;
-    padding: 12px 20px !important;
-    background: #f1f5f9 !important;
+    gap: 8px !important;
+    padding: 8px 18px !important;
+    background: #f8fafc !important;
     border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .shift-kpi-card {
     background: #ffffff !important;
-    border-radius: 10px !important;
-    padding: 10px 14px !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    gap: 10px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
     border: 1px solid #e2e8f0 !important;
 }
 
-.shift-kpi-card.kpi-total { border-left: 5px solid #7c3aed !important; }
-.shift-kpi-card.kpi-cash { border-left: 5px solid #16a34a !important; }
-.shift-kpi-card.kpi-bank { border-left: 5px solid #0284c7 !important; }
-.shift-kpi-card.kpi-count { border-left: 5px solid #ea580c !important; }
+.shift-kpi-card.kpi-total { border-left: 4px solid #7c3aed !important; }
+.shift-kpi-card.kpi-cash { border-left: 4px solid #16a34a !important; }
+.shift-kpi-card.kpi-bank { border-left: 4px solid #0284c7 !important; }
+.shift-kpi-card.kpi-count { border-left: 4px solid #ea580c !important; }
 
 .shift-kpi-card .kpi-icon {
-    font-size: 24px !important;
+    font-size: 18px !important;
 }
 
 .shift-kpi-card .kpi-label {
     display: block !important;
-    font-size: 11px !important;
+    font-size: 10px !important;
     font-weight: 700 !important;
     color: #64748b !important;
     letter-spacing: 0.5px !important;
@@ -4451,7 +4479,7 @@
 
 .shift-kpi-card .kpi-val {
     display: block !important;
-    font-size: 19px !important;
+    font-size: 15px !important;
     font-weight: 800 !important;
     color: #0f172a !important;
 }
@@ -4462,7 +4490,7 @@
 
 /* 3. BUSCADOR */
 .shift-search-bar {
-    padding: 10px 20px !important;
+    padding: 8px 18px !important;
     background: #ffffff !important;
     border-bottom: 1px solid #e2e8f0 !important;
     display: flex !important;
@@ -4472,23 +4500,25 @@
 
 .search-input-wrapper {
     position: relative !important;
-    width: 450px !important;
+    width: 380px !important;
+    max-width: 55% !important;
 }
 
 .search-input-wrapper .search-icon {
     position: absolute !important;
-    left: 12px !important;
+    left: 10px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     color: #94a3b8 !important;
+    font-size: 13px !important;
 }
 
 .shift-search-input {
     width: 100% !important;
-    padding: 8px 36px !important;
+    padding: 6px 30px 6px 30px !important;
     border: 1.5px solid #cbd5e1 !important;
-    border-radius: 8px !important;
-    font-size: 13px !important;
+    border-radius: 6px !important;
+    font-size: 12.5px !important;
     outline: none !important;
 }
 
@@ -4499,7 +4529,7 @@
 
 .search-clear-btn {
     position: absolute !important;
-    right: 10px !important;
+    right: 8px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     background: transparent !important;
@@ -4509,7 +4539,7 @@
 }
 
 .search-stats {
-    font-size: 12px !important;
+    font-size: 11.5px !important;
     color: #64748b !important;
 }
 
@@ -4523,18 +4553,18 @@
 .shift-orders-table {
     width: 100% !important;
     border-collapse: collapse !important;
-    font-size: 13px !important;
+    font-size: 12.5px !important;
 }
 
 .shift-orders-table thead th {
     position: sticky !important;
     top: 0 !important;
-    background: #334155 !important;
+    background: #1e293b !important;
     color: #ffffff !important;
     font-weight: 700 !important;
     font-size: 11px !important;
     letter-spacing: 0.5px !important;
-    padding: 10px 14px !important;
+    padding: 8px 12px !important;
     text-align: left !important;
     z-index: 10 !important;
 }
@@ -4547,6 +4577,41 @@
 
 .shift-order-row:hover {
     background: #f8fafc !important;
+}
+
+.shift-modal-footer {
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+    padding: 8px 18px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 12px !important;
+    color: #64748b !important;
+    flex-shrink: 0 !important;
+}
+
+.shift-footer-tip {
+    font-size: 12px !important;
+    color: #475569 !important;
+}
+
+.shift-btn-footer-close, .btn-shift-footer-close {
+    background: #f1f5f9 !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #334155 !important;
+    font-weight: 700 !important;
+    font-size: 12px !important;
+    padding: 6px 16px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+.shift-btn-footer-close:hover, .btn-shift-footer-close:hover {
+    background: #e2e8f0 !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
 }
 
 .shift-order-row td {
