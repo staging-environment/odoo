@@ -2,6 +2,7 @@
 # UTRECAR - CENTINELA EN TIEMPO REAL TPV 2 (RONDA NORTE)
 # Monitoriza la respuesta de la GUI, memoria, red y logs de VirtusTPVNet
 # Envia alertas instantaneas a Telegram ante cualquier congelacion
+# Auto-recupera memoria mediante EmptyWorkingSet sin tocar servicios
 # =========================================================================
 
 $ErrorActionPreference = "Continue"
@@ -12,6 +13,19 @@ $TPV1_IP  = "192.168.1.20"
 
 $LogFile  = "C:\Utrecar\centinela.log"
 $ActLog   = "C:\Program Files\Aseproda\VirtusTPV Net\Actividad.Log"
+
+# Compilador de MemoryManager nativo para purga en caliente
+$typeDef = @"
+using System;
+using System.Runtime.InteropServices;
+public class MemoryManager {
+    [DllImport("psapi.dll")]
+    public static extern int EmptyWorkingSet(IntPtr hwProc);
+}
+"@
+if (-not ([System.Management.Automation.PSTypeName]'MemoryManager').Type) {
+    Add-Type -TypeDefinition $typeDef -Language CSharp
+}
 
 function Write-CentinelaLog([string]$msg) {
     $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -30,11 +44,10 @@ function Send-Telegram([string]$msg) {
 }
 
 Write-CentinelaLog "Iniciando Centinela TPV 2 Ronda Norte..."
-Send-Telegram "[CENTINELA TPV 2 ACTIVADO]`n`nMonitorizando en tiempo real respuesta de pantalla, memoria, sockets MySQL/SDES y logs en E.S. Ronda Norte."
 
 $isFrozen = $false
 $freezeStartTime = $null
-$lastMemWarning = [DateTime]::MinValue
+$lastAutoTrim = [DateTime]::MinValue
 
 while ($true) {
     try {
@@ -97,15 +110,17 @@ while ($true) {
             }
         }
 
-        # 2. Aviso de Memoria Critica (>1.8 GB) cada 45 minutos
+        # 2. Auto-recuperacion preventiva de memoria si supera 600 MB (Sin afectar al cajero)
         $memMB2 = $p.WorkingSet64 / 1MB
-        if ($memMB2 -gt 1800 -and ((Get-Date) - $lastMemWarning).TotalMinutes -ge 45) {
-            $lastMemWarning = Get-Date
-            $memGB2 = [math]::Round($memMB2 / 1024, 2)
-            $warnText = "[ADVERTENCIA: Memoria Critica en TPV 2]`n`n" +
-                        "VirtusTPVNet esta consumiendo " + $memGB2 + " GB de RAM.`n" +
-                        "Riesgo de pausas severas de Garbage Collector."
-            Send-Telegram $warnText
+        if ($memMB2 -gt 600 -and ((Get-Date) - $lastAutoTrim).TotalMinutes -ge 15) {
+            $lastAutoTrim = Get-Date
+            $beforeTrim = [math]::Round($memMB2, 1)
+            [MemoryManager]::EmptyWorkingSet($p.Handle) | Out-Null
+            Start-Sleep -Milliseconds 500
+            $afterTrim = [math]::Round((Get-Process -Id $p.Id).WorkingSet64 / 1MB, 1)
+            $freed = [math]::Round($beforeTrim - $afterTrim, 1)
+
+            Write-CentinelaLog "Auto-purga preventiva: $beforeTrim MB -> $afterTrim MB (Liberados: $freed MB)"
         }
 
     } catch {
