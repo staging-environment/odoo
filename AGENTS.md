@@ -51,26 +51,25 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
     - **Usuario Windows:** `madic-tpv` (`madic-tpv-iot\madic-tpv`)
     - **Puerto SSH:** `22` (OpenSSH Windows Service)
     - **Acceso transparente:** `ssh rondanorte-tpv2` (ProxyJump automático a través de TPV 1)
-  - **Diagnóstico y Mitigación Quirúrgica de Conflictos en TPVs (Ejecución 05/11/2026):**
+  - **Diagnóstico, Mitigación y Monitorización Centinela en TPVs (Actualizado 06/11/2026):**
     - **Problema diagnosticado:** TPV 2 se congelaba intermitentemente en pantalla táctil al cobrar o atender surtidores.
-    - **Acciones Quirúrgicas Aplicadas (05/11/2026):**
+    - **Acciones Quirúrgicas Aplicadas:**
       1. *Ahorro de energía en NIC Realtek (TPV 2):* Desactivados `*EEE`, `EnableGreenEthernet`, `GigaLite`, `PowerSavingMode` y `AllowComputerToTurnOffDevice: Disabled` (`MSPower_DeviceEnable: False`). Conectividad TCP a `:3306` y `:8777` 100% estable a 1 Gbps.
-      2. *Bucle infinito EOVGNET (TPV 1):* Actualizada marca `UltimaSincronizacionConBDCentral = '2021-12-29 17:49:36'` en registro histórico `RRN-2021000001` de `regularizacionesdealmacen`. El bucle de reintentos continuos cada 10-15s en `SyncReg.log` ha cesado por completo.
-      3. *Reciclaje nocturno de VirtusTPV (TPV 1 y TPV 2):* Creada tarea programada diaria a las 04:00 AM para purgar fugas de RAM (proceso acumulando >1.6 GB) y limpiar cola de impresión/temporales.
-    - **Procedimiento de Reversión / Deshacer Tarea Programada (Rollback):**
-      - Tarea programada: `ReciclajeVirtusTPV`
-      - Script ejecutado: `C:\Utrecar\reciclar_virtustpv.bat` (log en `C:\Utrecar\reciclaje_tpv.log`)
-      - Desactivar temporalmente:
-        - TPV 1: `ssh rondanorte "schtasks /Change /TN ReciclajeVirtusTPV /Disable"`
-        - TPV 2: `ssh rondanorte-tpv2 "schtasks /Change /TN ReciclajeVirtusTPV /Disable"`
-      - Eliminar definitivamente:
-        - TPV 1: `ssh rondanorte "schtasks /Delete /TN ReciclajeVirtusTPV /F"`
-        - TPV 2: `ssh rondanorte-tpv2 "schtasks /Delete /TN ReciclajeVirtusTPV /F"`
+      2. *Bucle infinito EOVGNET (TPV 1):* Actualizada marca `UltimaSincronizacionConBDCentral = '2021-12-29 17:49:36'` en registro histórico `RRN-2021000001` de `regularizacionesdealmacen`. El bucle de reintentos continuos en `SyncReg.log` ha cesado.
+      3. *Reciclaje nocturno de VirtusTPV (TPV 1 y TPV 2 - 04:00 AM):* Tarea programada diaria a las 04:00 AM (`ReciclajeVirtusTPV`). Se corrigió el bug de registro en la ruta (`C:Utrecar...` -> `C:\Utrecar\reciclar_virtustpv.bat`) que provocaba fallo (LastTaskResult = 1), asegurando el reinicio diario limpio y purga de RAM acumulada.
+    - **Centinela en Tiempo Real (Instalado 06/11/2026):**
+      - Tarea programada `CentinelaTPV2` (`C:\Utrecar\iniciar_centinela.bat` -> `centinela_tpv2.ps1`) ejecutándose 24/7 en TPV 2 como `SYSTEM`.
+      - Monitoriza cada 2s la respuesta de GUI (`Responding`), memoria y sockets de red hacia TPV 1 (`:3306` y `:8777`).
+      - Envía alertas instantáneas a Telegram (`@utrecar_alertas_bot`) a Jose (`5914920849`) en el momento exacto en que la pantalla se congela, con fotografía forense y aviso de recuperación.
     - **Pendientes para siguiente fase:**
       - Partición de series fiscales (`TTRN2` / `FTRN2`).
       - Migración de puerto de impresora Epson de WSD a TCP/IP estándar.
-    - **Documentación completa:** `docs/INFORME_TECNICO_DIAGNOSTICO_CONFLICTO_TPVS_RONDA_NORTE.md`.
-
+    - **Procedimiento de Reversión / Deshacer (Rollback):**
+      - Desactivar Centinela: `ssh rondanorte-tpv2 "schtasks /Change /TN CentinelaTPV2 /Disable && Stop-Process -Name powershell -Force"`
+      - Desactivar Reciclaje TPV 1: `ssh rondanorte "schtasks /Change /TN ReciclajeVirtusTPV /Disable"`
+      - Desactivar Reciclaje TPV 2: `ssh rondanorte-tpv2 "schtasks /Change /TN ReciclajeVirtusTPV /Disable"`
+    - **Alineación con el PRD de Odoo 17 POS:** Este conflicto demuestra la inviabilidad del modelo de base de datos local compartida de Aseproda y valida las especificaciones del PRD de Odoo: sesiones multi-cajero desacopladas (`pos.session`), numeración fiscal particionada por terminal, broker de pista asíncrono vía WebSockets y buffer local offline.
+    - **Documentación completa:** `docs/INFORME_TECNICO_DIAGNOSTICO_CONFLICTO_TPVS_RONDA_NORTE.md` e `docs/Informe_Tecnico_Diagnostico_Conflicto_TPVs_Ronda_Norte.pdf`.
 ---
 
 ## ⛽ Arquitectura de Pista y Estrategia de Control (IMPORTANTE)

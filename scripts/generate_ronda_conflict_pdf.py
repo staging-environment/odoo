@@ -495,3 +495,4 @@ if __name__ == '__main__':
     output_pdf = os.path.join(os.path.dirname(__file__), '..', 'docs', 'Informe_Tecnico_Diagnostico_Conflicto_TPVs_Ronda_Norte.pdf')
     output_pdf = os.path.abspath(output_pdf)
     build_pdf(output_pdf)
+

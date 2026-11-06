@@ -195,3 +195,4 @@ Si en algún momento fuera necesario pausar o eliminar esta tarea programada, ej
 La causa fundamental del bloqueo de los puestos en Ronda Norte no era un fallo de hardware de red ni de cableado, sino un **problema estructural de arquitectura de software y concurrencia**: dos terminales compitiendo sin particionamiento sobre una base de datos local saturada por un proceso de sincronización defectuoso.
 
 La implementación transitoria de las 5 acciones de mitigación proporcionará estabilidad inmediata a los cajeros en Aseproda. No obstante, **la solución definitiva y de futuro reside en la ejecución del PRD de Odoo 17 POS**, cuya arquitectura distribuida, reactiva y desacoplada garantiza la independencia total de licencias y el fin definitivo de estos bloqueos en pista.
+

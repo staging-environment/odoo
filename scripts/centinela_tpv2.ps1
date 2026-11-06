@@ -1,0 +1,116 @@
+# =========================================================================
+# UTRECAR - CENTINELA EN TIEMPO REAL TPV 2 (RONDA NORTE)
+# Monitoriza la respuesta de la GUI, memoria, red y logs de VirtusTPVNet
+# Envia alertas instantaneas a Telegram ante cualquier congelacion
+# =========================================================================
+
+$ErrorActionPreference = "Continue"
+
+$BotToken = "8637497198:AAGJWp6cwDBu0CeTLkDVd-0nanl1ZtXFbjg"
+$ChatId   = "5914920849"
+$TPV1_IP  = "192.168.1.20"
+
+$LogFile  = "C:\Utrecar\centinela.log"
+$ActLog   = "C:\Program Files\Aseproda\VirtusTPV Net\Actividad.Log"
+
+function Write-CentinelaLog([string]$msg) {
+    $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $line = "[$ts] $msg"
+    Add-Content -Path $LogFile -Value $line -ErrorAction SilentlyContinue
+}
+
+function Send-Telegram([string]$msg) {
+    try {
+        $url = "https://api.telegram.org/bot" + $BotToken + "/sendMessage"
+        curl.exe -s -X POST $url -d "chat_id=$ChatId" -d "text=$msg" | Out-Null
+        Write-CentinelaLog "Alerta Telegram enviada."
+    } catch {
+        Write-CentinelaLog "Error enviando alerta Telegram: $_"
+    }
+}
+
+Write-CentinelaLog "Iniciando Centinela TPV 2 Ronda Norte..."
+Send-Telegram "[CENTINELA TPV 2 ACTIVADO]`n`nMonitorizando en tiempo real respuesta de pantalla, memoria, sockets MySQL/SDES y logs en E.S. Ronda Norte."
+
+$isFrozen = $false
+$freezeStartTime = $null
+$lastMemWarning = [DateTime]::MinValue
+
+while ($true) {
+    try {
+        $p = Get-Process -Name VirtusTPVNet -ErrorAction SilentlyContinue
+
+        if (-not $p) {
+            Write-CentinelaLog "VirtusTPVNet no esta en ejecucion."
+            Start-Sleep -Seconds 3
+            continue
+        }
+
+        # 1. Comprobar si la interfaz de usuario esta CONGELADA
+        if (-not $p.Responding) {
+            if (-not $isFrozen) {
+                $isFrozen = $true
+                $freezeStartTime = Get-Date
+
+                $memMB = [math]::Round($p.WorkingSet64 / 1MB, 1)
+                $memGB = [math]::Round($p.WorkingSet64 / 1GB, 2)
+
+                # Comprobacion de sockets con TPV 1
+                $mysqlOk = (Test-NetConnection -ComputerName $TPV1_IP -Port 3306 -WarningAction SilentlyContinue).TcpTestSucceeded
+                $sdesOk  = (Test-NetConnection -ComputerName $TPV1_IP -Port 8777 -WarningAction SilentlyContinue).TcpTestSucceeded
+
+                $mysqlStatus = if ($mysqlOk) { "CONECTADO (OK)" } else { "CAIDO / MICRO-CORTE" }
+                $sdesStatus  = if ($sdesOk)  { "CONECTADO (OK)" } else { "CAIDO / ERROR" }
+
+                # Ultimas lineas de Actividad.Log
+                $lastActivity = ""
+                if (Test-Path $ActLog) {
+                    $lines = Get-Content -Path $ActLog -Tail 5 -ErrorAction SilentlyContinue
+                    $lastActivity = $lines -join "`n"
+                }
+
+                $nowStr = Get-Date -Format "HH:mm:ss"
+                $alertText = "[ALERTA: TPV 2 CONGELADO / NO RESPONDE]`n`n" +
+                             "Estacion: E.S. Ronda Norte (Cod. 2)`n" +
+                             "Hora deteccion: " + $nowStr + "`n" +
+                             "Memoria RAM: " + $memGB + " GB (" + $memMB + " MB)`n" +
+                             "Conexion MySQL TPV1 (3306): " + $mysqlStatus + "`n" +
+                             "Conexion SDES Pista (8777): " + $sdesStatus + "`n`n" +
+                             "Ultima actividad registrada:`n" + $lastActivity
+
+                Write-CentinelaLog "BLOQUEO DETECTADO. Enviando alerta Telegram..."
+                Send-Telegram $alertText
+            }
+        } else {
+            # Si estaba congelado y acaba de recuperar respuesta
+            if ($isFrozen) {
+                $duration = [math]::Round(((Get-Date) - $freezeStartTime).TotalSeconds, 1)
+                $isFrozen = $false
+                $recTime = Get-Date -Format "HH:mm:ss"
+
+                $recoveryText = "[TPV 2 HA RECUPERADO LA RESPUESTA]`n`n" +
+                                "Duracion del bloqueo: " + $duration + " segundos`n" +
+                                "Hora recuperacion: " + $recTime
+
+                Write-CentinelaLog "RECUPERADO tras $duration s."
+                Send-Telegram $recoveryText
+            }
+        }
+
+        # 2. Aviso de Memoria Critica (>1.8 GB) cada 45 minutos
+        $memMB2 = $p.WorkingSet64 / 1MB
+        if ($memMB2 -gt 1800 -and ((Get-Date) - $lastMemWarning).TotalMinutes -ge 45) {
+            $lastMemWarning = Get-Date
+            $memGB2 = [math]::Round($memMB2 / 1024, 2)
+            $warnText = "[ADVERTENCIA: Memoria Critica en TPV 2]`n`n" +
+                        "VirtusTPVNet esta consumiendo " + $memGB2 + " GB de RAM.`n" +
+                        "Riesgo de pausas severas de Garbage Collector."
+            Send-Telegram $warnText
+        }
+
+    } catch {
+        Write-CentinelaLog "Excepcion en centinela: $_"
+    }
+
+    Start-Sleep -Seconds 2
+}
