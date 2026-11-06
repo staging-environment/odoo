@@ -35,12 +35,12 @@
                                    t-att-value="state.vehiclePlate"
                                    t-on-input="(ev) => this.onPlateChange(ev)" />
                         </div>
-                        <div class="virtus-user-badge" t-on-click="() => this.changeCashierName()" title="Haga clic para cambiar de cajero / operador" style="cursor: pointer;">
-                            <i class="fa fa-user mr-1 text-primary"/>
+                        <div class="virtus-user-badge" t-on-click="() => this.changeCashierName()" t-attf-title="Cajero: #{pos.user ? pos.user.name : 'SUPERVISOR'}. Clic para cambiar de cajero / operador." style="cursor: pointer;">
+                            <i class="fa fa-user mr-1 text-primary flex-shrink-0"/>
                             <span class="user-name"><t t-esc="pos.user ? pos.user.name : 'SUPERVISOR'"/></span>
-                            <i class="fa fa-pencil ms-1 text-muted" style="font-size: 10px;"/>
+                            <i class="fa fa-pencil ms-1 text-muted flex-shrink-0" style="font-size: 10px;"/>
                         </div>
-                        <div class="station-mini-label">
+                        <div class="station-mini-label" t-att-title="state.stationName">
                             <t t-esc="state.stationName"/>
                         </div>
                         <button class="btn-topbar-close-turn" t-on-click="() => this.openCloseSessionPopup()" title="Cerrar turno y realizar arqueo de caja">
