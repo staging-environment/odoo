@@ -11,6 +11,16 @@
                 <field name="company_id" options="{'no_create': True}" string="Empresa / Compañía"/>
                 <field name="station_id" domain="[('company_id', '=', company_id)]" options="{'no_create': True}" string="Estación de Servicio"/>
             </xpath>
+            <!-- Ocultar campos innecesarios en la ficha de cliente: Sitio web, Idioma y Etiquetas -->
+            <xpath expr="//field[@name='website']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//group//field[@name='lang']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='category_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
             <!-- Quitar bloque lateral/inferior de chatter (enviar mensaje, registrar nota y actividades) -->
             <xpath expr="//div[hasclass('oe_chatter')]" position="replace"/>
             <!-- Marcador dentro de sheet para aplicar estilos de pantalla completa -->
