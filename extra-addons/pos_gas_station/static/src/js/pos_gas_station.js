@@ -2470,21 +2470,6 @@ export class UtrecarMainScreen extends Component {
 
         const isMoney = this.state.mode === "money";
         const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
-
-        // Si la pista está en Prepago o la calle está bloqueada y aún no se ha marcado importe:
-        if ((this.state.trackMode === "prepago" || pump.status === "blocked") && (!presetVal || presetVal <= 0)) {
-            const unit = this.state.mode === "money" ? "€" : "Litros";
-            const input = prompt(`⛽ PRE-PAGO CALLE ${pump.id}\nPor favor, introduzca el importe a cobrar y repostar (${unit}):\n(O pulse Cancelar para autorizar suministro libre)`, "");
-            if (input !== null && input.trim() !== "") {
-                const clean = input.trim().replace(",", ".");
-                const parsed = parseFloat(clean);
-                if (!isNaN(parsed) && parsed > 0) {
-                    presetVal = parseFloat(parsed.toFixed(2));
-                    this.state.presetValue = presetVal;
-                }
-            }
-        }
-
         const isPrepay = Boolean(presetVal > 0 && !isLleno);
 
         if (isPrepay) {
