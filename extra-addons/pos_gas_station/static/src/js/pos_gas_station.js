@@ -712,8 +712,8 @@ export class UtrecarMainScreen extends Component {
                     data.pumps.forEach(p => {
                         const presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
                         if (presetInfo && presetInfo.hasPrepay) {
-                            // Si la bomba en pista reportó fin de repostaje (ready) o saldo distinto dispensado, entonces ha terminado
-                            if (p.status === "ready" || (p.amount > 0 && p.status !== "dispensing" && Math.abs(p.amount - presetInfo.amount) > 0.05)) {
+                            // Si el servidor reporta que el prepago ya finalizó (has_prepay es false y preset_amount es 0), o si está en ready:
+                            if (p.status === "ready" || (!p.has_prepay && (!p.preset_amount || p.preset_amount === 0)) || (p.amount > 0 && p.status !== "dispensing" && Math.abs(p.amount - presetInfo.amount) > 0.05)) {
                                 if (this.state.pumpPresets) delete this.state.pumpPresets[p.id];
                                 if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
                             } else {
