@@ -1775,6 +1775,12 @@ export class UtrecarMainScreen extends Component {
             alert("No hay artículos en el ticket para cobrar.");
             return;
         }
+        // Limpiar cualquier línea de pago residual previa para arrancar el cobro limpio a 0,00 €
+        if (currentOrder.get_paymentlines) {
+            for (const pl of [...currentOrder.get_paymentlines()]) {
+                currentOrder.remove_paymentline(pl);
+            }
+        }
         this.pos.showScreen("PaymentScreen");
     }
 
@@ -2216,6 +2222,12 @@ export class UtrecarMainScreen extends Component {
         }
 
         this.state.orderVersion = Date.now();
+        // Limpiar cualquier línea de pago previa para arrancar el cobro limpio a 0,00 €
+        if (currentOrder.get_paymentlines) {
+            for (const pl of [...currentOrder.get_paymentlines()]) {
+                currentOrder.remove_paymentline(pl);
+            }
+        }
         // Redirigir de inmediato a la pantalla de cobro
         this.pos.showScreen("PaymentScreen");
     }
@@ -3241,7 +3253,9 @@ patch(PaymentScreen.prototype, {
         super.setup(...arguments);
         this.customInputBuffer = "";
         onMounted(() => {
-            // Auto-asignar método de pago por defecto (Efectivo) para permitir cobro inmediato a 1 clic sin calculadora
+            this.customInputBuffer = "";
+            this.numberBuffer.reset();
+            // Auto-asignar método de pago por defecto (Efectivo) si no hay ninguno
             if (this.currentOrder && this.currentOrder.get_paymentlines().length === 0 && this.payment_methods_from_config.length > 0) {
                 const defaultPm = this.payment_methods_from_config.find(m => m.is_cash_count || (m.name && m.name.toLowerCase().includes("efectivo")))
                                   || this.payment_methods_from_config[0];
@@ -3249,6 +3263,13 @@ patch(PaymentScreen.prototype, {
                     this.addNewPaymentLine(defaultPm);
                 }
             }
+            // Asegurar que el contador y todas las líneas de pago comiencen estrictamente a 0,00 € en cada nuevo cobro/suministro
+            if (this.currentOrder) {
+                for (const pl of this.currentOrder.get_paymentlines()) {
+                    pl.set_amount(0);
+                }
+            }
+            this.render();
         });
     },
 
@@ -3257,7 +3278,7 @@ patch(PaymentScreen.prototype, {
         this.customInputBuffer = "";
         const lines = [...this.currentOrder.get_paymentlines()];
         // Si hay una única línea de pago y se pulsa otro método de pago (por ej. cambiar de Efectivo a Tarjeta o Cuenta),
-        // sustituir limpiamente para no acumular líneas con 0,00 € que bloqueen la calculadora
+        // sustituir limpiamente para no acumular líneas que bloqueen la calculadora
         if (lines.length === 1 && lines[0].payment_method.id !== paymentMethod.id) {
             for (const l of lines) {
                 this.currentOrder.remove_paymentline(l);
@@ -3273,13 +3294,19 @@ patch(PaymentScreen.prototype, {
         const res = super.addNewPaymentLine(paymentMethod);
         if (this.currentOrder.selected_paymentline) {
             this.numberBuffer.reset();
+            // Siempre arrancar la línea a 0,00 € para que la calculadora no herede importes
+            this.currentOrder.selected_paymentline.set_amount(0);
         }
+        this.customInputBuffer = "";
+        this.render();
         return res;
     },
 
     selectPaymentLine(cid) {
         super.selectPaymentLine(cid);
         this.customInputBuffer = "";
+        this.numberBuffer.reset();
+        this.render();
     },
 
     updateSelectedPaymentline(amount = false) {
@@ -3519,6 +3546,9 @@ patch(PaymentScreen.prototype, {
                 existingLine.set_amount(existingLine.get_amount() + due);
             } else if (defaultPm) {
                 this.addNewPaymentLine(defaultPm);
+                if (this.selectedPaymentLine) {
+                    this.selectedPaymentLine.set_amount(due);
+                }
             }
         }
         return this.currentOrder.is_paid();
