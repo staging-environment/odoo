@@ -711,7 +711,22 @@ export class UtrecarMainScreen extends Component {
                 if (data.pumps && Array.isArray(data.pumps)) {
                     data.pumps.forEach(p => {
                         const presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
-                        if (presetInfo) {
+                        if (presetInfo && presetInfo.hasPrepay) {
+                            // Si la bomba en pista reportó fin de repostaje (ready) o saldo distinto dispensado, entonces ha terminado
+                            if (p.status === "ready" || (p.amount > 0 && p.status !== "dispensing" && Math.abs(p.amount - presetInfo.amount) > 0.05)) {
+                                if (this.state.pumpPresets) delete this.state.pumpPresets[p.id];
+                                if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
+                            } else {
+                                // MANTENER EN PANTALLA EL SURTIDOR AUTORIZADO HASTA QUE SE REPONGA
+                                p.status = "dispensing";
+                                p.statusText = `AUTORIZADO ${presetInfo.amount.toFixed(2)} €`;
+                                p.preset_amount = presetInfo.amount;
+                                p.has_prepay = true;
+                                if (!p.fuel || p.fuel === "N/A" || p.fuel.includes("/")) {
+                                    p.fuel = presetInfo.fuel;
+                                }
+                            }
+                        } else if (presetInfo) {
                             if (p.status === "dispensing" || p.status === "ready") {
                                 p.preset_amount = presetInfo.amount;
                                 p.has_prepay = Boolean(presetInfo.hasPrepay);
@@ -3587,9 +3602,12 @@ patch(PaymentScreen.prototype, {
             }
 
             // 2. Limpiar bombas de líneas que NO sean de este prepago recién autorizado
+            const prepayPumpId = order.pending_prepay ? String(order.pending_prepay.pump_id) : null;
             const lines = order.get_orderlines ? order.get_orderlines() : [];
             for (const l of lines) {
-                if (l.pump_id && (!order.pending_prepay || order.pending_prepay.pump_id !== l.pump_id)) {
+                const linePumpId = l.pump_id ? String(l.pump_id) : null;
+                // Si la orden actual es un prepago para esta calle, NO llamar a clear_pump bajo ningún concepto
+                if (linePumpId && (!prepayPumpId || linePumpId !== prepayPumpId)) {
                     try {
                         await jsonrpc("/pos_gas_station/clear_pump", {
                             config_id: this.pos.config.id,

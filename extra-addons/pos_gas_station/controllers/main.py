@@ -818,16 +818,15 @@ class PosGasStationController(http.Controller):
 
         for i, pump in enumerate(pumps):
             pid = pump.get('id', i + 1)
-            # Si el surtidor real ya reporta fin de repostaje (ready), suministro activo en pista, o se ha bloqueado, anular override de inmediato
-            if pump.get('status') in ('ready', 'dispensing') or (pump.get('status') == 'blocked' and now - overrides.get(pid, {}).get('_timestamp', now) > 2.0):
-                if pid in overrides:
-                    del overrides[pid]
-            elif pid in overrides:
-                if now - overrides[pid].get('_timestamp', now) > 20:
+            # Solo cancelar override si la pista terminó repostaje ('ready') con saldo diferente, o tras timeout largo (15 min)
+            if pid in overrides:
+                ov = overrides[pid]
+                ov_age = now - ov.get('_timestamp', now)
+                if ov_age > 900:  # 15 minutos de timeout
                     del overrides[pid]
                 else:
-                    ov = {k: v for k, v in overrides[pid].items() if not k.startswith('_')}
-                    pumps[i] = ov
+                    ov_clean = {k: v for k, v in ov.items() if not k.startswith('_')}
+                    pumps[i] = ov_clean
 
         return {
             'status': 'success',
@@ -855,19 +854,47 @@ class PosGasStationController(http.Controller):
         lts = float(liters or 0)
 
         is_lleno = (amt == 0 or lts >= 999)
+        status_txt = 'LLENO (POSTPAGO)' if is_lleno else f'AUTORIZADO {amt:.2f}€'
         override_data = {
             'id': pid,
             'status': 'dispensing',
-            'statusText': 'LLENO (POSTPAGO)' if is_lleno else f'PREFIJADO {amt:.2f}€',
+            'statusText': status_txt,
             'fuel': fuel_name,
             'amount': 0.0 if is_lleno else amt,
             'liters': 0.0 if is_lleno else lts,
             'preset_amount': 0.0 if is_lleno else amt,
+            'has_prepay': not is_lleno,
             'is_lleno': is_lleno,
             'price': 1.45 if 'Gasóleo A' in fuel_name else 1.55,
             '_timestamp': time.time()
         }
         STATION_PUMP_OVERRIDES[cfg][pid] = override_data
+
+        # Actualizar persistente en pumps_state para que no se resetee con el polling
+        param_state_key = f'pos_gas_station.pumps_state_{cfg}'
+        try:
+            status_raw = request.env['ir.config_parameter'].sudo().get_param(param_state_key)
+            if status_raw:
+                parsed = json.loads(status_raw)
+                p_list = parsed.get('pumps', []) if isinstance(parsed, dict) else parsed
+                for p in p_list:
+                    if p.get('id') == pid:
+                        p['status'] = 'dispensing'
+                        p['statusText'] = status_txt
+                        p['fuel'] = fuel_name
+                        p['amount'] = 0.0 if is_lleno else amt
+                        p['liters'] = 0.0 if is_lleno else lts
+                        p['preset_amount'] = 0.0 if is_lleno else amt
+                        p['has_prepay'] = not is_lleno
+                        p['is_lleno'] = is_lleno
+                        p['updated_at'] = time.time()
+                if isinstance(parsed, dict):
+                    parsed['pumps'] = p_list
+                    request.env['ir.config_parameter'].sudo().set_param(param_state_key, json.dumps(parsed))
+                else:
+                    request.env['ir.config_parameter'].sudo().set_param(param_state_key, json.dumps(p_list))
+        except Exception as e:
+            _logger.error(f'Error actualizando pumps_state en authorize_pump: {e}')
 
         _logger.info(f'⛽ [AUTORIZACIÓN PISTA] Config {cfg} | Calle {pid} | Combustible {fuel_name} | {amt}€ / {lts}L')
 
