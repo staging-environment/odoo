@@ -2169,6 +2169,20 @@
         </xpath>
     </t>
 
+    <!-- INDICADOR VISUAL DEL IMPORTE MARCADO EN CALCULADORA ENCIMA DEL CAMBIO -->
+    <t t-name="pos_gas_station.PaymentScreenStatusMarked" t-inherit="point_of_sale.PaymentScreenStatus" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('payment-status-change')]" position="before">
+            <div class="payment-status-marked mb-2 px-3 py-1 bg-white border border-primary rounded d-flex align-items-center justify-content-between shadow-sm" style="min-width: 170px;">
+                <span class="label pe-2 text-primary fw-bold" style="font-size: 13px; letter-spacing: 0.5px;">
+                    <i class="fa fa-calculator me-1"/>Marcado
+                </span>
+                <span class="amount fw-bolder text-primary" style="font-size: 20px;">
+                    <t t-esc="markedText" />
+                </span>
+            </div>
+        </xpath>
+    </t>
+
     <!-- HEADER SUPERIOR DE PAYMENTSCREEN CON BOTÓN VOLVER MUY VISIBLE -->
     <t t-name="pos_gas_station.PaymentScreenTop" t-inherit="point_of_sale.PaymentScreenTop" t-inherit-mode="extension" owl="1">
         <xpath expr="//div[hasclass('top-content')]" position="replace">

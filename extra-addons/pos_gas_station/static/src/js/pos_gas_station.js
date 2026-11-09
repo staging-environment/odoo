@@ -3,6 +3,7 @@
 import { Component, useState, onMounted, onWillUnmount } from "@odoo/owl";
 import { ProductScreen } from "@point_of_sale/app/screens/product_screen/product_screen";
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
+import { PaymentScreenStatus } from "@point_of_sale/app/screens/payment_screen/payment_status/payment_status";
 import { OrderReceipt } from "@point_of_sale/app/screens/receipt_screen/receipt/order_receipt";
 import { Order } from "@point_of_sale/app/store/models";
 import { patch } from "@web/core/utils/patch";
@@ -3240,6 +3241,14 @@ patch(Order.prototype, {
 
         return res;
     }
+});
+
+patch(PaymentScreenStatus.prototype, {
+    get markedText() {
+        const line = this.props.order ? this.props.order.selected_paymentline : null;
+        const amount = line ? line.get_amount() : 0;
+        return this.env.utils.formatCurrency(amount);
+    },
 });
 
 patch(PaymentScreen.prototype, {
