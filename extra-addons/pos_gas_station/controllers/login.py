@@ -38,7 +38,12 @@ class UtrecarPosController(PosController):
             ], limit=1)
 
             if not active_session or k.get('select_employee'):
-                return request.redirect(f'/pos_gas_station/select_employee?station_id={config.id}')
+                user = request.env.user
+                is_admin = bool(user and (user._is_admin() or user.has_group('base.group_erp_manager') or user.has_group('base.group_system')))
+                if is_admin:
+                    config.open_shift_for_user(user)
+                else:
+                    return request.redirect(f'/pos_gas_station/select_employee?station_id={config.id}')
 
         return super(UtrecarPosController, self).pos_web(config_id=config_id, **k)
 
@@ -337,3 +342,28 @@ class UtrecarLogin(Home):
         if config_id:
             target += f'?station_id={config_id}'
         return request.redirect(target)
+
+    @http.route(['/pos_gas_station/admin_tpv', '/pos_gas_station/repsol_tpv'], type='http', auth='none', sitemap=False)
+    def admin_tpv(self, station_id=7, **kw):
+        """Acceso excepcional de Administrador al TPV de la estación (por defecto Repsol ID 7)."""
+        ip = self._get_client_ip()
+        is_admin_ip = self._is_admin_vpn_ip(ip)
+        current_uid = request.session.uid
+        user = request.env['res.users'].sudo().browse(current_uid) if current_uid else None
+        is_admin = is_admin_ip or bool(user and self._is_admin_user(user))
+
+        if not is_admin:
+            _logger.warning("Intento no autorizado a admin_tpv desde IP %s", ip)
+            return request.redirect('/pos_gas_station/select_employee')
+
+        if not user or not self._is_admin_user(user):
+            user = self._auto_login_super_admin()
+
+        PosConfig = request.env['pos.config'].sudo()
+        station = PosConfig.browse(int(station_id or 7))
+        if not station.exists():
+            return request.redirect('/web?admin=1')
+
+        # Abrir o activar turno para el administrador
+        station.open_shift_for_user(user)
+        return request.redirect(f'/pos/ui?config_id={station.id}')

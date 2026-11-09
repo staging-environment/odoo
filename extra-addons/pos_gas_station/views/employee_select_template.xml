@@ -514,6 +514,20 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Acceso Excepcional de Emergencia para Administradores -->
+                        <t t-if="is_admin_vpn">
+                            <div class="mt-4 p-3 border rounded shadow-sm d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3" style="background: #eff6ff; border-color: #bfdbfe !important; border-radius: 16px !important;">
+                                <div class="text-start">
+                                    <span class="badge bg-primary text-white mb-1"><i class="fa fa-bolt me-1"></i> MODO DE EMERGENCIA / ADMINISTRADOR</span>
+                                    <h4 class="mb-1 fw-bold" style="color: #1e3a8a; font-size: 17px;">E.S. Repsol (Trieste / SE-30)</h4>
+                                    <small style="color: #3b82f6;">Acceso directo de contingencia ante caídas de red o cortes de suministro eléctrico en pista.</small>
+                                </div>
+                                <a href="/pos_gas_station/admin_tpv?station_id=7" class="btn btn-primary fw-bold px-4 py-2 text-white text-decoration-none shadow-sm text-nowrap" style="border-radius: 10px; background: #2563eb; font-size: 14px;">
+                                    <i class="fa fa-gas-pump me-1"></i> Abrir TPV Repsol ➜
+                                </a>
+                            </div>
+                        </t>
                     </t>
                 </div>
 
