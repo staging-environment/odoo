@@ -710,8 +710,8 @@ export class UtrecarMainScreen extends Component {
                 }
                 if (data.pumps && Array.isArray(data.pumps)) {
                     data.pumps.forEach(p => {
-                        if (this.state.pumpPresets && this.state.pumpPresets[p.id]) {
-                            const presetInfo = this.state.pumpPresets[p.id];
+                        const presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
+                        if (presetInfo) {
                             if (p.status === "dispensing" || p.status === "ready") {
                                 p.preset_amount = presetInfo.amount;
                                 p.has_prepay = Boolean(presetInfo.hasPrepay);
@@ -719,7 +719,8 @@ export class UtrecarMainScreen extends Component {
                                     p.fuel = presetInfo.fuel;
                                 }
                             } else if (p.status === "idle" || p.status === "blocked") {
-                                delete this.state.pumpPresets[p.id];
+                                if (this.state.pumpPresets) delete this.state.pumpPresets[p.id];
+                                if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
                             }
                         }
                     });
@@ -916,6 +917,9 @@ export class UtrecarMainScreen extends Component {
         }
         const currentOrder = this.pos.get_order();
         if (currentOrder) {
+            if (currentOrder.pending_prepay && currentOrder.pending_prepay.pump_id === pumpId) {
+                currentOrder.pending_prepay = null;
+            }
             const line = currentOrder.get_orderlines().find(l => l.pump_id === pumpId || (l.customerNote && l.customerNote.includes(`Calle ${pumpId}`)));
             if (line) {
                 try {
@@ -1020,6 +1024,7 @@ export class UtrecarMainScreen extends Component {
 
             // 2. Vaciar las líneas del ticket
             if (currentOrder) {
+                currentOrder.pending_prepay = null;
                 try {
                     const lines = [...this.currentOrderLines];
                     for (const l of lines) {
@@ -2314,7 +2319,95 @@ export class UtrecarMainScreen extends Component {
         this.state.selectedPumpId = pump.id;
     }
 
-    onPumpCardClick(pump) {
+    async preparePrepayOrderLine(pumpId, fuelCode, presetVal, isMoney) {
+        const currentOrder = this.getOrCreateOrder();
+        if (!currentOrder) return null;
+
+        const product = this.findFuelProduct(fuelCode);
+        if (!product) return null;
+
+        const currentFuelPrice = product.lst_price > 0 ? product.lst_price : (fuelCode === 'GA' ? 1.78 : 1.66);
+        let qty = 1;
+        let targetTotal = presetVal;
+
+        if (isMoney) {
+            targetTotal = presetVal;
+            qty = parseFloat((presetVal / currentFuelPrice).toFixed(3));
+            if (qty <= 0) qty = 1;
+        } else {
+            qty = presetVal;
+            targetTotal = presetVal * currentFuelPrice;
+        }
+
+        const unitPrice = this.getNetPriceForTargetTotal(product, targetTotal, qty, currentOrder);
+
+        const lines = currentOrder.get_orderlines();
+        const existingLine = lines.find(l => 
+            l.pump_id === pumpId || 
+            (!l.pump_id && (
+                (l.product.default_code || "").toUpperCase().includes("GAS_") ||
+                (l.product.default_code || "").toUpperCase().includes("SP95") ||
+                (l.product.name || "").toLowerCase().includes("gasóleo") ||
+                (l.product.name || "").toLowerCase().includes("sin plomo")
+            )) ||
+            (l.customerNote && l.customerNote.includes(`Calle ${pumpId}`))
+        );
+
+        let activeLine = existingLine;
+        if (existingLine) {
+            existingLine.product = product;
+            existingLine.set_quantity(qty);
+            existingLine.set_unit_price(unitPrice);
+            existingLine.pump_id = pumpId;
+            existingLine.fuel_display_price = currentFuelPrice;
+        } else {
+            await currentOrder.add_product(product, {
+                quantity: qty,
+                price: unitPrice,
+                extras: {
+                    price_manually_set: true,
+                    pump_id: pumpId,
+                    fuel_display_price: currentFuelPrice
+                }
+            });
+            activeLine = currentOrder.get_last_orderline();
+            if (activeLine) {
+                activeLine.pump_id = pumpId;
+                activeLine.fuel_display_price = currentFuelPrice;
+            }
+        }
+
+        // Blindaje milimétrico de redondeo: garantiza que el importe sea exactamente presetVal
+        if (activeLine && targetTotal > 0) {
+            const currentDisp = activeLine.get_display_price();
+            const diff = Math.round((targetTotal - currentDisp) * 100) / 100;
+            if (Math.abs(diff) >= 0.01) {
+                const curQty = activeLine.get_quantity() || 1;
+                activeLine.set_unit_price(activeLine.get_unit_price() + (diff / curQty));
+            }
+        }
+
+        const fuelObj = this.state.availableFuels.find(f => f.code === fuelCode) || { name: product.display_name };
+        const plateInfo = this.state.vehiclePlate ? `Matrícula: ${this.state.vehiclePlate} | ` : "";
+        if (currentOrder.set_note) {
+            currentOrder.set_note(`${plateInfo}Calle ${pumpId} [Prepago: ${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}]`);
+        }
+
+        currentOrder.pending_prepay = {
+            pump_id: pumpId,
+            fuel: fuelCode,
+            fuelName: fuelObj.name || product.display_name,
+            amount: isMoney ? presetVal : 0,
+            liters: !isMoney ? presetVal : 0,
+            isMoney: isMoney,
+            presetVal: presetVal
+        };
+
+        this.state.orderVersion = Date.now();
+        return activeLine;
+    }
+
+    async onPumpCardClick(pump) {
         this.state.selectedPumpId = pump.id;
         // Si ha finalizado repostaje o tiene saldo por cobrar: cobrar
         if (pump.status === 'ready' || (pump.amount > 0 && pump.status !== 'dispensing')) {
@@ -2326,7 +2419,79 @@ export class UtrecarMainScreen extends Component {
             this.openCancelModal(pump);
             return;
         }
-        // Abrir ventana flotante para autorizar
+
+        // Detectar si la orden actual ya contiene una línea de combustible o importe previo
+        const currentOrder = this.getOrCreateOrder();
+        let presetVal = this.state.presetValue || 0;
+        let fuelCode = this.state.selectedFuel || "GA";
+
+        if (currentOrder && (!presetVal || presetVal <= 0)) {
+            const lines = currentOrder.get_orderlines();
+            const fuelLine = lines.slice().reverse().find(l => {
+                if (!l.product) return false;
+                const c = (l.product.default_code || "").toUpperCase();
+                const n = (l.product.display_name || l.product.name || "").toLowerCase();
+                return c.includes("GAS_A") || c.includes("SP95") || c.includes("GAS_PLUS") || c.includes("GAS_B") ||
+                       n.includes("gasóleo") || n.includes("gasoleo") || n.includes("sin plomo") || n.includes("diesel");
+            });
+            if (fuelLine && fuelLine.get_price_with_tax() > 0) {
+                presetVal = fuelLine.get_price_with_tax();
+                this.state.mode = "money";
+                const c = (fuelLine.product.default_code || "").toUpperCase();
+                const n = (fuelLine.product.display_name || fuelLine.product.name || "").toLowerCase();
+                if (c.includes("SP95") || n.includes("sin plomo") || n.includes("95")) {
+                    fuelCode = "95";
+                } else if (c.includes("GAS_PLUS") || n.includes("plus") || n.includes("g+")) {
+                    fuelCode = "G+";
+                } else if (c.includes("GAS_B") || n.includes("gasóleo b") || n.includes("diesel b")) {
+                    fuelCode = "GB";
+                } else {
+                    fuelCode = "GA";
+                }
+                this.state.selectedFuel = fuelCode;
+            }
+        }
+
+        const isMoney = this.state.mode === "money";
+        const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
+
+        // Si la pista está en Prepago o la calle está bloqueada y aún no se ha marcado importe:
+        if ((this.state.trackMode === "prepago" || pump.status === "blocked") && (!presetVal || presetVal <= 0)) {
+            const unit = this.state.mode === "money" ? "€" : "Litros";
+            const input = prompt(`⛽ PRE-PAGO CALLE ${pump.id}\nPor favor, introduzca el importe a cobrar y repostar (${unit}):\n(O pulse Cancelar para autorizar suministro libre)`, "");
+            if (input !== null && input.trim() !== "") {
+                const clean = input.trim().replace(",", ".");
+                const parsed = parseFloat(clean);
+                if (!isNaN(parsed) && parsed > 0) {
+                    presetVal = parseFloat(parsed.toFixed(2));
+                    this.state.presetValue = presetVal;
+                }
+            }
+        }
+
+        const isPrepay = Boolean(presetVal > 0 && !isLleno);
+
+        if (isPrepay) {
+            // === FLUJO EXCLUSIVO PRE-PAGO ===
+            // Validar que la calle no esté ocupada
+            if (pump.status === "dispensing" || pump.status === "ready" || pump.amount > 0 || pump.statusText === "AUTORIZADO") {
+                alert(`⚠️ La Calle ${pump.id} ya está ocupada (${pump.statusText}).\nDebe cobrarse o liberarse antes de una nueva autorización.`);
+                return;
+            }
+
+            // Preparar y añadir la línea de combustible al ticket
+            await this.preparePrepayOrderLine(pump.id, fuelCode, presetVal, isMoney);
+
+            // Limpiar importe prefijado en teclado
+            this.state.presetValue = 0;
+
+            // Abrir DIRECTAMENTE la pantalla/ventana de pago (PaymentScreen)
+            this.goToPayment();
+            return;
+        }
+
+        // === CASO AUTORIZADOS (Suministro libre / Lleno / Modo Atendido) ===
+        // Sigue apareciendo la ventana flotante para confirmar el importe y combustible
         this.openAuthorizeModal(pump);
     }
 
@@ -2383,7 +2548,18 @@ export class UtrecarMainScreen extends Component {
         const pump = this.state.authModalPump || this.state.pumps.find(p => p.id === this.state.selectedPumpId);
         this.closeAuthorizeModal();
         if (pump) {
-            await this.executeAuthorizePump(pump.id);
+            const isMoney = this.state.mode === "money";
+            const presetVal = this.state.presetValue;
+            const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
+            const isPrepay = Boolean(presetVal > 0 && !isLleno);
+
+            if (isPrepay) {
+                await this.preparePrepayOrderLine(pump.id, this.state.selectedFuel, presetVal, isMoney);
+                this.state.presetValue = 0;
+                this.goToPayment();
+            } else {
+                await this.executeAuthorizePump(pump.id);
+            }
         }
     }
 
@@ -2539,7 +2715,7 @@ export class UtrecarMainScreen extends Component {
         if (!targetId) return;
         const pump = this.state.pumps.find(p => p.id === targetId);
         if (pump) {
-            this.openAuthorizeModal(pump);
+            this.onPumpCardClick(pump);
         }
     }
 
@@ -2559,7 +2735,14 @@ export class UtrecarMainScreen extends Component {
         const presetVal = this.state.presetValue;
 
         const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
-        const isPrepay = Boolean(presetVal > 0 && this.state.trackMode === "prepago");
+        const isPrepay = Boolean(presetVal > 0 && !isLleno);
+
+        if (isPrepay) {
+            await this.preparePrepayOrderLine(pumpId, fuelCode, presetVal, isMoney);
+            this.state.presetValue = 0;
+            this.goToPayment();
+            return;
+        }
 
         if (!this.state.pumpPresets) {
             this.state.pumpPresets = {};
@@ -3370,9 +3553,43 @@ patch(PaymentScreen.prototype, {
     async afterOrderValidation(suggestToSync = true) {
         const order = this.currentOrder;
         if (order) {
+            // 1. SI LA ORDEN ERA UN PRE-PAGO: AHORA QUE HA SIDO PAGADA, ABRIR LA CALLE EN PISTA PARA EL SUMINISTRO
+            if (order.pending_prepay) {
+                const prepay = order.pending_prepay;
+                const pumpId = prepay.pump_id;
+                const fuelCode = prepay.fuel;
+                const amt = prepay.amount;
+                const lts = prepay.liters;
+
+                try {
+                    await jsonrpc("/pos_gas_station/authorize", {
+                        config_id: this.pos.config.id,
+                        pump_id: pumpId,
+                        fuel: fuelCode,
+                        amount: amt,
+                        liters: lts
+                    });
+                } catch (e) {
+                    console.error("Error al autorizar surtidor tras cobro de prepago:", e);
+                }
+
+                if (!this.pos.pumpPresets) {
+                    this.pos.pumpPresets = {};
+                }
+                this.pos.pumpPresets[pumpId] = {
+                    amount: prepay.presetVal,
+                    fuel: prepay.fuelName,
+                    code: fuelCode,
+                    isMoney: prepay.isMoney,
+                    hasPrepay: true,
+                    isLleno: false
+                };
+            }
+
+            // 2. Limpiar bombas de líneas que NO sean de este prepago recién autorizado
             const lines = order.get_orderlines ? order.get_orderlines() : [];
             for (const l of lines) {
-                if (l.pump_id) {
+                if (l.pump_id && (!order.pending_prepay || order.pending_prepay.pump_id !== l.pump_id)) {
                     try {
                         await jsonrpc("/pos_gas_station/clear_pump", {
                             config_id: this.pos.config.id,
