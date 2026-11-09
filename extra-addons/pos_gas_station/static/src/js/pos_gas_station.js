@@ -3283,26 +3283,149 @@ patch(PaymentScreen.prototype, {
 
     updateSelectedPaymentline(amount = false) {
         if (!this.currentOrder) return;
-
-        // Si la línea seleccionada tiene importe 0 y hay otra con importe (o de efectivo),
-        // enfocar la línea que tiene el importe real
         let line = this.selectedPaymentLine;
         if (!line) {
-            const firstLine = this.paymentLines[0];
-            if (firstLine) {
-                this.currentOrder.select_paymentline(firstLine);
-                line = firstLine;
-            }
-        } else if (line.amount === 0 && this.paymentLines.length > 1) {
-            const validLine = this.paymentLines.find(l => l !== line && l.amount > 0);
-            if (validLine) {
-                this.currentOrder.remove_paymentline(line);
-                this.currentOrder.select_paymentline(validLine);
-                line = validLine;
+            if (this.paymentLines.length > 0) {
+                line = this.paymentLines[0];
+                this.currentOrder.select_paymentline(line);
+            } else if (this.payment_methods_from_config.length > 0) {
+                const defaultPm = this.payment_methods_from_config.find(m => m.is_cash_count || (m.name && m.name.toLowerCase().includes("efectivo")))
+                                  || this.payment_methods_from_config[0];
+                this.addNewPaymentLine(defaultPm);
+                line = this.selectedPaymentLine;
             }
         }
+        if (!line) return;
 
-        super.updateSelectedPaymentline(amount);
+        if (amount === false) {
+            const buf = this.numberBuffer.get();
+            if (buf === null || buf === "") {
+                amount = 0;
+            } else {
+                amount = this.numberBuffer.getFloat() || 0;
+            }
+        }
+        if (amount === null) {
+            amount = 0;
+        }
+        line.set_amount(amount);
+    },
+
+    deletePaymentLine(cid) {
+        super.deletePaymentLine(cid);
+        if (this.currentOrder) {
+            const remaining = this.currentOrder.get_paymentlines();
+            if (remaining.length > 0) {
+                this.currentOrder.select_paymentline(remaining[0]);
+            }
+            this.numberBuffer.reset();
+        }
+    },
+
+    getNumpadButtons() {
+        return [
+            { value: "1" },
+            { value: "2" },
+            { value: "3" },
+            { value: "+10" },
+            { value: "4" },
+            { value: "5" },
+            { value: "6" },
+            { value: "+20" },
+            { value: "7" },
+            { value: "8" },
+            { value: "9" },
+            { value: "+50" },
+            { value: "-", text: "+/-" },
+            { value: "0" },
+            { value: this.env?.services?.localization?.decimalPoint || "," },
+            { value: "Clear", text: "C", class: "btn-numpad-clear" },
+        ];
+    },
+
+    onNumpadClick(buttonValue) {
+        if (!this.currentOrder) return;
+
+        // 1. Asegurar que existe una línea de pago seleccionada
+        let line = this.selectedPaymentLine;
+        if (!line) {
+            if (this.paymentLines.length > 0) {
+                line = this.paymentLines[0];
+                this.currentOrder.select_paymentline(line);
+            } else if (this.payment_methods_from_config.length > 0) {
+                const defaultPm = this.payment_methods_from_config.find(m => m.is_cash_count || (m.name && m.name.toLowerCase().includes("efectivo")))
+                                  || this.payment_methods_from_config[0];
+                this.addNewPaymentLine(defaultPm);
+                line = this.selectedPaymentLine;
+            }
+        }
+        if (!line) return;
+
+        // 2. BOTÓN ROJO / CLEAR ("C"): BORRAR POR COMPLETO EL IMPORTE (Reset a 0,00 €)
+        if (buttonValue === "Clear" || buttonValue === "Backspace" || buttonValue === "Delete" || buttonValue === "C") {
+            if (line.amount === 0) {
+                // Si ya estaba a 0, un segundo clic restaura el importe exacto pendiente de cobro
+                const due = Math.round(this.currentOrder.get_due() * 100) / 100;
+                line.set_amount(due);
+                this.numberBuffer.reset();
+            } else {
+                // Borra todo el importe a 0,00 € limpiamente sin dejar residuos acumulados
+                this.numberBuffer.reset();
+                line.set_amount(0);
+            }
+            return;
+        }
+
+        // 3. BOTONES DE INCREMENTO RÁPIDO (+10, +20, +50)
+        if (typeof buttonValue === "string" && buttonValue.startsWith("+") && !isNaN(parseFloat(buttonValue.slice(1)))) {
+            const inc = parseFloat(buttonValue.slice(1));
+            const currentBuf = this.numberBuffer.get();
+            // Si el buffer estaba reseteado, vacío o la línea a 0, partimos de 0 para sumar el billete entregado
+            const currentVal = (!currentBuf || this.numberBuffer.isReset || line.amount === 0) ? 0 : (this.numberBuffer.getFloat() || 0);
+            const newAmt = Math.round((currentVal + inc) * 100) / 100;
+            this.numberBuffer.set(String(newAmt));
+            line.set_amount(newAmt);
+            return;
+        }
+
+        // 4. CAMBIO DE SIGNO (+/-)
+        if (buttonValue === "-" || buttonValue === "+/-") {
+            const currentAmt = line.amount || 0;
+            const newAmt = -currentAmt;
+            this.numberBuffer.set(String(newAmt));
+            line.set_amount(newAmt);
+            return;
+        }
+
+        // 5. SEPARADOR DECIMAL (, o .)
+        const decPoint = this.env?.services?.localization?.decimalPoint || ",";
+        if (buttonValue === "." || buttonValue === ",") {
+            let currentBuf = this.numberBuffer.get();
+            if (!currentBuf || this.numberBuffer.isReset || line.amount === 0) {
+                this.numberBuffer.set("0" + decPoint);
+                line.set_amount(0);
+            } else if (!currentBuf.includes(decPoint) && !currentBuf.includes(".")) {
+                this.numberBuffer.set(currentBuf + decPoint);
+            }
+            return;
+        }
+
+        // 6. DÍGITOS NUMÉRICOS (0-9)
+        if (!isNaN(parseInt(buttonValue, 10))) {
+            let currentBuf = this.numberBuffer.get();
+            // Si el buffer estaba reseteado, vacío, o la línea estaba a 0: arrancar nuevo importe con este dígito
+            if (!currentBuf || currentBuf === "0" || this.numberBuffer.isReset || line.amount === 0) {
+                currentBuf = buttonValue;
+            } else {
+                if (currentBuf.length < 10) {
+                    currentBuf += buttonValue;
+                }
+            }
+            this.numberBuffer.set(currentBuf);
+            const newAmount = this.numberBuffer.getFloat() || 0;
+            line.set_amount(newAmount);
+            return;
+        }
     },
 
     get nextScreen() {
