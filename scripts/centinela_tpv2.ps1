@@ -66,8 +66,26 @@ function Send-Telegram([string]$msg) {
     }
 }
 
+function Test-TcpFast([string]$ip, [int]$port, [int]$timeoutMs = 1200) {
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $iar = $client.BeginConnect($ip, $port, $null, $null)
+        $wait = $iar.AsyncWaitHandle.WaitOne($timeoutMs, $false)
+        if (-not $wait) {
+            $client.Close()
+            return $false
+        }
+        $client.EndConnect($iar)
+        $client.Close()
+        return $true
+    } catch {
+        $client.Close()
+        return $false
+    }
+}
+
 Write-CentinelaLog "Iniciando Centinela TPV 2 Ronda Norte..."
-Send-Telegram "hola hola (Centinela TPV 2 Ronda Norte activo y monitorizando en tiempo real)"
+Send-Telegram "hola hola (Centinela TPV 2 Ronda Norte activo y monitorizando cada 2s)"
 
 $isFrozen = $false
 $freezeStartTime = $null
@@ -83,8 +101,13 @@ while ($true) {
             continue
         }
 
-        # 1. Comprobar si la interfaz de usuario esta CONGELADA
-        if (-not $p.Responding) {
+        # Comprobacion rapida de conexion TCP con TPV 1 (MySQL 3306 y SDES 8777) y estado de GUI
+        $guiResponding = $p.Responding
+        $mysqlOk = Test-TcpFast $TPV1_IP 3306 1200
+        $sdesOk  = Test-TcpFast $TPV1_IP 8777 1200
+
+        # 1. Detectar si la pantalla se congela O si cae/congela la conexion con TPV 1
+        if ((-not $guiResponding) -or (-not $mysqlOk) -or (-not $sdesOk)) {
             if (-not $isFrozen) {
                 $isFrozen = $true
                 $freezeStartTime = Get-Date
@@ -92,12 +115,26 @@ while ($true) {
                 $memMB = [math]::Round($p.WorkingSet64 / 1MB, 1)
                 $memGB = [math]::Round($p.WorkingSet64 / 1GB, 2)
 
-                # Comprobacion de sockets con TPV 1
-                $mysqlOk = (Test-NetConnection -ComputerName $TPV1_IP -Port 3306 -WarningAction SilentlyContinue).TcpTestSucceeded
-                $sdesOk  = (Test-NetConnection -ComputerName $TPV1_IP -Port 8777 -WarningAction SilentlyContinue).TcpTestSucceeded
+                $guiStatus   = if ($guiResponding) { "RESPONDIENDO (OK)" } else { "CONGELADA (NO RESPONDE)" }
+                $mysqlStatus = if ($mysqlOk) { "CONECTADO (OK)" } else { "CAIDO / TIMEOUT (>1.2s)" }
+                $sdesStatus  = if ($sdesOk)  { "CONECTADO (OK)" } else { "CAIDO / TIMEOUT (>1.2s)" }
 
-                $mysqlStatus = if ($mysqlOk) { "CONECTADO (OK)" } else { "CAIDO / MICRO-CORTE" }
-                $sdesStatus  = if ($sdesOk)  { "CONECTADO (OK)" } else { "CAIDO / ERROR" }
+                # Elaborar diagnostico automatico de lo que esta pasando
+                $diagList = @()
+                if (-not $mysqlOk -and -not $sdesOk) {
+                    $diagList += "- Corte total de red LAN entre TPV 2 (192.168.1.64) y TPV 1 (192.168.1.20)."
+                } elseif (-not $mysqlOk) {
+                    $diagList += "- Fallo/saturacion del motor MySQL (puerto 3306) en TPV 1."
+                } elseif (-not $sdesOk) {
+                    $diagList += "- Perdida de conexion con el concentrador de pista SDES (puerto 8777) en TPV 1."
+                }
+                if (-not $guiResponding -and $mysqlOk -and $sdesOk) {
+                    $diagList += "- Bloqueo sincrono de VirtusTPV esperando respuesta SQL de TPV 1 (posible colision de serie compartida TTRN/FTRN o lock de tabla en MySQL) o espera de cola de impresion WSD."
+                }
+                if ($memMB -gt 600) {
+                    $diagList += "- Memoria RAM elevada en VirtusTPVNet ($memMB MB)."
+                }
+                $diagnostico = $diagList -join "`n"
 
                 # Ultimas lineas de Actividad.Log
                 $lastActivity = ""
@@ -107,27 +144,30 @@ while ($true) {
                 }
 
                 $nowStr = Get-Date -Format "HH:mm:ss"
-                $alertText = "[ALERTA: TPV 2 CONGELADO / NO RESPONDE]`n`n" +
+                $alertText = "[ALERTA CENTINELA: CONGELACION DETECTADA EN TPV 2]`n`n" +
                              "Estacion: E.S. Ronda Norte (Cod. 2)`n" +
                              "Hora deteccion: " + $nowStr + "`n" +
-                             "Memoria RAM: " + $memGB + " GB (" + $memMB + " MB)`n" +
+                             "Estado Pantalla GUI: " + $guiStatus + "`n" +
                              "Conexion MySQL TPV1 (3306): " + $mysqlStatus + "`n" +
-                             "Conexion SDES Pista (8777): " + $sdesStatus + "`n`n" +
-                             "Ultima actividad registrada:`n" + $lastActivity
+                             "Conexion SDES Pista (8777): " + $sdesStatus + "`n" +
+                             "Memoria RAM VirtusTPV: " + $memGB + " GB (" + $memMB + " MB)`n`n" +
+                             "DIAGNOSTICO PROBABLE:`n" + $diagnostico + "`n`n" +
+                             "Ultima actividad en log:`n" + $lastActivity
 
-                Write-CentinelaLog "BLOQUEO DETECTADO. Enviando alerta Telegram..."
+                Write-CentinelaLog "INCIDENCIA DETECTADA. Enviando alerta Telegram a Jose..."
                 Send-Telegram $alertText
             }
         } else {
-            # Si estaba congelado y acaba de recuperar respuesta
+            # Si estaba congelado/caido y acaba de recuperar respuesta y conexion
             if ($isFrozen) {
                 $duration = [math]::Round(((Get-Date) - $freezeStartTime).TotalSeconds, 1)
                 $isFrozen = $false
                 $recTime = Get-Date -Format "HH:mm:ss"
 
-                $recoveryText = "[TPV 2 HA RECUPERADO LA RESPUESTA]`n`n" +
-                                "Duracion del bloqueo: " + $duration + " segundos`n" +
-                                "Hora recuperacion: " + $recTime
+                $recoveryText = "[TPV 2 RONDA NORTE RECUPERADO]`n`n" +
+                                "Duracion de la incidencia: " + $duration + " segundos`n" +
+                                "Hora recuperacion: " + $recTime + "`n" +
+                                "Estado actual: Pantalla OK | MySQL 3306 OK | SDES 8777 OK"
 
                 Write-CentinelaLog "RECUPERADO tras $duration s."
                 Send-Telegram $recoveryText
