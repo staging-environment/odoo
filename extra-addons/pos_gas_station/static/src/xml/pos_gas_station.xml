@@ -1360,23 +1360,23 @@
                                     <table class="shift-orders-table">
                                         <thead>
                                             <tr>
-                                                <th style="width: 140px;">FECHA / HORA</th>
-                                                <th style="width: 170px;">Nº TICKET</th>
-                                                <th style="width: 170px;">RECIBO</th>
+                                                <th style="width: 125px;">FECHA / HORA</th>
+                                                <th style="width: 85px;">Nº TICKET</th>
+                                                <th style="width: 145px;">RECIBO</th>
                                                 <th>CLIENTE</th>
-                                                <th style="width: 120px;">CAJERO</th>
-                                                <th style="width: 95px; text-align: right;">TOTAL</th>
-                                                <th style="width: 200px; text-align: center;">ACCIONES</th>
+                                                <th style="width: 110px;">CAJERO</th>
+                                                <th style="width: 75px; text-align: right;">TOTAL</th>
+                                                <th style="width: 135px; text-align: center;">ACCIONES</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <t t-foreach="filteredShiftOrders" t-as="ord" t-key="ord.id">
-                                                <tr t-attf-class="shift-order-row #{ord.is_ticket_annulled ? 'order-row-annulled' : ''}" t-on-click="() => this.selectShiftOrder(ord)">
+                                                <tr t-attf-class="shift-order-row #{ord.is_ticket_annulled ? 'order-row-annulled' : ''}" 
+                                                    t-att-title="ord.is_ticket_annulled ? ('Ticket Anulado' + (ord.annulment_ref ? ' [' + ord.annulment_ref + ']' : '')) : ''"
+                                                    t-on-click="() => this.selectShiftOrder(ord)">
                                                     <td class="cell-date"><t t-esc="ord.date_order"/></td>
-                                                    <td class="cell-name">
+                                                    <td class="cell-name" t-att-title="ord.is_ticket_annulled ? ('Ticket Anulado' + (ord.annulment_ref ? ' [' + ord.annulment_ref + ']' : '')) : ''">
                                                         <strong><t t-esc="ord.name"/></strong>
-                                                        <span t-if="ord.is_ticket_annulled" class="badge-annul-tag ms-1">⚠️ ANULADO</span>
-                                                        <span t-elif="ord.is_invoiced" class="badge-invoice-tag ms-1"><i class="fa fa-file-text me-1"/><t t-esc="ord.account_move_name"/></span>
                                                     </td>
                                                     <td class="cell-ref"><t t-esc="ord.pos_reference"/></td>
                                                     <td class="cell-partner" t-att-title="ord.partner_name ? (ord.partner_name + (ord.partner_vat ? ' (' + ord.partner_vat + ')' : '')) : '- Contado -'">
@@ -1388,7 +1388,7 @@
                                                             <span class="text-muted">- Contado -</span>
                                                         </t>
                                                     </td>
-                                                    <td class="cell-user"><t t-esc="ord.user_name"/></td>
+                                                    <td class="cell-user" t-att-title="ord.user_name"><t t-esc="ord.user_name"/></td>
                                                     <td class="cell-total" style="text-align: right;">
                                                         <t t-if="ord.is_ticket_annulled">
                                                             <strong style="color: #dc2626; text-decoration: line-through;"><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>

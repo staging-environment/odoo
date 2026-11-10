@@ -5217,7 +5217,18 @@
     line-height: 1.15 !important;
 }
 
+.shift-order-row .cell-date {
+    width: 125px !important;
+    white-space: nowrap !important;
+}
+
 .shift-order-row .cell-name {
+    width: 85px !important;
+    white-space: nowrap !important;
+}
+
+.shift-order-row .cell-ref {
+    width: 145px !important;
     white-space: nowrap !important;
 }
 
@@ -5228,6 +5239,18 @@
     white-space: nowrap !important;
 }
 
+.shift-order-row .cell-user {
+    max-width: 110px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+.shift-order-row .cell-total {
+    width: 75px !important;
+    white-space: nowrap !important;
+}
+
 .shift-order-row .cell-total strong {
     font-size: 12px !important;
     color: #0f172a !important;
@@ -5235,6 +5258,7 @@
 }
 
 .shift-order-row .cell-actions {
+    width: 135px !important;
     white-space: nowrap !important;
 }
 
