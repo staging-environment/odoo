@@ -157,14 +157,20 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 
 ---
 
-## 🚀 Flujo Obligatorio de Commit y Despliegue en Producción
-**Regla crítica para cualquier cambio de código en este repositorio:**
-Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempre debe commitear, hacer push a `origin/main` y desplegar automáticamente en producción**:
-1. `git add <archivos>` y `git commit -m "..."`
-2. `git push origin main`
-3. Despliegue en servidor Cloud:
-   - `ssh utrecar-dev "cd /home/developer/Projects/odoo && git pull origin main && docker restart ddev-odoo-odoo"`
-   - Verificar logs: `ssh utrecar-dev "docker logs --tail 15 ddev-odoo-odoo"`
+## 🚀 Flujo Obligatorio de Commit, Sincronización Local y Despliegue en Producción
+**Regla crítica para cualquier cambio de código en este repositorio (especialmente al trabajar desde la APP de escritorio local):**
+Cada vez que se realice un cambio, fix o nueva funcionalidad, el agente **siempre debe ejecutar por sí mismo (sin pedir al usuario que lo haga a mano) el commit, el push a `origin/main`, la actualización del entorno local y el despliegue en producción**:
+1. **En local (`/home/bonilla/Projects/odoo` o `/home/developer/Projects/odoo`):**
+   - Asegurar que el repositorio local está sincronizado (`git pull origin main` si hubo cambios previos en la nube).
+   - `git add <archivos>` y `git commit -m "..."`
+   - `git push origin main`
+   - Si aplica recarga de contenedores locales: `docker restart ddev-odoo-odoo` (o `ddev restart`).
+2. **Despliegue automático en servidor Cloud (`utrecar-dev` vía VPN WireGuard):**
+   - Ejecutar directamente desde el agente:
+     `ssh utrecar-dev "cd /home/developer/Projects/odoo && git pull origin main && docker restart ddev-odoo-odoo"`
+   - Verificar logs:
+     `ssh utrecar-dev "docker logs --tail 15 ddev-odoo-odoo"`
+   - *(Nota: Únicamente si la conversación se ejecuta en un contenedor efímero de `☁️ Remote Conversations` en la nube de Google sin acceso a la interfaz WireGuard `wg0` del usuario, el agente dejará el `git push origin main` hecho e indicará que el despliegue SSH requiere estar en la sesión local).*
 
 
 ## 🛡️ Autenticación VPN, Simplificación de Menú y Control de Empleados por Estación (Actualizado)
