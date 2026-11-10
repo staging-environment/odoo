@@ -156,7 +156,7 @@ export class UtrecarMainScreen extends Component {
             trackMode: localStorage.getItem("utrecar_track_mode") || "prepago", // 'atendido' o 'prepago'
             mode: "money", // 'money' o 'liters'
             presetValue: 0,
-            selectedFuel: "GA",
+            selectedFuel: null,
             availableFuels: [
                 { code: "GA", name: "Gasóleo A", class: "ga" },
                 { code: "95", name: "Sin Plomo 95", class: "sp95" }
@@ -271,12 +271,29 @@ export class UtrecarMainScreen extends Component {
             }
         };
 
+        this.lastTrackedOrderId = null;
+
         onMounted(() => {
             this.fetchPumpsStatus();
             this.pollInterval = setInterval(() => {
                 this.fetchPumpsStatus();
                 const ord = this.pos.get_order();
                 if (ord) {
+                    if (this.lastTrackedOrderId !== ord.uid) {
+                        this.lastTrackedOrderId = ord.uid;
+                        const lines = ord.get_orderlines ? (ord.get_orderlines() || []) : [];
+                        const hasFuelLine = lines.some(l => {
+                            if (!l.product) return false;
+                            const c = (l.product.default_code || "").toUpperCase();
+                            const n = (l.product.display_name || l.product.name || "").toLowerCase();
+                            return c.includes("GAS_A") || c.includes("SP95") || c.includes("GAS_PLUS") || c.includes("GAS_B") ||
+                                   n.includes("gasóleo") || n.includes("gasoleo") || n.includes("sin plomo") || n.includes("diesel");
+                        });
+                        if (!hasFuelLine) {
+                            this.state.selectedFuel = null;
+                            this.state.presetValue = 0;
+                        }
+                    }
                     const linesCount = (ord.get_orderlines ? (ord.get_orderlines() ? ord.get_orderlines().length : 0) : 0) || (ord.orderlines ? ord.orderlines.length : 0) || 0;
                     const totalAmt = (ord.get_total_with_tax ? ord.get_total_with_tax() : 0) || 0;
                     const v = linesCount * 1000 + totalAmt;
@@ -707,8 +724,8 @@ export class UtrecarMainScreen extends Component {
                 }
                 if (data.available_fuels && Array.isArray(data.available_fuels)) {
                     this.state.availableFuels = data.available_fuels;
-                    if (!this.state.availableFuels.some(f => f.code === this.state.selectedFuel)) {
-                        this.state.selectedFuel = this.state.availableFuels[0].code;
+                    if (this.state.selectedFuel && !this.state.availableFuels.some(f => f.code === this.state.selectedFuel)) {
+                        this.state.selectedFuel = null;
                     }
                 }
                 if (data.pumps && Array.isArray(data.pumps)) {
@@ -2430,7 +2447,8 @@ export class UtrecarMainScreen extends Component {
     }
 
     get selectedFuelObj() {
-        return this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || this.state.availableFuels[0] || { code: "GA", name: "Gasóleo A" };
+        if (!this.state.selectedFuel) return null;
+        return this.state.availableFuels.find(f => f.code === this.state.selectedFuel) || null;
     }
 
     onPumpSelect(pump) {
@@ -2541,7 +2559,7 @@ export class UtrecarMainScreen extends Component {
         // Detectar si la orden actual ya contiene una línea de combustible o importe previo
         const currentOrder = this.getOrCreateOrder();
         let presetVal = this.state.presetValue || 0;
-        let fuelCode = this.state.selectedFuel || "GA";
+        let fuelCode = this.state.selectedFuel;
 
         if (currentOrder && (!presetVal || presetVal <= 0)) {
             const lines = currentOrder.get_orderlines();
@@ -2582,11 +2600,18 @@ export class UtrecarMainScreen extends Component {
                 return;
             }
 
-            // Preparar y añadir la línea de combustible al ticket
-            await this.preparePrepayOrderLine(pump.id, fuelCode, presetVal, isMoney);
+            // OBLIGAR A SELECCIONAR COMBUSTIBLE SI ESTÁ EN PREFIJADO
+            if (!this.state.selectedFuel) {
+                alert(`⚠️ Ha marcado un importe prefijado (${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}).\nDebe seleccionar el tipo de combustible (Gasóleo A, Sin Plomo 95...) en el teclado antes de pulsar la calle.`);
+                return;
+            }
 
-            // Limpiar importe prefijado en teclado
+            // Preparar y añadir la línea de combustible al ticket
+            await this.preparePrepayOrderLine(pump.id, this.state.selectedFuel, presetVal, isMoney);
+
+            // Limpiar importe prefijado en teclado y resetear combustible seleccionado
             this.state.presetValue = 0;
+            this.state.selectedFuel = null;
 
             // Abrir DIRECTAMENTE la pantalla/ventana de pago (PaymentScreen)
             this.goToPayment();
@@ -2649,16 +2674,23 @@ export class UtrecarMainScreen extends Component {
 
     async confirmAndAuthorize() {
         const pump = this.state.authModalPump || this.state.pumps.find(p => p.id === this.state.selectedPumpId);
-        this.closeAuthorizeModal();
         if (pump) {
             const isMoney = this.state.mode === "money";
             const presetVal = this.state.presetValue;
             const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
             const isPrepay = Boolean(presetVal > 0 && !isLleno);
 
+            if (isPrepay && !this.state.selectedFuel) {
+                alert(`⚠️ Ha marcado un importe prefijado (${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}).\nDebe seleccionar el tipo de combustible antes de confirmar.`);
+                return;
+            }
+
+            this.closeAuthorizeModal();
+
             if (isPrepay) {
                 await this.preparePrepayOrderLine(pump.id, this.state.selectedFuel, presetVal, isMoney);
                 this.state.presetValue = 0;
+                this.state.selectedFuel = null;
                 this.goToPayment();
             } else {
                 await this.executeAuthorizePump(pump.id);
@@ -2676,6 +2708,10 @@ export class UtrecarMainScreen extends Component {
     }
 
     selectFuel(fuel) {
+        if (this.state.selectedFuel === fuel) {
+            this.state.selectedFuel = null;
+            return;
+        }
         this.state.selectedFuel = fuel;
         // Si hay una linea de combustible en la orden activa que aun no ha sido autorizada en bomba, actualizar su producto
         const currentOrder = this.pos.get_order();
@@ -2784,6 +2820,7 @@ export class UtrecarMainScreen extends Component {
 
     clearPreset() {
         this.state.presetValue = 0;
+        this.state.selectedFuel = null;
         this.state.selectedPumpId = null;
     }
 
@@ -2831,9 +2868,6 @@ export class UtrecarMainScreen extends Component {
             return;
         }
 
-        const currentFuelObj = this.selectedFuelObj;
-        const fuelName = currentFuelObj.name;
-        const fuelCode = currentFuelObj.code;
         const isMoney = this.state.mode === "money";
         const presetVal = this.state.presetValue;
 
@@ -2841,11 +2875,20 @@ export class UtrecarMainScreen extends Component {
         const isPrepay = Boolean(presetVal > 0 && !isLleno);
 
         if (isPrepay) {
-            await this.preparePrepayOrderLine(pumpId, fuelCode, presetVal, isMoney);
+            if (!this.state.selectedFuel) {
+                alert(`⚠️ Ha indicado un importe prefijado (${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}).\nDebe seleccionar el tipo de combustible antes de continuar.`);
+                return;
+            }
+            await this.preparePrepayOrderLine(pumpId, this.state.selectedFuel, presetVal, isMoney);
             this.state.presetValue = 0;
+            this.state.selectedFuel = null;
             this.goToPayment();
             return;
         }
+
+        const currentFuelObj = this.selectedFuelObj;
+        const fuelName = currentFuelObj ? currentFuelObj.name : "Multiproducto";
+        const fuelCode = currentFuelObj ? currentFuelObj.code : (this.getPumpFuelCode(targetPump) || "GA");
 
         if (!this.state.pumpPresets) {
             this.state.pumpPresets = {};

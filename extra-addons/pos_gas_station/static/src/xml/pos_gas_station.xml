@@ -699,11 +699,24 @@
                                     </div>
                                     <div class="auth-info-line auth-fuel-picker-line">
                                         <span class="info-label">COMBUSTIBLE:</span>
-                                        <div class="auth-fuel-badge-fixed" t-attf-class="badge-fuel-#{selectedFuelObj.class || 'ga'}">
-                                            <span class="fuel-lock-icon">🔒</span>
-                                            <strong class="fuel-name-txt"><t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)</strong>
-                                            <span class="fuel-fixed-label">Único combustible para Calle <t t-esc="state.authModalPump.id"/></span>
-                                        </div>
+                                        <t t-if="selectedFuelObj">
+                                            <div class="auth-fuel-badge-fixed" t-attf-class="badge-fuel-#{selectedFuelObj.class || 'ga'}">
+                                                <span class="fuel-lock-icon">🔒</span>
+                                                <strong class="fuel-name-txt"><t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)</strong>
+                                                <span class="fuel-fixed-label">Para Calle <t t-esc="state.authModalPump.id"/></span>
+                                            </div>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <t t-foreach="state.availableFuels" t-as="fuel" t-key="fuel.code">
+                                                    <button type="button" 
+                                                            t-attf-class="btn btn-sm fw-bold #{state.selectedFuel === fuel.code ? 'btn-primary' : 'btn-outline-primary'}"
+                                                            t-on-click="() => this.selectFuel(fuel.code)">
+                                                        <t t-esc="fuel.name"/> (<t t-esc="fuel.code"/>)
+                                                    </button>
+                                                </t>
+                                            </div>
+                                        </t>
                                     </div>
                                     <t t-if="state.vehiclePlate">
                                         <div class="auth-info-line">
@@ -722,11 +735,18 @@
                                     </div>
                                     <div class="auth-info-line mt-2 auth-fuel-picker-line">
                                         <span class="info-label">COMBUSTIBLE:</span>
-                                        <div class="auth-fuel-badge-fixed" t-attf-class="badge-fuel-#{selectedFuelObj.class || 'ga'}">
-                                            <span class="fuel-lock-icon">🔒</span>
-                                            <strong class="fuel-name-txt"><t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)</strong>
-                                            <span class="fuel-fixed-label">Único combustible para Calle <t t-esc="state.authModalPump.id"/></span>
-                                        </div>
+                                        <t t-if="selectedFuelObj">
+                                            <div class="auth-fuel-badge-fixed" t-attf-class="badge-fuel-#{selectedFuelObj.class || 'ga'}">
+                                                <span class="fuel-lock-icon">🔒</span>
+                                                <strong class="fuel-name-txt"><t t-esc="selectedFuelObj.name"/> (<t t-esc="selectedFuelObj.code"/>)</strong>
+                                                <span class="fuel-fixed-label">Para Calle <t t-esc="state.authModalPump.id"/></span>
+                                            </div>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="auth-fuel-badge-fixed badge-fuel-ga" style="background: #f1f5f9; color: #475569; border-color: #cbd5e1;">
+                                                <strong class="fuel-name-txt">Multiproducto (Cualquiera en pista)</strong>
+                                            </div>
+                                        </t>
                                     </div>
                                 </t>
                             </div>
