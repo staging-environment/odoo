@@ -1813,19 +1813,98 @@
                                 </div>
                             </t>
                             <t t-else="">
-                                <!-- BÚSQUEDA DE CLIENTE CON CRÉDITO -->
+                                <!-- CABECERA SELECTOR / CREACIÓN DE CLIENTE DE CRÉDITO -->
                                 <div>
-                                    <label class="fw-bold mb-1 text-dark d-block">
-                                        Seleccione Cliente con Crédito Autorizado (*):
-                                    </label>
-                                    <div class="input-group">
-                                        <button type="button" 
-                                                class="input-group-text bg-white" 
-                                                style="cursor: pointer; border-right: 0;" 
-                                                t-on-click="() => this.onClickConvertAlbaranSearchBtn()"
-                                                title="Pulsar para mostrar / actualizar el listado de clientes de crédito">
-                                            🔍
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <label class="fw-bold mb-0 text-dark">
+                                            <t t-if="state.isCreatingCreditPartner">Nuevo Cliente de Crédito (*):</t>
+                                            <t t-else="">Seleccione Cliente con Crédito Autorizado (*):</t>
+                                        </label>
+                                        <button type="button"
+                                                t-attf-class="btn btn-sm fw-bold #{state.isCreatingCreditPartner ? 'btn-outline-secondary' : 'btn-outline-primary'}"
+                                                t-on-click="() => this.toggleCreateCreditPartnerMode()">
+                                            <t t-if="state.isCreatingCreditPartner">
+                                                ← Buscar Cliente Existente
+                                            </t>
+                                            <t t-else="">
+                                                ➕ Nuevo Cliente de Crédito
+                                            </t>
                                         </button>
+                                    </div>
+
+                                    <t t-if="state.isCreatingCreditPartner">
+                                        <!-- FORMULARIO DE ALTA RÁPIDA DE CLIENTE DE CRÉDITO -->
+                                        <div class="p-3 border rounded" style="background: #f8fafc; border-color: #cbd5e1 !important;">
+                                            <div class="row g-2">
+                                                <div class="col-7">
+                                                    <label class="form-label small fw-bold mb-1 text-dark">Nombre o Razón Social (*):</label>
+                                                    <input type="text"
+                                                           class="form-control form-control-sm"
+                                                           placeholder="Ej: Transportes García S.L."
+                                                           t-model="state.albaranNewPartner.name"/>
+                                                </div>
+                                                <div class="col-5">
+                                                    <label class="form-label small fw-bold mb-1 text-dark">CIF / NIF (*):</label>
+                                                    <input type="text"
+                                                           class="form-control form-control-sm text-uppercase"
+                                                           placeholder="Ej: B12345678"
+                                                           t-model="state.albaranNewPartner.vat"/>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small fw-bold mb-1 text-dark">Facturación Crédito:</label>
+                                                    <select class="form-select form-select-sm" t-model="state.albaranNewPartner.customer_type">
+                                                        <option value="monthly">Mensual (Fin de Mes / Agrupada)</option>
+                                                        <option value="credit">Crédito (Por Operación / Diaria)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small fw-bold mb-1 text-dark">Teléfono:</label>
+                                                    <input type="text"
+                                                           class="form-control form-control-sm"
+                                                           placeholder="Teléfono de contacto"
+                                                           t-model="state.albaranNewPartner.phone"/>
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="form-label small fw-bold mb-1 text-dark">Dirección Fiscal:</label>
+                                                    <input type="text"
+                                                           class="form-control form-control-sm"
+                                                           placeholder="Calle, Avenida, Polígono..."
+                                                           t-model="state.albaranNewPartner.street"/>
+                                                </div>
+                                                <div class="col-5">
+                                                    <label class="form-label small fw-bold mb-1 text-dark">Población:</label>
+                                                    <input type="text"
+                                                           class="form-control form-control-sm"
+                                                           placeholder="Ciudad"
+                                                           t-model="state.albaranNewPartner.city"/>
+                                                </div>
+                                                <div class="col-3">
+                                                    <label class="form-label small fw-bold mb-1 text-dark">C.P.:</label>
+                                                    <input type="text"
+                                                           class="form-control form-control-sm"
+                                                           placeholder="41710"
+                                                           t-model="state.albaranNewPartner.zip"/>
+                                                </div>
+                                                <div class="col-4">
+                                                    <label class="form-label small fw-bold mb-1 text-dark">Email:</label>
+                                                    <input type="email"
+                                                           class="form-control form-control-sm"
+                                                           placeholder="correo@empresa.com"
+                                                           t-model="state.albaranNewPartner.email"/>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 d-flex justify-content-end">
+                                                <button type="button"
+                                                        class="btn btn-success btn-sm fw-bold px-3"
+                                                        t-att-disabled="state.convertAlbaranLoading"
+                                                        t-on-click="() => this.saveAndSelectNewCreditPartner()">
+                                                    ✓ Guardar y Seleccionar Cliente
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <!-- AUTOCOMPLETE SIN LUPA -->
                                         <input type="text" 
                                                class="form-control" 
                                                placeholder="Buscar cliente de crédito por Nombre, Código o CIF/NIF..." 
@@ -1833,44 +1912,47 @@
                                                t-on-input="(ev) => this.onConvertAlbaranPartnerSearch(ev)"
                                                t-on-focus="() => this.onClickConvertAlbaranSearchBtn()"
                                                style="height: 42px; font-size: 14px; font-weight: 500;"/>
-                                    </div>
-                                    <small class="text-muted mt-1 d-block">Seleccione un cliente de crédito de la lista inferior o filtre por Nombre, Código o CIF/NIF.</small>
+                                        <small class="text-muted mt-1 d-block">Seleccione un cliente de crédito de la lista inferior o filtre por Nombre, Código o CIF/NIF.</small>
 
-                                    <!-- RESULTADOS DE BÚSQUEDA -->
-                                    <t t-if="state.convertAlbaranPartnerResults.length > 0">
-                                        <div class="partner-results-list mt-2" style="max-height: 200px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
-                                            <t t-foreach="state.convertAlbaranPartnerResults" t-as="p" t-key="p.id">
-                                                <div t-attf-class="partner-result-item p-2 border-bottom #{p.hasCredit ? 'credit-ok' : 'credit-no'}" 
-                                                     style="cursor: pointer;"
-                                                     t-on-click="() => this.selectPartnerForConvertAlbaran(p)">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <t t-if="p.ref">
-                                                                <span class="badge bg-light text-dark border me-1"><t t-esc="p.ref"/></span>
+                                        <!-- RESULTADOS DE BÚSQUEDA (EN FLUJO VISIBLE) -->
+                                        <t t-if="state.convertAlbaranPartnerResults.length > 0">
+                                            <div class="albaran-partner-results-list mt-2" style="position: static !important; max-height: 185px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
+                                                <t t-foreach="state.convertAlbaranPartnerResults" t-as="p" t-key="p.id">
+                                                    <div t-attf-class="partner-result-item p-2 border-bottom #{p.hasCredit ? 'credit-ok' : 'credit-no'}" 
+                                                         style="cursor: pointer;"
+                                                         t-on-click="() => this.selectPartnerForConvertAlbaran(p)">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <t t-if="p.ref">
+                                                                    <span class="badge bg-light text-dark border me-1"><t t-esc="p.ref"/></span>
+                                                                </t>
+                                                                <strong t-esc="p.name"/>
+                                                            </div>
+                                                            <t t-if="p.hasCredit">
+                                                                <span class="badge bg-success text-white">Crédito</span>
                                                             </t>
-                                                            <strong t-esc="p.name"/>
+                                                            <t t-elif="p.credit_blocked">
+                                                                <span class="badge bg-danger text-white">Bloqueado</span>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <span class="badge bg-secondary text-white">Contado</span>
+                                                            </t>
                                                         </div>
-                                                        <t t-if="p.hasCredit">
-                                                            <span class="badge bg-success text-white">Crédito</span>
-                                                        </t>
-                                                        <t t-elif="p.credit_blocked">
-                                                            <span class="badge bg-danger text-white">Bloqueado</span>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <span class="badge bg-secondary text-white">Contado</span>
-                                                        </t>
+                                                        <small class="text-muted d-block">
+                                                            CIF/NIF: <t t-esc="p.vat || 'Sin NIF'"/> <t t-if="p.city"> | <t t-esc="p.city"/></t>
+                                                        </small>
                                                     </div>
-                                                    <small class="text-muted d-block">
-                                                        CIF/NIF: <t t-esc="p.vat || 'Sin NIF'"/> <t t-if="p.city"> | <t t-esc="p.city"/></t>
-                                                    </small>
-                                                </div>
-                                            </t>
-                                        </div>
-                                    </t>
-                                    <t t-else="">
-                                        <div class="text-muted small mt-2 p-2 border rounded bg-light text-center">
-                                            No se encontraron clientes de crédito con ese criterio.
-                                        </div>
+                                                </t>
+                                            </div>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="text-muted small mt-2 p-2 border rounded bg-light d-flex justify-content-between align-items-center">
+                                                <span>No se encontraron clientes de crédito con ese criterio.</span>
+                                                <button type="button" class="btn btn-sm btn-primary fw-bold py-0 px-2" t-on-click="() => this.toggleCreateCreditPartnerMode()">
+                                                    ➕ Crear Cliente de Crédito
+                                                </button>
+                                            </div>
+                                        </t>
                                     </t>
                                 </div>
                             </t>
@@ -1916,7 +1998,7 @@
                             <button type="button" 
                                     class="btn btn-primary px-4 fw-bold" 
                                     t-on-click="() => this.confirmConvertToAlbaran()" 
-                                    t-att-disabled="!state.convertAlbaranSelectedPartner || state.convertAlbaranLoading"
+                                    t-att-disabled="(!state.convertAlbaranSelectedPartner and !state.isCreatingCreditPartner) || state.convertAlbaranLoading"
                                     style="background: #2563eb; border-color: #1d4ed8;">
                                 <t t-if="state.convertAlbaranLoading">
                                     <i class="fa fa-spinner fa-spin me-1"/> Convirtiendo...

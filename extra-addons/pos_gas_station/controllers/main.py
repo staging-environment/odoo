@@ -1948,13 +1948,152 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error in /pos_gas_station/search_partners: %s", e)
             return {'status': 'error', 'message': str(e)}
 
+    def _get_or_create_credit_partner(self, env, partner_data, config_id=None, company_id=None, vehicle_plate=None):
+        name = str((partner_data or {}).get('name') or '').strip()
+        vat = str((partner_data or {}).get('vat') or '').strip().upper()
+        if not name:
+            raise UserError('Debe indicar el Nombre o Razón Social del cliente de crédito.')
+        if not vat:
+            raise UserError('Debe indicar el CIF / NIF del cliente de crédito.')
+
+        ctype = str((partner_data or {}).get('customer_type') or 'credit').strip()
+        if ctype not in ('credit', 'monthly'):
+            ctype = 'credit'
+        periodicity = 'monthly' if ctype == 'monthly' else 'daily'
+
+        station = None
+        if config_id:
+            try:
+                st = env['pos.config'].sudo().browse(int(config_id))
+                if st.exists():
+                    station = st
+                    if st.company_id and not company_id:
+                        company_id = st.company_id.id
+            except Exception:
+                pass
+
+        domain = [('vat', '=ilike', vat)]
+        if station:
+            domain = ['&', ('vat', '=ilike', vat), '|', ('station_id', '=', station.id), ('station_id', '=', False)]
+        partner = env['res.partner'].sudo().search(domain, limit=1)
+
+        street = str((partner_data or {}).get('street') or '').strip()
+        city = str((partner_data or {}).get('city') or '').strip()
+        zip_code = str((partner_data or {}).get('zip') or '').strip()
+        phone = str((partner_data or {}).get('phone') or '').strip()
+        email = str((partner_data or {}).get('email') or '').strip()
+
+        if partner:
+            vals_update = {
+                'customer_rank': max(partner.customer_rank or 0, 1),
+                'customer_type': ctype,
+                'customer_payment_mode': 'credit',
+                'invoice_periodicity': periodicity,
+                'credit_blocked': False,
+            }
+            if street and not partner.street:
+                vals_update['street'] = street
+            if city and not partner.city:
+                vals_update['city'] = city
+            if zip_code and not partner.zip:
+                vals_update['zip'] = zip_code
+            if phone and not partner.phone:
+                vals_update['phone'] = phone
+            if email and not partner.email:
+                vals_update['email'] = email
+            if station and not partner.station_id:
+                vals_update['station_id'] = station.id
+            partner.sudo().write(vals_update)
+        else:
+            vals_create = {
+                'name': name,
+                'vat': vat,
+                'street': street or False,
+                'city': city or False,
+                'zip': zip_code or False,
+                'phone': phone or False,
+                'email': email or False,
+                'customer_rank': 1,
+                'customer_type': ctype,
+                'customer_payment_mode': 'credit',
+                'invoice_periodicity': periodicity,
+                'credit_blocked': False,
+                'station_id': station.id if station else False,
+                'company_id': company_id or (station.company_id.id if (station and station.company_id) else env.company.id),
+            }
+            partner = env['res.partner'].sudo().with_context(default_customer_rank=1).create(vals_create)
+
+        clean_plate = (vehicle_plate or '').strip().upper() if vehicle_plate else False
+        if clean_plate:
+            existing_veh = env['res.partner.vehicle'].sudo().search([
+                ('partner_id', '=', partner.id),
+                ('name', '=', clean_plate)
+            ], limit=1)
+            if not existing_veh:
+                env['res.partner.vehicle'].sudo().create({
+                    'partner_id': partner.id,
+                    'name': clean_plate
+                })
+
+        return partner
+
+    @http.route('/pos_gas_station/create_credit_partner', type='json', auth='user', methods=['POST'], csrf=False)
+    def create_credit_partner(self, partner_data, config_id=None, vehicle_plate=None, **kw):
+        try:
+            env = request.env
+            p = self._get_or_create_credit_partner(
+                env,
+                partner_data=partner_data,
+                config_id=config_id,
+                vehicle_plate=vehicle_plate
+            )
+            return {
+                'status': 'success',
+                'partner': {
+                    'id': p.id,
+                    'name': p.name,
+                    'ref': p.ref or '',
+                    'vat': p.vat or '',
+                    'street': p.street or '',
+                    'city': p.city or '',
+                    'zip': p.zip or '',
+                    'phone': p.phone or '',
+                    'email': p.email or '',
+                    'customer_type': getattr(p, 'customer_type', 'credit') or 'credit',
+                    'customer_payment_mode': 'credit',
+                    'invoice_periodicity': getattr(p, 'invoice_periodicity', 'daily') or 'daily',
+                    'credit_blocked': False,
+                    'credit_limit_amount': float(getattr(p, 'credit_limit_amount', 0.0) or 0.0),
+                    'hasCredit': True,
+                    'vehicles': [{'id': v.id, 'name': v.name} for v in getattr(p, 'vehicle_ids', [])],
+                }
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/create_credit_partner: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
     @http.route('/pos_gas_station/convert_to_albaran', type='json', auth='user', methods=['POST'], csrf=False)
-    def convert_to_albaran(self, order_id, partner_id, vehicle_plate=None, vehicle_driver=None):
+    def convert_to_albaran(self, order_id, partner_id=None, partner_data=None, vehicle_plate=None, vehicle_driver=None, **kw):
         try:
             env = request.env
             order = env['pos.order'].sudo().browse(int(order_id))
             if not order.exists():
                 return {'status': 'error', 'message': 'Pedido no encontrado'}
+
+            if not partner_id and partner_data:
+                cfg_id = order.session_id.config_id.id if (order.session_id and order.session_id.config_id) else None
+                comp_id = order.company_id.id if order.company_id else None
+                new_partner = self._get_or_create_credit_partner(
+                    env,
+                    partner_data=partner_data,
+                    config_id=cfg_id,
+                    company_id=comp_id,
+                    vehicle_plate=vehicle_plate
+                )
+                partner_id = new_partner.id
+
+            if not partner_id:
+                return {'status': 'error', 'message': 'Debe seleccionar o crear un cliente de crédito válido.'}
 
             order.action_convert_to_albaran(
                 partner_id=partner_id,

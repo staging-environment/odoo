@@ -201,6 +201,8 @@ export class UtrecarMainScreen extends Component {
             convertAlbaranSelectedPartner: null,
             convertAlbaranPartnerSearch: "",
             convertAlbaranPartnerResults: [],
+            isCreatingCreditPartner: false,
+            albaranNewPartner: { name: "", vat: "", street: "", city: "", zip: "", email: "", phone: "", customer_type: "monthly" },
             convertAlbaranPlate: "",
             convertAlbaranDriver: "",
             convertAlbaranLoading: false,
@@ -1480,6 +1482,8 @@ export class UtrecarMainScreen extends Component {
         this.state.convertAlbaranDriver = order.vehicle_driver || "";
         this.state.convertAlbaranPartnerSearch = "";
         this.state.convertAlbaranPartnerResults = [];
+        this.state.isCreatingCreditPartner = false;
+        this.state.albaranNewPartner = { name: "", vat: "", street: "", city: "", zip: "", email: "", phone: "", customer_type: "monthly" };
         this.state.convertAlbaranLoading = false;
 
         const hasCredit = (order.partner_customer_payment_mode === 'credit' || order.partner_customer_type === 'credit' || order.partner_customer_type === 'monthly') && !order.partner_credit_blocked;
@@ -1513,7 +1517,66 @@ export class UtrecarMainScreen extends Component {
         this.state.convertAlbaranSelectedPartner = null;
         this.state.convertAlbaranPartnerResults = [];
         this.state.convertAlbaranPartnerSearch = "";
+        this.state.isCreatingCreditPartner = false;
         this.state.convertAlbaranLoading = false;
+    }
+
+    toggleCreateCreditPartnerMode() {
+        this.state.isCreatingCreditPartner = !this.state.isCreatingCreditPartner;
+        if (this.state.isCreatingCreditPartner) {
+            this.state.convertAlbaranSelectedPartner = null;
+            const searchTxt = (this.state.convertAlbaranPartnerSearch || "").trim();
+            if (searchTxt) {
+                if (/^[A-Za-z0-9]{8,10}$/.test(searchTxt) && /\d/.test(searchTxt)) {
+                    this.state.albaranNewPartner.vat = searchTxt.toUpperCase();
+                } else if (!this.state.albaranNewPartner.name) {
+                    this.state.albaranNewPartner.name = searchTxt;
+                }
+            }
+        } else {
+            this.loadCreditPartnersForAlbaran(this.state.convertAlbaranPartnerSearch || "");
+        }
+    }
+
+    async saveAndSelectNewCreditPartner() {
+        const p = this.state.albaranNewPartner;
+        if (!p.name || !p.name.trim()) {
+            alert("⚠️ Debe indicar el Nombre o Razón Social del nuevo cliente de crédito.");
+            return;
+        }
+        if (!p.vat || !p.vat.trim()) {
+            alert("⚠️ Debe indicar el CIF / NIF del nuevo cliente de crédito.");
+            return;
+        }
+
+        this.state.convertAlbaranLoading = true;
+        try {
+            const configId = this.pos && this.pos.config ? this.pos.config.id : null;
+            const res = await this.env.services.rpc("/pos_gas_station/create_credit_partner", {
+                partner_data: p,
+                config_id: configId,
+                vehicle_plate: this.state.convertAlbaranPlate
+            });
+            if (res && res.status === "success" && res.partner) {
+                if (this.pos && this.pos.db && typeof this.pos.db.add_partners === "function") {
+                    try {
+                        this.pos.db.add_partners([res.partner]);
+                    } catch (_e) {}
+                }
+                this.state.isCreatingCreditPartner = false;
+                this.selectPartnerForConvertAlbaran({
+                    ...res.partner,
+                    hasCredit: true
+                });
+            } else {
+                alert("⚠️ No se pudo crear el cliente de crédito: " + (res ? res.message : "Error desconocido"));
+            }
+        } catch (e) {
+            console.error("Error saveAndSelectNewCreditPartner:", e);
+            alert("Error al crear el cliente de crédito: " + (e.message || e));
+        } finally {
+            this.state.convertAlbaranLoading = false;
+        }
     }
 
     async loadCreditPartnersForAlbaran(query = "") {
@@ -1566,20 +1629,39 @@ export class UtrecarMainScreen extends Component {
     clearSelectedPartnerForConvertAlbaran() {
         this.state.convertAlbaranSelectedPartner = null;
         this.state.convertAlbaranPartnerSearch = "";
+        this.state.isCreatingCreditPartner = false;
         this.loadCreditPartnersForAlbaran("");
     }
 
     async confirmConvertToAlbaran() {
         const order = this.state.convertAlbaranOrder;
-        const partner = this.state.convertAlbaranSelectedPartner;
-        if (!order || !partner) {
-            alert("⚠️ Por favor seleccione un cliente de crédito válido.");
+        if (!order) return;
+
+        let partner = this.state.convertAlbaranSelectedPartner;
+        let partnerData = null;
+
+        if (!partner && this.state.isCreatingCreditPartner) {
+            const np = this.state.albaranNewPartner;
+            if (!np.name || !np.name.trim()) {
+                alert("⚠️ Debe indicar el Nombre o Razón Social del nuevo cliente de crédito.");
+                return;
+            }
+            if (!np.vat || !np.vat.trim()) {
+                alert("⚠️ Debe indicar el CIF / NIF del nuevo cliente de crédito.");
+                return;
+            }
+            partnerData = { ...np };
+        }
+
+        if (!partner && !partnerData) {
+            alert("⚠️ Por favor seleccione un cliente de crédito de la lista o cree uno nuevo.");
             return;
         }
 
+        const targetName = partner ? partner.name : partnerData.name.trim();
         const confirmText = order.is_invoiced
-            ? `¿Está seguro de que desea anular la factura ${order.account_move_name} y convertir este pedido en Albarán de Crédito para ${partner.name}?`
-            : `¿Está seguro de que desea convertir el ticket ${order.name} en Albarán de Crédito para ${partner.name}?`;
+            ? `¿Está seguro de que desea anular la factura ${order.account_move_name} y convertir este pedido en Albarán de Crédito para ${targetName}?`
+            : `¿Está seguro de que desea convertir el ticket ${order.name} en Albarán de Crédito para ${targetName}?`;
 
         if (!confirm(confirmText)) return;
 
@@ -1587,7 +1669,8 @@ export class UtrecarMainScreen extends Component {
         try {
             const res = await this.env.services.rpc("/pos_gas_station/convert_to_albaran", {
                 order_id: order.id,
-                partner_id: partner.id,
+                partner_id: partner ? partner.id : null,
+                partner_data: partnerData,
                 vehicle_plate: this.state.convertAlbaranPlate,
                 vehicle_driver: this.state.convertAlbaranDriver
             });
