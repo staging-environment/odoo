@@ -1135,38 +1135,6 @@
                                 </div>
                             </div>
 
-                            <!-- BANNER KPI RESUMEN DE CIERRE DE CAJA -->
-                            <div class="shift-kpi-banner">
-                                <div class="shift-kpi-card kpi-total">
-                                    <div class="kpi-icon">💰</div>
-                                    <div class="kpi-content">
-                                        <span class="kpi-label">TOTAL FACTURADO</span>
-                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_sales_str || state.shiftSummary.total_sales"/> €</span>
-                                    </div>
-                                </div>
-                                <div class="shift-kpi-card kpi-cash">
-                                    <div class="kpi-icon">💵</div>
-                                    <div class="kpi-content">
-                                        <span class="kpi-label">EFECTIVO EN CAJA</span>
-                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_cash_str || state.shiftSummary.total_cash"/> €</span>
-                                    </div>
-                                </div>
-                                <div class="shift-kpi-card kpi-bank">
-                                    <div class="kpi-icon">💳</div>
-                                    <div class="kpi-content">
-                                        <span class="kpi-label">TARJETA / BANCO</span>
-                                        <span class="kpi-val"><t t-esc="state.shiftSummary.total_bank_str || state.shiftSummary.total_bank"/> €</span>
-                                    </div>
-                                </div>
-                                <div class="shift-kpi-card kpi-count">
-                                    <div class="kpi-icon">🧾</div>
-                                    <div class="kpi-content">
-                                        <span class="kpi-label">OPERACIONES</span>
-                                        <span class="kpi-val"><t t-esc="state.shiftSummary.orders_count"/></span>
-                                    </div>
-                                </div>
-                            </div>
-
                             <!-- BARRA DE BÚSQUEDA Y FILTRADO -->
                             <div class="shift-search-bar">
                                 <div class="search-input-wrapper">
