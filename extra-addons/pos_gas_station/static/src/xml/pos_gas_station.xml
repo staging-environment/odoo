@@ -50,15 +50,15 @@
 
                     <!-- TABLA PRINCIPAL DE LÍNEAS DE VENTA -->
                     <div class="virtus-table-container">
-                        <table class="virtus-grid-table" style="font-size: 22px !important;">
+                        <table class="virtus-grid-table" style="font-size: 18px !important;">
                             <thead>
                                 <tr>
-                                    <th style="width: 14%; font-size: 17px !important;">Código</th>
-                                    <th style="width: 38%; font-size: 17px !important;">Artículo</th>
-                                    <th style="width: 12%; text-align: right; font-size: 17px !important;">+Cantidad</th>
-                                    <th style="width: 12%; text-align: right; font-size: 17px !important;">Precio</th>
-                                    <th style="width: 10%; text-align: right; font-size: 17px !important;">Descuento</th>
-                                    <th style="width: 14%; text-align: right; font-size: 17px !important;">Importe</th>
+                                    <th style="width: 14%; font-size: 15px !important;">Código</th>
+                                    <th style="width: 38%; font-size: 15px !important;">Artículo</th>
+                                    <th style="width: 12%; text-align: right; font-size: 15px !important;">+Cantidad</th>
+                                    <th style="width: 12%; text-align: right; font-size: 15px !important;">Precio</th>
+                                    <th style="width: 10%; text-align: right; font-size: 15px !important;">Descuento</th>
+                                    <th style="width: 14%; text-align: right; font-size: 15px !important;">Importe</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -73,18 +73,18 @@
                                 <t t-else="">
                                     <t t-foreach="currentOrderLines" t-as="line" t-key="line.id">
                                         <tr t-att-class="(state.selectedLineId === line.id || line.selected) ? 'row-selected' : ''" 
-                                            t-on-click="() => this.selectOrderLine(line)" t-on-dblclick="() => this.editLineQuantity(line)" title="Haga doble clic para modificar la cantidad" style="font-size: 22px !important;">
-                                            <td style="font-size: 22px !important; padding: 10px 12px !important;"><span class="cell-code" style="font-size: 18px !important; padding: 4px 9px !important;"><t t-esc="line.product.default_code || 'ART'"/></span></td>
-                                            <td class="font-weight-bold" style="font-size: 22px !important; font-weight: 700 !important; padding: 10px 12px !important;">
+                                            t-on-click="() => this.selectOrderLine(line)" t-on-dblclick="() => this.editLineQuantity(line)" title="Haga doble clic para modificar la cantidad" style="font-size: 18px !important;">
+                                            <td style="font-size: 18px !important; padding: 7px 10px !important;"><span class="cell-code" style="font-size: 15px !important; padding: 3px 7px !important;"><t t-esc="line.product.default_code || 'ART'"/></span></td>
+                                            <td class="font-weight-bold" style="font-size: 18px !important; font-weight: 700 !important; padding: 7px 10px !important;">
                                                 <t t-if="line.get_quantity() > 0 &amp;&amp; (line.product.display_name.includes('Gasóleo') || line.product.display_name.includes('Sin Plomo'))">
-                                                    <span class="fuel-line-icon" style="font-size: 22px !important;">⛽</span>
+                                                    <span class="fuel-line-icon" style="font-size: 18px !important;">⛽</span>
                                                 </t>
                                                 <t t-esc="line.product.display_name"/>
                                             </td>
-                                            <td class="text-right font-weight-bold" style="font-size: 22px !important; font-weight: 700 !important; padding: 10px 12px !important;"><t t-esc="line.get_quantity_str()"/></td>
-                                            <td class="text-right" style="font-size: 22px !important; font-weight: 600 !important; padding: 10px 12px !important;"><t t-esc="getLineDisplayUnitPrice(line)"/> €</td>
-                                            <td class="text-right" style="font-size: 22px !important; font-weight: 600 !important; padding: 10px 12px !important;"><t t-esc="line.get_discount_str()"/> %</td>
-                                            <td class="text-right font-weight-bold text-primary" style="font-size: 22px !important; font-weight: 800 !important; padding: 10px 12px !important;"><t t-esc="line.get_display_price().toFixed(2)"/> €</td>
+                                            <td class="text-right font-weight-bold" style="font-size: 18px !important; font-weight: 700 !important; padding: 7px 10px !important;"><t t-esc="line.get_quantity_str()"/></td>
+                                            <td class="text-right" style="font-size: 18px !important; font-weight: 600 !important; padding: 7px 10px !important;"><t t-esc="getLineDisplayUnitPrice(line)"/> €</td>
+                                            <td class="text-right" style="font-size: 18px !important; font-weight: 600 !important; padding: 7px 10px !important;"><t t-esc="line.get_discount_str()"/> %</td>
+                                            <td class="text-right font-weight-bold text-primary" style="font-size: 18px !important; font-weight: 800 !important; padding: 7px 10px !important;"><t t-esc="line.get_display_price().toFixed(2)"/> €</td>
                                         </tr>
                                     </t>
                                 </t>
