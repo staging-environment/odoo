@@ -1502,6 +1502,9 @@ export class UtrecarMainScreen extends Component {
         }
 
         this.state.isConvertAlbaranModalOpen = true;
+        if (!this.state.convertAlbaranSelectedPartner) {
+            this.loadCreditPartnersForAlbaran("");
+        }
     }
 
     closeConvertAlbaranModal() {
@@ -1513,24 +1516,33 @@ export class UtrecarMainScreen extends Component {
         this.state.convertAlbaranLoading = false;
     }
 
+    async loadCreditPartnersForAlbaran(query = "") {
+        try {
+            const configId = this.pos && this.pos.config ? this.pos.config.id : null;
+            const res = await this.env.services.rpc("/pos_gas_station/search_partners", {
+                query: (query || "").trim(),
+                credit_only: true,
+                config_id: configId,
+            });
+            if (res && res.status === "success") {
+                this.state.convertAlbaranPartnerResults = (res.partners || []).map(p => ({
+                    ...p,
+                    hasCredit: (p.customer_payment_mode === 'credit' || p.customer_type === 'credit' || p.customer_type === 'monthly') && !p.credit_blocked
+                }));
+            }
+        } catch (e) {
+            console.error("Error loadCreditPartnersForAlbaran:", e);
+        }
+    }
+
+    async onClickConvertAlbaranSearchBtn() {
+        await this.loadCreditPartnersForAlbaran(this.state.convertAlbaranPartnerSearch || "");
+    }
+
     async onConvertAlbaranPartnerSearch(ev) {
         const query = ev.target.value;
         this.state.convertAlbaranPartnerSearch = query;
-        if (query && query.trim().length >= 2) {
-            try {
-                const res = await this.env.services.rpc("/pos_gas_station/search_partners", { query: query.trim() });
-                if (res && res.status === "success") {
-                    this.state.convertAlbaranPartnerResults = (res.partners || []).map(p => ({
-                        ...p,
-                        hasCredit: (p.customer_payment_mode === 'credit' || p.customer_type === 'credit' || p.customer_type === 'monthly') && !p.credit_blocked
-                    }));
-                }
-            } catch (e) {
-                console.error("Error onConvertAlbaranPartnerSearch:", e);
-            }
-        } else {
-            this.state.convertAlbaranPartnerResults = [];
-        }
+        await this.loadCreditPartnersForAlbaran(query);
     }
 
     selectPartnerForConvertAlbaran(partner) {
@@ -1554,6 +1566,7 @@ export class UtrecarMainScreen extends Component {
     clearSelectedPartnerForConvertAlbaran() {
         this.state.convertAlbaranSelectedPartner = null;
         this.state.convertAlbaranPartnerSearch = "";
+        this.loadCreditPartnersForAlbaran("");
     }
 
     async confirmConvertToAlbaran() {

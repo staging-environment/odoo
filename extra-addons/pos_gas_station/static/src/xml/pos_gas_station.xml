@@ -1819,25 +1819,37 @@
                                         Seleccione Cliente con Crédito Autorizado (*):
                                     </label>
                                     <div class="input-group">
-                                        <span class="input-group-text bg-white">🔍</span>
+                                        <button type="button" 
+                                                class="input-group-text bg-white" 
+                                                style="cursor: pointer; border-right: 0;" 
+                                                t-on-click="() => this.onClickConvertAlbaranSearchBtn()"
+                                                title="Pulsar para mostrar / actualizar el listado de clientes de crédito">
+                                            🔍
+                                        </button>
                                         <input type="text" 
                                                class="form-control" 
-                                               placeholder="Buscar cliente de crédito por Nombre o CIF/NIF..." 
+                                               placeholder="Buscar cliente de crédito por Nombre, Código o CIF/NIF..." 
                                                t-att-value="state.convertAlbaranPartnerSearch"
                                                t-on-input="(ev) => this.onConvertAlbaranPartnerSearch(ev)"
+                                               t-on-focus="() => this.onClickConvertAlbaranSearchBtn()"
                                                style="height: 42px; font-size: 14px; font-weight: 500;"/>
                                     </div>
-                                    <small class="text-muted mt-1 d-block">Escriba al menos 2 caracteres. Solo se permite seleccionar clientes con modalidad de crédito autorizada.</small>
+                                    <small class="text-muted mt-1 d-block">Seleccione un cliente de crédito de la lista inferior o filtre por Nombre, Código o CIF/NIF.</small>
 
                                     <!-- RESULTADOS DE BÚSQUEDA -->
                                     <t t-if="state.convertAlbaranPartnerResults.length > 0">
-                                        <div class="partner-results-list mt-2" style="max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                        <div class="partner-results-list mt-2" style="max-height: 200px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
                                             <t t-foreach="state.convertAlbaranPartnerResults" t-as="p" t-key="p.id">
                                                 <div t-attf-class="partner-result-item p-2 border-bottom #{p.hasCredit ? 'credit-ok' : 'credit-no'}" 
                                                      style="cursor: pointer;"
                                                      t-on-click="() => this.selectPartnerForConvertAlbaran(p)">
                                                     <div class="d-flex justify-content-between align-items-center">
-                                                        <strong t-esc="p.name"/>
+                                                        <div>
+                                                            <t t-if="p.ref">
+                                                                <span class="badge bg-light text-dark border me-1"><t t-esc="p.ref"/></span>
+                                                            </t>
+                                                            <strong t-esc="p.name"/>
+                                                        </div>
                                                         <t t-if="p.hasCredit">
                                                             <span class="badge bg-success text-white">Crédito</span>
                                                         </t>
@@ -1853,6 +1865,11 @@
                                                     </small>
                                                 </div>
                                             </t>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="text-muted small mt-2 p-2 border rounded bg-light text-center">
+                                            No se encontraron clientes de crédito con ese criterio.
                                         </div>
                                     </t>
                                 </div>

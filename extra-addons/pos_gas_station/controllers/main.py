@@ -1886,19 +1886,50 @@ class PosGasStationController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/search_partners', type='json', auth='user', methods=['POST'], csrf=False)
-    def search_partners(self, query):
+    def search_partners(self, query='', credit_only=False, config_id=None, **kw):
         try:
             env = request.env
             q = (query or '').strip()
-            if not q or len(q) < 2:
+            if not credit_only and (not q or len(q) < 2):
                 return {'status': 'success', 'partners': []}
-            domain = ['|', ('name', 'ilike', q), ('vat', 'ilike', q)]
-            partners = env['res.partner'].sudo().search(domain, limit=15)
+
+            base_domain = [('active', '=', True)]
+            if config_id:
+                try:
+                    cfg = env['pos.config'].sudo().browse(int(config_id))
+                    if cfg.exists():
+                        base_domain = [
+                            ('active', '=', True),
+                            '|',
+                            ('station_id', '=', cfg.id),
+                            '&',
+                            ('station_id', '=', False),
+                            ('company_id', 'in', [cfg.company_id.id, False])
+                        ]
+                except Exception:
+                    pass
+
+            if credit_only:
+                credit_filter = [
+                    '|',
+                    ('customer_payment_mode', '=', 'credit'),
+                    ('customer_type', 'in', ['credit', 'monthly'])
+                ]
+                search_filter = ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('ref', 'ilike', q)] if q else []
+                partners = env['res.partner'].sudo().search(base_domain + credit_filter + search_filter, order='name asc', limit=60)
+                if not partners:
+                    # Fallback sin filtro de estación por si los clientes de crédito son globales
+                    partners = env['res.partner'].sudo().search([('active', '=', True)] + credit_filter + search_filter, order='name asc', limit=60)
+            else:
+                search_filter = ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('ref', 'ilike', q)]
+                partners = env['res.partner'].sudo().search(base_domain + search_filter, order='name asc', limit=25)
+
             results = []
             for p in partners:
                 results.append({
                     'id': p.id,
                     'name': p.name,
+                    'ref': p.ref or '',
                     'vat': p.vat or '',
                     'street': p.street or '',
                     'city': p.city or '',
