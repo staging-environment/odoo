@@ -1373,27 +1373,45 @@
                                         </thead>
                                         <tbody>
                                             <t t-foreach="filteredShiftOrders" t-as="ord" t-key="ord.id">
-                                                <tr class="shift-order-row" t-on-click="() => this.selectShiftOrder(ord)">
+                                                <tr t-attf-class="shift-order-row #{ord.is_ticket_annulled ? 'order-row-annulled' : ''}" t-on-click="() => this.selectShiftOrder(ord)">
                                                     <td class="cell-date"><t t-esc="ord.date_order"/></td>
-                                                    <td class="cell-name"><strong><t t-esc="ord.name"/></strong></td>
+                                                    <td class="cell-name">
+                                                        <strong><t t-esc="ord.name"/></strong>
+                                                        <span t-if="ord.is_ticket_annulled" class="badge-annul-tag ms-1">⚠️ ANULADO</span>
+                                                    </td>
                                                     <td class="cell-ref"><t t-esc="ord.pos_reference"/></td>
-                                                    <td class="cell-partner">
+                                                    <td class="cell-partner" t-att-title="ord.partner_name ? (ord.partner_name + (ord.partner_vat ? ' (' + ord.partner_vat + ')' : '')) : '- Contado -'">
                                                         <t t-if="ord.partner_name">
                                                             <strong t-esc="ord.partner_name"/>
-                                                            <small t-if="ord.partner_vat" class="text-muted d-block"><t t-esc="ord.partner_vat"/></small>
+                                                            <span t-if="ord.partner_vat" class="text-muted ms-1" style="font-size: 11px;">(<t t-esc="ord.partner_vat"/>)</span>
                                                         </t>
                                                         <t t-else="">
                                                             <span class="text-muted">- Contado -</span>
                                                         </t>
                                                     </td>
                                                     <td class="cell-user"><t t-esc="ord.user_name"/></td>
-                                                    <td class="cell-total"><strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong></td>
+                                                    <td class="cell-total">
+                                                        <t t-if="ord.is_ticket_annulled">
+                                                            <strong style="color: #dc2626; text-decoration: line-through;"><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
+                                                        </t>
+                                                    </td>
                                                     <td class="cell-state" style="text-align: center;">
-                                                        <span t-attf-class="badge-state #{ord.state}"><t t-esc="ord.state === 'invoiced' ? 'Facturado' : (ord.state === 'extraction' ? 'Extracción' : (ord.state === 'albaran' ? 'Albarán' : (ord.state === 'paid' ? 'Pagado' : ord.state)))"/></span>
+                                                        <t t-if="ord.is_ticket_annulled">
+                                                            <span class="badge-state annulled"><i class="fa fa-ban me-1"/>Anulado</span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span t-attf-class="badge-state #{ord.state}"><t t-esc="ord.state === 'invoiced' ? 'Facturado' : (ord.state === 'extraction' ? 'Extracción' : (ord.state === 'albaran' ? 'Albarán' : (ord.state === 'paid' ? 'Pagado' : ord.state)))"/></span>
+                                                        </t>
                                                     </td>
                                                     <td class="cell-invoice" style="text-align: center;">
                                                         <t t-if="ord.is_invoiced">
                                                             <span class="badge-invoice"><i class="fa fa-file-text me-1"/> <t t-esc="ord.account_move_name"/></span>
+                                                        </t>
+                                                        <t t-elif="ord.is_ticket_annulled">
+                                                            <span class="text-danger small fw-bold">Ref: <t t-esc="ord.annulment_ref"/></span>
                                                         </t>
                                                         <t t-else="">
                                                             <span class="badge-no-invoice">Sin Factura</span>
@@ -1403,20 +1421,27 @@
                                                         <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
                                                             👁 Ver
                                                         </button>
-                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir ticket">
-                                                            🖨️ Ticket
-                                                        </button>
-                                                        <t t-if="ord.is_invoiced">
-                                                            <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura PDF">
-                                                                🖨️ PDF
+                                                        <t t-if="!ord.is_ticket_annulled">
+                                                            <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir ticket">
+                                                                🖨️ Ticket
                                                             </button>
-                                                            <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo electrónico" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
-                                                                📧 Email
-                                                            </button>
+                                                            <t t-if="ord.is_invoiced">
+                                                                <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura PDF">
+                                                                    🖨️ PDF
+                                                                </button>
+                                                                <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo electrónico" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
+                                                                    📧 Email
+                                                                </button>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
+                                                                    📄 Facturar
+                                                                </button>
+                                                            </t>
                                                         </t>
                                                         <t t-else="">
-                                                            <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
-                                                                📄 Facturar
+                                                            <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir justificante de anulación">
+                                                                🖨️ Justificante
                                                             </button>
                                                         </t>
                                                     </td>
@@ -1488,7 +1513,7 @@
                                         <i class="fa fa-file-text me-1"/> 📋 Convertir a Albarán de Crédito
                                     </button>
                                     <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.is_invoiced">
-                                        <button class="btn-action-primary btn-action-annul" t-on-click="() => this.confirmAnnulOrder(state.selectedShiftOrder)">
+                                        <button class="btn-action-primary btn-action-annul" t-on-click="() => this.openAnnulOrderModal(state.selectedShiftOrder)">
                                             <i class="fa fa-ban me-1"/> ❌ Anular Ticket
                                         </button>
                                     </t>
@@ -2381,6 +2406,76 @@
                         </button>
                         <button class="btn-close-stations-modal" t-on-click="() => this.closeStationsSelector()">
                             Continuar en este TPV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </t>
+
+        <!-- MODAL FLOTANTE DE CONFIRMACIÓN DE ANULACIÓN DE TICKET -->
+        <t t-if="state.isAnnulOrderModalOpen &amp;&amp; state.annulModalOrder">
+            <div class="utrecar-modal-backdrop" style="z-index: 10600;" t-on-click="() => this.closeAnnulOrderModal()">
+                <div class="utrecar-annul-confirm-modal" t-on-click.stop="">
+                    <!-- Cabecera -->
+                    <div class="annul-modal-header">
+                        <div class="annul-header-icon">
+                            <i class="fa fa-ban"/>
+                        </div>
+                        <div class="annul-header-titles">
+                            <h3>Confirmar Anulación de Ticket</h3>
+                            <span>Se generará serie oficial de anulación rectificativa</span>
+                        </div>
+                        <button type="button" class="btn-modal-close" t-on-click="() => this.closeAnnulOrderModal()">✖</button>
+                    </div>
+
+                    <!-- Cuerpo -->
+                    <div class="annul-modal-body">
+                        <!-- Resumen del Ticket -->
+                        <div class="annul-order-summary-box">
+                            <div class="summary-line">
+                                <span class="summary-label">Nº Ticket:</span>
+                                <strong class="summary-value-name"><t t-esc="state.annulModalOrder.name"/></strong>
+                            </div>
+                            <div class="summary-line">
+                                <span class="summary-label">Fecha / Cajero:</span>
+                                <span class="summary-value"><t t-esc="state.annulModalOrder.date_order"/> (<t t-esc="state.annulModalOrder.user_name"/>)</span>
+                            </div>
+                            <div class="summary-line">
+                                <span class="summary-label">Cliente:</span>
+                                <span class="summary-value"><t t-esc="state.annulModalOrder.partner_name || 'Contado'"/></span>
+                            </div>
+                            <div class="summary-line total-line">
+                                <span class="summary-label">Importe a Anular:</span>
+                                <strong class="summary-total-amount"><t t-esc="state.annulModalOrder.amount_total_str || state.annulModalOrder.amount_total"/> €</strong>
+                            </div>
+                        </div>
+
+                        <!-- Selector de Motivo -->
+                        <div class="annul-reason-group">
+                            <label class="annul-reason-label">Motivo de la anulación:</label>
+                            <select class="form-select annul-reason-select" t-model="state.annulModalReason">
+                                <option value="Anulación a petición del cliente">Anulación a petición del cliente</option>
+                                <option value="Error de cobro / importe incorrecto">Error de cobro / importe incorrecto</option>
+                                <option value="Error en forma de pago">Error en forma de pago</option>
+                                <option value="Devolución de mercancía">Devolución de mercancía</option>
+                                <option value="Prueba / Ticket erróneo">Prueba / Ticket erróneo</option>
+                            </select>
+                        </div>
+
+                        <div class="annul-legal-notice">
+                            <i class="fa fa-info-circle me-1"/> El ticket se conservará en el sistema con serie oficial <strong>TTTR_</strong> para trazabilidad legal.
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="annul-modal-footer">
+                        <button type="button" class="btn-annul-cancel" t-on-click="() => this.closeAnnulOrderModal()">
+                            Volver
+                        </button>
+                        <button type="button" class="btn-annul-confirm" t-att-disabled="state.isAnnulingOrder" t-on-click="() => this.executeAnnulOrder()">
+                            <i t-if="state.isAnnulingOrder" class="fa fa-circle-o-notch fa-spin me-1"/>
+                            <i t-else="" class="fa fa-ban me-1"/>
+                            <span>Confirmar Anulación</span>
                         </button>
                     </div>
                 </div>

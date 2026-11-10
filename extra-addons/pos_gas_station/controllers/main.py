@@ -1572,12 +1572,13 @@ class PosGasStationController(http.Controller):
 
             orders = env['pos.order'].sudo().search([
                 ('session_id', '=', session.id),
-                ('state', 'in', ['paid', 'done', 'invoiced'])
+                ('state', 'in', ['paid', 'done', 'invoiced', 'cancel'])
             ], order='date_order desc, id desc')
 
             payments = env['pos.payment'].sudo().search([('session_id', '=', session.id)])
             non_ext_orders = [o for o in orders if not getattr(o, 'is_extraction', False)]
-            total_sales = round(sum(o.amount_total for o in non_ext_orders), 2)
+            active_sales_orders = [o for o in non_ext_orders if not getattr(o, 'is_ticket_annulled', False) and o.state != 'cancel']
+            total_sales = round(sum(o.amount_total for o in active_sales_orders), 2)
             extractions_list = [o for o in orders if getattr(o, 'is_extraction', False)]
             total_extraction_liters = round(sum(float(getattr(o, 'extraction_liters', 0.0) or 0.0) for o in extractions_list), 2)
 
@@ -1647,6 +1648,8 @@ class PosGasStationController(http.Controller):
 
                 is_inv = bool(o.account_move)
                 inv_url = f'/report/pdf/account.report_invoice_with_payments/{o.account_move.id}' if is_inv else False
+                is_annulled = (bool(getattr(o, 'is_ticket_annulled', False)) or o.state == 'cancel') and not is_inv
+                order_state = 'extraction' if getattr(o, 'is_extraction', False) else ('annulled' if is_annulled else ('invoiced' if is_inv else ('albaran' if getattr(o, 'is_albaran', False) else o.state)))
 
                 orders_list.append({
                     'id': o.id,
@@ -1670,7 +1673,7 @@ class PosGasStationController(http.Controller):
                     'partner_credit_blocked': getattr(o.partner_id, 'credit_blocked', False) or False,
                     'partner_vehicles': [{'id': v.id, 'name': v.name} for v in getattr(o.partner_id, 'vehicle_ids', [])],
                     'fiscal_position': o.fiscal_position_id.name if o.fiscal_position_id else 'Posición fiscal ordinaria',
-                    'state': 'extraction' if getattr(o, 'is_extraction', False) else ('invoiced' if is_inv else ('albaran' if getattr(o, 'is_albaran', False) else o.state)),
+                    'state': order_state,
                     'is_invoiced': is_inv,
                     'is_extraction': getattr(o, 'is_extraction', False),
                     'is_albaran': getattr(o, 'is_albaran', False),
@@ -1679,9 +1682,9 @@ class PosGasStationController(http.Controller):
                     'extraction_reason': getattr(o, 'extraction_reason', '') or '',
                     'extraction_liters': float(getattr(o, 'extraction_liters', 0.0) or 0.0),
                     'extraction_pump_id': int(getattr(o, 'extraction_pump_id', 0) or 0),
-                    'is_ticket_annulled': getattr(o, 'is_ticket_annulled', False) or is_inv,
-                    'annulment_ref': getattr(o, 'annulment_ref', False) or (f"TTTR_{(''.join(c for c in (o.name or '') if c.isdigit()) or str(o.id))[-4:].zfill(4)}" if is_inv else ''),
-                    'annulment_reason': getattr(o, 'annulment_reason', False) or (f"Anulado por emisión de Factura {o.account_move.name}" if is_inv else ''),
+                    'is_ticket_annulled': is_annulled,
+                    'annulment_ref': getattr(o, 'annulment_ref', False) or (f"TTTR_{(''.join(c for c in (o.name or '') if c.isdigit()) or str(o.id))[-4:].zfill(4)}" if is_annulled else ''),
+                    'annulment_reason': getattr(o, 'annulment_reason', False) or ('Anulación de ticket' if is_annulled else ''),
                     'annulment_date': str(getattr(o, 'annulment_date', '')) if getattr(o, 'annulment_date', False) else '',
                     'account_move_id': o.account_move.id if is_inv else False,
                     'account_move_name': o.account_move.name if is_inv else '',

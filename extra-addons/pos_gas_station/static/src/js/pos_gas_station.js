@@ -213,6 +213,10 @@ export class UtrecarMainScreen extends Component {
             isCreatingPartner: false,
             invoiceLoading: false,
             isConvertAlbaranModalOpen: false,
+            isAnnulOrderModalOpen: false,
+            annulModalOrder: null,
+            annulModalReason: "Anulación a petición del cliente",
+            isAnnulingOrder: false,
             convertAlbaranOrder: null,
             convertAlbaranSelectedPartner: null,
             convertAlbaranPartnerSearch: "",
@@ -240,6 +244,11 @@ export class UtrecarMainScreen extends Component {
 
         this.onGlobalKeyDown = (ev) => {
             if (ev.key === 'Escape') {
+                if (this.state.isAnnulOrderModalOpen) {
+                    this.closeAnnulOrderModal();
+                    ev.preventDefault();
+                    return;
+                }
                 if (this.state.isGridConfigModalOpen) {
                     this.closeGridConfigModal();
                     ev.preventDefault();
@@ -1700,12 +1709,25 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
-    async confirmAnnulOrder(order) {
+    openAnnulOrderModal(order) {
         if (!order) return;
-        const confirmMsg = `¿Está seguro de que desea anular el ticket ${order.name}?\nSe asignará la referencia oficial de anulación con serie TTTR_ y el ticket se conservará en el sistema.`;
-        if (!confirm(confirmMsg)) return;
+        this.state.annulModalOrder = order;
+        this.state.annulModalReason = "Anulación a petición del cliente";
+        this.state.isAnnulingOrder = false;
+        this.state.isAnnulOrderModalOpen = true;
+    }
 
-        const reason = prompt("Motivo de la anulación del ticket (opcional):", "Anulación a petición del cliente") || "Anulación manual";
+    closeAnnulOrderModal() {
+        this.state.isAnnulOrderModalOpen = false;
+        this.state.annulModalOrder = null;
+        this.state.isAnnulingOrder = false;
+    }
+
+    async executeAnnulOrder() {
+        if (!this.state.annulModalOrder || this.state.isAnnulingOrder) return;
+        this.state.isAnnulingOrder = true;
+        const order = this.state.annulModalOrder;
+        const reason = this.state.annulModalReason || "Anulación manual";
 
         try {
             const res = await this.env.services.rpc("/pos_gas_station/annul_order", {
@@ -1714,16 +1736,25 @@ export class UtrecarMainScreen extends Component {
             });
             if (res && res.status === "success") {
                 order.is_ticket_annulled = true;
+                order.state = "annulled";
                 order.annulment_ref = res.annulment_ref;
                 order.annulment_reason = res.annulment_reason;
-                alert(`Ticket anulado con éxito.\nRef. Anulación: ${res.annulment_ref}`);
+                if (this.state.selectedShiftOrder && this.state.selectedShiftOrder.id === order.id) {
+                    this.state.selectedShiftOrder.is_ticket_annulled = true;
+                    this.state.selectedShiftOrder.state = "annulled";
+                    this.state.selectedShiftOrder.annulment_ref = res.annulment_ref;
+                    this.state.selectedShiftOrder.annulment_reason = res.annulment_reason;
+                }
+                this.closeAnnulOrderModal();
                 await this.loadShiftOrders();
             } else {
                 alert("Error al anular el ticket: " + (res ? res.message : "Error desconocido"));
             }
         } catch (e) {
-            console.error("Error confirmAnnulOrder:", e);
+            console.error("Error executeAnnulOrder:", e);
             alert("Error al comunicarse con el servidor: " + e.message);
+        } finally {
+            this.state.isAnnulingOrder = false;
         }
     }
 
