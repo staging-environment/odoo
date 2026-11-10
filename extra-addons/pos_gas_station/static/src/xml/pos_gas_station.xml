@@ -381,9 +381,6 @@
                             <span class="lcd-current"><t t-esc="state.presetValue > 0 ? (state.presetValue % 1 === 0 ? state.presetValue.toFixed(0) : state.presetValue.toFixed(2)) : '0,00'"/> <t t-esc="state.mode === 'money' ? '€' : 'L'"/></span>
                             <span class="lcd-edit-icon" title="Editar importe con decimales">✏️</span>
                         </div>
-                        <button class="btn-numpad-tool btn-gear" t-on-click="() => this.openStoreModal()" title="Abrir Catálogo">
-                            ⚙
-                        </button>
                     </div>
 
                     <div class="virtus-keypad-matrix">
