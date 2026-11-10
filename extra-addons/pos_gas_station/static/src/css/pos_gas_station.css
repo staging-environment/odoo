@@ -6723,3 +6723,113 @@
 .paymentlines .paymentline:hover {
     border-color: #93c5fd !important;
 }
+
+/* ==========================================================================
+   ESTILOS DE SOBRANTE DE PREPAGO Y PRIORIDAD AMARILLA EN SURTIDOR
+   ========================================================================== */
+
+/* REGLA SUPREMA: SI EL SURTIDOR TIENE MONEDAS PENDIENTES, SIEMPRE ES AMARILLO AUNQUE LA PISTA ESTÉ CERRADA O BLOQUEADA */
+.aseproda-dispenser-box.has-uncollected-coin,
+.aseproda-dispenser-box.has-uncollected-coin.status-blocked,
+.aseproda-dispenser-box.has-uncollected-coin.status-prepago,
+.aseproda-dispenser-box.has-uncollected-coin.status-idle,
+.aseproda-dispenser-box.has-uncollected-coin.status-atendido {
+    border: 3px solid #ca8a04 !important;
+    background: #fefce8 !important;
+    box-shadow: 0 0 16px rgba(234, 179, 8, 0.6) !important;
+}
+
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-corner-tab,
+.aseproda-dispenser-box.has-uncollected-coin.status-blocked .dispenser-corner-tab,
+.aseproda-dispenser-box.has-uncollected-coin.status-prepago .dispenser-corner-tab {
+    background: #eab308 !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
+}
+
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-lower-body,
+.aseproda-dispenser-box.has-uncollected-coin.status-blocked .dispenser-lower-body,
+.aseproda-dispenser-box.has-uncollected-coin.status-prepago .dispenser-lower-body {
+    background: #eab308 !important;
+}
+
+.aseproda-dispenser-box.has-uncollected-coin .dispenser-padlock-panel {
+    background: #eab308 !important;
+}
+
+/* TARJETAS DE SOBRANTE DE PREPAGO EN EL MODAL DE MONEDITA */
+.pending-sale-card.prepay-refund-card {
+    border: 2px solid #f59e0b !important;
+    background: #fffbeb !important;
+}
+
+.sale-badge-refund {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    padding: 3px 8px !important;
+    border-radius: 4px !important;
+    letter-spacing: 0.5px !important;
+}
+
+.refund-highlight-box {
+    margin-top: 10px !important;
+    padding: 10px 14px !important;
+    background: #fee2e2 !important;
+    border: 1px solid #f87171 !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.refund-highlight-left {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.refund-label {
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    color: #991b1b !important;
+    text-transform: uppercase !important;
+}
+
+.refund-liters-note {
+    font-size: 11px !important;
+    color: #b91c1c !important;
+    font-weight: 600 !important;
+}
+
+.refund-highlight-amount {
+    font-size: 22px !important;
+    font-weight: 900 !important;
+    color: #dc2626 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+}
+
+.refund-actions-footer {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+.btn-refund-btn {
+    font-size: 11px !important;
+    padding: 7px 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    border-radius: 4px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+    transition: transform 0.1s ease !important;
+}
+
+.btn-refund-btn:active {
+    transform: scale(0.97) !important;
+}

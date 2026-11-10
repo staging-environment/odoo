@@ -675,9 +675,23 @@ class AgentePistaRepsol:
 
             logging.info(f"🎉 [VENTA LISTA] Calle {calle} completó {litros:.2f}L de {prod['name']} por {importe:.2f}€")
 
-            # Si era prepago (prefijado pagado de antemano), liberar y bloquear de inmediato
-            if p.get("has_prepay") or p.get("preset_amount", 0) > 0:
-                logging.info(f"Calle {calle} era prepago completado. Liberando y bloqueando pista...")
+            # Si era prepago (prefijado pagado de antemano)
+            is_prepay = p.get("has_prepay") or p.get("preset_amount", 0) > 0
+            preset_amt = p.get("preset_amount", 0.0)
+
+            # Si no echó todo el combustible prefijado (falta por suministrar > 0.05€)
+            if is_prepay and importe < (preset_amt - 0.05):
+                logging.info(f"⚠️ [SOBRANTE PREPAGO] Calle {calle}: prefijado {preset_amt:.2f}€ vs repostado {importe:.2f}€. Bloqueando pista pero manteniendo saldo para Odoo.")
+                p["status"] = "ready"
+                p["statusText"] = f"SOBRANTE {(preset_amt - importe):.2f}€"
+                if self.sdes_client and self.sdes_client.is_connected():
+                    try:
+                        self.sdes_client.bloquear(calle)
+                    except Exception:
+                        pass
+                self.enviar_estado_a_odoo(forzar=True)
+            elif is_prepay:
+                logging.info(f"Calle {calle} era prepago completado íntegramente. Liberando y bloqueando pista...")
                 self.liberar_calle_local(calle)
             else:
                 p["status"] = "ready"

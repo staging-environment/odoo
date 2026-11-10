@@ -317,7 +317,7 @@
 
                                 <!-- Cuerpo inferior: Cobrar si terminado, Suministro si echando, Autorizar para despacho -->
                                 <div class="dispenser-lower-body">
-                                    <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
+                                    <t t-if="shouldShowPrepayCoin(pump) || pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
                                         <div class="dispenser-padlock-panel ready-orange" title="Repostaje completado (Haga clic en la calle para cobrar)">
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
                                         </div>
@@ -1223,56 +1223,119 @@
                             <t t-else="">
                                 <div class="pending-sales-list">
                                     <t t-foreach="getPumpPendingSales(state.pendingModalPump.id)" t-as="sale" t-key="sale.id">
-                                        <div class="pending-sale-card">
-                                            <div class="sale-card-topbar">
-                                                <span class="sale-time"><i class="fa fa-clock-o me-1"/> <t t-esc="sale.timeStr"/></span>
-                                                <span class="sale-id-tag">Ref: <t t-esc="sale.id.slice(-6)"/></span>
-                                                <t t-if="sale.vehiclePlate">
-                                                    <span class="sale-plate-tag">🚗 <t t-esc="sale.vehiclePlate"/></span>
-                                                </t>
-                                                <span class="sale-badge-lleno">Modo Lleno</span>
-                                            </div>
-                                            
-                                            <div class="sale-card-items">
-                                                <!-- Línea de Combustible -->
-                                                <div class="sale-item-line fuel-item" t-if="sale.fuel">
-                                                    <div class="item-name">
-                                                        <span class="item-icon">⛽</span>
-                                                        <strong><t t-esc="sale.fuel.name"/></strong>
-                                                        <span class="item-details">(<t t-esc="sale.fuel.liters.toFixed(2)"/> L x <t t-esc="sale.fuel.price.toFixed(3)"/> €/L)</span>
-                                                    </div>
-                                                    <div class="item-amount font-weight-bold text-primary">
-                                                        <t t-esc="sale.fuel.amount.toFixed(2)"/> €
-                                                    </div>
+                                        <t t-if="sale.isPrepayRefund">
+                                            <!-- TARJETA ESPECÍFICA PARA SOBRANTE DE PREPAGO -->
+                                            <div class="pending-sale-card prepay-refund-card">
+                                                <div class="sale-card-topbar">
+                                                    <span class="sale-time"><i class="fa fa-clock-o me-1"/> <t t-esc="sale.timeStr"/></span>
+                                                    <span class="sale-id-tag">Ref: <t t-esc="sale.id.slice(-6)"/></span>
+                                                    <t t-if="sale.vehiclePlate">
+                                                        <span class="sale-plate-tag">🚗 <t t-esc="sale.vehiclePlate"/></span>
+                                                    </t>
+                                                    <span class="sale-badge-refund">⚠️ SOBRANTE DE PREPAGO</span>
+                                                    <t t-if="sale.orderRef">
+                                                        <span class="badge bg-secondary ms-1" style="font-size: 10px;">Ticket orig: <t t-esc="sale.orderRef"/></span>
+                                                    </t>
                                                 </div>
 
-                                                <!-- Artículos de Tienda si los hay -->
-                                                <t t-if="sale.storeLines &amp;&amp; sale.storeLines.length > 0">
-                                                    <t t-foreach="sale.storeLines" t-as="item" t-key="item.name">
-                                                        <div class="sale-item-line store-item">
-                                                            <div class="item-name">
-                                                                <span class="item-icon">🛒</span>
-                                                                <span><t t-esc="item.name"/></span>
-                                                                <span class="item-details" t-if="item.qty > 1">(x<t t-esc="item.qty"/>)</span>
-                                                            </div>
-                                                            <div class="item-amount">
-                                                                <t t-esc="item.amount.toFixed(2)"/> €
+                                                <div class="sale-card-items">
+                                                    <!-- Detalle de Combustible -->
+                                                    <div class="sale-item-line refund-item" t-if="sale.fuel">
+                                                        <div class="item-name">
+                                                            <span class="item-icon">⛽</span>
+                                                            <strong><t t-esc="sale.fuel.name"/></strong>
+                                                            <div class="refund-subdetails mt-1">
+                                                                <span class="badge bg-light text-dark border me-1">
+                                                                    Prefijado: <strong><t t-esc="sale.isMoney ? (sale.presetAmount.toFixed(2) + ' €') : (sale.presetLiters.toFixed(2) + ' L')"/></strong>
+                                                                </span>
+                                                                <span class="badge bg-light text-dark border">
+                                                                    Repostado: <strong><t t-esc="sale.dispensedAmount.toFixed(2)"/> € (<t t-esc="sale.dispensedLiters.toFixed(2)"/> L)</strong>
+                                                                </span>
                                                             </div>
                                                         </div>
-                                                    </t>
-                                                </t>
-                                            </div>
+                                                    </div>
 
-                                            <div class="sale-card-footer">
-                                                <div class="sale-total-box">
-                                                    <span class="total-label">TOTAL A COBRAR:</span>
-                                                    <span class="total-val"><t t-esc="sale.totalAmount.toFixed(2)"/> €</span>
+                                                    <!-- Caja destacada del importe a devolver en NEGATIVO -->
+                                                    <div class="refund-highlight-box">
+                                                        <div class="refund-highlight-left">
+                                                            <span class="refund-label">FALTA POR ECHARSE (A DEVOLVER):</span>
+                                                            <span class="refund-liters-note"><t t-esc="sale.refundLiters.toFixed(2)"/> L pendientes</span>
+                                                        </div>
+                                                        <div class="refund-highlight-amount">
+                                                            <t t-esc="sale.refundAmount.toFixed(2)"/> €
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <button class="btn-pay-pending-sale" t-on-click="() => this.checkoutPendingSale(sale)">
-                                                    <i class="fa fa-credit-card me-1"/> COBRAR ESTA VENTA ➜
-                                                </button>
+
+                                                <!-- Requirement 10: Botonera con las 4 únicas opciones permitidas -->
+                                                <div class="sale-card-footer refund-actions-footer">
+                                                    <button type="button" class="btn btn-primary fw-bold btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'ticket')" title="Emitir ticket simplificado con el sobrante en negativo">
+                                                        <i class="fa fa-print me-1"/> Hacer Ticket
+                                                    </button>
+                                                    <button type="button" class="btn btn-warning fw-bold text-dark btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'albaran')" title="Generar albarán de crédito si es cliente de cuenta">
+                                                        <i class="fa fa-file-text-o me-1"/> Hacer Albarán
+                                                    </button>
+                                                    <button type="button" class="btn btn-info fw-bold text-white btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'factura')" title="Emitir factura a cliente con CIF/NIF">
+                                                        <i class="fa fa-file-invoice me-1"/> Hacer Factura
+                                                    </button>
+                                                    <button type="button" class="btn btn-secondary fw-bold btn-refund-btn" t-on-click="() => this.closePendingSalesModal()" title="Mantener aparcado en la monedita sin emitir documento">
+                                                        <i class="fa fa-bookmark-o me-1"/> Guardar sin ticket
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
+                                        </t>
+                                        <t t-else="">
+                                            <div class="pending-sale-card">
+                                                <div class="sale-card-topbar">
+                                                    <span class="sale-time"><i class="fa fa-clock-o me-1"/> <t t-esc="sale.timeStr"/></span>
+                                                    <span class="sale-id-tag">Ref: <t t-esc="sale.id.slice(-6)"/></span>
+                                                    <t t-if="sale.vehiclePlate">
+                                                        <span class="sale-plate-tag">🚗 <t t-esc="sale.vehiclePlate"/></span>
+                                                    </t>
+                                                    <span class="sale-badge-lleno">Modo Lleno</span>
+                                                </div>
+                                                
+                                                <div class="sale-card-items">
+                                                    <!-- Línea de Combustible -->
+                                                    <div class="sale-item-line fuel-item" t-if="sale.fuel">
+                                                        <div class="item-name">
+                                                            <span class="item-icon">⛽</span>
+                                                            <strong><t t-esc="sale.fuel.name"/></strong>
+                                                            <span class="item-details">(<t t-esc="sale.fuel.liters.toFixed(2)"/> L x <t t-esc="sale.fuel.price.toFixed(3)"/> €/L)</span>
+                                                        </div>
+                                                        <div class="item-amount font-weight-bold text-primary">
+                                                            <t t-esc="sale.fuel.amount.toFixed(2)"/> €
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Artículos de Tienda si los hay -->
+                                                    <t t-if="sale.storeLines &amp;&amp; sale.storeLines.length > 0">
+                                                        <t t-foreach="sale.storeLines" t-as="item" t-key="item.name">
+                                                            <div class="sale-item-line store-item">
+                                                                <div class="item-name">
+                                                                    <span class="item-icon">🛒</span>
+                                                                    <span><t t-esc="item.name"/></span>
+                                                                    <span class="item-details" t-if="item.qty > 1">(x<t t-esc="item.qty"/>)</span>
+                                                                </div>
+                                                                <div class="item-amount">
+                                                                    <t t-esc="item.amount.toFixed(2)"/> €
+                                                                </div>
+                                                            </div>
+                                                        </t>
+                                                    </t>
+                                                </div>
+
+                                                <div class="sale-card-footer">
+                                                    <div class="sale-total-box">
+                                                        <span class="total-label">TOTAL A COBRAR:</span>
+                                                        <span class="total-val"><t t-esc="sale.totalAmount.toFixed(2)"/> €</span>
+                                                    </div>
+                                                    <button class="btn-pay-pending-sale" t-on-click="() => this.checkoutPendingSale(sale)">
+                                                        <i class="fa fa-credit-card me-1"/> COBRAR ESTA VENTA ➜
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </t>
                                     </t>
                                 </div>
                             </t>

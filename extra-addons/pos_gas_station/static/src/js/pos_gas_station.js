@@ -148,6 +148,16 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
+        // Cargar presets/prepagos activos desde almacenamiento persistente
+        if (!this.pos.pumpPresets) {
+            try {
+                const savedPresets = localStorage.getItem(`pos_gas_station_pump_presets_${this.configId}`);
+                this.pos.pumpPresets = savedPresets ? JSON.parse(savedPresets) : {};
+            } catch (e) {
+                this.pos.pumpPresets = {};
+            }
+        }
+
         this.state = useState({
             isCashMoveModalOpen: false,
             cashMoveType: "ingreso_seguridad",
@@ -976,10 +986,30 @@ export class UtrecarMainScreen extends Component {
                     data.pumps.forEach(p => {
                         const presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
                         if (presetInfo && presetInfo.hasPrepay) {
-                            // Si el servidor reporta que el prepago ya finalizó (has_prepay es false y preset_amount es 0), o si está en ready:
-                            if (p.status === "ready" || (!p.has_prepay && (!p.preset_amount || p.preset_amount === 0)) || (p.amount > 0 && p.status !== "dispensing" && Math.abs(p.amount - presetInfo.amount) > 0.05)) {
-                                if (this.state.pumpPresets) delete this.state.pumpPresets[p.id];
-                                if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
+                            // Rastrear el máximo suministrado en pista durante el repostaje
+                            if (p.amount > 0) presetInfo.maxDispensedAmount = Math.max(presetInfo.maxDispensedAmount || 0, p.amount);
+                            if (p.liters > 0) presetInfo.maxDispensedLiters = Math.max(presetInfo.maxDispensedLiters || 0, p.liters);
+
+                            // Detectar si el prepago ha finalizado en hardware/servidor
+                            const isDone = (p.status === "ready") || 
+                                           (!p.has_prepay && (!p.preset_amount || p.preset_amount === 0) && p.status !== "dispensing") ||
+                                           (p.amount > 0 && p.status !== "dispensing" && Math.abs(p.amount - presetInfo.amount) > 0.05);
+
+                            if (isDone) {
+                                const finalAmt = (p.amount > 0 ? p.amount : (presetInfo.maxDispensedAmount || 0));
+                                const finalLts = (p.liters > 0 ? p.liters : (presetInfo.maxDispensedLiters || 0));
+                                const presetAmt = presetInfo.amount || 0;
+                                const diffAmt = Math.round((presetAmt - finalAmt) * 100) / 100;
+
+                                if (diffAmt > 0.05) {
+                                    // SOBRANTE DE PREPAGO DETECTADO: El cliente no echó la cantidad completa
+                                    this.registerPrepayRefund(p, presetInfo, finalAmt, finalLts);
+                                } else {
+                                    // Prepago completado al 100%
+                                    if (this.state.pumpPresets) delete this.state.pumpPresets[p.id];
+                                    if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
+                                    this.savePumpPresets();
+                                }
                             } else {
                                 // MANTENER EN PANTALLA EL SURTIDOR AUTORIZADO HASTA QUE SE REPONGA
                                 p.status = "dispensing";
@@ -1000,6 +1030,7 @@ export class UtrecarMainScreen extends Component {
                             } else if (p.status === "idle" || p.status === "blocked") {
                                 if (this.state.pumpPresets) delete this.state.pumpPresets[p.id];
                                 if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
+                                this.savePumpPresets();
                             }
                         }
                     });
@@ -2314,24 +2345,24 @@ export class UtrecarMainScreen extends Component {
     shouldShowPrepayCoin(pump) {
         if (!pump) return false;
 
-        // Si la calle tiene cobros pendientes aparcados en su monedita (badge numérico > 0), SIEMPRE mostrarla
+        // Si la calle tiene cobros o sobrantes pendientes aparcados en su monedita (badge numérico > 0), SIEMPRE mostrarla
         if (this.getPumpPendingSalesCount(pump) > 0) {
             return true;
         }
 
-        // 1. REGLA ESTRICTA: En modo lleno sin aparcar, solo cuando la manguera se cuelga (ready)
+        // 1. En modo lleno postpago sin aparcar, solo cuando la manguera se cuelga (ready)
         if (pump.status !== "ready") {
             return false;
         }
 
-        // 2. En modalidad prepago / prefijado NUNCA debe aparecer
+        // 2. En modalidad prepago / prefijado activo no debe aparecer hasta que termine
         if (pump.has_prepay) {
             return false;
         }
         if (pump.preset_amount && pump.preset_amount > 0) {
             return false;
         }
-        const preset = this.state.pumpPresets && this.state.pumpPresets[pump.id];
+        const preset = (this.state.pumpPresets && this.state.pumpPresets[pump.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[pump.id]);
         if (preset) {
             if (preset.hasPrepay || (preset.amount > 0 && !preset.isLleno)) {
                 return false;
@@ -2346,6 +2377,79 @@ export class UtrecarMainScreen extends Component {
         // 4. Solo en MODO LLENO / POSTPAGO
         const isModoLleno = pump.is_lleno || Boolean(preset && preset.isLleno) || (!pump.has_prepay && !pump.preset_amount);
         return Boolean(isModoLleno);
+    }
+
+    registerPrepayRefund(pump, presetInfo, finalAmt, finalLts) {
+        const isMoney = Boolean(presetInfo.isMoney);
+        const unitPrice = presetInfo.unitPrice || pump.price || 1.45;
+        let diffAmt = 0;
+        let diffLts = 0;
+
+        if (isMoney) {
+            diffAmt = Math.round((presetInfo.amount - finalAmt) * 100) / 100;
+            diffLts = unitPrice > 0 ? Math.round((diffAmt / unitPrice) * 1000) / 1000 : 0;
+        } else {
+            diffLts = Math.round((presetInfo.liters - finalLts) * 1000) / 1000;
+            diffAmt = Math.round((diffLts * unitPrice) * 100) / 100;
+        }
+
+        if (diffAmt <= 0.02 && diffLts <= 0.02) {
+            return;
+        }
+
+        if (!this.pos.pendingSales) {
+            this.pos.pendingSales = {};
+        }
+        if (!this.pos.pendingSales[pump.id]) {
+            this.pos.pendingSales[pump.id] = [];
+        }
+
+        // Evitar duplicar el sobrante si ya existe para este ticket/operación
+        const alreadyRegistered = this.pos.pendingSales[pump.id].some(s => 
+            s.isPrepayRefund && s.orderRef === presetInfo.orderRef && Math.abs(s.refundAmount - (-diffAmt)) < 0.05
+        );
+
+        if (!alreadyRegistered) {
+            const refundSale = {
+                id: "refund_" + pump.id + "_" + Date.now(),
+                pumpId: pump.id,
+                isPrepayRefund: true,
+                orderRef: presetInfo.orderRef || "",
+                timestamp: Date.now(),
+                timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                vehiclePlate: presetInfo.vehiclePlate || pump.vehiclePlate || "",
+                partner: presetInfo.partner || null,
+                presetAmount: presetInfo.amount || (presetInfo.liters * unitPrice),
+                presetLiters: presetInfo.liters || (unitPrice > 0 ? presetInfo.amount / unitPrice : 0),
+                isMoney: isMoney,
+                dispensedAmount: finalAmt,
+                dispensedLiters: finalLts,
+                refundAmount: -diffAmt, // NEGATIVO e.g. -5.00 €
+                refundLiters: -diffLts, // NEGATIVO e.g. -3.448 L
+                totalAmount: -diffAmt,  // NEGATIVO
+                fuel: {
+                    name: presetInfo.fuel || pump.fuel || "Combustible",
+                    code: presetInfo.code || "GA",
+                    unitPrice: unitPrice,
+                    productId: presetInfo.productId || presetInfo.product_id
+                }
+            };
+            this.pos.pendingSales[pump.id].push(refundSale);
+            this.savePendingSales();
+        }
+
+        // Limpiar el preset
+        if (this.state.pumpPresets) delete this.state.pumpPresets[pump.id];
+        if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[pump.id];
+        this.savePumpPresets();
+
+        // Liberar la bomba en backend
+        try {
+            jsonrpc("/pos_gas_station/clear_pump", {
+                config_id: this.configId,
+                pump_id: pump.id
+            }).catch(e => console.debug("Liberar bomba tras sobrante:", e));
+        } catch (e) {}
     }
 
 
@@ -2402,6 +2506,27 @@ export class UtrecarMainScreen extends Component {
         } catch (e) {
             console.debug("Error guardando pendingSales:", e);
         }
+    }
+
+    savePumpPresets() {
+        try {
+            localStorage.setItem(`pos_gas_station_pump_presets_${this.configId}`, JSON.stringify(this.pos.pumpPresets || {}));
+        } catch (e) {
+            console.debug("Error guardando pumpPresets:", e);
+        }
+    }
+
+    hasPumpPendingRefund(pump) {
+        if (!pump) return false;
+        const sales = this.getPumpPendingSales(pump.id);
+        return sales.some(s => s.isPrepayRefund);
+    }
+
+    getPumpPendingRefundAmount(pump) {
+        if (!pump) return 0;
+        const sales = this.getPumpPendingSales(pump.id);
+        const refunds = sales.filter(s => s.isPrepayRefund);
+        return refunds.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
     }
 
     getPumpPendingSalesCount(pump) {
@@ -2604,6 +2729,116 @@ export class UtrecarMainScreen extends Component {
         }
         // Redirigir de inmediato a la pantalla de cobro
         this.pos.showScreen("PaymentScreen");
+    }
+
+    async processRefundAction(sale, actionType) {
+        this.closePendingSalesModal();
+
+        // 1. Obtener o crear orden limpia en TPV
+        let currentOrder = this.pos.get_order();
+        if (!currentOrder || (currentOrder.get_orderlines && currentOrder.get_orderlines().length > 0)) {
+            currentOrder = this.pos.add_new_order();
+        }
+
+        currentOrder.pending_sale_id = sale.id;
+        currentOrder.pending_pump_id = sale.pumpId;
+        currentOrder.is_refund_order = true;
+
+        // 2. Localizar el producto de combustible
+        const product = (sale.fuel && sale.fuel.productId ? this.pos.db.get_product_by_id(sale.fuel.productId) : null)
+                        || this.findFuelProduct(sale.fuel.code || "GA");
+        if (!product) {
+            alert("No se encontró el producto de combustible en el catálogo.");
+            return;
+        }
+
+        const unitPrice = sale.fuel.unitPrice || product.lst_price || 1.45;
+
+        // Según 'PUNTO 2': 1 Línea en negativo del sobrante no echado con nota descriptiva del prefijado
+        // Cantidad en negativo: refundQty (ej: -3.448 o -5.000)
+        // Total en negativo: refundTotal (ej: -5.00 €)
+        const refundQty = sale.refundLiters; 
+        const refundTotal = sale.refundAmount; 
+
+        // Calculamos precio unitario para el total neto objetivo
+        const netPrice = this.getNetPriceForTargetTotal(product, Math.abs(refundTotal), Math.abs(refundQty), currentOrder);
+
+        const descNota = sale.isMoney
+            ? `Calle ${sale.pumpId} - Sobrante de Prefijado [Prefijado: ${sale.presetAmount.toFixed(2)}€ | Repostado: ${sale.dispensedAmount.toFixed(2)}€ (${sale.dispensedLiters.toFixed(2)}L)]`
+            : `Calle ${sale.pumpId} - Sobrante de Prefijado [Prefijado: ${sale.presetLiters.toFixed(2)}L | Repostado: ${sale.dispensedLiters.toFixed(2)}L (${sale.dispensedAmount.toFixed(2)}€)]`;
+
+        await currentOrder.add_product(product, {
+            quantity: refundQty, // ¡CANTIDAD EN NEGATIVO!
+            price: netPrice,
+            extras: {
+                price_manually_set: true,
+                pump_id: sale.pumpId,
+                fuel_display_price: unitPrice,
+                customerNote: descNota
+            }
+        });
+
+        const activeLine = currentOrder.get_last_orderline();
+        if (activeLine) {
+            activeLine.pump_id = sale.pumpId;
+            activeLine.fuel_display_price = unitPrice;
+            if (activeLine.set_customer_note) {
+                activeLine.set_customer_note(descNota);
+            }
+
+            // Ajuste fino milimétrico para que el total con impuestos sea exactamente refundTotal
+            const curTotal = currentOrder.get_total_with_tax();
+            const diff = Math.round((refundTotal - curTotal) * 100) / 100;
+            if (Math.abs(diff) >= 0.01) {
+                const q = Math.abs(activeLine.get_quantity()) || 1;
+                activeLine.set_unit_price(activeLine.get_unit_price() - (diff / q));
+            }
+        }
+
+        // Asignar cliente previo si existía en la orden original
+        if (sale.partner) {
+            currentOrder.set_partner(sale.partner);
+        }
+        if (sale.vehiclePlate) {
+            this.state.vehiclePlate = sale.vehiclePlate;
+            if (currentOrder.set_note) currentOrder.set_note(`Matrícula: ${sale.vehiclePlate} | ${descNota}`);
+        } else if (currentOrder.set_note) {
+            currentOrder.set_note(descNota);
+        }
+
+        // Limpiar payment lines previas para arrancar limpio
+        if (currentOrder.get_paymentlines) {
+            for (const pl of [...currentOrder.get_paymentlines()]) {
+                currentOrder.remove_paymentline(pl);
+            }
+        }
+
+        this.state.orderVersion = Date.now();
+
+        // 3. Ejecutar la acción seleccionada (Requirement 10)
+        if (actionType === 'ticket') {
+            // Hacer Ticket: abre pantalla de pago con el total negativo preparado para devolver en efectivo o tarjeta
+            this.pos.showScreen("PaymentScreen");
+        } else if (actionType === 'factura') {
+            currentOrder.set_to_invoice(true);
+            this.pos.showScreen("PaymentScreen");
+            if (!currentOrder.get_partner()) {
+                setTimeout(() => {
+                    const clientBtn = document.querySelector(".button.set-partner");
+                    if (clientBtn) clientBtn.click();
+                }, 200);
+            }
+        } else if (actionType === 'albaran') {
+            currentOrder.is_albaran = true;
+            currentOrder.set_to_invoice(false);
+            this.pos.showScreen("PaymentScreen");
+            if (!currentOrder.get_partner()) {
+                setTimeout(() => {
+                    const clientBtn = document.querySelector(".button.set-partner");
+                    if (clientBtn) clientBtn.click();
+                }, 200);
+            }
+        }
     }
 
 
@@ -2857,6 +3092,13 @@ export class UtrecarMainScreen extends Component {
 
     async onPumpCardClick(pump) {
         this.state.selectedPumpId = pump.id;
+
+        // Si la calle tiene cobros o sobrantes pendientes en la monedita, abrir de inmediato la ventana
+        if (this.getPumpPendingSalesCount(pump) > 0) {
+            this.openPendingSalesModal(pump);
+            return;
+        }
+
         // Si ha finalizado repostaje o tiene saldo por cobrar: cobrar
         if (pump.status === 'ready' || (pump.amount > 0 && pump.status !== 'dispensing')) {
             this.onPumpClick(pump);
@@ -4070,7 +4312,7 @@ patch(PaymentScreen.prototype, {
         if (this.currentOrder.is_paid()) return true;
 
         const due = this.currentOrder.get_due();
-        if (due > 0) {
+        if (Math.abs(due) > 0.001) {
             const defaultPm = this.payment_methods_from_config.find(m => m.is_cash_count || (m.name && m.name.toLowerCase().includes("efectivo")))
                               || this.payment_methods_from_config[0];
             const existingLine = this.selectedPaymentLine || this.currentOrder.get_paymentlines()[0];
@@ -4286,14 +4528,28 @@ patch(PaymentScreen.prototype, {
                 if (!this.pos.pumpPresets) {
                     this.pos.pumpPresets = {};
                 }
+                const firstFuelLine = lines.find(l => l.pump_id === pumpId || (l.product && (l.product.default_code || '').includes('GAS') || (l.product.default_code || '').includes('SP95')));
+                const unitPrice = firstFuelLine ? (firstFuelLine.fuel_display_price || (firstFuelLine.get_unit_price ? firstFuelLine.get_unit_price() : 1.45)) : (prepay.unitPrice || 1.45);
+                const prodId = firstFuelLine && firstFuelLine.product ? firstFuelLine.product.id : prepay.productId;
+
                 this.pos.pumpPresets[pumpId] = {
                     amount: prepay.presetVal,
+                    liters: prepay.liters || (unitPrice > 0 ? prepay.presetVal / unitPrice : 0),
                     fuel: prepay.fuelName,
                     code: fuelCode,
+                    productId: prodId,
+                    unitPrice: unitPrice,
                     isMoney: prepay.isMoney,
                     hasPrepay: true,
-                    isLleno: false
+                    isLleno: false,
+                    orderRef: order.name,
+                    partner: order.get_partner ? order.get_partner() : null,
+                    vehiclePlate: this.state ? this.state.vehiclePlate : "",
+                    timestamp: Date.now()
                 };
+                if (!this.state.pumpPresets) this.state.pumpPresets = {};
+                this.state.pumpPresets[pumpId] = Object.assign({}, this.pos.pumpPresets[pumpId]);
+                this.savePumpPresets();
             }
 
             // 2. Limpiar bombas de líneas que NO sean de este prepago recién autorizado
