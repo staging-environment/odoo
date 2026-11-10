@@ -1259,17 +1259,6 @@
                                     </div>
                                 </div>
                                 <div class="shift-detail-header-right">
-                                    <div class="shift-status-ribbon">
-                                        <span class="ribbon-step">Nuevo</span>
-                                        <t t-if="state.selectedShiftOrder.is_albaran">
-                                            <span class="ribbon-step passed">Pagado</span>
-                                            <span class="ribbon-step active" style="background: #4f46e5; color: white; border-color: #4338ca;">Albarán Crédito</span>
-                                        </t>
-                                        <t t-else="">
-                                            <span t-attf-class="ribbon-step #{!state.selectedShiftOrder.is_invoiced ? 'active' : 'passed'}">Pagado</span>
-                                            <span t-attf-class="ribbon-step #{state.selectedShiftOrder.is_invoiced ? 'active' : ''}">Publicado</span>
-                                        </t>
-                                    </div>
                                     <button class="shift-btn-close" t-on-click="() => this.closeShiftOrdersModal()" title="Cerrar ventana flotante (Esc)">✖</button>
                                 </div>
                             </div>
