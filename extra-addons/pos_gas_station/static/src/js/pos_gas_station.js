@@ -2585,6 +2585,10 @@ export class UtrecarMainScreen extends Component {
                     fuelCode = "GA";
                 }
                 this.state.selectedFuel = fuelCode;
+            } else if (currentOrder.get_total_with_tax && currentOrder.get_total_with_tax() > 0) {
+                presetVal = currentOrder.get_total_with_tax();
+                this.state.presetValue = presetVal;
+                this.state.mode = "money";
             }
         }
 
@@ -2592,17 +2596,18 @@ export class UtrecarMainScreen extends Component {
         const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
         const isPrepay = Boolean(presetVal > 0 && !isLleno);
 
+        // VALIDACIÓN DE SEGURIDAD ESTRICTA: EL COMBUSTIBLE ES OBLIGATORIO SIEMPRE (PROHIBIDO MULTIPRODUCTO)
+        if (!this.state.selectedFuel) {
+            const infoTxt = presetVal > 0 ? ` (con importe prefijado de ${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'})` : "";
+            alert(`⚠️ ¡ATENCIÓN! Debe seleccionar obligatoriamente el tipo de combustible (Gasóleo A, Sin Plomo 95...) antes de autorizar la Calle ${pump.id}${infoTxt}.\n\nPor seguridad del vehículo NO está permitido el suministro multiproducto.`);
+            return;
+        }
+
         if (isPrepay) {
             // === FLUJO EXCLUSIVO PRE-PAGO ===
             // Validar que la calle no esté ocupada
             if (pump.status === "dispensing" || pump.status === "ready" || pump.amount > 0 || pump.statusText === "AUTORIZADO") {
                 alert(`⚠️ La Calle ${pump.id} ya está ocupada (${pump.statusText}).\nDebe cobrarse o liberarse antes de una nueva autorización.`);
-                return;
-            }
-
-            // OBLIGAR A SELECCIONAR COMBUSTIBLE SI ESTÁ EN PREFIJADO
-            if (!this.state.selectedFuel) {
-                alert(`⚠️ Ha marcado un importe prefijado (${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}).\nDebe seleccionar el tipo de combustible (Gasóleo A, Sin Plomo 95...) en el teclado antes de pulsar la calle.`);
                 return;
             }
 
@@ -2680,8 +2685,8 @@ export class UtrecarMainScreen extends Component {
             const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
             const isPrepay = Boolean(presetVal > 0 && !isLleno);
 
-            if (isPrepay && !this.state.selectedFuel) {
-                alert(`⚠️ Ha marcado un importe prefijado (${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}).\nDebe seleccionar el tipo de combustible antes de confirmar.`);
+            if (!this.state.selectedFuel) {
+                alert(`⚠️ ¡ATENCIÓN! Debe seleccionar obligatoriamente el tipo de combustible (Gasóleo A, Sin Plomo 95...) antes de confirmar la apertura de la calle.\n\nPor seguridad del vehículo no está permitido el suministro multiproducto.`);
                 return;
             }
 
@@ -2886,9 +2891,14 @@ export class UtrecarMainScreen extends Component {
             return;
         }
 
+        if (!this.state.selectedFuel) {
+            alert(`⚠️ ¡ATENCIÓN! Debe seleccionar obligatoriamente el tipo de combustible (Gasóleo A, Sin Plomo 95...) antes de autorizar la Calle ${pumpId}.\n\nPor seguridad no está permitido el suministro multiproducto.`);
+            return;
+        }
+
         const currentFuelObj = this.selectedFuelObj;
-        const fuelName = currentFuelObj ? currentFuelObj.name : "Multiproducto";
-        const fuelCode = currentFuelObj ? currentFuelObj.code : (this.getPumpFuelCode(targetPump) || "GA");
+        const fuelName = currentFuelObj ? currentFuelObj.name : "Combustible";
+        const fuelCode = currentFuelObj ? currentFuelObj.code : this.state.selectedFuel;
 
         if (!this.state.pumpPresets) {
             this.state.pumpPresets = {};
