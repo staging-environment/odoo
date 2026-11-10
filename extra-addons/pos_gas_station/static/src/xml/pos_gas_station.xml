@@ -1360,15 +1360,14 @@
                                     <table class="shift-orders-table">
                                         <thead>
                                             <tr>
-                                                <th>FECHA / HORA</th>
-                                                <th>Nº PEDIDO</th>
-                                                <th>RECIBO</th>
+                                                <th style="width: 140px;">FECHA / HORA</th>
+                                                <th style="width: 130px;">Nº TICKET</th>
+                                                <th style="width: 160px;">RECIBO</th>
                                                 <th>CLIENTE</th>
-                                                <th>CAJERO</th>
-                                                <th style="text-align: right;">TOTAL</th>
-                                                <th style="text-align: center;">ESTADO</th>
-                                                <th style="text-align: center;">FACTURA</th>
-                                                <th style="text-align: center;">ACCIONES</th>
+                                                <th style="width: 100px;">CAJERO</th>
+                                                <th style="width: 90px; text-align: right;">TOTAL</th>
+                                                <th style="width: 120px; text-align: center;">FACTURA</th>
+                                                <th style="width: 180px; text-align: center;">ACCIONES</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1390,7 +1389,7 @@
                                                         </t>
                                                     </td>
                                                     <td class="cell-user"><t t-esc="ord.user_name"/></td>
-                                                    <td class="cell-total">
+                                                    <td class="cell-total" style="text-align: right;">
                                                         <t t-if="ord.is_ticket_annulled">
                                                             <strong style="color: #dc2626; text-decoration: line-through;"><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
                                                         </t>
@@ -1398,23 +1397,15 @@
                                                             <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
                                                         </t>
                                                     </td>
-                                                    <td class="cell-state" style="text-align: center;">
-                                                        <t t-if="ord.is_ticket_annulled">
-                                                            <span class="badge-state annulled"><i class="fa fa-ban me-1"/>Anulado</span>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <span t-attf-class="badge-state #{ord.state}"><t t-esc="ord.state === 'invoiced' ? 'Facturado' : (ord.state === 'extraction' ? 'Extracción' : (ord.state === 'albaran' ? 'Albarán' : (ord.state === 'paid' ? 'Pagado' : ord.state)))"/></span>
-                                                        </t>
-                                                    </td>
                                                     <td class="cell-invoice" style="text-align: center;">
                                                         <t t-if="ord.is_invoiced">
                                                             <span class="badge-invoice"><i class="fa fa-file-text me-1"/> <t t-esc="ord.account_move_name"/></span>
                                                         </t>
                                                         <t t-elif="ord.is_ticket_annulled">
-                                                            <span class="text-danger small fw-bold">Ref: <t t-esc="ord.annulment_ref"/></span>
+                                                            <span class="badge-annul-ref">Ref: <t t-esc="ord.annulment_ref"/></span>
                                                         </t>
                                                         <t t-else="">
-                                                            <span class="badge-no-invoice">Sin Factura</span>
+                                                            <span class="badge-no-invoice">-</span>
                                                         </t>
                                                     </td>
                                                     <td class="cell-actions" style="text-align: center;" t-on-click.stop="">
