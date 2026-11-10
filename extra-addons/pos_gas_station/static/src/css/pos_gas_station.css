@@ -4893,10 +4893,10 @@
 }
 
 .shift-orders-modal-window {
-    width: 95vw !important;
-    max-width: 1360px !important;
-    height: 82vh !important;
-    max-height: 750px !important;
+    width: 880px !important;
+    max-width: 95vw !important;
+    height: 80vh !important;
+    max-height: 720px !important;
     background: #ffffff !important;
     border-radius: 12px !important;
     box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
@@ -5132,7 +5132,7 @@
     width: 100% !important;
     border-collapse: collapse !important;
     font-size: 11px !important;
-    table-layout: auto !important;
+    table-layout: fixed !important;
 }
 
 .shift-orders-table thead th {
@@ -5218,28 +5218,34 @@
 }
 
 .shift-order-row .cell-date {
-    width: 125px !important;
+    width: 120px !important;
     white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 .shift-order-row .cell-name {
-    width: 85px !important;
+    width: 80px !important;
     white-space: nowrap !important;
 }
 
 .shift-order-row .cell-ref {
-    width: 145px !important;
+    width: 140px !important;
     white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 .shift-order-row .cell-partner {
-    max-width: 220px !important;
+    width: 160px !important;
+    max-width: 160px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
 }
 
 .shift-order-row .cell-user {
+    width: 110px !important;
     max-width: 110px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
