@@ -67,6 +67,7 @@ function Send-Telegram([string]$msg) {
 }
 
 Write-CentinelaLog "Iniciando Centinela TPV 2 Ronda Norte..."
+Send-Telegram "hola hola (Centinela TPV 2 Ronda Norte activo y monitorizando en tiempo real)"
 
 $isFrozen = $false
 $freezeStartTime = $null
