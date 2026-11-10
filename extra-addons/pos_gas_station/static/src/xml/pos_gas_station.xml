@@ -2426,6 +2426,11 @@
     </t>
 
 
+    <!-- OCULTAR BOTÓN DE 3 RAYAS (MENÚ HAMBURGUESA) DE LA CABECERA DEL TPV -->
+    <t t-name="pos_gas_station.Navbar" t-inherit="point_of_sale.Navbar" t-inherit-mode="extension" owl="1">
+        <xpath expr="//li[hasclass('menu-button')]" position="replace" />
+    </t>
+
     <!-- SOBRESCRIBIR RECEIPTHEADER: ELIMINAR CAJERO ('ATENDIDO POR') Y TRACKING NUMBER GIGANTE -->
     <t t-name="pos_gas_station.ReceiptHeader" t-inherit="point_of_sale.ReceiptHeader" t-inherit-mode="extension" owl="1">
         <xpath expr="//div[hasclass('cashier')]" position="replace" />
