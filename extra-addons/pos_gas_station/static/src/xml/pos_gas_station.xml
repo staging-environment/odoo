@@ -1106,20 +1106,11 @@
                                     <div class="shift-header-titles">
                                         <div class="d-flex align-items-center gap-2">
                                             <h2 class="shift-title">Historial de Pedidos del Turno</h2>
-                                            <t t-if="state.shiftSessionInfo.prevId">
-                                                <div class="shift-session-switcher">
-                                                    <button t-attf-class="btn-shift-pill #{state.shiftSessionInfo.isCurrent ? 'active' : ''}" 
-                                                            t-on-click="() => this.switchShiftSession(state.shiftSessionInfo.currentId)"
-                                                            title="Ver operaciones del turno actual en curso">
-                                                        🟢 Turno Activo (<t t-esc="state.shiftSessionInfo.currentName"/>)
-                                                    </button>
-                                                    <button t-attf-class="btn-shift-pill #{!state.shiftSessionInfo.isCurrent ? 'active' : ''}" 
-                                                            t-on-click="() => this.switchShiftSession(state.shiftSessionInfo.prevId)"
-                                                            title="Ver operaciones del turno anterior recién cerrado">
-                                                        📁 Turno Anterior (<t t-esc="state.shiftSessionInfo.prevName"/>)
-                                                    </button>
-                                                </div>
-                                            </t>
+                                            <div class="shift-session-switcher">
+                                                <span class="btn-shift-pill active" title="Operaciones del turno actual en curso">
+                                                    🟢 Turno Activo (<t t-esc="state.shiftSessionInfo.currentName || (pos.pos_session ? pos.pos_session.name : '')"/>)
+                                                </span>
+                                            </div>
                                         </div>
                                         <span class="shift-subtitle">
                                             Sesión: <strong t-esc="state.shiftSessionInfo.viewName || (pos.pos_session ? pos.pos_session.name : '')"/> | 

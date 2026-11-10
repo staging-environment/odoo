@@ -1075,12 +1075,12 @@ export class UtrecarMainScreen extends Component {
         this.state.selectedShiftOrder = null;
     }
 
-    async loadShiftOrders(targetSessionId = null) {
+    async loadShiftOrders() {
         this.state.shiftOrdersLoading = true;
         try {
             const currentSessionId = this.pos.pos_session ? this.pos.pos_session.id : null;
             const configId = this.pos.config ? this.pos.config.id : null;
-            const sid = targetSessionId || this.state.shiftViewSessionId || currentSessionId;
+            const sid = currentSessionId;
             const res = await this.env.services.rpc("/pos_gas_station/get_shift_orders", {
                 session_id: sid,
                 config_id: configId,
@@ -1094,9 +1094,9 @@ export class UtrecarMainScreen extends Component {
                     currentName: this.pos.pos_session ? this.pos.pos_session.name : `Sesión ${currentSessionId}`,
                     viewId: res.session_id,
                     viewName: res.session_name,
-                    prevId: res.prev_session_id,
-                    prevName: res.prev_session_name,
-                    isCurrent: (!targetSessionId && !this.state.shiftViewSessionId) || (res.session_id === currentSessionId)
+                    prevId: null,
+                    prevName: null,
+                    isCurrent: true
                 };
             } else {
                 console.error("Error al cargar pedidos del turno:", res ? res.message : '');
@@ -1106,12 +1106,6 @@ export class UtrecarMainScreen extends Component {
         } finally {
             this.state.shiftOrdersLoading = false;
         }
-    }
-
-    async switchShiftSession(targetId) {
-        this.state.shiftViewSessionId = targetId;
-        this.state.selectedShiftOrder = null;
-        await this.loadShiftOrders(targetId);
     }
 
     get filteredShiftOrders() {
