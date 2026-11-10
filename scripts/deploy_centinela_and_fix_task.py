@@ -53,14 +53,14 @@ def main():
     # Detener proceso previo si existiera
     Get-Process powershell -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*centinela_tpv2.ps1*" } | Stop-Process -Force -ErrorAction SilentlyContinue
     
-    # Crear tarea para arranque automático al iniciar Windows
+    # Crear tarea para arranque en la sesión interactiva del usuario del TPV (permite leer MainWindowHandle y $p.Responding)
     $taskName = "CentinelaTPV2"
     $script = "C:\Utrecar\centinela_tpv2.ps1"
     $action = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
     schtasks /Delete /TN $taskName /F 2>$null | Out-Null
-    schtasks /Create /TN $taskName /TR $action /SC ONSTART /RU "SYSTEM" /F | Out-Null
+    schtasks /Create /TN $taskName /TR $action /SC ONLOGON /RU "madic-tpv" /IT /RL HIGHEST /F | Out-Null
 
-    # Arrancar tarea de inmediato en segundo plano
+    # Arrancar tarea de inmediato en la sesión interactiva
     schtasks /Run /TN $taskName | Out-Null
     Start-Sleep -Seconds 3
 

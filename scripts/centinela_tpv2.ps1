@@ -33,13 +33,36 @@ function Write-CentinelaLog([string]$msg) {
     Add-Content -Path $LogFile -Value $line -ErrorAction SilentlyContinue
 }
 
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 function Send-Telegram([string]$msg) {
+    $sent = $false
     try {
-        $url = "https://api.telegram.org/bot" + $BotToken + "/sendMessage"
-        curl.exe -s -X POST $url -d "chat_id=$ChatId" -d "text=$msg" | Out-Null
-        Write-CentinelaLog "Alerta Telegram enviada."
+        $url = "https://api.telegram.org/bot$BotToken/sendMessage"
+        $payload = @{
+            chat_id = $ChatId
+            text    = $msg
+        } | ConvertTo-Json -Compress
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
+        $resp = Invoke-RestMethod -Uri $url -Method Post -Body $bytes -ContentType "application/json; charset=utf-8" -TimeoutSec 10
+        if ($resp.ok) {
+            $sent = $true
+            Write-CentinelaLog "Alerta Telegram enviada directamente a Jose ($ChatId)."
+        }
     } catch {
-        Write-CentinelaLog "Error enviando alerta Telegram: $_"
+        Write-CentinelaLog "Error envio directo Telegram, probando pasarela Odoo: $_"
+    }
+
+    if (-not $sent) {
+        try {
+            $odooUrl = "https://odoo.utrecar.com/pos_gas_station/centinela_alert"
+            $payload = @{ text = $msg } | ConvertTo-Json -Compress
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
+            Invoke-RestMethod -Uri $odooUrl -Method Post -Body $bytes -ContentType "application/json; charset=utf-8" -TimeoutSec 10 | Out-Null
+            Write-CentinelaLog "Alerta Telegram enviada via pasarela Odoo a Jose."
+        } catch {
+            Write-CentinelaLog "Error enviando alerta via pasarela Odoo: $_"
+        }
     }
 }
 

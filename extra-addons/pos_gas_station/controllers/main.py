@@ -2714,3 +2714,82 @@ class PosGasStationController(http.Controller):
             'active': new_active,
             'message': f'Acceso de {user.name} en {comp_name} {action_text} correctamente'
         }
+
+    def _get_jose_telegram_credentials(self, env):
+        """Obtiene el Bot Token de Telegram y el Chat ID exclusivo de José desde admin-platform o parámetros."""
+        ICP = env['ir.config_parameter'].sudo()
+        bot_token = ICP.get_param('utrecar.telegram_bot_token', '8637497198:AAGJWp6cwDBu0CeTLkDVd-0nanl1ZtXFbjg')
+        jose_chat_id = ICP.get_param('utrecar.telegram_jose_chat_id', '5914920849')
+
+        # Sincronizar el telegram_chat_id del usuario de José desde admin-platform (MariaDB) si está disponible
+        try:
+            import pymysql
+            import pymysql.cursors
+            host = ICP.get_param('admin_platform.db_host', 'ddev-admin-platform-db')
+            port = int(ICP.get_param('admin_platform.db_port', 3306))
+            user_db = ICP.get_param('admin_platform.db_user', 'db')
+            pwd_db = ICP.get_param('admin_platform.db_password', 'db')
+            dbname = ICP.get_param('admin_platform.db_name', 'db')
+
+            conn = pymysql.connect(
+                host=host, port=port, user=user_db, password=pwd_db, database=dbname,
+                charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor, connect_timeout=2
+            )
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT telegram_chat_id
+                    FROM users
+                    WHERE email = 'jarodriguezbonilla@gmail.com'
+                      AND telegram_chat_id IS NOT NULL
+                      AND telegram_chat_id != ''
+                    LIMIT 1
+                """)
+                row = cur.fetchone()
+                if row and row.get('telegram_chat_id'):
+                    jose_chat_id = str(row['telegram_chat_id']).strip()
+            conn.close()
+        except Exception as e:
+            _logger.debug("Usando Chat ID por defecto de José para Telegram: %s", e)
+
+        return bot_token, jose_chat_id
+
+    @http.route('/pos_gas_station/centinela_alert', type='http', auth='public', methods=['POST', 'GET'], csrf=False)
+    def centinela_telegram_alert(self, **kw):
+        """Pasarela en Odoo para enviar alertas del Centinela (TPV 2 Ronda Norte) exclusivamente al Telegram de José."""
+        try:
+            import urllib.request
+            data = {}
+            if request.httprequest.data:
+                try:
+                    data = json.loads(request.httprequest.data.decode('utf-8'))
+                except Exception:
+                    data = {}
+            text = data.get('text') or kw.get('text') or ''
+            if not text:
+                return request.make_json_response({'status': 'error', 'message': 'Mensaje vacío'}, status=400)
+
+            bot_token, jose_chat_id = self._get_jose_telegram_credentials(request.env)
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            payload = json.dumps({
+                'chat_id': jose_chat_id,
+                'text': text,
+            }).encode('utf-8')
+
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={'Content-Type': 'application/json; charset=utf-8'},
+                method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                resp_body = json.loads(resp.read().decode('utf-8'))
+
+            return request.make_json_response({
+                'status': 'success',
+                'chat_id': jose_chat_id,
+                'telegram_ok': resp_body.get('ok', False)
+            })
+        except Exception as e:
+            _logger.exception("Error enviando alerta de Centinela a Telegram: %s", e)
+            return request.make_json_response({'status': 'error', 'message': str(e)}, status=500)
+
