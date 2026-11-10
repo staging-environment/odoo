@@ -5159,17 +5159,19 @@
     background: #f8fafc !important;
 }
 
-.shift-order-row.order-row-annulled {
-    background: #fff1f2 !important;
-    border-left: 4px solid #ef4444 !important;
-}
-
-.shift-order-row.order-row-annulled:hover {
-    background: #fee2e2 !important;
-}
-
+.shift-order-row.order-row-annulled,
 .shift-order-row.order-row-annulled td {
+    background-color: #fee2e2 !important;
     color: #991b1b !important;
+}
+
+.shift-order-row.order-row-annulled {
+    border-left: 5px solid #dc2626 !important;
+}
+
+.shift-order-row.order-row-annulled:hover,
+.shift-order-row.order-row-annulled:hover td {
+    background-color: #fecaca !important;
 }
 
 .shift-modal-footer {
@@ -5280,7 +5282,7 @@
     white-space: nowrap !important;
 }
 
-.badge-invoice {
+.badge-invoice, .badge-invoice-tag {
     background: #ecfdf5 !important;
     color: #047857 !important;
     padding: 1px 6px !important;

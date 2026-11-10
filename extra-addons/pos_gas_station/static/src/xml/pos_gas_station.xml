@@ -1361,13 +1361,12 @@
                                         <thead>
                                             <tr>
                                                 <th style="width: 140px;">FECHA / HORA</th>
-                                                <th style="width: 130px;">Nº TICKET</th>
-                                                <th style="width: 160px;">RECIBO</th>
+                                                <th style="width: 170px;">Nº TICKET</th>
+                                                <th style="width: 170px;">RECIBO</th>
                                                 <th>CLIENTE</th>
-                                                <th style="width: 100px;">CAJERO</th>
-                                                <th style="width: 90px; text-align: right;">TOTAL</th>
-                                                <th style="width: 120px; text-align: center;">FACTURA</th>
-                                                <th style="width: 180px; text-align: center;">ACCIONES</th>
+                                                <th style="width: 120px;">CAJERO</th>
+                                                <th style="width: 95px; text-align: right;">TOTAL</th>
+                                                <th style="width: 200px; text-align: center;">ACCIONES</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1377,6 +1376,7 @@
                                                     <td class="cell-name">
                                                         <strong><t t-esc="ord.name"/></strong>
                                                         <span t-if="ord.is_ticket_annulled" class="badge-annul-tag ms-1">⚠️ ANULADO</span>
+                                                        <span t-elif="ord.is_invoiced" class="badge-invoice-tag ms-1"><i class="fa fa-file-text me-1"/><t t-esc="ord.account_move_name"/></span>
                                                     </td>
                                                     <td class="cell-ref"><t t-esc="ord.pos_reference"/></td>
                                                     <td class="cell-partner" t-att-title="ord.partner_name ? (ord.partner_name + (ord.partner_vat ? ' (' + ord.partner_vat + ')' : '')) : '- Contado -'">
@@ -1395,17 +1395,6 @@
                                                         </t>
                                                         <t t-else="">
                                                             <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
-                                                        </t>
-                                                    </td>
-                                                    <td class="cell-invoice" style="text-align: center;">
-                                                        <t t-if="ord.is_invoiced">
-                                                            <span class="badge-invoice"><i class="fa fa-file-text me-1"/> <t t-esc="ord.account_move_name"/></span>
-                                                        </t>
-                                                        <t t-elif="ord.is_ticket_annulled">
-                                                            <span class="badge-annul-ref">Ref: <t t-esc="ord.annulment_ref"/></span>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <span class="badge-no-invoice">-</span>
                                                         </t>
                                                     </td>
                                                     <td class="cell-actions" style="text-align: center;" t-on-click.stop="">
