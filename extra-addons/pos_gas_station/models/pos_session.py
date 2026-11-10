@@ -298,20 +298,6 @@ class PosSession(models.Model):
                     (self.config_id.id, pm_cuenta.id)
                 )
 
-        # Homogeneizar nombres en base de datos para todas las terminales: 'Banco' -> 'Tarjeta', 'Efectivo...' -> 'Efectivo'
-        try:
-            self.env.cr.execute("""
-                UPDATE pos_payment_method 
-                SET name = 'Tarjeta' 
-                WHERE LOWER(name) LIKE '%banco%';
-
-                UPDATE pos_payment_method 
-                SET name = 'Efectivo' 
-                WHERE LOWER(name) LIKE 'efectivo%';
-            """)
-        except Exception:
-            pass
-
         # Adaptar nombres de métodos devueltos a la UI del TPV (Calculadora de Cobro)
         for p in pms:
             name = (p.get('name') or '').strip()
