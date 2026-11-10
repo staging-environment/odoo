@@ -3736,14 +3736,10 @@ patch(PaymentScreen.prototype, {
         }
     },
 
-    get payment_methods_from_config() {
-        const methods = super.payment_methods_from_config || [];
-        // Ocultar 'Cuenta de cliente' de la lista de botones manuales de la calculadora
-        return methods.filter(m => {
-            const name = (m.name || '').toLowerCase();
-            return !name.includes('cuenta') && !name.includes('customer account');
-        });
-    },
+    // NOTA: no definir aquí un getter `payment_methods_from_config`. El setup()
+    // del núcleo asigna esa propiedad y un getter sin setter lanza TypeError,
+    // dejando la pantalla de cobro en blanco. El filtro de 'Cuenta de cliente'
+    // se aplica en setup().
 
     get nextScreen() {
         return "ProductScreen";
