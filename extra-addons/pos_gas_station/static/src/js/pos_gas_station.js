@@ -518,7 +518,6 @@ export class UtrecarMainScreen extends Component {
         this.state.customGridProducts.push(item);
         this.saveCustomGrid();
     }
-    }
 
     removeProductFromGrid(index) {
         if (!this.state.customGridProducts || index < 0 || index >= this.state.customGridProducts.length) return;
