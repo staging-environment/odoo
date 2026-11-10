@@ -68,9 +68,8 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
         - *Hallazgo (10/11/2026):* El Centinela (`PID 14208`) ya corre en `SessionId 1` y el envío a Telegram en JSON UTF-8 hacia el Chat ID exclusivo de José (`5914920849`) funciona correctamente, pero cuando el cajero pulsa en TPV 2 para abrir/autorizar la pista de un surtidor se producen bloqueos de **2 a 4,5 segundos** (observados también en `Actividad.Log` en el hilo principal `[(1)]` durante `FuerzaRecalculoDeOperacionesPendientesDeLiquidar`).
         - *Por qué no saltó la alerta:* La propiedad nativa de Windows `$p.Responding` (`user32.dll!IsHungAppWindow`) tiene un umbral fijo de **5,0 segundos**, por lo que bloqueos de 2 a 4,8 segundos al comunicar con `SDES.exe` (`192.168.1.20:8777` vía `ClienteSDESNet.dll`) o `MySQL` (`3306`) congelan la pulsación del cajero sin que `$p.Responding` cambie a `False`. Además, `Actividad.Log` solo registra liquidaciones/cobros y no las órdenes de apertura de surtidor.
         - *Acción pendiente al retomar:* Inspeccionar los logs de `C:\SDES\*.log` en TPV 1 (`rondanorte`) y de `VirtusTPV Net` en TPV 2, e implementar en `centinela_tpv2.ps1` medición activa de latencia de ventana con `SendMessageTimeout` (`WM_NULL` con umbral de 1.500 ms) y monitorización de latencia de comandos a `SDES` (`:8777`) / `MySQL` (`:3306`), evitando sondeos TCP vacíos que incrementen `Aborted_connects` en MySQL 5.1.
-      - **Corrección de IP de VPN en `status.utrecar.com` (`10.8.0.9` ➔ `10.8.0.6`):**
-        - *Hallazgo (10/11/2026):* Las alarmas nocturnas de Telegram (`vpn_offline - Origen: Gasolinera Ronda Norte - La IP 10.8.0.9 no responde`) proceden de `status.utrecar.com` en el servidor Cloud (`utrecar-dev`), donde Ronda Norte tiene configurada por error la IP `10.8.0.9` (que corresponde a E.S. Rodalabota / El Cuervo) en lugar de su IP real `10.8.0.6`.
-        - *Acción pendiente al retomar:* Localizar el servicio de `status.utrecar.com` en `utrecar-dev`, corregir la IP de Ronda Norte a `10.8.0.6` y enriquecer las alertas con causa raíz (estado de handshake WireGuard vs caída de servicio local) y pasos de resolución.
+      - **Corrección de IP de VPN en `status.utrecar.com` (`10.8.0.9` ➔ `10.8.0.6`) [COMPLETADO 10/11/2026]:**
+        - *Resolución:* Corregida la base de datos MariaDB (`ddev-status-utrecar-db`) y el seeder `StationSeeder.php` en `utrecar-dev`. Se asignaron las IPs reales correctas para todas las estaciones (Ronda Norte `10.8.0.6`, Vistalegre `10.8.0.11`, El Cuervo `10.8.0.9`, Repsol `10.8.0.18`), cesando las falsas alarmas de desconexión de Ronda Norte.
     - **Procedimiento de Reversión / Deshacer (Rollback):**
       - Desactivar Centinela: `ssh rondanorte-tpv2 "schtasks /Change /TN CentinelaTPV2 /Disable && Stop-Process -Name powershell -Force"`
       - Desactivar Reciclaje TPV 1: `ssh rondanorte "schtasks /Change /TN ReciclajeVirtusTPV /Disable"`
@@ -285,3 +284,43 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 - Componente OWL: `EmployeeCompanyRolesView` (`extra-addons/pos_gas_station/static/src/js/employee_company_roles.js` y `employee_company_roles.xml`).
 - Casillas interactivas con dropdown flotante multi-selección (`role-dropdown-popover`) para A.R. Trieste (ID 4) y Utrecar S.L. (ID 1).
 - Los badges se renderizan dinámicamente con sus colores correspondientes (`#0284c7`, etc.) reflejando de inmediato los roles asignados.
+
+
+### 11. Gestión de Sobrantes de Prepago Incompleto, Monedita en Surtidor y Optimización del Historial de Turno (10/11/2026)
+
+#### A. Optimización del Historial de Turno y Anulación de Tickets:
+- **Maquetación compacta a una sola fila por ticket**:
+  - Eliminadas las columnas redundantes `ESTADO` y `FACTURA` de la tabla de turnos (`shift-orders-table`).
+  - Anchos de columna fijos ajustados: `FECHA` (135px), `Nº TICKET` (85px), `RECIBO` (155px), `CLIENTE` (180px con `text-overflow: ellipsis`), `CAJERO` (130px), `TOTAL` (80px), `ACCIONES` (220px).
+  - Ventana flotante ampliada a `1040px` con `overflow-x: hidden`, eliminando por completo el scroll horizontal.
+- **Identificación visual de tickets anulados**:
+  - Fondo en rojo pastel suave (`background-color: #fee2e2 !important; color: #991b1b !important; border-left: 5px solid #dc2626 !important;`).
+  - Columna de ticket compactada mostrando tooltip explicativo (`title="Ticket Anulado [TTTR_xxxx]"`).
+- **Corrección de ventana emergente de confirmación de anulación**:
+  - Clase `.annul-order-modal-backdrop` con `z-index: 10800 !important;` y `.utrecar-annul-confirm-modal` con `z-index: 10801 !important;`, garantizando que el modal de confirmación se muestre por encima del historial (`z-index: 10500`) y no quede oculto detrás.
+
+#### B. Gestión de Sobrantes de Prepago Incompleto (Puntos 9 y 10):
+- **Detección Automática de Sobrante**:
+  - Al validar un prepago en el TPV, los datos de la orden (`amount`, `liters`, `fuel`, `productId`, `unitPrice`, `orderRef`, `partner`, `isMoney`) se almacenan de forma persistente en `pos.pumpPresets` (`localStorage`).
+  - Durante el suministro, `fetchPumpsStatus()` rastrea `maxDispensedAmount` y `maxDispensedLiters`.
+  - Cuando el cliente cuelga la manguera habiendo repostado menos de lo prefijado (ej. pagó 20€/20L y sólo echó 15€/15L, diferencia > 0.05€):
+    - Se genera automáticamente una operación en `pos.pendingSales[pump.id]` con `isPrepayRefund: true`, `refundAmount: -diffAmt` y `refundLiters: -diffLts` en **negativo**.
+    - Se limpia el preset y se libera la calle en pista vía `/pos_gas_station/clear_pump`.
+- **Prioridad Visual Amarilla del Surtidor (`.has-uncollected-coin`)**:
+  - Siempre que un surtidor tenga moneditas pendientes (tanto por modo lleno postpago como por sobrante de prepago), la caja del surtidor permanece en **AMARILLO** (`border: 3px solid #ca8a04`, `background: #fefce8`, `corner-tab: #eab308` y cuerpo inferior `#eab308` con dial lock), **incluso si la pista se cierra o se conmuta a modo prepago/bloqueado**.
+- **Ventana Flotante de la Monedita para Sobrantes**:
+  - Al pulsar la monedita (o hacer clic en la tarjeta del surtidor), se muestra la tarjeta con la insignia `⚠️ SOBRANTE DE PREPAGO`.
+  - Muestra el detalle de `Prefijado` vs `Repostado en pista` y resalta en tamaño grande y color rojo el importe exacto pendiente:
+    `FALTA POR ECHARSE (A DEVOLVER): -X.XX € (-X.XX L)`.
+  - Botonera exclusiva con las 4 acciones permitidas (Punto 10):
+    1. 🖨️ **Hacer Ticket**: Prepara el ticket simplificado de devolución del sobrante en negativo.
+    2. 📋 **Hacer Albarán**: Genera el abono en albarán de crédito si es cliente de cuenta.
+    3. 📄 **Hacer Factura**: Emite factura rectificativa a cliente con CIF/NIF.
+    4. 💾 **Guardar sin ticket**: Mantiene la operación aparcada en la monedita sin emitir documento.
+- **Composición del Ticket (Punto 2)**:
+  - 1 sola línea de combustible con la cantidad en **negativo** (`-diffLts`) e importe neto ajustado para que el total con impuestos sea exactamente el importe en **negativo** (`-diffAmt`, ej: `-5,00 €`).
+  - Concepto en la línea: *`Calle X - Sobrante de Prefijado [Prefijado: 20.00 L | Repostado: 15.00 L]`*.
+  - Total del ticket en negativo: `-5,00 €`.
+  - Método `ensureOrderPaid()` en `PaymentScreen` adaptado (`Math.abs(due) > 0.001`) para permitir la cobertura y validación directa de tickets con importe negativo en efectivo o tarjeta.
+- **Sincronización con el Hardware / Agente de Pista (`agente_pista_odoo_bridge.py`)**:
+  - Modificado `marcar_calle_completada`: cuando `importe < (preset_amount - 0.05)`, el puente en Repsol (`10.8.0.18`) no limpia la calle ni pone importe a cero; bloquea la manguera y conserva `status = "ready"` y `statusText = "SOBRANTE X.XX€"`, manteniendo el saldo reportado a Odoo hasta su resolución desde el TPV.

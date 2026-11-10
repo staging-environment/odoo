@@ -86,6 +86,10 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **15/10/2026** | Prod & TPV | Corrección visual y funcional de autorización a Lleno (Postpago): eliminación de parpadeo de texto en tarjeta de surtidor y habilitación de bloqueo por hardware inmediato mediante botones 'BORRAR' y 'Cancelar' sin necesidad de ticket previo | Desplegado y verificado en Cloud y TPV |
 | **15/10/2026** | Prod & TPV | Corrección de apertura de modal de surtidor: eliminación del interceptor de clic en el panel inferior del candado para permitir que cualquier clic en la tarjeta abra limpiamente la ventana flotante de autorización | Desplegado y verificado en Cloud |
 | **15/10/2026** | Prod & Pista | Suministro en tiempo real y protocolo bidireccional SDES: decodificación nativa de MSG_CAMBIO_INFO (14) con litros/importe en vivo, ACK automático de MSG_NUEVA_OP (15), latido continuo MSG_PULSO (18) y liberación automática de hardware tras validar cobro en TPV | Desplegado en Cloud y en PC Repsol Trieste |
+| **10/11/2026** | Servidor Cloud (`utrecar-dev`) | Corrección de mapeo de IPs WireGuard VPN en `status.utrecar.com` (`ddev-status-utrecar-db` y `StationSeeder.php`): Ronda Norte actualizada a `10.8.0.6` | Cesaron falsas alarmas de desconexión de Ronda Norte en Telegram |
+| **10/11/2026** | TPV & Cloud | Optimización de Historial de Turno: tabla compacta a 1 línea por pedido (1040px sin scroll horizontal), filas anuladas en rojo pastel y corrección de z-index del modal de anulación | Desplegado en Cloud y verificado en TPV |
+| **10/11/2026** | TPV & Cloud & Pista | Gestión integral de sobrantes de prepago incompleto (Puntos 9 y 10): monedita con badge, surtidor en amarillo permanente incluso con pista cerrada, modal con importe negativo y 4 botones de acción (Ticket, Albarán, Factura, Guardar sin ticket) | Desplegado en Cloud y sincronizado con agente de pista en Repsol (`10.8.0.18`) |
+| **10/11/2026** | TPV & Cloud | Composición de ticket de devolución con 1 línea de combustible en negativo (`-diffLts` / `-diffAmt`) y soporte de cobro negativo en `PaymentScreen` | Desplegado y verificado en Cloud |
 
 ---
 
