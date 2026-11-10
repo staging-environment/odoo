@@ -30,11 +30,22 @@ export class GasStationClosePosPopup extends ClosePosPopup {
     getInitialState() {
         const initialState = { notes: "", payments: {} };
         if (this.pos.config.cash_control && this.props.default_cash_details) {
+            if (this.props.default_cash_details.name && this.props.default_cash_details.name.toLowerCase().includes("efectivo")) {
+                this.props.default_cash_details.name = "Efectivo";
+            }
             initialState.payments[this.props.default_cash_details.id] = {
                 counted: this.env.utils.formatCurrency(this.props.default_cash_details.payment_amount || 0, false),
             };
         }
         (this.props.other_payment_methods || []).forEach((pm) => {
+            if (pm.name) {
+                const lower = pm.name.toLowerCase();
+                if (lower.includes("banco")) {
+                    pm.name = "Tarjeta";
+                } else if (lower.includes("efectivo")) {
+                    pm.name = "Efectivo";
+                }
+            }
             initialState.payments[pm.id] = {
                 counted: this.env.utils.formatCurrency(pm.amount || 0, false),
             };
@@ -3362,6 +3373,17 @@ export class UtrecarMainScreen extends Component {
 patch(ProductScreen.prototype, {
     setup() {
         super.setup(...arguments);
+        if (this.pos && this.pos.payment_methods) {
+            for (const pm of this.pos.payment_methods) {
+                if (!pm || !pm.name) continue;
+                const lower = pm.name.toLowerCase();
+                if (lower.includes("banco")) {
+                    pm.name = "Tarjeta";
+                } else if (lower.includes("efectivo")) {
+                    pm.name = "Efectivo";
+                }
+            }
+        }
     }
 });
 
@@ -3448,7 +3470,38 @@ patch(PaymentScreen.prototype, {
     setup() {
         super.setup(...arguments);
         this.customInputBuffer = "";
+
+        const normalizePm = (pm) => {
+            if (!pm || !pm.name) return;
+            const lower = pm.name.toLowerCase();
+            if (lower.includes("banco")) {
+                pm.name = "Tarjeta";
+            } else if (lower.includes("efectivo")) {
+                pm.name = "Efectivo";
+            }
+        };
+
+        if (this.pos && this.pos.payment_methods) {
+            this.pos.payment_methods.forEach(normalizePm);
+        }
+        if (this.payment_methods_from_config) {
+            this.payment_methods_from_config.forEach(normalizePm);
+        }
+
         onMounted(() => {
+            if (this.pos && this.pos.payment_methods) {
+                this.pos.payment_methods.forEach(normalizePm);
+            }
+            if (this.payment_methods_from_config) {
+                this.payment_methods_from_config.forEach(normalizePm);
+            }
+            if (this.currentOrder) {
+                for (const pl of this.currentOrder.get_paymentlines()) {
+                    if (pl && pl.payment_method) {
+                        normalizePm(pl.payment_method);
+                    }
+                }
+            }
             this.customInputBuffer = "";
             this.numberBuffer.reset();
             // Auto-asignar método de pago por defecto (Efectivo) si no hay ninguno
@@ -3456,6 +3509,7 @@ patch(PaymentScreen.prototype, {
                 const defaultPm = this.payment_methods_from_config.find(m => m.is_cash_count || (m.name && m.name.toLowerCase().includes("efectivo")))
                                   || this.payment_methods_from_config[0];
                 if (defaultPm) {
+                    normalizePm(defaultPm);
                     this.addNewPaymentLine(defaultPm);
                 }
             }
@@ -3471,6 +3525,14 @@ patch(PaymentScreen.prototype, {
 
     addNewPaymentLine(paymentMethod) {
         if (!this.currentOrder) return false;
+        if (paymentMethod && paymentMethod.name) {
+            const lower = paymentMethod.name.toLowerCase();
+            if (lower.includes("banco")) {
+                paymentMethod.name = "Tarjeta";
+            } else if (lower.includes("efectivo")) {
+                paymentMethod.name = "Efectivo";
+            }
+        }
         this.customInputBuffer = "";
         const lines = [...this.currentOrder.get_paymentlines()];
         // Si hay una única línea de pago y se pulsa otro método de pago (por ej. cambiar de Efectivo a Tarjeta o Cuenta),
@@ -3489,6 +3551,14 @@ patch(PaymentScreen.prototype, {
         }
         const res = super.addNewPaymentLine(paymentMethod);
         if (this.currentOrder.selected_paymentline) {
+            if (this.currentOrder.selected_paymentline.payment_method) {
+                const lower = (this.currentOrder.selected_paymentline.payment_method.name || "").toLowerCase();
+                if (lower.includes("banco")) {
+                    this.currentOrder.selected_paymentline.payment_method.name = "Tarjeta";
+                } else if (lower.includes("efectivo")) {
+                    this.currentOrder.selected_paymentline.payment_method.name = "Efectivo";
+                }
+            }
             this.numberBuffer.reset();
             // Siempre arrancar la línea a 0,00 € para que la calculadora no herede importes
             this.currentOrder.selected_paymentline.set_amount(0);

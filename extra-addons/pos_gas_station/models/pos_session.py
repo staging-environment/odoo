@@ -297,4 +297,28 @@ class PosSession(models.Model):
                     "INSERT INTO pos_config_pos_payment_method_rel (pos_config_id, pos_payment_method_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                     (self.config_id.id, pm_cuenta.id)
                 )
+
+        # Homogeneizar nombres en base de datos para todas las terminales: 'Banco' -> 'Tarjeta', 'Efectivo...' -> 'Efectivo'
+        try:
+            self.env.cr.execute("""
+                UPDATE pos_payment_method 
+                SET name = 'Tarjeta' 
+                WHERE LOWER(name) LIKE '%banco%';
+
+                UPDATE pos_payment_method 
+                SET name = 'Efectivo' 
+                WHERE LOWER(name) LIKE 'efectivo%';
+            """)
+        except Exception:
+            pass
+
+        # Adaptar nombres de métodos devueltos a la UI del TPV (Calculadora de Cobro)
+        for p in pms:
+            name = (p.get('name') or '').strip()
+            name_lower = name.lower()
+            if 'banco' in name_lower:
+                p['name'] = 'Tarjeta'
+            elif name_lower.startswith('efectivo'):
+                p['name'] = 'Efectivo'
+
         return pms
