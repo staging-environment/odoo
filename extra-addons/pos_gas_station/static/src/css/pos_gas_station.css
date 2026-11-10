@@ -344,11 +344,34 @@
     flex: 1 1 auto !important;
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
-    grid-template-rows: repeat(5, 1fr) !important;
-    gap: 2px !important;
-    padding: 2px !important;
+    grid-auto-rows: minmax(68px, 1fr) !important;
+    gap: 3px !important;
+    padding: 3px !important;
     background: #64748b !important;
     height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: #3b82f6 #cbd5e1 !important;
+}
+
+.virtus-store-grid::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.virtus-store-grid::-webkit-scrollbar-track {
+    background: #cbd5e1 !important;
+    border-radius: 4px !important;
+}
+
+.virtus-store-grid::-webkit-scrollbar-thumb {
+    background: #3b82f6 !important;
+    border-radius: 4px !important;
+}
+
+.virtus-store-grid::-webkit-scrollbar-thumb:hover {
+    background: #2563eb !important;
 }
 
 .store-item-btn {
