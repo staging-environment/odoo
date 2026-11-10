@@ -5355,6 +5355,20 @@
 .btn-tbl-pdf { color: #b91c1c !important; border-color: #fecaca !important; background: #fff1f2 !important; }
 
 /* MODAL FLOTANTE DE CONFIRMACIÓN DE ANULACIÓN DE TICKET */
+.annul-order-modal-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 10800 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
 .utrecar-annul-confirm-modal {
     width: 480px !important;
     max-width: 90vw !important;
@@ -5366,6 +5380,7 @@
     flex-direction: column !important;
     overflow: hidden !important;
     animation: shiftModalFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    z-index: 10801 !important;
 }
 
 .annul-modal-header {
@@ -5375,6 +5390,23 @@
     display: flex !important;
     align-items: center !important;
     gap: 12px !important;
+}
+
+.annul-modal-header .btn-modal-close {
+    background: transparent !important;
+    border: none !important;
+    color: #991b1b !important;
+    font-size: 18px !important;
+    cursor: pointer !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    line-height: 1 !important;
+    transition: all 0.15s ease !important;
+}
+
+.annul-modal-header .btn-modal-close:hover {
+    background: #fee2e2 !important;
+    color: #dc2626 !important;
 }
 
 .annul-header-icon {

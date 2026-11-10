@@ -2394,7 +2394,7 @@
 
         <!-- MODAL FLOTANTE DE CONFIRMACIÓN DE ANULACIÓN DE TICKET -->
         <t t-if="state.isAnnulOrderModalOpen &amp;&amp; state.annulModalOrder">
-            <div class="utrecar-modal-backdrop" style="z-index: 10600;" t-on-click="() => this.closeAnnulOrderModal()">
+            <div class="annul-order-modal-backdrop" t-on-click="() => this.closeAnnulOrderModal()">
                 <div class="utrecar-annul-confirm-modal" t-on-click.stop="">
                     <!-- Cabecera -->
                     <div class="annul-modal-header">
