@@ -21,8 +21,12 @@
 /* OCULTAR BOTÓN DE 3 RAYAS (MENÚ HAMBURGUESA) ARRIBA A LA DERECHA EN EL TPV */
 .pos .pos-topheader .menu-button,
 .pos .pos-rightheader .menu-button,
+.pos .pos-topheader .sub-menu,
+.pos .pos-rightheader .sub-menu,
 .pos .pos-topheader .navbar-button.menu-button,
-.pos .pos-topheader .status-buttons .menu-button {
+.pos .pos-topheader .status-buttons .menu-button,
+.pos .pos-rightheader .navbar-button:has(.fa-bars),
+.pos .pos-rightheader .fa-bars {
     display: none !important;
 }
 
