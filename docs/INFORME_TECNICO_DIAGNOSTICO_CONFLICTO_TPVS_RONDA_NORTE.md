@@ -196,3 +196,31 @@ La causa fundamental del bloqueo de los puestos en Ronda Norte no era un fallo d
 
 La implementación transitoria de las 5 acciones de mitigación proporcionará estabilidad inmediata a los cajeros en Aseproda. No obstante, **la solución definitiva y de futuro reside en la ejecución del PRD de Odoo 17 POS**, cuya arquitectura distribuida, reactiva y desacoplada garantiza la independencia total de licencias y el fin definitivo de estos bloqueos en pista.
 
+---
+
+## 7. Último Punto Pendiente de Tratar (Actualización 10/11/2026 — Aparcado para Retomar)
+
+Durante el seguimiento operativo del **10 de Noviembre de 2026**, tras validar el envío de notificaciones de Telegram en JSON UTF-8 exclusivamente al Chat ID de José (`5914920849`) y la pasarela de respaldo en Odoo (`/pos_gas_station/centinela_alert`), se han identificado y documentado dos puntos técnicos pendientes para retomar en la siguiente sesión de infraestructura:
+
+### 7.1. Bloqueos de 2 a 4,5 segundos al abrir la pista de un surtidor en TPV 2 (No detectados por umbral de 5s de Windows)
+* **Evidencia observada (10/11/2026):**
+  * El proceso `centinela_tpv2.ps1` (`PID 14208`) se encuentra corriendo en la sesión interactiva del cajero (`SessionId 1`).
+  * Sin embargo, esta mañana se produjeron varios bloqueos en el TPV 2 en el momento de **abrir/autorizar la pista de un surtidor** sin que saltara alerta en Telegram.
+  * Al auditar `Actividad.Log` en el TPV 2 filtrando el ruido de `TimerExpedicionesPendientes`, se comprobó que:
+    1. Cada acción del hilo principal de interfaz `[(1)]` (`FuerzaRecalculoDeOperacionesPendientesDeLiquidar`) sufre bloqueos síncronos de entre **2,4 y 4,24 segundos** esperando respuesta de TPV 1 (`09:53:54` ➔ `09:53:58`, `09:56:44` ➔ `09:56:47`, `10:01:16` ➔ `10:01:20`).
+    2. Las órdenes de apertura/desbloqueo de surtidor (`ClienteSDESNet.dll` hacia `192.168.1.20:8777`) no se vuelcan en `Actividad.Log` del TPV 2.
+    3. La propiedad `$p.Responding` de Windows (`IsHungAppWindow` en `user32.dll`) **solo cambia a `False` cuando la ventana acumula más de 5.000 ms (5 segundos) sin procesar mensajes Win32**. Cualquier congelación de 2 a 4,8 segundos al pulsar "Abrir surtidor" bloquea al cajero en pantalla pero pasa por debajo del umbral de 5 segundos de `$p.Responding`.
+* **Plan de acción al retomar:**
+  1. Inspeccionar los logs de `C:\SDES\*.log` (`dw.log`) en TPV 1 (`rondanorte`) y el resto de logs de `VirtusTPV Net` para medir la demora exacta de `SDES.exe` al desbloquear calle desde el TPV 2.
+  2. Sustituir en `centinela_tpv2.ps1` la consulta estándar `$p.Responding` (5s) por una llamada P/Invoke a `user32.dll!SendMessageTimeout` (`WM_NULL`, `SMTO_ABORTIFHUNG`) con umbral configurable de **1.500 ms**, capaz de cazar bloqueos de 1,5 a 4,5 segundos al abrir surtidor.
+  3. Evitar sondeos TCP vacíos cada 2s contra MySQL `3306` (para no incrementar `Aborted_connects` en MySQL 5.1) y revisar el ahorro de energía de la tarjeta de red en **TPV 1 (`192.168.1.20`)**.
+
+### 7.2. Alarmas Nocturnas de `status.utrecar.com` (`vpn_offline` en IP `10.8.0.9`)
+* **Evidencia observada (10/11/2026):**
+  * Las alertas nocturnas recibidas en Telegram (`Incidencia Detectada - status.utrecar.com | Origen: Gasolinera Ronda Norte | Tipo: vpn_offline | La IP 10.8.0.9 no responde`) **no proceden del Centinela del TPV 2**, sino del monitor central `status.utrecar.com` alojado en el servidor Cloud (`utrecar-dev`).
+  * En `status.utrecar.com`, la **Gasolinera Ronda Norte tiene asignada por error la IP `10.8.0.9`** (correspondiente a E.S. Rodalabota / El Cuervo), cuando la IP real de WireGuard de Ronda Norte es **`10.8.0.6`**.
+* **Plan de acción al retomar:**
+  1. Localizar en `utrecar-dev` el script/configuración de `status.utrecar.com` (`grep -rn 'vpn_offline' /home/developer/ /var/www/`).
+  2. Corregir la IP de Ronda Norte de `10.8.0.9` a `10.8.0.6`.
+  3. Ampliar el mensaje de alerta de `status.utrecar.com` para incluir el diagnóstico de causa raíz (expiración de handshake WireGuard por caída de fibra/router frente a caída de servicio en el TPV) y las instrucciones o auto-reparación correspondientes.
+

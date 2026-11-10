@@ -61,9 +61,16 @@ Este archivo documenta la configuración del entorno, infraestructura, accesos, 
       - Tarea programada `CentinelaTPV2` (`C:\Utrecar\iniciar_centinela.bat` -> `centinela_tpv2.ps1`) ejecutándose 24/7 en TPV 2 como `SYSTEM`.
       - Monitoriza cada 2s la respuesta de GUI (`Responding`), memoria y sockets de red hacia TPV 1 (`:3306` y `:8777`).
       - Envía alertas instantáneas a Telegram (`@utrecar_alertas_bot`) a Jose (`5914920849`) en el momento exacto en que la pantalla se congela, con fotografía forense y aviso de recuperación.
-    - **Pendientes para siguiente fase:**
+    - **Pendientes para siguiente fase (Actualizado 10/11/2026):**
       - Partición de series fiscales (`TTRN2` / `FTRN2`).
       - Migración de puerto de impresora Epson de WSD a TCP/IP estándar.
+      - **Detección de micro-bloqueos al abrir pista de surtidor en TPV 2 (< 5s):**
+        - *Hallazgo (10/11/2026):* El Centinela (`PID 14208`) ya corre en `SessionId 1` y el envío a Telegram en JSON UTF-8 hacia el Chat ID exclusivo de José (`5914920849`) funciona correctamente, pero cuando el cajero pulsa en TPV 2 para abrir/autorizar la pista de un surtidor se producen bloqueos de **2 a 4,5 segundos** (observados también en `Actividad.Log` en el hilo principal `[(1)]` durante `FuerzaRecalculoDeOperacionesPendientesDeLiquidar`).
+        - *Por qué no saltó la alerta:* La propiedad nativa de Windows `$p.Responding` (`user32.dll!IsHungAppWindow`) tiene un umbral fijo de **5,0 segundos**, por lo que bloqueos de 2 a 4,8 segundos al comunicar con `SDES.exe` (`192.168.1.20:8777` vía `ClienteSDESNet.dll`) o `MySQL` (`3306`) congelan la pulsación del cajero sin que `$p.Responding` cambie a `False`. Además, `Actividad.Log` solo registra liquidaciones/cobros y no las órdenes de apertura de surtidor.
+        - *Acción pendiente al retomar:* Inspeccionar los logs de `C:\SDES\*.log` en TPV 1 (`rondanorte`) y de `VirtusTPV Net` en TPV 2, e implementar en `centinela_tpv2.ps1` medición activa de latencia de ventana con `SendMessageTimeout` (`WM_NULL` con umbral de 1.500 ms) y monitorización de latencia de comandos a `SDES` (`:8777`) / `MySQL` (`:3306`), evitando sondeos TCP vacíos que incrementen `Aborted_connects` en MySQL 5.1.
+      - **Corrección de IP de VPN en `status.utrecar.com` (`10.8.0.9` ➔ `10.8.0.6`):**
+        - *Hallazgo (10/11/2026):* Las alarmas nocturnas de Telegram (`vpn_offline - Origen: Gasolinera Ronda Norte - La IP 10.8.0.9 no responde`) proceden de `status.utrecar.com` en el servidor Cloud (`utrecar-dev`), donde Ronda Norte tiene configurada por error la IP `10.8.0.9` (que corresponde a E.S. Rodalabota / El Cuervo) en lugar de su IP real `10.8.0.6`.
+        - *Acción pendiente al retomar:* Localizar el servicio de `status.utrecar.com` en `utrecar-dev`, corregir la IP de Ronda Norte a `10.8.0.6` y enriquecer las alertas con causa raíz (estado de handshake WireGuard vs caída de servicio local) y pasos de resolución.
     - **Procedimiento de Reversión / Deshacer (Rollback):**
       - Desactivar Centinela: `ssh rondanorte-tpv2 "schtasks /Change /TN CentinelaTPV2 /Disable && Stop-Process -Name powershell -Force"`
       - Desactivar Reciclaje TPV 1: `ssh rondanorte "schtasks /Change /TN ReciclajeVirtusTPV /Disable"`
