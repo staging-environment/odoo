@@ -3731,6 +3731,15 @@ patch(PaymentScreen.prototype, {
         }
     },
 
+    get payment_methods_from_config() {
+        const methods = super.payment_methods_from_config || [];
+        // Ocultar 'Cuenta de cliente' de la lista de botones manuales de la calculadora
+        return methods.filter(m => {
+            const name = (m.name || '').toLowerCase();
+            return !name.includes('cuenta') && !name.includes('customer account');
+        });
+    },
+
     get nextScreen() {
         return "ProductScreen";
     },
