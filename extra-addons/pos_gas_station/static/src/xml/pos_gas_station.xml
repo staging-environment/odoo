@@ -153,6 +153,9 @@
                                         t-att-title="prod.display_name"
                                         t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
                                     <img t-att-src="prod.bg_image" class="store-product-img-tag" alt="Producto"/>
+                                    <t t-if="prod.lst_price">
+                                        <span class="store-item-price-badge"><t t-esc="(prod.lst_price || 0).toFixed(2)"/> €</span>
+                                    </t>
                                 </button>
                             </t>
                             <t t-elif="prod.bg_image &amp;&amp; !prod.text_only">

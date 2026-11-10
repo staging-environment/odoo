@@ -434,12 +434,25 @@ export class UtrecarMainScreen extends Component {
                     };
                 }
             }
-            if (typeof item.id === 'string' && item.bg_image && item.bg_image.includes('/pos_gas_station/')) {
-                return {
-                    ...item,
-                    is_full_art: true,
-                    text_only: false,
-                };
+            if (typeof item.id === 'string') {
+                const defaultItems = this.getDefaultStoreProducts();
+                const matched = defaultItems.find(d => d.id === item.id);
+                if (matched) {
+                    return {
+                        ...matched,
+                        ...item,
+                        lst_price: (item.lst_price !== undefined && item.lst_price !== null) ? item.lst_price : matched.lst_price,
+                        is_full_art: matched.is_full_art !== undefined ? matched.is_full_art : (item.bg_image ? !item.text_only : false),
+                        text_only: Boolean(matched.text_only),
+                    };
+                }
+                if (item.bg_image && item.bg_image.includes('/pos_gas_station/')) {
+                    return {
+                        ...item,
+                        is_full_art: true,
+                        text_only: false,
+                    };
+                }
             }
             return {
                 ...item,
