@@ -136,56 +136,15 @@
                             🛒 <span class="page-indicator"><t t-esc="'P' + state.currentStorePage"/></span>
                         </button>
                         <div class="btn-dropdown-wrapper">
-                            <button class="btn-store-cat btn-cat-nav" t-on-click="() => this.togglePageDropdown()" title="Desplegar Páginas y Categorías de Parrilla">
-                                ▼
+                            <button class="btn-store-cat btn-cat-nav btn-open-grid-config" t-on-click="() => this.openGridConfigModal()" title="Personalizar Cuadrícula del TPV (Quitar / Añadir productos)">
+                                <i class="fa fa-shopping-cart" style="font-size: 16px;"/>
                             </button>
-                            <t t-if="state.isPageDropdownOpen">
-                                <div class="virtus-page-dropdown-menu" t-on-click.stop="">
-                                    <div class="dropdown-header-title">📄 PÁGINAS DE LA PARRILLA</div>
-                                    <div t-attf-class="dropdown-page-item #{state.currentStorePage === 1 ? 'active' : ''}" t-on-click="() => this.setStorePage(1)">
-                                        <span class="page-icon">⭐</span>
-                                        <div class="page-info">
-                                            <strong>Página 1: Favoritos</strong>
-                                            <small>Hielo, Bebidas, Cafés y Butano</small>
-                                        </div>
-                                    </div>
-                                    <div t-attf-class="dropdown-page-item #{state.currentStorePage === 2 ? 'active' : ''}" t-on-click="() => this.setStorePage(2)">
-                                        <span class="page-icon">🥤</span>
-                                        <div class="page-info">
-                                            <strong>Página 2: Bebidas y Cafetería</strong>
-                                            <small>Aguas, Refrescos, Energéticas y Cafés</small>
-                                        </div>
-                                    </div>
-                                    <div t-attf-class="dropdown-page-item #{state.currentStorePage === 3 ? 'active' : ''}" t-on-click="() => this.setStorePage(3)">
-                                        <span class="page-icon">🚗</span>
-                                        <div class="page-info">
-                                            <strong>Página 3: Auto, Aceites y Accesorios</strong>
-                                            <small>Aceites 2T, Anticongelante, AdBlue y Repuestos</small>
-                                        </div>
-                                    </div>
-                                    <div t-attf-class="dropdown-page-item #{state.currentStorePage === 4 ? 'active' : ''}" t-on-click="() => this.setStorePage(4)">
-                                        <span class="page-icon">🍫</span>
-                                        <div class="page-info">
-                                            <strong>Página 4: Snacks y Alimentación</strong>
-                                            <small>Patatas, Dulces, Chocolates y Tabaco</small>
-                                        </div>
-                                    </div>
-                                    <div class="dropdown-divider"></div>
-                                    <div class="dropdown-page-item dropdown-catalog-item" t-on-click="() => this.openStoreModalFromDropdown()">
-                                        <span class="page-icon">📦</span>
-                                        <div class="page-info">
-                                            <strong>Abrir Catálogo Completo...</strong>
-                                            <small>Búsqueda por código interno o código de barras</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </t>
                         </div>
                     </div>
 
-                    <!-- CUADRÍCULA DIRECTA DE 20 PRODUCTOS VIRTUSTPV (5x4) -->
+                    <!-- CUADRÍCULA DIRECTA DE PRODUCTOS VIRTUSTPV -->
                     <div class="virtus-store-grid">
-                        <t t-foreach="popularStoreProducts" t-as="prod" t-key="prod.id">
+                        <t t-foreach="popularStoreProducts" t-as="prod" t-key="prod.id || prod_index">
                             <t t-if="prod.is_empty">
                                 <div class="store-item-btn empty-slot"></div>
                             </t>
@@ -204,8 +163,13 @@
                                 </button>
                             </t>
                             <t t-else="">
-                                <button class="store-item-btn" t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
-                                    <span class="store-item-name"><t t-esc="prod.display_name"/></span>
+                                <button class="store-item-btn text-item-btn" 
+                                        t-att-title="prod.display_name"
+                                        t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
+                                    <span class="text-btn-label"><t t-esc="prod.display_name"/></span>
+                                    <t t-if="prod.lst_price">
+                                        <span class="store-item-price-tag"><t t-esc="(prod.lst_price || 0).toFixed(2)"/> €</span>
+                                    </t>
                                 </button>
                             </t>
                         </t>
@@ -439,6 +403,193 @@
                 </div>
 
             </div>
+
+            <!-- ======================================================== -->
+            <!-- MODAL FLOTANTE: PERSONALIZAR CUADRÍCULA DE PRODUCTOS (TPV) -->
+            <!-- ======================================================== -->
+            <t t-if="state.isGridConfigModalOpen">
+                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeGridConfigModal()">
+                    <div class="utrecar-grid-config-window" t-on-click.stop="">
+                        <!-- ENCABEZADO -->
+                        <div class="grid-config-header">
+                            <div class="grid-config-header-left">
+                                <div class="grid-config-icon-badge">
+                                    <i class="fa fa-shopping-cart"/>
+                                </div>
+                                <div class="grid-config-titles">
+                                    <h3 class="grid-config-title">Personalizar Cuadrícula del TPV</h3>
+                                    <span class="grid-config-subtitle">
+                                        Gestiona los productos de acceso rápido en la pantalla principal. Añade, quita o reordena libremente.
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="grid-config-close-btn" t-on-click="() => this.closeGridConfigModal()" title="Cerrar ventana">
+                                <i class="fa fa-times"/>
+                            </button>
+                        </div>
+
+                        <!-- CUERPO DIVIDIDO EN 2 PANELES: CUADRÍCULA ACTUAL (IZQ) E INVENTARIO (DER) -->
+                        <div class="grid-config-body">
+                            <!-- PANEL IZQUIERDO: CUADRÍCULA ACTUAL -->
+                            <div class="grid-config-panel-left">
+                                <div class="panel-section-header">
+                                    <div class="panel-title-with-badge">
+                                        <i class="fa fa-th text-primary me-2"/>
+                                        <strong>Parrilla Actual en TPV</strong>
+                                        <span class="grid-items-count-badge">
+                                            <t t-esc="(state.customGridProducts || []).length"/> productos
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Arrastra o usa las flechas ◀ ▶ para mover. Pulsa ✖ para quitar.</small>
+                                </div>
+
+                                <div class="grid-config-slots-container">
+                                    <t t-if="!state.customGridProducts or state.customGridProducts.length === 0">
+                                        <div class="empty-grid-notice">
+                                            <i class="fa fa-info-circle fa-2x mb-2 text-primary"/>
+                                            <p>No hay productos en la cuadrícula.</p>
+                                            <small>Busca y añade productos desde el panel de inventario de la derecha.</small>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="grid-config-tiles-grid">
+                                            <t t-foreach="state.customGridProducts" t-as="item" t-key="item_index">
+                                                <div t-attf-class="grid-config-tile #{state.dragOverGridIndex === item_index ? 'drag-over' : ''}"
+                                                     draggable="true"
+                                                     t-on-dragstart="(ev) => this.onGridDragStart(ev, item_index)"
+                                                     t-on-dragover="(ev) => this.onGridDragOver(ev, item_index)"
+                                                     t-on-drop="(ev) => this.onGridDrop(ev, item_index)">
+                                                    <!-- BOTÓN QUITAR (ROJO) -->
+                                                    <button class="tile-remove-btn" 
+                                                            t-on-click.stop="() => this.removeProductFromGrid(item_index)" 
+                                                            title="Quitar de la cuadrícula">
+                                                        <i class="fa fa-times"/>
+                                                    </button>
+                                                    
+                                                    <!-- CONTENIDO VISUAL -->
+                                                    <div class="tile-content">
+                                                        <t t-if="item.bg_image">
+                                                            <img t-att-src="item.bg_image" class="tile-img" alt="Prod"/>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <div class="tile-no-img">
+                                                                <i class="fa fa-box text-secondary"/>
+                                                            </div>
+                                                        </t>
+                                                        <span class="tile-name" t-att-title="item.display_name">
+                                                            <t t-esc="item.display_name"/>
+                                                        </span>
+                                                        <span class="tile-price">
+                                                            <t t-esc="(item.lst_price || 0).toFixed(2)"/> €
+                                                        </span>
+                                                    </div>
+
+                                                    <!-- BARRA INFERIOR DE REORDENACIÓN TÁCTIL (FLECHAS) -->
+                                                    <div class="tile-reorder-bar">
+                                                        <button class="btn-tile-move" 
+                                                                t-att-disabled="item_index === 0"
+                                                                t-on-click.stop="() => this.moveGridItem(item_index, -1)" 
+                                                                title="Mover a la izquierda">
+                                                            ◀
+                                                        </button>
+                                                        <span class="tile-index-tag"><t t-esc="item_index + 1"/></span>
+                                                        <button class="btn-tile-move" 
+                                                                t-att-disabled="item_index === (state.customGridProducts.length - 1)"
+                                                                t-on-click.stop="() => this.moveGridItem(item_index, 1)" 
+                                                                title="Mover a la derecha">
+                                                            ▶
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <!-- PANEL DERECHO: INVENTARIO DE PRODUCTOS -->
+                            <div class="grid-config-panel-right">
+                                <div class="panel-section-header">
+                                    <div class="panel-title-with-badge">
+                                        <i class="fa fa-cubes text-success me-2"/>
+                                        <strong>Inventario de Productos Odoo</strong>
+                                    </div>
+                                    <small class="text-muted">Busca y añade productos a la cuadrícula con un clic</small>
+                                </div>
+
+                                <!-- BARRA DE BÚSQUEDA -->
+                                <div class="grid-config-search-box">
+                                    <i class="fa fa-search search-icon"/>
+                                    <input type="text" 
+                                           class="grid-search-input" 
+                                           placeholder="Buscar por nombre, código interno o barras..." 
+                                           t-att-value="state.gridConfigSearch"
+                                           t-on-input="(ev) => this.onGridConfigSearchInput(ev)" />
+                                    <button t-if="state.gridConfigSearch" class="btn-clear-search" t-on-click="() => this.clearGridConfigSearch()">
+                                        <i class="fa fa-times"/>
+                                    </button>
+                                </div>
+
+                                <!-- LISTA DE PRODUCTOS DISPONIBLES EN EL INVENTARIO -->
+                                <div class="grid-config-inventory-list">
+                                    <t t-if="availableInventoryProducts.length === 0">
+                                        <div class="empty-inventory-notice">
+                                            <i class="fa fa-search fa-2x mb-2 text-muted"/>
+                                            <p>No se encontraron productos que coincidan con la búsqueda.</p>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <t t-foreach="availableInventoryProducts" t-as="p" t-key="p.id">
+                                            <div class="inventory-product-row">
+                                                <div class="prod-left-info">
+                                                    <span class="prod-row-name" t-att-title="p.display_name">
+                                                        <t t-esc="p.display_name"/>
+                                                    </span>
+                                                    <div class="prod-row-sub">
+                                                        <span class="badge-code" t-if="p.default_code">
+                                                            Ref: <t t-esc="p.default_code"/>
+                                                        </span>
+                                                        <span class="badge-code" t-if="p.barcode">
+                                                            EAN: <t t-esc="p.barcode"/>
+                                                        </span>
+                                                        <span class="badge-price">
+                                                            <t t-esc="(p.lst_price || 0).toFixed(2)"/> €
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="prod-right-actions">
+                                                    <button class="btn-add-to-grid" 
+                                                            t-on-click="() => this.addProductToGrid(p)"
+                                                            title="Añadir a la cuadrícula">
+                                                        <i class="fa fa-plus me-1"/> Añadir
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PIE DE VENTANA: ACCIONES GLOBALES -->
+                        <div class="grid-config-footer">
+                            <div class="footer-actions-left">
+                                <button class="btn btn-outline-secondary btn-reset-grid" t-on-click="() => this.resetGridToDefault()">
+                                    <i class="fa fa-undo me-1"/> Restablecer por Defecto
+                                </button>
+                                <button class="btn btn-outline-danger btn-clear-grid ms-2" t-on-click="() => this.clearAllGridProducts()">
+                                    <i class="fa fa-trash me-1"/> Vaciar Cuadrícula
+                                </button>
+                            </div>
+                            <div class="footer-actions-right">
+                                <button class="btn btn-success btn-save-close-grid" t-on-click="() => this.closeGridConfigModal()">
+                                    <i class="fa fa-check me-1"/> Guardar y Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
 
             <!-- ======================================================== -->
             <!-- MODAL DE BÚSQUEDA DE TIENDA COMPLETO                      -->

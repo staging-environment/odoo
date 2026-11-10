@@ -172,6 +172,11 @@ export class UtrecarMainScreen extends Component {
                 { code: "GA", name: "Gasóleo A", class: "ga" },
                 { code: "95", name: "Sin Plomo 95", class: "sp95" }
             ],
+            isGridConfigModalOpen: false,
+            gridConfigSearch: "",
+            customGridProducts: this.loadSavedCustomGrid(),
+            draggedGridIndex: null,
+            dragOverGridIndex: null,
             isStoreModalOpen: false,
             isClientModalOpen: false,
             isAuthModalOpen: false,
@@ -235,6 +240,11 @@ export class UtrecarMainScreen extends Component {
 
         this.onGlobalKeyDown = (ev) => {
             if (ev.key === 'Escape') {
+                if (this.state.isGridConfigModalOpen) {
+                    this.closeGridConfigModal();
+                    ev.preventDefault();
+                    return;
+                }
                 if (this.state.isShiftOrdersModalOpen) {
                     if (this.state.selectedShiftOrder) {
                         this.backToShiftOrdersList();
@@ -372,11 +382,8 @@ export class UtrecarMainScreen extends Component {
         this.openStoreModal();
     }
 
-    get popularStoreProducts() {
-        const page = this.state.currentStorePage || 1;
-
-        // PÁGINA 1: ARTÍCULOS PRINCIPALES Y FAVORITOS (VIRTUSTPV)
-        const page1Items = [
+    getDefaultStoreProducts() {
+        return [
             { id: "v_hielo", display_name: "HIELO EN BOLSA", lst_price: 1.90, bg_image: "/pos_gas_station/static/src/img/products/prod_341005.png", default_code: "341005" },
             { id: "v_chupa", display_name: "CHUPA CHUPS", lst_price: 0.40, bg_image: "/pos_gas_station/static/src/img/products/prod_312006.png", default_code: "312006" },
             { id: "v_kinder", display_name: "KINDER BUENO", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_311001.png", default_code: "311001" },
@@ -402,6 +409,161 @@ export class UtrecarMainScreen extends Component {
             { id: "v_pan", display_name: "PAN DE TORRIJA", text_only: true, full_name: "PAN PARA LLEVAR", lst_price: 0.60, default_code: "381003" },
             { id: "v_tostada", display_name: "MEDIA TOSTADA", text_only: true, full_name: "MEDIA TOSTADA", lst_price: 1.30, default_code: "381002" }
         ];
+    }
+
+    loadSavedCustomGrid() {
+        try {
+            const key = "pos_custom_store_grid_" + (this.pos?.config?.id || "default");
+            const raw = localStorage.getItem(key) || localStorage.getItem("pos_custom_store_grid");
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed;
+                }
+            }
+        } catch(e) {
+            console.error("Error cargando cuadrícula personalizada:", e);
+        }
+        return null;
+    }
+
+    openGridConfigModal() {
+        if (!this.state.customGridProducts || this.state.customGridProducts.length === 0) {
+            this.state.customGridProducts = [...this.getDefaultStoreProducts()];
+        }
+        this.state.currentStorePage = 1;
+        this.state.gridConfigSearch = "";
+        this.state.draggedGridIndex = null;
+        this.state.dragOverGridIndex = null;
+        this.state.isGridConfigModalOpen = true;
+    }
+
+    closeGridConfigModal() {
+        this.state.isGridConfigModalOpen = false;
+    }
+
+    saveCustomGrid() {
+        try {
+            const key = "pos_custom_store_grid_" + (this.pos?.config?.id || "default");
+            localStorage.setItem(key, JSON.stringify(this.state.customGridProducts));
+            localStorage.setItem("pos_custom_store_grid", JSON.stringify(this.state.customGridProducts));
+        } catch(e) {
+            console.error("Error guardando cuadrícula personalizada:", e);
+        }
+    }
+
+    addProductToGrid(prod) {
+        if (!prod) return;
+        if (!this.state.customGridProducts) {
+            this.state.customGridProducts = [...this.getDefaultStoreProducts()];
+        }
+        const item = {
+            id: prod.id,
+            display_name: prod.display_name || prod.name || "Producto",
+            lst_price: prod.lst_price || prod.list_price || 0,
+            default_code: prod.default_code || "",
+            barcode: prod.barcode || "",
+            bg_image: prod.id ? `/web/image?model=product.product&field=image_128&id=${prod.id}` : null,
+            text_only: false,
+        };
+        this.state.customGridProducts.push(item);
+        this.saveCustomGrid();
+    }
+
+    removeProductFromGrid(index) {
+        if (!this.state.customGridProducts || index < 0 || index >= this.state.customGridProducts.length) return;
+        this.state.customGridProducts.splice(index, 1);
+        this.saveCustomGrid();
+    }
+
+    moveGridItem(index, direction) {
+        if (!this.state.customGridProducts) return;
+        const target = index + direction;
+        if (target < 0 || target >= this.state.customGridProducts.length) return;
+        const temp = this.state.customGridProducts[index];
+        this.state.customGridProducts[index] = this.state.customGridProducts[target];
+        this.state.customGridProducts[target] = temp;
+        this.saveCustomGrid();
+    }
+
+    onGridDragStart(ev, index) {
+        ev.dataTransfer.effectAllowed = "move";
+        ev.dataTransfer.setData("text/plain", index);
+        this.state.draggedGridIndex = index;
+    }
+
+    onGridDragOver(ev, index) {
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = "move";
+        this.state.dragOverGridIndex = index;
+    }
+
+    onGridDrop(ev, targetIndex) {
+        ev.preventDefault();
+        const fromIndex = this.state.draggedGridIndex;
+        this.state.draggedGridIndex = null;
+        this.state.dragOverGridIndex = null;
+        if (fromIndex === null || fromIndex === undefined || fromIndex === targetIndex) return;
+        const items = [...this.state.customGridProducts];
+        const [movedItem] = items.splice(fromIndex, 1);
+        items.splice(targetIndex, 0, movedItem);
+        this.state.customGridProducts = items;
+        this.saveCustomGrid();
+    }
+
+    resetGridToDefault() {
+        if (confirm("¿Deseas restablecer la cuadrícula a los 20 productos favoritos por defecto?")) {
+            this.state.customGridProducts = [...this.getDefaultStoreProducts()];
+            this.saveCustomGrid();
+        }
+    }
+
+    clearAllGridProducts() {
+        if (confirm("¿Estás seguro de que deseas vaciar todos los productos de la cuadrícula?")) {
+            this.state.customGridProducts = [];
+            this.saveCustomGrid();
+        }
+    }
+
+    onGridConfigSearchInput(ev) {
+        this.state.gridConfigSearch = ev.target.value || "";
+    }
+
+    clearGridConfigSearch() {
+        this.state.gridConfigSearch = "";
+    }
+
+    get availableInventoryProducts() {
+        if (!this.pos.db || !this.pos.db.product_by_id) return [];
+        const all = Object.values(this.pos.db.product_by_id);
+        const search = (this.state.gridConfigSearch || "").trim().toLowerCase();
+        
+        const nonFuels = all.filter(p => {
+            const name = (p.display_name || p.name || "").toLowerCase();
+            return !name.includes("gasóleo") && !name.includes("gasoleo") && !name.includes("diesel") && 
+                   !name.includes("gasolina") && !name.includes("plomo") && !name.includes("combustible");
+        });
+
+        if (!search) {
+            return nonFuels.slice(0, 60);
+        }
+
+        return nonFuels.filter(p => {
+            const name = (p.display_name || p.name || "").toLowerCase();
+            const code = (p.default_code || "").toLowerCase();
+            const barcode = (p.barcode || "").toLowerCase();
+            return name.includes(search) || code.includes(search) || barcode.includes(search);
+        }).slice(0, 60);
+    }
+
+    get popularStoreProducts() {
+        if (this.state.currentStorePage === 1 && this.state.customGridProducts && this.state.customGridProducts.length > 0) {
+            return this.state.customGridProducts;
+        }
+        const page = this.state.currentStorePage || 1;
+
+        // PÁGINA 1: ARTÍCULOS PRINCIPALES Y FAVORITOS (VIRTUSTPV)
+        const page1Items = this.getDefaultStoreProducts();
 
         // PÁGINA 2: BEBIDAS, CAFETERÍA Y REFRESCOS
         const page2Items = [
@@ -2029,7 +2191,8 @@ export class UtrecarMainScreen extends Component {
             const barcode = (virtusItem.barcode || "").toLowerCase();
             const name = (virtusItem.display_name || virtusItem.full_name || "").toLowerCase();
 
-            realProduct = (barcode ? all.find(p => (p.barcode || "").toLowerCase() === barcode) : null) ||
+            realProduct = (typeof virtusItem.id === "number" ? this.pos.db.get_product_by_id(virtusItem.id) : null) ||
+                          (barcode ? all.find(p => (p.barcode || "").toLowerCase() === barcode) : null) ||
                           (code ? all.find(p => (p.default_code || "").toLowerCase() === code) : null) ||
                           all.find(p => (p.display_name || p.name || "").toLowerCase().includes(name)) ||
                           all.find(p => !(p.display_name || p.name || "").toLowerCase().includes("gasóleo") && !(p.display_name || p.name || "").toLowerCase().includes("plomo")) ||

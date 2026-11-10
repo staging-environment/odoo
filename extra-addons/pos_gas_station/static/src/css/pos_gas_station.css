@@ -315,6 +315,8 @@
     flex-direction: column !important;
     overflow: hidden !important;
     min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
     box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
 }
 
@@ -341,23 +343,24 @@
 .btn-store-cat:hover { background: #e2e8f0 !important; }
 
 .virtus-store-grid {
-    flex: 1 1 auto !important;
+    flex: 1 1 0 !important;
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
-    grid-auto-rows: minmax(68px, 1fr) !important;
+    grid-auto-rows: 72px !important;
     gap: 3px !important;
     padding: 3px !important;
     background: #64748b !important;
-    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: thin !important;
-    scrollbar-color: #3b82f6 #cbd5e1 !important;
+    scrollbar-color: #2563eb #cbd5e1 !important;
 }
 
 .virtus-store-grid::-webkit-scrollbar {
-    width: 8px !important;
+    width: 10px !important;
 }
 
 .virtus-store-grid::-webkit-scrollbar-track {
@@ -366,12 +369,13 @@
 }
 
 .virtus-store-grid::-webkit-scrollbar-thumb {
-    background: #3b82f6 !important;
+    background: #2563eb !important;
     border-radius: 4px !important;
+    border: 2px solid #cbd5e1 !important;
 }
 
 .virtus-store-grid::-webkit-scrollbar-thumb:hover {
-    background: #2563eb !important;
+    background: #1d4ed8 !important;
 }
 
 .store-item-btn {
@@ -419,10 +423,422 @@
     word-break: break-word !important;
 }
 
+.store-item-price-tag {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    color: #059669 !important;
+    margin-top: 1px !important;
+    display: block !important;
+    text-align: center !important;
+}
+
 .store-item-btn.empty-slot {
     background: #f1f5f9 !important;
     border: 1px solid #cbd5e1 !important;
     cursor: default !important;
+}
+
+/* ============================================================
+   MODAL DE PERSONALIZACIÓN DE CUADRÍCULA DE TIENDA (TPV)
+   ============================================================ */
+.utrecar-grid-config-window {
+    width: 95vw !important;
+    max-width: 1100px !important;
+    height: 90vh !important;
+    max-height: 820px !important;
+    background: #ffffff !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45) !important;
+}
+
+.grid-config-header {
+    background: #1e3a8a !important;
+    color: #ffffff !important;
+    padding: 12px 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.grid-config-header-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.grid-config-icon-badge {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.18) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 18px !important;
+    color: #ffffff !important;
+}
+
+.grid-config-title {
+    margin: 0 !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+}
+
+.grid-config-subtitle {
+    font-size: 12px !important;
+    color: #93c5fd !important;
+}
+
+.grid-config-close-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-size: 20px !important;
+    cursor: pointer !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+}
+.grid-config-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.grid-config-body {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    gap: 14px !important;
+    padding: 14px !important;
+    background: #f1f5f9 !important;
+}
+
+.grid-config-panel-left {
+    flex: 1 1 58% !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    min-width: 0 !important;
+}
+
+.grid-config-panel-right {
+    flex: 1 1 42% !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    min-width: 0 !important;
+}
+
+.panel-section-header {
+    padding: 10px 14px !important;
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+}
+
+.panel-title-with-badge {
+    display: flex !important;
+    align-items: center !important;
+    font-size: 15px !important;
+    color: #1e293b !important;
+}
+
+.grid-items-count-badge {
+    margin-left: 8px !important;
+    background: #dbeafe !important;
+    color: #1e40af !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    padding: 2px 8px !important;
+    border-radius: 12px !important;
+}
+
+.grid-config-slots-container {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding: 8px !important;
+    background: #64748b !important;
+}
+
+.grid-config-tiles-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+}
+
+.grid-config-tile {
+    position: relative !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    height: 96px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    padding: 4px !important;
+    cursor: grab !important;
+    user-select: none !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+    transition: transform 0.1s, border-color 0.1s !important;
+}
+
+.grid-config-tile:active {
+    cursor: grabbing !important;
+}
+
+.grid-config-tile.drag-over {
+    border: 2px dashed #2563eb !important;
+    background: #eff6ff !important;
+    transform: scale(1.02) !important;
+}
+
+.tile-remove-btn {
+    position: absolute !important;
+    top: 2px !important;
+    right: 2px !important;
+    width: 20px !important;
+    height: 20px !important;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 50% !important;
+    font-size: 10px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 2 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+}
+.tile-remove-btn:hover {
+    background: #dc2626 !important;
+    transform: scale(1.1) !important;
+}
+
+.tile-content {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+    text-align: center !important;
+}
+
+.tile-img {
+    max-height: 40px !important;
+    max-width: 100% !important;
+    object-fit: contain !important;
+}
+
+.tile-no-img {
+    font-size: 24px !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.tile-name {
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+    max-height: 24px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    color: #1e293b !important;
+    margin-top: 2px !important;
+}
+
+.tile-price {
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    color: #059669 !important;
+}
+
+.tile-reorder-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-top: 1px solid #f1f5f9 !important;
+    padding-top: 2px !important;
+}
+
+.btn-tile-move {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 3px !important;
+    padding: 0 6px !important;
+    font-size: 9px !important;
+    line-height: 15px !important;
+    color: #475569 !important;
+    cursor: pointer !important;
+}
+.btn-tile-move:disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+}
+.btn-tile-move:not(:disabled):hover {
+    background: #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+.tile-index-tag {
+    font-size: 9px !important;
+    color: #94a3b8 !important;
+    font-weight: 700 !important;
+}
+
+.grid-config-search-box {
+    position: relative !important;
+    padding: 8px 12px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: #ffffff !important;
+}
+
+.grid-config-search-box .search-icon {
+    position: absolute !important;
+    left: 22px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: #94a3b8 !important;
+}
+
+.grid-search-input {
+    width: 100% !important;
+    height: 36px !important;
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    box-sizing: border-box !important;
+}
+
+.grid-search-input:focus {
+    outline: none !important;
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.15) !important;
+}
+
+.grid-config-inventory-list {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+}
+
+.inventory-product-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 10px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    transition: background 0.1s, border-color 0.1s !important;
+}
+
+.inventory-product-row:hover {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+}
+
+.prod-left-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+
+.prod-row-name {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #1e293b !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.prod-row-sub {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.badge-code {
+    background: #f1f5f9 !important;
+    color: #64748b !important;
+    font-size: 10px !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+}
+
+.badge-price {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: #059669 !important;
+}
+
+.btn-add-to-grid {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    box-shadow: 0 1px 2px rgba(16, 185, 129, 0.3) !important;
+}
+.btn-add-to-grid:hover {
+    background: #059669 !important;
+}
+
+.grid-config-footer {
+    padding: 12px 18px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.btn-save-close-grid {
+    padding: 8px 24px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+}
+
+.empty-grid-notice,
+.empty-inventory-notice {
+    padding: 30px !important;
+    text-align: center !important;
+    color: #cbd5e1 !important;
+}
+.empty-grid-notice p,
+.empty-inventory-notice p {
+    margin: 0 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
 }
 
 /* ------------------------------------------------------------
