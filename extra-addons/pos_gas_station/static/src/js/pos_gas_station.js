@@ -413,38 +413,43 @@ export class UtrecarMainScreen extends Component {
 
     normalizeProductItem(item) {
         if (!item) return item;
-        const numericId = typeof item.id === 'number' ? item.id : parseInt(item.id, 10);
-        if (!isNaN(numericId) && numericId > 0 && this.pos?.db) {
-            const dbProd = this.pos.db.get_product_by_id(numericId);
-            if (dbProd) {
-                const hasRealImage = Boolean(dbProd.image_128);
-                const imageUrl = hasRealImage && typeof dbProd.getImageUrl === 'function' 
-                    ? dbProd.getImageUrl() 
-                    : (hasRealImage ? `/web/image?model=product.product&field=image_128&id=${dbProd.id}` : null);
+        try {
+            const numericId = typeof item.id === 'number' ? item.id : parseInt(item.id, 10);
+            if (!isNaN(numericId) && numericId > 0 && this.pos?.db) {
+                const dbProd = this.pos.db.get_product_by_id(numericId);
+                if (dbProd) {
+                    const hasRealImage = Boolean(dbProd.image_128);
+                    const imageUrl = hasRealImage && typeof dbProd.getImageUrl === 'function' 
+                        ? dbProd.getImageUrl() 
+                        : (hasRealImage ? `/web/image?model=product.product&field=image_128&id=${dbProd.id}` : null);
+                    return {
+                        id: dbProd.id,
+                        display_name: dbProd.display_name || item.display_name || "Producto",
+                        lst_price: dbProd.lst_price || item.lst_price || 0,
+                        default_code: dbProd.default_code || item.default_code || "",
+                        barcode: dbProd.barcode || item.barcode || "",
+                        bg_image: imageUrl,
+                        is_full_art: false,
+                        text_only: !hasRealImage,
+                    };
+                }
+            }
+            if (typeof item.id === 'string' && item.bg_image && item.bg_image.includes('/pos_gas_station/')) {
                 return {
-                    id: dbProd.id,
-                    display_name: dbProd.display_name || item.display_name || "Producto",
-                    lst_price: dbProd.lst_price || item.lst_price || 0,
-                    default_code: dbProd.default_code || item.default_code || "",
-                    barcode: dbProd.barcode || item.barcode || "",
-                    bg_image: imageUrl,
-                    is_full_art: false,
-                    text_only: !hasRealImage,
+                    ...item,
+                    is_full_art: true,
+                    text_only: false,
                 };
             }
-        }
-        if (typeof item.id === 'string' && item.bg_image && item.bg_image.includes('/pos_gas_station/')) {
             return {
                 ...item,
-                is_full_art: true,
-                text_only: false,
+                is_full_art: Boolean(item.is_full_art),
+                text_only: !item.bg_image || Boolean(item.text_only),
             };
+        } catch (e) {
+            console.error("Error in normalizeProductItem", e);
+            return item;
         }
-        return {
-            ...item,
-            is_full_art: Boolean(item.is_full_art),
-            text_only: !item.bg_image || Boolean(item.text_only),
-        };
     }
 
     loadSavedCustomGrid() {

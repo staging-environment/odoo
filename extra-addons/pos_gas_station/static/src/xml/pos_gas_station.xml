@@ -148,16 +148,14 @@
                             <t t-if="prod.is_empty">
                                 <div class="store-item-btn empty-slot"></div>
                             </t>
-                            <!-- CASO 1: IMAGEN DE BOTÓN COMPLETO (ARTE ORIGINAL VIRTUSTPV) -->
-                            <t t-elif="prod.bg_image and prod.is_full_art">
+                            <t t-elif="prod.bg_image &amp;&amp; prod.is_full_art">
                                 <button class="store-item-btn" 
                                         t-att-title="prod.display_name"
                                         t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
                                     <img t-att-src="prod.bg_image" class="store-product-img-tag" alt="Producto"/>
                                 </button>
                             </t>
-                            <!-- CASO 2: PRODUCTO CON FOTO REAL DE ODOO -->
-                            <t t-elif="prod.bg_image and !prod.text_only">
+                            <t t-elif="prod.bg_image &amp;&amp; !prod.text_only">
                                 <button class="store-item-btn with-img-card" 
                                         t-att-title="prod.display_name"
                                         t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
@@ -168,7 +166,6 @@
                                     </t>
                                 </button>
                             </t>
-                            <!-- CASO 3: PRODUCTO SIN FOTO (TEXTO CLARO Y PRECIO) -->
                             <t t-else="">
                                 <button class="store-item-btn text-item-btn" 
                                         t-att-title="prod.display_name"
@@ -451,7 +448,7 @@
                                 </div>
 
                                 <div class="grid-config-slots-container">
-                                    <t t-if="!state.customGridProducts or state.customGridProducts.length === 0">
+                                    <t t-if="!state.customGridProducts || state.customGridProducts.length === 0">
                                         <div class="empty-grid-notice">
                                             <i class="fa fa-info-circle fa-2x mb-2 text-primary"/>
                                             <p>No hay productos en la cuadrícula.</p>
@@ -475,7 +472,7 @@
                                                     
                                                     <!-- CONTENIDO VISUAL -->
                                                     <div class="tile-content">
-                                                        <t t-if="item.bg_image and !item.text_only">
+                                                        <t t-if="item.bg_image &amp;&amp; !item.text_only">
                                                             <img t-att-src="item.bg_image" class="tile-img" alt="Prod"/>
                                                         </t>
                                                         <t t-else="">
@@ -1124,7 +1121,7 @@
                                             </div>
 
                                             <!-- LISTA DESPLEGABLE DE RESULTADOS -->
-                                            <t t-if="state.cashMoveSupplierResults and state.cashMoveSupplierResults.length > 0">
+                                            <t t-if="state.cashMoveSupplierResults &amp;&amp; state.cashMoveSupplierResults.length > 0">
                                                 <div class="supplier-results-dropdown shadow-lg rounded border bg-white position-absolute w-100 mt-1" 
                                                      style="max-height: 190px; overflow-y: auto; z-index: 1050; left: 0;">
                                                     <t t-foreach="state.cashMoveSupplierResults" t-as="sup" t-key="sup.id">
@@ -1201,7 +1198,7 @@
     <!-- ============================================================ -->
             <!-- MODAL FLOTANTE DE COBROS PENDIENTES POR CALLE (MODO LLENO)   -->
             <!-- ============================================================ -->
-            <t t-if="state.isPendingSalesModalOpen and state.pendingModalPump">
+            <t t-if="state.isPendingSalesModalOpen &amp;&amp; state.pendingModalPump">
                 <div class="utrecar-modal-backdrop" t-on-click="() => this.closePendingSalesModal()">
                     <div class="utrecar-pending-sales-modal" t-on-click.stop="">
                         <div class="pending-modal-header">
@@ -1247,7 +1244,7 @@
                                                 </div>
 
                                                 <!-- Artículos de Tienda si los hay -->
-                                                <t t-if="sale.storeLines and sale.storeLines.length > 0">
+                                                <t t-if="sale.storeLines &amp;&amp; sale.storeLines.length > 0">
                                                     <t t-foreach="sale.storeLines" t-as="item" t-key="item.name">
                                                         <div class="sale-item-line store-item">
                                                             <div class="item-name">
@@ -1891,7 +1888,7 @@
                                     <label class="fw-bold mb-1 text-dark d-block">Cliente receptor:</label>
                                     <div class="p-2 bg-light border rounded fw-bold text-dark" style="font-size: 14px;">
                                         <t t-esc="state.emailInvoiceOrder ? (state.emailInvoiceOrder.partner_name || 'Cliente') : ''"/>
-                                        <small t-if="state.emailInvoiceOrder and state.emailInvoiceOrder.partner_vat" class="text-muted d-block fw-normal">
+                                        <small t-if="state.emailInvoiceOrder &amp;&amp; state.emailInvoiceOrder.partner_vat" class="text-muted d-block fw-normal">
                                             CIF/NIF: <t t-esc="state.emailInvoiceOrder.partner_vat"/>
                                         </small>
                                     </div>
@@ -1956,7 +1953,7 @@
 
                         <div class="auth-modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px; max-height: 75vh; overflow-y: auto;">
                             <!-- AVISO SEGÚN TIPO DE PEDIDO -->
-                            <t t-if="state.convertAlbaranOrder and state.convertAlbaranOrder.is_invoiced">
+                            <t t-if="state.convertAlbaranOrder &amp;&amp; state.convertAlbaranOrder.is_invoiced">
                                 <div class="alert alert-warning d-flex align-items-center gap-2 p-2 mb-0" style="font-size: 13px; border-radius: 6px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e;">
                                     <i class="fa fa-exclamation-triangle fa-lg"/>
                                     <div>
@@ -2145,7 +2142,7 @@
                                 
                                 <div class="mb-2">
                                     <label class="form-label small fw-bold mb-1">Matrícula del Vehículo:</label>
-                                    <t t-if="state.convertAlbaranSelectedPartner and state.convertAlbaranSelectedPartner.vehicles and state.convertAlbaranSelectedPartner.vehicles.length > 0">
+                                    <t t-if="state.convertAlbaranSelectedPartner &amp;&amp; state.convertAlbaranSelectedPartner.vehicles &amp;&amp; state.convertAlbaranSelectedPartner.vehicles.length > 0">
                                         <div class="d-flex flex-wrap gap-1 mb-1">
                                             <t t-foreach="state.convertAlbaranSelectedPartner.vehicles" t-as="veh" t-key="veh.id">
                                                 <button type="button" 
@@ -2559,7 +2556,7 @@
                                 <th style="width:35%">Cierre</th>
                             </tr>
                         </thead>
-                        <t t-if="pos.config.cash_control and props.default_cash_details">
+                        <t t-if="pos.config.cash_control &amp;&amp; props.default_cash_details">
                             <tbody>
                                 <tr>
                                     <td class="align-middle fw-bold" t-esc="props.default_cash_details.name"/>
@@ -2577,7 +2574,7 @@
                                 </tr>
                             </tbody>
                         </t>
-                        <tbody t-if="props.other_payment_methods and props.other_payment_methods.length > 0">
+                        <tbody t-if="props.other_payment_methods &amp;&amp; props.other_payment_methods.length > 0">
                             <tr t-foreach="props.other_payment_methods" t-as="pm" t-key="pm.id">
                                 <td class="align-middle fw-bold" t-esc="pm.name"/>
                                 <td class="align-middle fw-bold" t-esc="env.utils.formatCurrency(pm.amount)"/>
@@ -2673,7 +2670,7 @@
                     </div>
                 </t>
             </div>
-            <t t-if="props.data.is_albaran and props.data.partner">
+            <t t-if="props.data.is_albaran &amp;&amp; props.data.partner">
                 <div class="albaran-client-box p-2 mb-2 border border-dark rounded text-start" style="font-size: 11px;">
                     <div><strong>CLIENTE:</strong> <t t-esc="props.data.partner.name"/></div>
                     <div t-if="props.data.partner.ref"><strong>CÓD. CLIENTE:</strong> <t t-esc="props.data.partner.ref"/></div>
@@ -2698,7 +2695,7 @@
                     <t t-esc="props.data.ticket_series_name || props.data.name" />
                 </div>
                 <div id="order-date" style="font-size: 11px; margin-top: 2px;" t-esc="props.data.date" />
-                <div t-if="props.data.pos_reference and props.data.pos_reference != (props.data.ticket_series_name || props.data.name)" style="font-size: 10px; color: #555; margin-top: 2px;">
+                <div t-if="props.data.pos_reference &amp;&amp; props.data.pos_reference != (props.data.ticket_series_name || props.data.name)" style="font-size: 10px; color: #555; margin-top: 2px;">
                     Ref: <t t-esc="props.data.pos_reference" />
                 </div>
                 <t t-if="props.data.is_albaran">
