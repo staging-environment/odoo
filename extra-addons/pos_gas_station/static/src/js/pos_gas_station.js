@@ -3485,6 +3485,11 @@ patch(PaymentScreen.prototype, {
             this.pos.payment_methods.forEach(normalizePm);
         }
         if (this.payment_methods_from_config) {
+            // Ocultar 'Cuenta de cliente' de la botonera de la calculadora
+            this.payment_methods_from_config = this.payment_methods_from_config.filter((m) => {
+                const name = (m && m.name ? m.name : '').toLowerCase();
+                return m && m.type !== 'pay_later' && !name.includes('cuenta') && !name.includes('customer account');
+            });
             this.payment_methods_from_config.forEach(normalizePm);
         }
 
