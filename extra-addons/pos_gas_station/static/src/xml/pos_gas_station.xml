@@ -148,20 +148,27 @@
                             <t t-if="prod.is_empty">
                                 <div class="store-item-btn empty-slot"></div>
                             </t>
-                            <t t-elif="prod.bg_image">
+                            <!-- CASO 1: IMAGEN DE BOTÓN COMPLETO (ARTE ORIGINAL VIRTUSTPV) -->
+                            <t t-elif="prod.bg_image and prod.is_full_art">
                                 <button class="store-item-btn" 
                                         t-att-title="prod.display_name"
                                         t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
                                     <img t-att-src="prod.bg_image" class="store-product-img-tag" alt="Producto"/>
                                 </button>
                             </t>
-                            <t t-elif="prod.text_only">
-                                <button class="store-item-btn text-item-btn" 
-                                        t-att-title="prod.full_name || prod.display_name"
+                            <!-- CASO 2: PRODUCTO CON FOTO REAL DE ODOO -->
+                            <t t-elif="prod.bg_image and !prod.text_only">
+                                <button class="store-item-btn with-img-card" 
+                                        t-att-title="prod.display_name"
                                         t-on-click="() => this.addStoreProductToOrder(prod)" t-on-dblclick="() => this.onProductCardDblClick(prod)">
+                                    <img t-att-src="prod.bg_image" class="store-product-thumb" alt="Producto"/>
                                     <span class="text-btn-label"><t t-esc="prod.display_name"/></span>
+                                    <t t-if="prod.lst_price">
+                                        <span class="store-item-price-tag"><t t-esc="(prod.lst_price || 0).toFixed(2)"/> €</span>
+                                    </t>
                                 </button>
                             </t>
+                            <!-- CASO 3: PRODUCTO SIN FOTO (TEXTO CLARO Y PRECIO) -->
                             <t t-else="">
                                 <button class="store-item-btn text-item-btn" 
                                         t-att-title="prod.display_name"
@@ -468,7 +475,7 @@
                                                     
                                                     <!-- CONTENIDO VISUAL -->
                                                     <div class="tile-content">
-                                                        <t t-if="item.bg_image">
+                                                        <t t-if="item.bg_image and !item.text_only">
                                                             <img t-att-src="item.bg_image" class="tile-img" alt="Prod"/>
                                                         </t>
                                                         <t t-else="">

@@ -384,31 +384,67 @@ export class UtrecarMainScreen extends Component {
 
     getDefaultStoreProducts() {
         return [
-            { id: "v_hielo", display_name: "HIELO EN BOLSA", lst_price: 1.90, bg_image: "/pos_gas_station/static/src/img/products/prod_341005.png", default_code: "341005" },
-            { id: "v_chupa", display_name: "CHUPA CHUPS", lst_price: 0.40, bg_image: "/pos_gas_station/static/src/img/products/prod_312006.png", default_code: "312006" },
-            { id: "v_kinder", display_name: "KINDER BUENO", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_311001.png", default_code: "311001" },
-            { id: "v_mechero", display_name: "MECHERO CLIPPER", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_323003.png", default_code: "323003" },
+            { id: "v_hielo", display_name: "HIELO EN BOLSA", lst_price: 1.90, bg_image: "/pos_gas_station/static/src/img/products/prod_341005.png", is_full_art: true, default_code: "341005" },
+            { id: "v_chupa", display_name: "CHUPA CHUPS", lst_price: 0.40, bg_image: "/pos_gas_station/static/src/img/products/prod_312006.png", is_full_art: true, default_code: "312006" },
+            { id: "v_kinder", display_name: "KINDER BUENO", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_311001.png", is_full_art: true, default_code: "311001" },
+            { id: "v_mechero", display_name: "MECHERO CLIPPER", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_323003.png", is_full_art: true, default_code: "323003" },
 
-            { id: "v_butano", display_name: "BOMBONA BUTANO", lst_price: 23.00, bg_image: "/pos_gas_station/static/src/img/products/prod_360014.png", default_code: "360014" },
-            { id: "v_dulces", display_name: "DULCES DULCESOL", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_315006.png", default_code: "315006" },
-            { id: "v_coca", display_name: "LATA COCA-COLA", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_342001.png", default_code: "342001" },
-            { id: "v_cocazero", display_name: "COCA-COLA ZERO", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_342003.png", default_code: "342003" },
+            { id: "v_butano", display_name: "BOMBONA BUTANO", lst_price: 23.00, bg_image: "/pos_gas_station/static/src/img/products/prod_360014.png", is_full_art: true, default_code: "360014" },
+            { id: "v_dulces", display_name: "DULCES DULCESOL", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_315006.png", is_full_art: true, default_code: "315006" },
+            { id: "v_coca", display_name: "LATA COCA-COLA", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_342001.png", is_full_art: true, default_code: "342001" },
+            { id: "v_cocazero", display_name: "COCA-COLA ZERO", lst_price: 1.50, bg_image: "/pos_gas_station/static/src/img/products/prod_342003.png", is_full_art: true, default_code: "342003" },
 
-            { id: "v_aceite2t", display_name: "ACEITE 2T NIPOMIX", lst_price: 1.40, bg_image: "/pos_gas_station/static/src/img/products/prod_331002.png", default_code: "331002" },
-            { id: "v_castrol", display_name: "ACEITE 2T CASTROL", lst_price: 2.00, bg_image: "/pos_gas_station/static/src/img/products/prod_331001.png", default_code: "331001" },
-            { id: "v_vaper", display_name: "VAPER SABORES", lst_price: 6.50, bg_image: "/pos_gas_station/static/src/img/products/prod_323006.png", default_code: "323006" },
-            { id: "v_papel", display_name: "PAPEL DE LIAR", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_323001.png", default_code: "323001" },
+            { id: "v_aceite2t", display_name: "ACEITE 2T NIPOMIX", lst_price: 1.40, bg_image: "/pos_gas_station/static/src/img/products/prod_331002.png", is_full_art: true, default_code: "331002" },
+            { id: "v_castrol", display_name: "ACEITE 2T CASTROL", lst_price: 2.00, bg_image: "/pos_gas_station/static/src/img/products/prod_331001.png", is_full_art: true, default_code: "331001" },
+            { id: "v_vaper", display_name: "VAPER SABORES", lst_price: 6.50, bg_image: "/pos_gas_station/static/src/img/products/prod_323006.png", is_full_art: true, default_code: "323006" },
+            { id: "v_papel", display_name: "PAPEL DE LIAR", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_323001.png", is_full_art: true, default_code: "323001" },
 
-            { id: "v_cafe", display_name: "CAFE", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_382001.png", default_code: "382001" },
-            { id: "v_zumo", display_name: "ZUMO DE BOTE", lst_price: 1.30, bg_image: "/pos_gas_station/static/src/img/products/prod_382006.png", default_code: "382006" },
-            { id: "v_bifrutas", display_name: "BI FRUTAS", lst_price: 1.20, bg_image: "/pos_gas_station/static/src/img/products/prod_382008.png", default_code: "382008" },
-            { id: "v_cubata", display_name: "CUBATAS", lst_price: 4.00, bg_image: "/pos_gas_station/static/src/img/products/prod_383003.png", default_code: "383003" },
+            { id: "v_cafe", display_name: "CAFE", lst_price: 1.00, bg_image: "/pos_gas_station/static/src/img/products/prod_382001.png", is_full_art: true, default_code: "382001" },
+            { id: "v_zumo", display_name: "ZUMO DE BOTE", lst_price: 1.30, bg_image: "/pos_gas_station/static/src/img/products/prod_382006.png", is_full_art: true, default_code: "382006" },
+            { id: "v_bifrutas", display_name: "BI FRUTAS", lst_price: 1.20, bg_image: "/pos_gas_station/static/src/img/products/prod_382008.png", is_full_art: true, default_code: "382008" },
+            { id: "v_cubata", display_name: "CUBATAS", lst_price: 4.00, bg_image: "/pos_gas_station/static/src/img/products/prod_383003.png", is_full_art: true, default_code: "383003" },
 
             { id: "v_boc", display_name: "BOC", text_only: true, full_name: "TOSTADA / BOCADILLO", lst_price: 1.70, default_code: "381001" },
             { id: "v_cocatxt", display_name: "COCA COLA LATA", text_only: true, full_name: "LATA COCA-COLA", lst_price: 1.50, default_code: "342001" },
             { id: "v_pan", display_name: "PAN DE TORRIJA", text_only: true, full_name: "PAN PARA LLEVAR", lst_price: 0.60, default_code: "381003" },
             { id: "v_tostada", display_name: "MEDIA TOSTADA", text_only: true, full_name: "MEDIA TOSTADA", lst_price: 1.30, default_code: "381002" }
         ];
+    }
+
+    normalizeProductItem(item) {
+        if (!item) return item;
+        const numericId = typeof item.id === 'number' ? item.id : parseInt(item.id, 10);
+        if (!isNaN(numericId) && numericId > 0 && this.pos?.db) {
+            const dbProd = this.pos.db.get_product_by_id(numericId);
+            if (dbProd) {
+                const hasRealImage = Boolean(dbProd.image_128);
+                const imageUrl = hasRealImage && typeof dbProd.getImageUrl === 'function' 
+                    ? dbProd.getImageUrl() 
+                    : (hasRealImage ? `/web/image?model=product.product&field=image_128&id=${dbProd.id}` : null);
+                return {
+                    id: dbProd.id,
+                    display_name: dbProd.display_name || item.display_name || "Producto",
+                    lst_price: dbProd.lst_price || item.lst_price || 0,
+                    default_code: dbProd.default_code || item.default_code || "",
+                    barcode: dbProd.barcode || item.barcode || "",
+                    bg_image: imageUrl,
+                    is_full_art: false,
+                    text_only: !hasRealImage,
+                };
+            }
+        }
+        if (typeof item.id === 'string' && item.bg_image && item.bg_image.includes('/pos_gas_station/')) {
+            return {
+                ...item,
+                is_full_art: true,
+                text_only: false,
+            };
+        }
+        return {
+            ...item,
+            is_full_art: Boolean(item.is_full_art),
+            text_only: !item.bg_image || Boolean(item.text_only),
+        };
     }
 
     loadSavedCustomGrid() {
@@ -418,7 +454,7 @@ export class UtrecarMainScreen extends Component {
             if (raw) {
                 const parsed = JSON.parse(raw);
                 if (Array.isArray(parsed) && parsed.length > 0) {
-                    return parsed;
+                    return parsed.map(item => this.normalizeProductItem(item));
                 }
             }
         } catch(e) {
@@ -430,6 +466,8 @@ export class UtrecarMainScreen extends Component {
     openGridConfigModal() {
         if (!this.state.customGridProducts || this.state.customGridProducts.length === 0) {
             this.state.customGridProducts = [...this.getDefaultStoreProducts()];
+        } else {
+            this.state.customGridProducts = this.state.customGridProducts.map(item => this.normalizeProductItem(item));
         }
         this.state.currentStorePage = 1;
         this.state.gridConfigSearch = "";
@@ -457,17 +495,24 @@ export class UtrecarMainScreen extends Component {
         if (!this.state.customGridProducts) {
             this.state.customGridProducts = [...this.getDefaultStoreProducts()];
         }
+        const hasRealImage = Boolean(prod.image_128);
+        const imageUrl = hasRealImage && typeof prod.getImageUrl === "function" 
+            ? prod.getImageUrl() 
+            : (hasRealImage ? `/web/image?model=product.product&field=image_128&id=${prod.id}` : null);
+        
         const item = {
             id: prod.id,
             display_name: prod.display_name || prod.name || "Producto",
             lst_price: prod.lst_price || prod.list_price || 0,
             default_code: prod.default_code || "",
             barcode: prod.barcode || "",
-            bg_image: prod.id ? `/web/image?model=product.product&field=image_128&id=${prod.id}` : null,
-            text_only: false,
+            bg_image: imageUrl,
+            is_full_art: false,
+            text_only: !hasRealImage,
         };
         this.state.customGridProducts.push(item);
         this.saveCustomGrid();
+    }
     }
 
     removeProductFromGrid(index) {
@@ -558,12 +603,12 @@ export class UtrecarMainScreen extends Component {
 
     get popularStoreProducts() {
         if (this.state.currentStorePage === 1 && this.state.customGridProducts && this.state.customGridProducts.length > 0) {
-            return this.state.customGridProducts;
+            return this.state.customGridProducts.map(item => this.normalizeProductItem(item));
         }
         const page = this.state.currentStorePage || 1;
 
         // PÁGINA 1: ARTÍCULOS PRINCIPALES Y FAVORITOS (VIRTUSTPV)
-        const page1Items = this.getDefaultStoreProducts();
+        const page1Items = this.getDefaultStoreProducts().map(item => this.normalizeProductItem(item));
 
         // PÁGINA 2: BEBIDAS, CAFETERÍA Y REFRESCOS
         const page2Items = [
