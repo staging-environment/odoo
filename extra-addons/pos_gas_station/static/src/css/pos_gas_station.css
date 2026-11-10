@@ -184,15 +184,15 @@
 .virtus-grid-table {
     width: 100% !important;
     border-collapse: collapse !important;
-    font-size: 19px !important;
+    font-size: 22px !important;
 }
 
 .virtus-grid-table thead th {
     background: #1e3a8a !important;
     color: #ffffff !important;
     font-weight: 700 !important;
-    font-size: 16px !important;
-    padding: 8px 10px !important;
+    font-size: 17px !important;
+    padding: 9px 10px !important;
     border-right: 1px solid rgba(255,255,255,0.2) !important;
     position: sticky !important;
     top: 0 !important;
@@ -200,9 +200,9 @@
 }
 
 .virtus-grid-table tbody td {
-    font-size: 19px !important;
+    font-size: 22px !important;
     font-weight: 700 !important;
-    padding: 10px 12px !important;
+    padding: 11px 12px !important;
     vertical-align: middle !important;
     border-bottom: 1px solid #e2e8f0 !important;
     color: #1e293b !important;
@@ -214,16 +214,16 @@
 
 .cell-code {
     background: #f1f5f9 !important;
-    padding: 4px 8px !important;
-    border-radius: 4px !important;
-    font-size: 16px !important;
+    padding: 4px 9px !important;
+    border-radius: 5px !important;
+    font-size: 18px !important;
     font-weight: 800 !important;
     color: #475569 !important;
 }
 
 .fuel-line-icon {
-    font-size: 20px !important;
-    margin-right: 5px !important;
+    font-size: 22px !important;
+    margin-right: 6px !important;
 }
 
 .virtus-ticket-tools-bar {

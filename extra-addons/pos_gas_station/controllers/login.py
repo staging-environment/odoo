@@ -11,11 +11,42 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
+import os
+
 class UtrecarPosController(PosController):
+
+    def _ensure_fresh_pos_assets(self):
+        """Invalida automáticamente los bundles CSS/JS cacheados en ir.attachment si cambió algún archivo estático de pos_gas_station."""
+        try:
+            static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'src'))
+            max_mtime = 0
+            for root, _, files in os.walk(static_dir):
+                for fname in files:
+                    if fname.endswith(('.css', '.js', '.xml')):
+                        fpath = os.path.join(root, fname)
+                        mt = int(os.path.getmtime(fpath))
+                        if mt > max_mtime:
+                            max_mtime = mt
+            ICP = request.env['ir.config_parameter'].sudo()
+            last_mtime = int(ICP.get_param('pos_gas_station.assets_mtime', '0') or '0')
+            if max_mtime > last_mtime:
+                ICP.set_param('pos_gas_station.assets_mtime', str(max_mtime))
+                attachments = request.env['ir.attachment'].sudo().search([
+                    '|',
+                    ('url', 'like', '/web/assets/%'),
+                    ('name', 'like', '%assets_%')
+                ])
+                if attachments:
+                    attachments.unlink()
+                    request.env.cr.commit()
+                    _logger.info("POS Gas Station: purgados %s bundles de assets en caché tras actualización de código.", len(attachments))
+        except Exception as e:
+            _logger.warning("No se pudo verificar mtime de assets POS: %s", e)
 
     @http.route(['/pos/web', '/pos/ui'], type='http', auth='user')
     def pos_web(self, config_id=False, **k):
         """Interpreta la entrada al TPV: si no hay turno abierto en la estación, redirige a la selección flotante de empleado."""
+        self._ensure_fresh_pos_assets()
         PosConfig = request.env['pos.config'].sudo()
         config = None
         if config_id:
