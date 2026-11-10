@@ -4893,10 +4893,10 @@
 }
 
 .shift-orders-modal-window {
-    width: 880px !important;
-    max-width: 95vw !important;
-    height: 80vh !important;
-    max-height: 720px !important;
+    width: 1040px !important;
+    max-width: 96vw !important;
+    height: 82vh !important;
+    max-height: 750px !important;
     background: #ffffff !important;
     border-radius: 12px !important;
     box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
@@ -5125,6 +5125,7 @@
 .shift-table-wrapper {
     flex: 1 !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     background: #ffffff !important;
 }
 
@@ -5218,42 +5219,38 @@
 }
 
 .shift-order-row .cell-date {
-    width: 120px !important;
+    width: 135px !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
 }
 
 .shift-order-row .cell-name {
-    width: 80px !important;
+    width: 85px !important;
     white-space: nowrap !important;
 }
 
 .shift-order-row .cell-ref {
-    width: 140px !important;
+    width: 155px !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
 }
 
 .shift-order-row .cell-partner {
-    width: 160px !important;
-    max-width: 160px !important;
+    width: 180px !important;
+    max-width: 180px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
 }
 
 .shift-order-row .cell-user {
-    width: 110px !important;
-    max-width: 110px !important;
+    width: 130px !important;
+    max-width: 130px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
 }
 
 .shift-order-row .cell-total {
-    width: 75px !important;
+    width: 80px !important;
     white-space: nowrap !important;
 }
 
@@ -5264,8 +5261,9 @@
 }
 
 .shift-order-row .cell-actions {
-    width: 135px !important;
+    width: 220px !important;
     white-space: nowrap !important;
+    text-align: center !important;
 }
 
 .badge-state {

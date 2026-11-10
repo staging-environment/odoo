@@ -1360,13 +1360,13 @@
                                     <table class="shift-orders-table">
                                         <thead>
                                             <tr>
-                                                <th style="width: 120px;">FECHA / HORA</th>
-                                                <th style="width: 80px;">Nº TICKET</th>
-                                                <th style="width: 140px;">RECIBO</th>
-                                                <th style="width: 160px;">CLIENTE</th>
-                                                <th style="width: 110px;">CAJERO</th>
-                                                <th style="width: 75px; text-align: right;">TOTAL</th>
-                                                <th style="width: 135px; text-align: center;">ACCIONES</th>
+                                                <th style="width: 135px;">FECHA / HORA</th>
+                                                <th style="width: 85px;">Nº TICKET</th>
+                                                <th style="width: 155px;">RECIBO</th>
+                                                <th style="width: 180px;">CLIENTE</th>
+                                                <th style="width: 130px;">CAJERO</th>
+                                                <th style="width: 80px; text-align: right;">TOTAL</th>
+                                                <th style="width: 220px; text-align: center;">ACCIONES</th>
                                             </tr>
                                         </thead>
                                         <tbody>
