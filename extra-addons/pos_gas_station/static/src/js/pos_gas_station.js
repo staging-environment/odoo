@@ -3083,7 +3083,9 @@ export class UtrecarMainScreen extends Component {
             amount: isMoney ? presetVal : 0,
             liters: !isMoney ? presetVal : 0,
             isMoney: isMoney,
-            presetVal: presetVal
+            presetVal: presetVal,
+            productId: product.id,
+            vehiclePlate: (this.state && this.state.vehiclePlate) || ""
         };
 
         this.state.orderVersion = Date.now();
@@ -4505,6 +4507,8 @@ patch(PaymentScreen.prototype, {
     async afterOrderValidation(suggestToSync = true) {
         const order = this.currentOrder;
         if (order) {
+            const lines = order.get_orderlines ? order.get_orderlines() : [];
+
             // 1. SI LA ORDEN ERA UN PRE-PAGO: AHORA QUE HA SIDO PAGADA, ABRIR LA CALLE EN PISTA PARA EL SUMINISTRO
             if (order.pending_prepay) {
                 const prepay = order.pending_prepay;
@@ -4544,17 +4548,25 @@ patch(PaymentScreen.prototype, {
                     isLleno: false,
                     orderRef: order.name,
                     partner: order.get_partner ? order.get_partner() : null,
-                    vehiclePlate: this.state ? this.state.vehiclePlate : "",
+                    vehiclePlate: (prepay && prepay.vehiclePlate) || (this.state && this.state.vehiclePlate) || "",
                     timestamp: Date.now()
                 };
-                if (!this.state.pumpPresets) this.state.pumpPresets = {};
-                this.state.pumpPresets[pumpId] = Object.assign({}, this.pos.pumpPresets[pumpId]);
-                this.savePumpPresets();
+                if (this.state && this.state.pumpPresets) {
+                    this.state.pumpPresets[pumpId] = Object.assign({}, this.pos.pumpPresets[pumpId]);
+                }
+                if (typeof this.savePumpPresets === 'function') {
+                    this.savePumpPresets();
+                } else {
+                    try {
+                        localStorage.setItem(`pos_gas_station_pump_presets_${this.pos.config.id}`, JSON.stringify(this.pos.pumpPresets || {}));
+                    } catch (e) {
+                        console.debug("Error guardando pumpPresets:", e);
+                    }
+                }
             }
 
             // 2. Limpiar bombas de líneas que NO sean de este prepago recién autorizado
             const prepayPumpId = order.pending_prepay ? String(order.pending_prepay.pump_id) : null;
-            const lines = order.get_orderlines ? order.get_orderlines() : [];
             for (const l of lines) {
                 const linePumpId = l.pump_id ? String(l.pump_id) : null;
                 // Si la orden actual es un prepago para esta calle, NO llamar a clear_pump bajo ningún concepto
