@@ -508,15 +508,23 @@
 }
 
 /* ==========================================================================
-   BARRA SUPERIOR DERECHA (SYSTRAY) - LIMPIEZA Y WIDGET DE ADMINISTRADOR
+   BARRA SUPERIOR DERECHA (SYSTRAY) - LIMPIEZA TOTAL Y WIDGET DE ADMINISTRADOR
    ========================================================================== */
-/* Ocultar elementos estándar no deseados (Chat, Actividades, Selector estándar de empresas y Menú de usuario estándar) */
+/* Ocultar ABSOLUTAMENTE TODOS los elementos del systray excepto nuestro widget de admin */
+.o_main_navbar .o_menu_systray > *:not(:has(.o_admin_systray_container)):not(.o_admin_systray_container) {
+    display: none !important;
+}
+
+.o_main_navbar .o_menu_systray_item,
 .o_main_navbar .o_switch_company_menu,
 .o_main_navbar .o_user_menu,
 .o_main_navbar .o-mail-DiscussSystray,
+.o_main_navbar .o-mail-MessagingMenu,
 .o_main_navbar .o-mail-ActivityMenu,
 .o_main_navbar .o_mail_systray_item,
-.o_main_navbar .o_activity_systray_item {
+.o_main_navbar .o_activity_systray_item,
+.o_main_navbar [data-hotkey="shift+c"],
+.o_main_navbar [data-hotkey="shift+u"] {
     display: none !important;
 }
 
@@ -532,7 +540,7 @@
 }
 
 .o_admin_systray_container button:hover {
-    background: rgba(220, 38, 38, 0.75) !important;
+    background-color: #dc2626 !important;
     color: #ffffff !important;
     transform: translateY(-1px);
 }

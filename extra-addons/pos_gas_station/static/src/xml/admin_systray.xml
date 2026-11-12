@@ -3,18 +3,26 @@
 
     <t t-name="pos_gas_station.AdminSystrayMenu" owl="1">
         <div class="o_admin_systray_container d-flex align-items-center gap-2 px-2 h-100">
-            <!-- Pill identificador del Administrador -->
-            <div class="d-flex align-items-center bg-white bg-opacity-10 border border-white border-opacity-25 rounded-pill px-3 py-1 text-white shadow-sm"
-                 style="backdrop-filter: blur(4px); height: 32px;"
+            <!-- Pill identificador del Administrador: fondo oscuro semitransparente con texto nítido -->
+            <div class="admin-pill-badge d-flex align-items-center px-3 py-1 rounded-pill"
+                 style="background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(255, 255, 255, 0.25); height: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"
                  t-att-title="state.vpnIp ? ('Conectado vía VPN ' + state.vpnIp) : 'Administrador activo'">
-                <i class="fa fa-user-circle fs-5 me-2" style="color: #facc15;"></i>
-                <div class="d-flex align-items-center gap-1.5 lh-1">
-                    <span class="fw-bold text-nowrap" style="font-size: 0.83rem;">
-                        <t t-esc="state.adminName || user.name"/>
+                <i class="fa fa-user-circle me-2" style="color: #facc15; font-size: 1.1rem;"></i>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fw-bold text-nowrap" style="color: #ffffff !important; font-size: 0.85rem; letter-spacing: 0.3px; text-shadow: 0 1px 2px rgba(0,0,0,0.4);">
+                        <t t-esc="state.adminName || this.user.name || 'Administrador'"/>
                     </span>
                     <t t-if="state.companyName">
-                        <span class="badge bg-white text-dark ms-1.5 fw-bold px-2 py-0.5 text-truncate" style="font-size: 0.72rem; max-width: 140px;" t-att-title="state.companyName">
+                        <span class="badge fw-bold px-2 py-0.5 text-truncate" 
+                              style="background-color: #f1f5f9 !important; color: #0f172a !important; font-size: 0.72rem; border: 1px solid #cbd5e1 !important; border-radius: 6px; max-width: 140px;"
+                              t-att-title="state.companyName">
                             <t t-esc="state.companyName"/>
+                        </span>
+                    </t>
+                    <t t-if="state.vpnIp">
+                        <span class="badge font-monospace px-1.5 py-0.5" 
+                              style="background-color: rgba(255,255,255,0.18) !important; color: #f8fafc !important; font-size: 0.7rem; border-radius: 4px;">
+                            <i class="fa fa-wifi me-1 text-warning" style="font-size: 0.65rem;"></i><t t-esc="state.vpnIp"/>
                         </span>
                     </t>
                 </div>
@@ -22,8 +30,8 @@
 
             <!-- Botón Salir al Inicio de Odoo -->
             <button type="button"
-                    class="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill fw-bold border-white border-opacity-50 shadow-sm"
-                    style="font-size: 0.8rem; height: 32px; background: rgba(220, 38, 38, 0.35); border-color: rgba(254, 202, 202, 0.5) !important;"
+                    class="btn btn-sm d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill fw-bold shadow-sm"
+                    style="font-size: 0.8rem; height: 32px; background-color: #ef4444 !important; color: #ffffff !important; border: 1px solid #dc2626 !important;"
                     t-on-click="() => this.onLogout()"
                     title="Salir del usuario activo y volver a la selección inicial de gasolinera / administración">
                 <i class="fa fa-sign-out"></i>
