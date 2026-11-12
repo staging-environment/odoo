@@ -1435,7 +1435,7 @@
                                         </thead>
                                         <tbody>
                                             <t t-foreach="filteredShiftOrders" t-as="ord" t-key="ord.id">
-                                                <tr t-attf-class="shift-order-row #{ord.is_ticket_annulled ? 'order-row-annulled' : ''}" 
+                                                <tr class="shift-order-row" 
                                                     t-att-title="ord.is_ticket_annulled ? ('Ticket Anulado' + (ord.annulment_ref ? ' [' + ord.annulment_ref + ']' : '')) : ''"
                                                     t-on-click="() => this.selectShiftOrder(ord)">
                                                     <td class="cell-toggle" style="text-align: center; width: 32px; padding: 4px 2px !important;" t-on-click.stop="">
@@ -1477,12 +1477,7 @@
                                                         </t>
                                                     </td>
                                                     <td class="cell-total" style="text-align: right;">
-                                                        <t t-if="ord.is_ticket_annulled">
-                                                            <strong style="color: #dc2626;"><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
-                                                        </t>
+                                                        <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
                                                     </td>
                                                     <td class="cell-actions" style="text-align: center;" t-on-click.stop="">
                                                         <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">

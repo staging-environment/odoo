@@ -5160,21 +5160,6 @@
     background: #f8fafc !important;
 }
 
-.shift-order-row.order-row-annulled,
-.shift-order-row.order-row-annulled td {
-    background-color: #fee2e2 !important;
-    color: #991b1b !important;
-}
-
-.shift-order-row.order-row-annulled {
-    border-left: 5px solid #dc2626 !important;
-}
-
-.shift-order-row.order-row-annulled:hover,
-.shift-order-row.order-row-annulled:hover td {
-    background-color: #fecaca !important;
-}
-
 .shift-modal-footer {
     background: #f8fafc !important;
     border-top: 1px solid #e2e8f0 !important;
