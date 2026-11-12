@@ -2639,17 +2639,17 @@ class PosGasStationController(http.Controller):
             else:
                 vals['state_id'] = False
 
-            if 'customer_type' in partner_data:
-                vals['customer_type'] = partner_data.get('customer_type') or 'ordinary'
-            if 'customer_payment_mode' in partner_data:
-                vals['customer_payment_mode'] = partner_data.get('customer_payment_mode') or 'cash'
-
             if partner_id:
                 partner = env['res.partner'].sudo().browse(int(partner_id))
                 if not partner.exists():
                     return {'status': 'error', 'message': 'Cliente no encontrado.'}
+                # Regla de seguridad: Un expendedor NO puede modificar el tipo de facturación ni crédito desde el TPV.
+                # El tipo de facturación y condiciones comerciales solo pueden cambiarse desde la administración de Odoo.
                 partner.write(vals)
             else:
+                # Clientes nuevos creados desde el TPV: siempre nacen como Ordinaria (Contado).
+                vals['customer_type'] = 'ordinary'
+                vals['customer_payment_mode'] = 'cash'
                 vals['company_id'] = company_id
                 partner = env['res.partner'].sudo().create(vals)
 

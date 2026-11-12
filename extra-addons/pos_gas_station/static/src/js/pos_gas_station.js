@@ -2818,8 +2818,6 @@ export class UtrecarMainScreen extends Component {
                 name: p.name.trim(),
                 vat: (p.vat || "").trim().toUpperCase(),
                 ref: (p.ref || "").trim(),
-                customer_type: p.customer_type || "ordinary",
-                customer_payment_mode: p.customer_payment_mode || "cash",
                 phone: (p.phone || "").trim(),
                 mobile: (p.mobile || "").trim(),
                 email: (p.email || "").trim(),

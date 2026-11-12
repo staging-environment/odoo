@@ -989,22 +989,28 @@
                                            t-model="state.editingPartner.ref"/>
                                 </div>
 
-                                <div class="col-md-4">
-                                    <label class="form-label-custom">Tipo de Facturación</label>
-                                    <select class="form-select-custom" t-model="state.editingPartner.customer_type">
-                                        <option value="ordinary">Facturación Ordinaria (Contado)</option>
-                                        <option value="credit">Crédito en Pista (Albarán)</option>
-                                        <option value="monthly">Facturación Mensual</option>
-                                    </select>
-                                </div>
-
-                                <div class="col-md-4">
-                                    <label class="form-label-custom">Modo de Pago</label>
-                                    <select class="form-select-custom" t-model="state.editingPartner.customer_payment_mode">
-                                        <option value="cash">Efectivo / Tarjeta</option>
-                                        <option value="credit">Crédito</option>
-                                        <option value="bank">Domiciliación Bancaria</option>
-                                    </select>
+                                <div class="col-md-8">
+                                    <label class="form-label-custom">Tipo de Facturación Asignado</label>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap" style="min-height: 38px;">
+                                        <t t-if="state.editingPartner.customer_type === 'credit' || state.editingPartner.customer_payment_mode === 'credit'">
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 fs-6 fw-bold">
+                                                <i class="fa fa-id-card-o me-1"/> Crédito en Pista
+                                            </span>
+                                        </t>
+                                        <t t-elif="state.editingPartner.customer_type === 'monthly' || state.editingPartner.invoice_periodicity === 'monthly'">
+                                            <span class="badge bg-info-subtle text-info-emphasis border border-info px-3 py-2 fs-6 fw-bold">
+                                                <i class="fa fa-calendar-check-o me-1"/> Facturación Mensual
+                                            </span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="badge bg-light text-secondary border px-3 py-2 fs-6 fw-bold">
+                                                <i class="fa fa-money me-1"/> Facturación Ordinaria (Contado)
+                                            </span>
+                                        </t>
+                                        <span class="text-muted small fst-italic ms-1 d-inline-flex align-items-center gap-1" style="font-size: 11px;">
+                                            <i class="fa fa-lock text-secondary"/> Solo editable desde la Administración de Odoo
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <!-- SECCIÓN 2: CONTACTO -->
