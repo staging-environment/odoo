@@ -90,6 +90,13 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **10/11/2026** | TPV & Cloud | Optimización de Historial de Turno: tabla compacta a 1 línea por pedido (1040px sin scroll horizontal), filas anuladas en rojo pastel y corrección de z-index del modal de anulación | Desplegado en Cloud y verificado en TPV |
 | **10/11/2026** | TPV & Cloud & Pista | Gestión integral de sobrantes de prepago incompleto (Puntos 9 y 10): monedita con badge, surtidor en amarillo permanente incluso con pista cerrada, modal con importe negativo y 4 botones de acción (Ticket, Albarán, Factura, Guardar sin ticket) | Desplegado en Cloud y sincronizado con agente de pista en Repsol (`10.8.0.18`) |
 | **10/11/2026** | TPV & Cloud | Composición de ticket de devolución con 1 línea de combustible en negativo (`-diffLts` / `-diffAmt`) y soporte de cobro negativo en `PaymentScreen` | Desplegado y verificado en Cloud |
+| **12/11/2026** | ERP Backend | Reorganización de menú principal superior: "Usuarios" -> "Expendedores" y "Administración", con resalte visual y punto identificador de sección activa | Desplegado y verificado en Cloud |
+| **12/11/2026** | ERP Backend | Compactación y reducción de márgenes y filas en la vista detalle de empresas (`res.company`) | Desplegado y verificado en Cloud |
+| **12/11/2026** | TPV & Cloud | Rediseño de modal de clientes en TPV: cabecera en 2 niveles, buscador ágil con reset, botón "Editar" por fila y modal flotante de alta/edición de clientes | Desplegado y verificado en Cloud |
+| **12/11/2026** | TPV & Cloud | Selector dinámico de matrículas en TPV: desplegable estilizado con matrículas previas del cliente o input directo con autoguardado en su ficha | Desplegado y verificado en Cloud |
+| **12/11/2026** | ERP & TPV | Segregación estricta de clientes por Empresa (`res.company`): aislamiento de clientes de A.R. Trieste (Repsol) y UTRECAR S.L. | Desplegado y verificado en Cloud |
+| **12/11/2026** | TPV & Seguridad | Restricción estricta de tipo de facturación (Crédito/Mensual/Contado): modo solo lectura con candado en TPV y gestión exclusiva para administradores en backend | Desplegado y verificado en Cloud |
+| **12/11/2026** | TPV & Pista Repsol (`10.8.0.18`) | Diagnóstico y solución de congelamiento en 3 puntos (`...`): corrección de sintaxis en compilación Owl de `UtrecarMainScreen` por condicional inline en XML | Resuelto y verificado al 100% en vivo |
 
 ---
 

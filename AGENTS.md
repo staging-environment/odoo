@@ -324,3 +324,62 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
   - Método `ensureOrderPaid()` en `PaymentScreen` adaptado (`Math.abs(due) > 0.001`) para permitir la cobertura y validación directa de tickets con importe negativo en efectivo o tarjeta.
 - **Sincronización con el Hardware / Agente de Pista (`agente_pista_odoo_bridge.py`)**:
   - Modificado `marcar_calle_completada`: cuando `importe < (preset_amount - 0.05)`, el puente en Repsol (`10.8.0.18`) no limpia la calle ni pone importe a cero; bloquea la manguera y conserva `status = "ready"` y `statusText = "SOBRANTE X.XX€"`, manteniendo el saldo reportado a Odoo hasta su resolución desde el TPV.
+
+### 12. Reorganización de Navegación, Gestión Integral de Clientes en TPV y Resolución de Bloqueo de Carga (12/11/2026)
+
+#### A. Navegación y Jerarquía del Menú Superior:
+- **Menú Principal de Usuarios**:
+  - Elemento principal de la barra superior renombrado a **"Usuarios"** (antes *"Personal y empresas"*).
+  - Submenú 1: renombrado a **"Expendedores"** (control de accesos a TPV de pista por estación).
+  - Submenú 2: renombrado a **"Administración"** (matriz multi-rol de administración por empresa).
+- **Indicador Visual de Sección Activa**:
+  - Resalte de menú activo y viñeta / puntito identificador (`bullet dot`) junto al ítem del submenú correspondiente para indicar visualmente y de forma inequívoca en qué pantalla se encuentra el usuario dentro de la jerarquía de Odoo.
+
+#### B. Optimización Visual en Detalle de Empresas:
+- Compactación de márgenes, cabeceras y alto de filas en los bloques y tablas de la ficha de empresa (`res.company`), maximizando el espacio útil en pantalla sin sacrificar legibilidad.
+
+#### C. Ventana Flotante de Selección y Alta / Edición de Clientes en TPV:
+- **Rediseño de Cabecera (2 niveles)**:
+  - Nivel 1: Icono, título *"SELECCIÓN DE CLIENTE"*, badge con el nombre de la empresa actual (`currentCompanyName`) y botones de acción rápida (*"+ Nuevo Cliente"*, *"Quitar Cliente"*, *"Cerrar"*).
+  - Nivel 2: Barra de búsqueda con icono, botón de limpieza rápida (`clearClientSearch`) y botón de ordenación alfabética.
+- **Acción Rápida de Edición en el Listado**:
+  - Cada fila de cliente cuenta con su botón dedicado **"Editar"** que abre una ventana emergente flotante sobre el TPV (`utrecar-edit-partner-modal`).
+- **Modal Flotante de Alta y Edición de Clientes (`utrecar-edit-partner-modal`)**:
+  - Organizado en 4 secciones:
+    1. *Identificación y Tipo de Facturación*: Nombre / Razón Social, CIF/NIF, Código Aseproda / Ref.
+    2. *Datos de Contacto*: Teléfono fijo, móvil y correo electrónico.
+    3. *Dirección Fiscal*: Calle, C.P., Población y selector de Provincias españolas (`spanishStates`).
+    4. *Matrículas Asociadas*: Lista de badges con opción de eliminar matrícula individual (`removeVehicleFromEditingPartner`) y caja de texto para añadir nuevas matrículas al vuelo (`addVehicleToEditingPartner`).
+- **Limpieza de Interfaz en Ficha Nativa de Cliente**:
+  - Eliminados/ocultados los botones *"Pedidos"* y *"Más información"* que saturaban la pantalla sin aportar al flujo de despacho en pista.
+
+#### D. Selector Dinámico de Matrículas en Barra Superior del TPV:
+- Integrado a la derecha del botón del cliente en la barra de control:
+  - Si el cliente seleccionado tiene matrículas asociadas: selector desplegable estilizado (`virtus-plate-select`) con bandera de la UE para elegir la matrícula deseada, más la opción *"➕ Añadir nueva matrícula"*.
+  - Si no tiene matrículas previas: campo de texto directo con guardado automático en su ficha de cliente.
+
+#### E. Segregación Estricta de Clientes por Empresa (No por Estación):
+- Los clientes pertenecen y se asocian estrictamente a la **Empresa (`res.company`)**, no a la estación física.
+- El TPV de cada estación filtra exclusivamente los clientes de la empresa titular del terminal (p. ej. E.S. Repsol filtra por Empresa 4 - *A.R. Trieste*, mientras que Rodalabota/Vistalegre/Ronda Norte lo hacen por Empresa 1 - *UTRECAR, S.L.*).
+- En el dashboard y TPV se aplica búsqueda dinámica en base de datos sin límite de registros pero acotada a la empresa correspondiente.
+
+#### F. Seguridad y Restricción del Tipo de Facturación:
+- **Solo Lectura en TPV**:
+  - Los operarios / expendedores de pista **no tienen autorización** para modificar el régimen fiscal de un cliente (Crédito en Pista, Facturación Mensual o Contado Ordinario).
+  - En el modal de edición del TPV, el tipo de facturación se visualiza con badge informativo y candado: *"Solo editable desde la Administración de Odoo"*.
+  - Los endpoints de backend (`/pos_gas_station/save_partner`) descartan modificaciones de estos campos desde el TPV y fuerzan facturación ordinaria al contado (`ordinary` / `cash`) en altas nuevas.
+
+#### G. Diagnóstico y Resolución del Bloqueo de 3 Puntos de Carga (`...`) en E.S. Repsol:
+- **Problema**: Tras el despliegue del modal de clientes, el TPV en el PC de la E.S. Repsol (`10.8.0.18`) quedaba congelado en la pantalla de carga con tres puntos parpadeando.
+- **Diagnóstico en Tiempo Real**:
+  - Mediante emulación de navegador y captura de consola remota, se detectó la traza exacta:
+    `OwlError: Failed to compile template "pos_gas_station.UtrecarMainScreen": Unexpected token '{'`.
+  - El analizador sintáctico de Owl 2 interpretaba erróneamente un condicional inline dentro de un atributo XML (`t-on-keydown="(ev) => { if (ev.key === 'Enter') ... }"`) generando código JavaScript inválido (`v119(_ev.key==='Enter'){...}`), destruyendo el componente raíz (`ProductScreen`) antes del montaje.
+- **Corrección**:
+  - Lógica trasladada a métodos JS dedicados (`onEditingPartnerNewPlateKeyDown`, `clearClientSearch`, `setConvertAlbaranPlate`).
+  - Getter seguro `currentCompanyName` para evitar accesos a tuplas en enteros de compañía.
+  - Eliminación de extensiones redundantes en XML sustituidas por CSS.
+- **Verificación**:
+  - Carga exitosa comprobada en navegador (`"master": true`).
+  - Sondeo en tiempo real de pista (`POST /pos_gas_station/status 200 OK`) restablecido al 100% en el PC de Repsol (`10.8.0.18`).
+
