@@ -114,6 +114,15 @@ export class VpnCompanyAdminsView extends Component {
         return Boolean(this.state.modalCompanyIds && this.state.modalCompanyIds.includes(compId));
     }
 
+    isUserSelected(userId) {
+        if (!this.state.modalUserId || !userId) return false;
+        return String(this.state.modalUserId) === String(userId);
+    }
+
+    onSelectUser(val) {
+        this.state.modalUserId = val ? String(val) : "";
+    }
+
     getCompanyAdminCount(compId) {
         return (this.state.stats && this.state.stats.company_counts && this.state.stats.company_counts[compId]) || 0;
     }

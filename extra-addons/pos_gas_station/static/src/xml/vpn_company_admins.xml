@@ -319,10 +319,10 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-bold small text-muted">Usuario Odoo Vinculado</label>
-                        <select class="form-select" t-model="state.modalUserId">
-                            <option value="">-- Sin usuario específico (utilizará Superadmin) --</option>
+                        <select class="form-select" t-on-change="(ev) => this.onSelectUser(ev.target.value)">
+                            <option value="" t-att-selected="!state.modalUserId">-- Sin usuario específico (utilizará Superadmin) --</option>
                             <t t-foreach="state.users" t-as="u" t-key="u.id">
-                                <option t-att-value="u.id"><t t-esc="u.name"/> (<t t-esc="u.login"/>)</option>
+                                <option t-att-value="u.id" t-att-selected="this.isUserSelected(u.id)"><t t-esc="u.name"/> (<t t-esc="u.login"/>)</option>
                             </t>
                         </select>
                     </div>
