@@ -214,6 +214,13 @@ class UtrecarLogin(Home):
                      vpn_admin.name, ip, target_company.name, cid)
         return request.redirect(f'/web?admin=1&cids={cid}')
 
+    @http.route('/pos_gas_station/admin_logout', type='http', auth="none", methods=['GET', 'POST'], csrf=False)
+    def admin_logout(self, **kw):
+        """Cierra la sesión del administrador y vuelve a la pantalla inicial de Odoo (select_employee)."""
+        _logger.info("Admin cerró sesión -> redirigiendo a /pos_gas_station/select_employee")
+        request.session.logout()
+        return request.redirect('/pos_gas_station/select_employee')
+
     @http.route('/', type='http', auth="none")
     def index(self, s_action=None, db=None, **kw):
         """Pantalla principal de Odoo: la home siempre muestra select_employee salvo TPV activo."""

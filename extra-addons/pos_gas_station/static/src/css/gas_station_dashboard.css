@@ -508,14 +508,33 @@
 }
 
 /* ==========================================================================
-   OCULTAR TODOS LOS ELEMENTOS DE LA BARRA SUPERIOR DERECHA (SYSTRAY)
-   (Chat / Mensajes, Reloj de Actividades, Selector de Empresa y Menú de Usuario)
+   BARRA SUPERIOR DERECHA (SYSTRAY) - LIMPIEZA Y WIDGET DE ADMINISTRADOR
    ========================================================================== */
-.o_main_navbar .o_menu_systray,
-.o_main_navbar .o_menu_systray_item,
+/* Ocultar elementos estándar no deseados (Chat, Actividades, Selector estándar de empresas y Menú de usuario estándar) */
 .o_main_navbar .o_switch_company_menu,
-.o_main_navbar .o_user_menu {
+.o_main_navbar .o_user_menu,
+.o_main_navbar .o-mail-DiscussSystray,
+.o_main_navbar .o-mail-ActivityMenu,
+.o_main_navbar .o_mail_systray_item,
+.o_main_navbar .o_activity_systray_item {
     display: none !important;
+}
+
+/* Mantener visible el contenedor systray para el widget de administración */
+.o_main_navbar .o_menu_systray {
+    display: flex !important;
+    align-items: center !important;
+    margin-left: auto !important;
+}
+
+.o_admin_systray_container {
+    height: 100% !important;
+}
+
+.o_admin_systray_container button:hover {
+    background: rgba(220, 38, 38, 0.75) !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
 }
 
 /* Notificaciones por encima de los modales (z-index modal es 1060) */

@@ -50,6 +50,8 @@
             'pos_gas_station/static/src/css/vpn_company_admins.css',
             'pos_gas_station/static/src/js/vpn_company_admins.js',
             'pos_gas_station/static/src/xml/vpn_company_admins.xml',
+            'pos_gas_station/static/src/js/admin_systray.js',
+            'pos_gas_station/static/src/xml/admin_systray.xml',
         ],
     },
     'installable': True,

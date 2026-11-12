@@ -1237,6 +1237,8 @@ class PosGasStationController(http.Controller):
         forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
         ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
         vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+        if not vpn_admin and user:
+            vpn_admin = env['utrecar.vpn.admin'].sudo().search([('user_id', '=', user.id), ('active', '=', True)], limit=1)
 
         # Permiso para gestionar personal y administradores
         can_manage_staff = bool(
@@ -1365,11 +1367,15 @@ class PosGasStationController(http.Controller):
         # Ordenar empresas: A.R. Trieste (ID 4 o con 'trieste' en nombre) SIEMPRE en PRIMER LUGAR
         companies_data.sort(key=lambda c: (0 if (c['id'] == 4 or 'trieste' in c['name'].lower()) else 1, c['id']))
 
+        admin_display_name = vpn_admin.name if vpn_admin else user.name
+
         return {
             'status': 'success',
             'is_manager': is_manager,
             'can_manage_staff': can_manage_staff,
             'user_name': user.name,
+            'admin_name': admin_display_name,
+            'vpn_ip': vpn_admin.vpn_ip if vpn_admin else ip,
             'companies': companies_data,
             'all_authorized_companies': [{'id': c.id, 'name': c.name} for c in authorized_companies],
             'selected_company_id': session_company_id,
@@ -1414,6 +1420,31 @@ class PosGasStationController(http.Controller):
             return {'status': 'success', 'company_id': cid}
         except Exception as e:
             return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/admin_current_info', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_admin_current_info(self):
+        """Retorna información del administrador activo en la plataforma para la barra superior."""
+        env = request.env
+        user = env.user
+        forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+        ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
+        vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+        if not vpn_admin and user:
+            vpn_admin = env['utrecar.vpn.admin'].sudo().search([('user_id', '=', user.id), ('active', '=', True)], limit=1)
+
+        company = env.company if getattr(env, 'company', None) else user.company_id
+        admin_display_name = vpn_admin.name if vpn_admin else user.name
+
+        return {
+            'status': 'success',
+            'admin_name': admin_display_name,
+            'user_name': user.name,
+            'user_login': user.login,
+            'vpn_admin_name': vpn_admin.name if vpn_admin else '',
+            'vpn_ip': vpn_admin.vpn_ip if vpn_admin else ip,
+            'company_name': company.name if company else '',
+            'company_id': company.id if company else False,
+        }
 
     @http.route('/pos_gas_station/company_detail_data', type='json', auth='user', methods=['POST'], csrf=False)
     def get_company_detail_data(self, company_id=None):

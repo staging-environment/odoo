@@ -17,6 +17,8 @@ export class GasStationDashboard extends Component {
             loading: true,
             isManager: false,
             userName: "",
+            adminName: "",
+            vpnIp: "",
             companies: [],
             stats: {
                 total_companies: 0,
@@ -94,6 +96,8 @@ export class GasStationDashboard extends Component {
                 this.state.isManager = data.is_manager;
                 this.state.canManageStaff = Boolean(data.can_manage_staff);
                 this.state.userName = data.user_name;
+                this.state.adminName = data.admin_name || data.user_name;
+                this.state.vpnIp = data.vpn_ip || "";
                 this.state.stats = data.stats;
                 this.state.allAuthorizedCompanies = data.all_authorized_companies || [];
                 this.state.selectedCompanyId = data.selected_company_id;

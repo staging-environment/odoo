@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="pos_gas_station.AdminSystrayMenu" owl="1">
+        <div class="o_admin_systray_container d-flex align-items-center gap-2 px-2 h-100">
+            <!-- Pill identificador del Administrador -->
+            <div class="d-flex align-items-center bg-white bg-opacity-10 border border-white border-opacity-25 rounded-pill px-3 py-1 text-white shadow-sm"
+                 style="backdrop-filter: blur(4px); height: 32px;"
+                 t-att-title="state.vpnIp ? ('Conectado vía VPN ' + state.vpnIp) : 'Administrador activo'">
+                <i class="fa fa-user-circle fs-5 me-2" style="color: #facc15;"></i>
+                <div class="d-flex align-items-center gap-1.5 lh-1">
+                    <span class="fw-bold text-nowrap" style="font-size: 0.83rem;">
+                        <t t-esc="state.adminName || user.name"/>
+                    </span>
+                    <t t-if="state.companyName">
+                        <span class="badge bg-white text-dark ms-1.5 fw-bold px-2 py-0.5 text-truncate" style="font-size: 0.72rem; max-width: 140px;" t-att-title="state.companyName">
+                            <t t-esc="state.companyName"/>
+                        </span>
+                    </t>
+                </div>
+            </div>
+
+            <!-- Botón Salir al Inicio de Odoo -->
+            <button type="button"
+                    class="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill fw-bold border-white border-opacity-50 shadow-sm"
+                    style="font-size: 0.8rem; height: 32px; background: rgba(220, 38, 38, 0.35); border-color: rgba(254, 202, 202, 0.5) !important;"
+                    t-on-click="() => this.onLogout()"
+                    title="Salir del usuario activo y volver a la selección inicial de gasolinera / administración">
+                <i class="fa fa-sign-out"></i>
+                <span class="d-none d-sm-inline">Salir</span>
+            </button>
+        </div>
+    </t>
+
+</templates>
