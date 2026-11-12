@@ -85,36 +85,53 @@ class UtrecarPosController(PosController):
 
 class UtrecarLogin(Home):
 
-    ADMIN_VPN_IPS = {'10.8.0.2', '10.8.0.3', '10.8.0.8', '10.8.0.19', '127.0.0.1'}
-
-    def _is_admin_vpn_ip(self, ip):
-        """Comprueba si la IP corresponde a la VPN de Administrador autorizada."""
+    def _get_vpn_admin(self, ip):
+        """Retorna el registro utrecar.vpn.admin si la IP de VPN está registrada y activa."""
         if not ip:
             return False
         clean_ip = str(ip).strip()
         try:
-            ICP = request.env['ir.config_parameter'].sudo()
-            param_ips = ICP.get_param('pos_gas_station.admin_vpn_ips', '')
-            admin_ips = set(self.ADMIN_VPN_IPS)
-            if param_ips:
-                admin_ips.update([x.strip() for x in param_ips.split(',') if x.strip()])
-            return clean_ip in admin_ips
-        except Exception:
-            return clean_ip in self.ADMIN_VPN_IPS
+            VpnAdmin = request.env['utrecar.vpn.admin'].sudo()
+            if not VpnAdmin.search_count([]):
+                VpnAdmin.ensure_default_admins()
+            admin = VpnAdmin.search([('vpn_ip', '=', clean_ip), ('active', '=', True)], limit=1)
+            return admin if admin and admin.exists() else False
+        except Exception as e:
+            _logger.warning("Error buscando utrecar.vpn.admin para IP %s: %s", clean_ip, e)
+            return False
 
-    def _auto_login_super_admin(self):
-        """Autentica automáticamente como Super Administrador (Bonilla / id=2)."""
-        admin_user = request.env['res.users'].sudo().browse(2)
-        if not admin_user.exists():
-            admin_user = request.env['res.users'].sudo().search([('login', '=', 'jarodriguezbonilla@gmail.com')], limit=1)
-        if admin_user:
-            request.session.uid = admin_user.id
-            request.session.login = admin_user.login
+    def _is_admin_vpn_ip(self, ip):
+        """Comprueba si la IP corresponde a un administrador VPN registrado y activo con empresas asignadas."""
+        admin = self._get_vpn_admin(ip)
+        return bool(admin and admin.company_ids)
+
+    def _auto_login_super_admin(self, user=None, company_id=None):
+        """Autentica automáticamente como Administrador y configura la empresa activa en la sesión."""
+        if not user or not user.exists():
+            admin_user = request.env['res.users'].sudo().browse(2)
+            if not admin_user.exists():
+                admin_user = request.env['res.users'].sudo().search([('login', '=', 'jarodriguezbonilla@gmail.com')], limit=1)
+            user = admin_user
+
+        if user:
+            if company_id:
+                try:
+                    cid = int(company_id)
+                    if cid not in user.company_ids.ids:
+                        user.sudo().write({'company_ids': [(4, cid)]})
+                    user.sudo().write({'company_id': cid})
+                    request.session['allowed_company_ids'] = [cid]
+                    request.session['current_company_id'] = cid
+                    request.session['admin_active_company_id'] = cid
+                except Exception as e:
+                    _logger.warning("Error asociando compañía %s a la sesión admin: %s", company_id, e)
+
+            request.session.uid = user.id
+            request.session.login = user.login
             request.session.session_token = security.compute_session_token(request.session, request.env)
             request.session.rotate = True
-            return admin_user
+            return user
         return False
-
 
     def _get_client_ip(self):
         forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
@@ -123,24 +140,15 @@ class UtrecarLogin(Home):
         return (request.httprequest.remote_addr or '').strip()
 
     def _is_station_vpn_ip(self, ip):
-        """Comprueba si la IP corresponde al rango de puestos/terminales de gasolinera en la VPN WireGuard."""
+        """Comprueba si la IP corresponde a un puesto de gasolinera en pos.config."""
         if not ip:
             return False
         clean_ip = str(ip).strip()
         if self._is_admin_vpn_ip(clean_ip):
             return False
         PosConfig = request.env['pos.config'].sudo()
-
         station = PosConfig.get_station_by_vpn_ip(clean_ip)
-        if station:
-            return True
-
-        station_ips = {
-            '10.8.0.4', '10.8.0.5', '10.8.0.6', '10.8.0.7',
-            '10.8.0.9', '10.8.0.10', '10.8.0.11', '10.8.0.12',
-            '10.8.0.13', '10.8.0.14', '10.8.0.15', '10.8.0.16', '10.8.0.17', '10.8.0.18'
-        }
-        return clean_ip in station_ips
+        return bool(station and station.exists())
 
     def _get_station_by_ip(self, ip):
         """Retorna el registro pos.config en Odoo si existe para esta IP de VPN."""
@@ -179,6 +187,33 @@ class UtrecarLogin(Home):
             return station
         return False
 
+    @http.route('/pos_gas_station/admin_login', type='http', auth="none", methods=['GET', 'POST'], csrf=False)
+    def admin_login(self, company_id=None, **kw):
+        """Autentica a la persona física administradora para una empresa específica según su IP de VPN."""
+        ip = self._get_client_ip()
+        vpn_admin = self._get_vpn_admin(ip)
+        if not vpn_admin or not vpn_admin.company_ids:
+            _logger.warning("Intento de admin_login no autorizado desde IP %s", ip)
+            return request.redirect('/pos_gas_station/select_employee')
+
+        target_company = None
+        if company_id:
+            try:
+                cid = int(company_id)
+                target_company = vpn_admin.company_ids.filtered(lambda c: c.id == cid)
+            except Exception:
+                target_company = None
+
+        if not target_company:
+            target_company = vpn_admin.company_ids[:1]
+
+        cid = target_company.id
+        target_user = vpn_admin.user_id
+        self._auto_login_super_admin(user=target_user, company_id=cid)
+        _logger.info("Admin VPN %s (%s) autenticado para empresa %s (ID %s) -> /web",
+                     vpn_admin.name, ip, target_company.name, cid)
+        return request.redirect(f'/web?admin=1&cids={cid}')
+
     @http.route('/', type='http', auth="none")
     def index(self, s_action=None, db=None, **kw):
         """Pantalla principal de Odoo: la home siempre muestra select_employee salvo TPV activo."""
@@ -186,10 +221,12 @@ class UtrecarLogin(Home):
 
         # Si solicitan explícitamente acceso de administrador (?admin=1):
         if request.params.get('admin') == '1':
-            if self._is_admin_vpn_ip(ip):
+            vpn_admin = self._get_vpn_admin(ip)
+            if vpn_admin and vpn_admin.company_ids:
+                cid = request.params.get('company_id')
                 if not request.session.uid or not self._is_admin_user(request.env['res.users'].sudo().browse(request.session.uid)):
-                    self._auto_login_super_admin()
-                return request.redirect('/web?admin=1')
+                    self._auto_login_super_admin(user=vpn_admin.user_id, company_id=cid)
+                return request.redirect(f'/web?admin=1{("&cids=" + str(cid)) if cid else ""}')
             return request.redirect('/web/login?admin=1')
 
         # Comprobar si la IP corresponde a una estación de gasolinera en WireGuard:
@@ -203,9 +240,6 @@ class UtrecarLogin(Home):
                 return request.redirect(f'/pos/ui?config_id={station.id}')
             return request.redirect(f'/pos_gas_station/select_employee?station_id={station.id}')
 
-        # Para cualquier otra IP (incluida la IP VPN del Administrador 10.8.0.2 que no es estación de pista):
-        # Muestra la Home (select_employee). Si la IP no pertenece a una estación de pista dada de alta,
-        # mostrará la advertencia de puesto pendiente con el botón 'Acceso manual de Administrador'.
         station = self._get_default_station(request.params.get('station_id'))
         if station:
             return request.redirect(f'/pos_gas_station/select_employee?station_id={station.id}')
@@ -223,9 +257,11 @@ class UtrecarLogin(Home):
 
         # Si se solicita acceso de administrador explícito (?admin=1):
         if request.params.get('admin') == '1':
-            if self._is_admin_vpn_ip(ip):
+            vpn_admin = self._get_vpn_admin(ip)
+            if vpn_admin and vpn_admin.company_ids:
+                cid = request.params.get('company_id')
                 if not request.session.uid or not self._is_admin_user(request.env['res.users'].sudo().browse(request.session.uid)):
-                    self._auto_login_super_admin()
+                    self._auto_login_super_admin(user=vpn_admin.user_id, company_id=cid)
                 return super(UtrecarLogin, self).web_client(s_action=s_action, **kw)
             else:
                 if request.session.uid:
@@ -238,7 +274,7 @@ class UtrecarLogin(Home):
                 return request.redirect('/web/login?admin=1')
 
         # Si no viene ?admin=1, redirigir siempre a select_employee para mostrar
-        # la pantalla de TPV (indicando que no es estación y ofreciendo el enlace de administración):
+        # la pantalla de TPV (indicando que no es estación y ofreciendo el enlace de administración si corresponde):
         station = self._get_default_station(request.params.get('station_id'))
         target = f'/pos_gas_station/select_employee?station_id={station.id}' if station else '/pos_gas_station/select_employee'
         return request.redirect(target)
@@ -252,10 +288,12 @@ class UtrecarLogin(Home):
             target = f'/pos_gas_station/select_employee?station_id={station.id}' if station else '/pos_gas_station/select_employee'
             return request.redirect(target)
 
+        vpn_admin = self._get_vpn_admin(ip)
         # Si el acceso es desde la IP VPN de Administrador con ?admin=1:
-        if self._is_admin_vpn_ip(ip) and request.params.get('admin') == '1':
-            self._auto_login_super_admin()
-            return request.redirect(redirect or '/web?admin=1')
+        if vpn_admin and vpn_admin.company_ids and request.params.get('admin') == '1':
+            cid = request.params.get('company_id')
+            self._auto_login_super_admin(user=vpn_admin.user_id, company_id=cid)
+            return request.redirect(redirect or f'/web?admin=1{("&cids=" + str(cid)) if cid else ""}')
 
         # Petición con admin=1 o envío de credenciales POST:
         if request.params.get('admin') == '1' or request.httprequest.method == 'POST':
@@ -264,7 +302,6 @@ class UtrecarLogin(Home):
                 if self._is_admin_user(user):
                     return request.redirect(redirect or '/web?admin=1')
                 else:
-                    # Cerrar la sesión de empleado para permitir loguearse como administrador
                     request.session.logout()
 
             response = super(UtrecarLogin, self).web_login(redirect=redirect, **kw)
@@ -279,12 +316,11 @@ class UtrecarLogin(Home):
                     return request.redirect('/pos_gas_station/select_employee')
             return response
 
-        # Si entra a /web/login sin admin=1 ni POST:
         return request.redirect('/pos_gas_station/select_employee')
 
     @http.route(['/pos_gas_station/select_employee'], type='http', auth="none", sitemap=False)
     def select_station_employee(self, station_id=None, **kw):
-        """Pantalla Principal: Identificación de empleado de la empresa correspondiente y apertura de turno."""
+        """Pantalla Principal: Identificación de empleado de la empresa correspondiente o botones dinámicos de administración."""
         ip = self._get_client_ip()
         station = self._get_default_station(station_id)
 
@@ -292,13 +328,17 @@ class UtrecarLogin(Home):
         employees = []
         company_name = ''
         warning_message = ''
-        is_admin_vpn = self._is_admin_vpn_ip(ip)
+        vpn_admin = self._get_vpn_admin(ip)
+        admin_companies = []
+
+        if vpn_admin and vpn_admin.company_ids:
+            admin_companies = [{'id': c.id, 'name': c.name} for c in vpn_admin.company_ids]
 
         if has_tpv:
             company_name = station.company_id.name or 'Empresa'
             employees = station.get_admin_platform_employees()
         else:
-            warning_message = f"Te estás conectando desde un equipo (IP de VPN: {ip}) que no tiene acceso al Punto de Venta (TPV) de ninguna gasolinera."
+            warning_message = f"Te estás conectando desde un equipo sin acceso al TPV de gasolinera. Esta conexión procede de la IP de VPN {ip}, la cual no tiene asignado ningún Punto de Venta (TPV) de gasolinera. Para operar un turno y cobrar en pista, es necesario conectarse desde un puesto autorizado de estación de servicio."
 
         return request.render('pos_gas_station.station_employee_select_modal', {
             'station': station,
@@ -308,7 +348,8 @@ class UtrecarLogin(Home):
             'employees': employees,
             'employees_json': Markup(json.dumps(employees)),
             'client_ip': (station.vpn_ip if station else '') or ip,
-            'is_admin_vpn': is_admin_vpn,
+            'admin_companies': admin_companies,
+            'vpn_admin_name': vpn_admin.name if vpn_admin else '',
             'redirect': f'/pos/ui?config_id={station.id}' if has_tpv else '#',
             'csrf_token': request.csrf_token(),
         })

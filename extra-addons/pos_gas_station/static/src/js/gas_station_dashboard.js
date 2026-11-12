@@ -23,6 +23,18 @@ export class GasStationDashboard extends Component {
                 total_stations: 0,
                 total_open_sessions: 0
             },
+            // Vista Detalle de Empresa
+            viewMode: "dashboard", // 'dashboard' | 'company_detail'
+            selectedDetailCompany: null,
+            detailTab: "stations", // 'stations' | 'customers' | 'inventory'
+            companyDetailData: null,
+            detailLoading: false,
+            customerSearchTerm: "",
+            customerFilterType: "all",
+            canManageStaff: false,
+            allAuthorizedCompanies: [],
+            selectedCompanyId: null,
+
             // Modales inline de gestión
             showCreateCompanyModal: false,
             showCreateStationModal: false,
@@ -80,8 +92,11 @@ export class GasStationDashboard extends Component {
             if (data.status === "success") {
                 this.state.companies = data.companies;
                 this.state.isManager = data.is_manager;
+                this.state.canManageStaff = Boolean(data.can_manage_staff);
                 this.state.userName = data.user_name;
                 this.state.stats = data.stats;
+                this.state.allAuthorizedCompanies = data.all_authorized_companies || [];
+                this.state.selectedCompanyId = data.selected_company_id;
             }
         } catch (e) {
             console.error("Error loading gas station dashboard:", e);
@@ -448,6 +463,147 @@ export class GasStationDashboard extends Component {
         } finally {
             this.state.updatingUserId = null;
         }
+    }
+
+    // ==================== PÁGINA DE DETALLE DE EMPRESA ====================
+    async openCompanyDetail(comp) {
+        this.state.selectedDetailCompany = comp;
+        this.state.viewMode = "company_detail";
+        this.state.detailTab = "stations";
+        this.state.customerSearchTerm = "";
+        this.state.customerFilterType = "all";
+        await this.loadCompanyDetailData(comp.id);
+    }
+
+    async loadCompanyDetailData(companyId) {
+        this.state.detailLoading = true;
+        try {
+            const data = await jsonrpc("/pos_gas_station/company_detail_data", {
+                company_id: companyId
+            });
+            if (data.status === "success") {
+                this.state.companyDetailData = data;
+            } else {
+                this.notification.add(data.message || "Error al cargar detalle de empresa", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error loading company detail:", e);
+            this.notification.add("Error de conexión al cargar detalle de empresa", { type: "danger" });
+        } finally {
+            this.state.detailLoading = false;
+        }
+    }
+
+    backToDashboard() {
+        this.state.viewMode = "dashboard";
+        this.state.selectedDetailCompany = null;
+        this.state.companyDetailData = null;
+        this.loadDashboardData();
+    }
+
+    setDetailTab(tab) {
+        this.state.detailTab = tab;
+    }
+
+    setCustomerFilter(type) {
+        this.state.customerFilterType = type;
+    }
+
+    get filteredCompanyCustomers() {
+        if (!this.state.companyDetailData || !this.state.companyDetailData.customers) {
+            return [];
+        }
+        let list = this.state.companyDetailData.customers;
+        if (this.state.customerFilterType !== "all") {
+            list = list.filter(c => c.customer_type === this.state.customerFilterType);
+        }
+        if (this.state.customerSearchTerm) {
+            const q = this.state.customerSearchTerm.trim().toLowerCase();
+            list = list.filter(c => {
+                const name = (c.name || "").toLowerCase();
+                const vat = (c.vat || "").toLowerCase();
+                const ref = (c.ref || "").toLowerCase();
+                const phone = (c.phone || "").toLowerCase();
+                return name.includes(q) || vat.includes(q) || ref.includes(q) || phone.includes(q);
+            });
+        }
+        return list;
+    }
+
+    openPartnerForm(partnerId) {
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            res_model: "res.partner",
+            res_id: partnerId,
+            views: [[false, "form"]],
+            target: "current"
+        });
+    }
+
+    openCreatePartner() {
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            res_model: "res.partner",
+            views: [[false, "form"]],
+            context: {
+                default_company_id: compId,
+                default_customer_rank: 1,
+            },
+            target: "current"
+        });
+    }
+
+    openOdooCustomersView() {
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: `Clientes - ${this.state.selectedDetailCompany ? this.state.selectedDetailCompany.name : ''}`,
+            res_model: "res.partner",
+            views: [[false, "tree"], [false, "form"]],
+            domain: [["company_id", "=", compId], ["type", "!=", "private"]],
+            context: {
+                default_company_id: compId,
+                search_default_filter_customer: 1,
+            },
+            target: "current"
+        });
+    }
+
+    openOdooInventoryView() {
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: `Stock / Inventario - ${this.state.selectedDetailCompany ? this.state.selectedDetailCompany.name : ''}`,
+            res_model: "stock.quant",
+            views: [[false, "list"], [false, "form"]],
+            domain: [["company_id", "=", compId]],
+            context: {
+                default_company_id: compId,
+            },
+            target: "current"
+        });
+    }
+
+    async switchDashboardCompany(companyId) {
+        try {
+            const res = await jsonrpc("/pos_gas_station/switch_dashboard_company", {
+                company_id: companyId
+            });
+            if (res.status === "success") {
+                this.notification.add("Empresa activa actualizada", { type: "success" });
+                await this.loadDashboardData();
+            } else {
+                this.notification.add(res.message || "No se pudo cambiar de empresa", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error switching dashboard company:", e);
+        }
+    }
+
+    openVpnCompanyAdmins() {
+        this.actionService.doAction("pos_gas_station.action_vpn_company_admins");
+    }
     }
 }
 

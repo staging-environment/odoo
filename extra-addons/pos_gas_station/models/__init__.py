@@ -10,3 +10,5 @@ from . import pos_session
 from . import res_partner
 from . import digest
 from . import ir_config_parameter
+from . import vpn_admin
+

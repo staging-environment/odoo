@@ -577,10 +577,14 @@
                     </form>
                 </t>
 
-                <div class="modal-footer" t-if="is_admin_vpn">
-                    <a href="/web?admin=1" class="admin-link" id="adminLoginLink">
-                        <i class="fa fa-shield-alt text-info"></i> Acceso administrador
-                    </a>
+                <div class="modal-footer" t-if="admin_companies">
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <t t-foreach="admin_companies" t-as="ac">
+                            <a t-attf-href="/pos_gas_station/admin_login?company_id=#{ac['id']}" class="admin-link admin-company-btn">
+                                <i class="fa fa-shield-alt text-primary"></i> Administrar <t t-esc="ac['name']"/>
+                            </a>
+                        </t>
+                    </div>
                 </div>
             </div>
 

@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="pos_gas_station.VpnCompanyAdminsView" owl="1">
+        <div class="vpn-admins-page container-fluid py-4 px-4 bg-light" style="min-height: 100vh;">
+
+            <!-- CABECERA SUPERIOR -->
+            <div class="bg-white p-4 rounded-3 shadow-sm border mb-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1">
+                                <i class="fa fa-shield me-1"></i> Seguridad y Multi-Empresa
+                            </span>
+                        </div>
+                        <h2 class="fw-bold mb-1" style="color: #0f172a;">
+                            <i class="fa fa-user-secret text-primary me-2"></i> Administradores por Empresa (VPN)
+                        </h2>
+                        <p class="text-muted small mb-0">
+                            Asignación de personas físicas con VPN WireGuard como administradores autorizados de las empresas creadas en Odoo.
+                        </p>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-primary d-flex align-items-center gap-2 fw-bold shadow-sm" t-on-click="() => this.openNewAdminModal()">
+                            <i class="fa fa-plus-circle"></i> Nuevo Administrador VPN
+                        </button>
+                        <button class="btn btn-outline-info d-flex align-items-center gap-2 fw-semibold" t-on-click="() => this.openEmployeeCompanyRoles()">
+                            <i class="fa fa-users"></i> Personal y Empresas
+                        </button>
+                        <button class="btn btn-outline-secondary d-flex align-items-center gap-2 fw-semibold" t-on-click="() => this.openDashboard()">
+                            <i class="fa fa-arrow-left"></i> Panel Gasolineras
+                        </button>
+                        <button class="btn btn-light border d-flex align-items-center gap-2 fw-semibold" t-on-click="() => this.loadData()">
+                            <i class="fa fa-refresh" t-att-class="state.loading ? 'fa-spin' : ''"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI CARDS SUMMARY -->
+                <div class="d-flex flex-nowrap overflow-auto gap-3 mt-3 pb-2 kpi-cards-scroll-container">
+                    <div style="flex: 0 0 220px;">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3 h-100">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #0f172a, #334155);">
+                                <i class="fa fa-user-secret fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Total Registrados</span>
+                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.total_admins || state.admins.length"/></h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="flex: 0 0 220px;">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3 h-100">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #059669, #047857);">
+                                <i class="fa fa-check-circle fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Activos VPN</span>
+                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.active_admins || 0"/></h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                        <div style="flex: 0 0 240px;">
+                            <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3 h-100">
+                                <div class="rounded-3 p-3 text-white" t-attf-style="background: #{comp.id === 4 ? 'linear-gradient(135deg, #1d4ed8, #1e40af)' : (comp.id === 1 ? 'linear-gradient(135deg, #b45309, #92400e)' : 'linear-gradient(135deg, #0284c7, #0369a1)')};">
+                                    <i class="fa fa-building fs-3"></i>
+                                </div>
+                                <div>
+                                    <span class="text-muted small fw-semibold d-block text-truncate" style="max-width: 150px;" t-att-title="comp.name">Admins <t t-esc="comp.name"/></span>
+                                    <h3 class="fw-bold mb-0 text-dark"><t t-esc="(state.stats.company_counts and state.stats.company_counts[comp.id]) || 0"/></h3>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+
+                    <div style="flex: 0 0 240px;">
+                        <div class="p-3 rounded-3 border bg-white shadow-sm d-flex align-items-center gap-3 h-100">
+                            <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, #7c3aed, #6d28d9);">
+                                <i class="fa fa-users-cog fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Gestión Personal</span>
+                                <h3 class="fw-bold mb-0 text-dark"><t t-esc="state.stats.can_manage_staff_count || 0"/></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BUSCADOR Y FILTROS -->
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 pt-3 border-top">
+                    <div class="position-relative" style="min-width: 320px; flex: 1; max-width: 500px;">
+                        <i class="fa fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                        <input type="text" 
+                               class="form-control ps-5 rounded-pill border-secondary-subtle" 
+                               placeholder="Buscar por persona, IP VPN (ej: 10.8.0.2) o usuario..."
+                               t-model="state.searchTerm"/>
+                        <button t-if="state.searchTerm" 
+                                class="btn btn-sm btn-link text-muted position-absolute top-50 end-0 translate-middle-y me-2 p-0"
+                                t-on-click="() => state.searchTerm = ''">
+                            <i class="fa fa-times-circle"></i>
+                        </button>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm fw-semibold rounded-pill px-3"
+                                t-att-class="state.filterCompany === 'all' ? 'btn-dark' : 'btn-outline-secondary'"
+                                t-on-click="() => this.setFilter('all')">
+                            Todos (<t t-esc="state.admins.length"/>)
+                        </button>
+                        <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                            <button class="btn btn-sm fw-semibold rounded-pill px-3"
+                                    t-att-class="state.filterCompany === String(comp.id) ? 'btn-primary' : 'btn-outline-secondary'"
+                                    t-on-click="() => this.setFilter(String(comp.id))">
+                                <t t-esc="comp.name"/> (<t t-esc="(state.stats.company_counts and state.stats.company_counts[comp.id]) || 0"/>)
+                            </button>
+                        </t>
+                        <button class="btn btn-sm fw-semibold rounded-pill px-3"
+                                t-att-class="state.filterCompany === 'staff' ? 'btn-purple text-white' : 'btn-outline-secondary'"
+                                style="background: #7c3aed;"
+                                t-if="state.filterCompany === 'staff'"
+                                t-on-click="() => this.setFilter('staff')">
+                            Gestión Personal (<t t-esc="state.stats.can_manage_staff_count || 0"/>)
+                        </button>
+                        <button class="btn btn-sm fw-semibold rounded-pill px-3"
+                                t-att-class="state.filterCompany === 'staff' ? 'btn-purple text-white' : 'btn-outline-secondary'"
+                                t-if="state.filterCompany !== 'staff'"
+                                t-on-click="() => this.setFilter('staff')">
+                            Gestión Personal (<t t-esc="state.stats.can_manage_staff_count || 0"/>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENIDO PRINCIPAL: TABLA DE ADMINISTRADORES -->
+            <div class="bg-white rounded-3 shadow-sm border overflow-hidden">
+                <t t-if="state.loading">
+                    <div class="text-center py-5">
+                        <i class="fa fa-circle-o-notch fa-spin fa-3x text-primary mb-3"></i>
+                        <p class="text-muted">Cargando administradores VPN...</p>
+                    </div>
+                </t>
+                <t t-elif="!filteredAdmins.length">
+                    <div class="text-center py-5">
+                        <i class="fa fa-user-secret fa-3x text-muted mb-3 opacity-50"></i>
+                        <h5 class="fw-bold text-secondary">No se encontraron administradores VPN</h5>
+                        <p class="text-muted small">Pruebe ajustando los términos de búsqueda o filtros, o registre uno nuevo.</p>
+                        <button class="btn btn-primary btn-sm fw-bold" t-on-click="() => this.openNewAdminModal()">
+                            <i class="fa fa-plus-circle me-1"></i> Registrar Administrador VPN
+                        </button>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light border-bottom">
+                                <tr>
+                                    <th class="ps-4 py-3" style="min-width: 240px;">Persona Física / VPN</th>
+                                    <th class="text-center py-3" style="width: 120px;">Estado</th>
+                                    <th class="text-center py-3" style="width: 200px;">
+                                        <i class="fa fa-users-cog text-purple me-1" style="color: #7c3aed;"></i> Gestión Personal
+                                    </th>
+                                    <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                                        <th class="text-center py-3 border-start" style="min-width: 180px;">
+                                            <i class="fa fa-building text-primary me-1"></i>
+                                            <t t-esc="comp.name"/>
+                                        </th>
+                                    </t>
+                                    <th class="text-center pe-4 py-3" style="width: 100px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="filteredAdmins" t-as="admin" t-key="admin.id">
+                                    <tr t-att-class="!admin.active ? 'opacity-50 bg-light' : ''">
+                                        <!-- PERSONA FÍSICA Y DATOS DE CONEXIÓN -->
+                                        <td class="ps-4 py-3">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                                                     t-attf-style="width: 44px; height: 44px; font-size: 1.1rem; background: #{admin.active ? 'linear-gradient(135deg, #0f172a, #2563eb)' : '#94a3b8'};">
+                                                    <t t-esc="admin.name.substring(0, 2).toUpperCase()"/>
+                                                </div>
+                                                <div>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="fw-bold text-dark fs-6"><t t-esc="admin.name"/></span>
+                                                        <span class="badge bg-dark-subtle text-dark border font-monospace px-2 py-1" style="font-size: 0.78rem;">
+                                                            <i class="fa fa-wifi me-1 text-primary"/> <t t-esc="admin.vpn_ip"/>
+                                                        </span>
+                                                    </div>
+                                                    <div class="small text-muted d-flex align-items-center gap-2 mt-1">
+                                                        <t t-if="admin.user_login">
+                                                            <span><i class="fa fa-user me-1"></i> <t t-esc="admin.user_name"/> (<t t-esc="admin.user_login"/>)</span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span class="text-warning"><i class="fa fa-exclamation-triangle me-1"></i> Sin usuario Odoo vinculado</span>
+                                                        </t>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <!-- ACTIVO GENERAL -->
+                                        <td class="text-center py-3">
+                                            <div class="form-check form-switch d-inline-block m-0" t-attf-title="Activar o desactivar este administrador VPN">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       style="width: 2.6rem; height: 1.3rem; cursor: pointer;"
+                                                       t-att-checked="admin.active"
+                                                       t-att-disabled="state.updatingKey === 'active_' + admin.id"
+                                                       t-on-click="() => this.toggleField(admin, 'active', admin.active)"/>
+                                            </div>
+                                            <div class="small mt-1">
+                                                <span t-if="admin.active" class="badge bg-success-subtle text-success border border-success-subtle">Activo</span>
+                                                <span t-else="" class="badge bg-light text-muted border">Inactivo</span>
+                                            </div>
+                                        </td>
+
+                                        <!-- CHECK GESTION DE PERSONAL Y ADMINISTRADORES -->
+                                        <td class="text-center py-3">
+                                            <div class="form-check form-switch d-inline-block m-0" title="Autorizar a este usuario a gestionar empleados y administradores">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       style="width: 2.6rem; height: 1.3rem; cursor: pointer;"
+                                                       t-att-checked="admin.can_manage_staff"
+                                                       t-att-disabled="state.updatingKey === 'can_manage_staff_' + admin.id"
+                                                       t-on-click="() => this.toggleField(admin, 'can_manage_staff', admin.can_manage_staff)"/>
+                                            </div>
+                                            <div class="small mt-1">
+                                                <t t-if="admin.can_manage_staff">
+                                                    <span class="badge border fw-semibold" style="background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe !important;">
+                                                        <i class="fa fa-check me-1"/> Autorizado
+                                                    </span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge bg-light text-muted border">Sin permiso</span>
+                                                </t>
+                                            </div>
+                                        </td>
+
+                                        <!-- COLUMNAS DE EMPRESAS (SWITCH ASIGNACIÓN) -->
+                                        <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                                            <t t-set="isAssigned" t-value="admin.company_ids and admin.company_ids.includes(comp.id)"/>
+                                            <t t-set="isUpdating" t-value="state.updatingKey === 'comp_' + admin.id + '_' + comp.id"/>
+
+                                            <td class="text-center py-3 border-start" t-attf-class="#{isAssigned ? 'bg-primary-subtle bg-opacity-10' : ''}">
+                                                <div class="d-flex align-items-center justify-content-center gap-2">
+                                                    <div class="form-check form-switch m-0" t-attf-title="Asignar o desasignar como administrador de #{comp.name}">
+                                                        <input class="form-check-input" 
+                                                               type="checkbox" 
+                                                               style="width: 2.6rem; height: 1.3rem; cursor: pointer;"
+                                                               t-att-checked="isAssigned"
+                                                               t-att-disabled="isUpdating || !admin.active"
+                                                               t-on-click="() => this.toggleCompany(admin, comp.id, isAssigned)"/>
+                                                    </div>
+                                                    <div>
+                                                        <t t-if="isUpdating">
+                                                            <span class="badge bg-light text-primary border">...</span>
+                                                        </t>
+                                                        <t t-elif="isAssigned">
+                                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size: 0.8rem;">
+                                                                <i class="fa fa-shield me-1"/> Administrador
+                                                            </span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.8rem; opacity: 0.6;">
+                                                                Sin acceso
+                                                            </span>
+                                                        </t>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </t>
+
+                                        <!-- ACCIONES -->
+                                        <td class="text-center pe-4 py-3">
+                                            <button class="btn btn-sm btn-outline-secondary rounded-circle" 
+                                                    style="width: 32px; height: 32px; padding: 0;"
+                                                    t-on-click="() => this.editAdmin(admin)"
+                                                    title="Modificar datos del administrador">
+                                                <i class="fa fa-pencil"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </div>
+
+            <!-- MODAL DE CREACIÓN / EDICIÓN -->
+            <div t-if="state.showModal" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
+                <div class="modal-card-custom bg-white rounded-3 shadow-lg p-4 border" style="max-width: 550px; width: 100%;">
+                    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="fa fa-user-secret text-primary me-2"></i>
+                            <t t-esc="state.modalAdminId ? 'Modificar Administrador VPN' : 'Nuevo Administrador VPN'"/>
+                        </h5>
+                        <button class="btn-close" t-on-click="() => this.closeModal()"></button>
+                    </div>
+
+                    <div t-if="state.modalError" class="alert alert-danger py-2 small mb-3">
+                        <i class="fa fa-exclamation-circle me-1"></i> <t t-esc="state.modalError"/>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Persona Física / Nombre del Equipo <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" placeholder="Ej: Alfonso Portatil, Jose (Informático)" t-model="state.modalName"/>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">IP WireGuard VPN <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control font-monospace" placeholder="Ej: 10.8.0.8" t-model="state.modalVpnIp"/>
+                        <small class="text-muted">Debe coincidir con la IP asignada en el cliente WireGuard.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Usuario Odoo Vinculado</label>
+                        <select class="form-select" t-model="state.modalUserId">
+                            <option value="">-- Sin usuario específico (utilizará Superadmin) --</option>
+                            <t t-foreach="state.users" t-as="u" t-key="u.id">
+                                <option t-att-value="u.id"><t t-esc="u.name"/> (<t t-esc="u.login"/>)</option>
+                            </t>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted d-block">Empresas Autorizadas</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <t t-foreach="state.companies" t-as="c" t-key="c.id">
+                                <button type="button" 
+                                        class="btn btn-sm rounded-pill px-3 fw-semibold"
+                                        t-att-class="state.modalCompanyIds.includes(c.id) ? 'btn-primary' : 'btn-outline-secondary'"
+                                        t-on-click="() => this.toggleModalCompany(c.id)">
+                                    <i t-attf-class="fa #{state.modalCompanyIds.includes(c.id) ? 'fa-check' : 'fa-plus'} me-1"/>
+                                    <t t-esc="c.name"/>
+                                </button>
+                            </t>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 p-3 bg-light rounded-3 border">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="modalActiveCheck" t-model="state.modalActive"/>
+                            <label class="form-check-label fw-bold small" for="modalActiveCheck">Administrador Activo</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="modalStaffCheck" t-model="state.modalCanManageStaff"/>
+                            <label class="form-check-label fw-bold small" for="modalStaffCheck">
+                                <i class="fa fa-users-cog text-purple me-1" style="color: #7c3aed;"></i>
+                                Autorizar Gestión de Personal y Administradores
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-1">Si está desmarcado, el usuario no verá el menú "Personal y Empresas" ni podrá modificar accesos.</small>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 border-top pt-3">
+                        <button class="btn btn-outline-secondary fw-semibold" t-on-click="() => this.closeModal()">Cancelar</button>
+                        <button class="btn btn-primary fw-bold px-4" t-att-disabled="state.modalLoading" t-on-click="() => this.saveModalAdmin()">
+                            <i t-if="state.modalLoading" class="fa fa-spin fa-spinner me-1"/>
+                            Guardar Administrador
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NOTA AL PIE -->
+            <div class="mt-3 p-3 bg-white rounded-3 border d-flex align-items-center gap-3">
+                <i class="fa fa-info-circle text-primary fs-4"></i>
+                <div class="small text-muted">
+                    <strong>Administración Multi-Empresa por VPN:</strong>
+                    Al ingresar desde una IP autorizada, el usuario verá en la pantalla inicial los botones específicos para administrar las empresas asignadas. Al pulsar sobre una empresa, la sesión de administración se aísla exclusivamente a esa entidad.
+                </div>
+            </div>
+
+        </div>
+    </t>
+
+</templates>

@@ -581,3 +581,55 @@ thead .sticky-cell {
 .employee-roles-table-wrapper table tbody tr:hover .sticky-cell {
     background-color: #f8fafc !important;
 }
+
+/* ==================== ESTILOS DETALLE DE EMPRESA Y CLICKABLE ==================== */
+.company-name-clickable {
+    cursor: pointer !important;
+    transition: color 0.18s ease-in-out, transform 0.18s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+}
+
+.company-name-clickable:hover {
+    color: #2563eb !important;
+    transform: translateX(3px);
+}
+
+.company-name-clickable:hover .company-arrow-hint {
+    transform: translateX(4px);
+    color: #1d4ed8 !important;
+}
+
+.company-arrow-hint {
+    transition: transform 0.18s ease-in-out;
+}
+
+.company-detail-page {
+    animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.company-detail-logo-box {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.station-card-box {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.station-card-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08) !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+

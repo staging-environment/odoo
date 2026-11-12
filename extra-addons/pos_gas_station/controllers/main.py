@@ -1233,10 +1233,40 @@ class PosGasStationController(http.Controller):
         user = env.user
         is_manager = user.has_group('point_of_sale.group_pos_manager') or user._is_admin()
 
-        if is_manager:
-            companies = env['res.company'].sudo().search([], order='id')
+        # Determinar IP del cliente y registro de VPN admin si aplica
+        forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+        ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
+        vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+
+        # Permiso para gestionar personal y administradores
+        can_manage_staff = bool(
+            user._is_admin() or 
+            user.has_group('base.group_system') or 
+            user.has_group('pos_gas_station.group_utrecar_manage_staff') or 
+            (vpn_admin and vpn_admin.can_manage_staff)
+        )
+
+        # Compañía activa en la sesión (o asignada al hacer clic en 'Administrar X')
+        session_company_id = request.session.get('admin_active_company_id') or request.session.get('current_company_id')
+        if not session_company_id and request.session.get('allowed_company_ids'):
+            session_company_id = request.session['allowed_company_ids'][0]
+
+        # Empresas autorizadas para este usuario/VPN
+        if vpn_admin and vpn_admin.company_ids:
+            authorized_companies = vpn_admin.company_ids
+        elif is_manager:
+            authorized_companies = env['res.company'].sudo().search([], order='id')
         else:
-            companies = user.company_ids or env['res.company'].sudo().search([], order='id')
+            authorized_companies = user.company_ids or env['res.company'].sudo().search([], order='id')
+
+        # Si hay una compañía activa seleccionada en la sesión y está entre las autorizadas:
+        # SOLO mostrar el dashboard de esa empresa, cumpliendo con la regla de aislamiento total
+        if session_company_id and any(c.id == session_company_id for c in authorized_companies):
+            companies = authorized_companies.filtered(lambda c: c.id == session_company_id)
+        elif len(authorized_companies) == 1:
+            companies = authorized_companies
+        else:
+            companies = authorized_companies
 
         companies_data = []
         total_stations = 0
@@ -1334,14 +1364,340 @@ class PosGasStationController(http.Controller):
         return {
             'status': 'success',
             'is_manager': is_manager,
+            'can_manage_staff': can_manage_staff,
             'user_name': user.name,
             'companies': companies_data,
+            'all_authorized_companies': [{'id': c.id, 'name': c.name} for c in authorized_companies],
+            'selected_company_id': session_company_id,
             'stats': {
                 'total_companies': len(companies_data),
                 'total_stations': total_stations,
                 'total_open_sessions': total_open_sessions
             }
         }
+
+    @http.route('/pos_gas_station/switch_dashboard_company', type='json', auth='user', methods=['POST'], csrf=False)
+    def switch_dashboard_company(self, company_id=None):
+        """Permite a un administrador cambiar de empresa activa entre las autorizadas."""
+        if not company_id:
+            return {'status': 'error', 'message': 'ID de empresa no proporcionado'}
+        try:
+            cid = int(company_id)
+            env = request.env
+            forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+            ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
+            vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+
+            user = env.user
+            is_authorized = False
+            if vpn_admin and cid in vpn_admin.company_ids.ids:
+                is_authorized = True
+            elif user._is_admin() or user.has_group('base.group_system'):
+                is_authorized = True
+            elif cid in user.company_ids.ids:
+                is_authorized = True
+
+            if not is_authorized:
+                return {'status': 'error', 'message': 'No tiene autorización para administrar esta empresa.'}
+
+            request.session['allowed_company_ids'] = [cid]
+            request.session['current_company_id'] = cid
+            request.session['admin_active_company_id'] = cid
+            user.sudo().write({'company_id': cid})
+            if cid not in user.company_ids.ids:
+                user.sudo().write({'company_ids': [(4, cid)]})
+
+            return {'status': 'success', 'company_id': cid}
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/company_detail_data', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_company_detail_data(self, company_id=None):
+        """Retorna información detallada de una empresa: estaciones, clientes e inventario/tanques."""
+        env = request.env
+        user = env.user
+        if not company_id:
+            return {'status': 'error', 'message': 'ID de empresa obligatorio'}
+
+        company = env['res.company'].sudo().browse(int(company_id))
+        if not company.exists():
+            return {'status': 'error', 'message': 'Empresa no encontrada'}
+
+        # 1. Estaciones de esta empresa
+        stations_recs = env['pos.config'].sudo().search([('company_id', '=', company.id)], order='id')
+        stations_data = []
+        for st in stations_recs:
+            active_session = env['pos.session'].sudo().search([
+                ('config_id', '=', st.id),
+                ('state', 'in', ['opened', 'opening_control'])
+            ], limit=1)
+            pumps_cnt = 8 if ('ronda norte' in st.name.lower() or 'repsol' in st.name.lower()) else 4
+            stations_data.append({
+                'id': st.id,
+                'name': st.name,
+                'vpn_ip': st.vpn_ip or '',
+                'has_active_session': bool(active_session),
+                'cashier_name': active_session.user_id.name if active_session else None,
+                'session_start': active_session.start_at.strftime('%d/%m/%Y %H:%M') if (active_session and active_session.start_at) else None,
+                'pumps_count': pumps_cnt,
+            })
+
+        # 2. Clientes asignados a esta empresa
+        partners = env['res.partner'].sudo().search([
+            ('company_id', '=', company.id),
+            ('type', '!=', 'private'),
+        ], order='ref desc, name asc', limit=300)
+
+        total_customers = env['res.partner'].sudo().search_count([
+            ('company_id', '=', company.id),
+            ('type', '!=', 'private')
+        ])
+        credit_count = env['res.partner'].sudo().search_count([
+            ('company_id', '=', company.id),
+            ('customer_type', '=', 'credit'),
+            ('type', '!=', 'private')
+        ])
+        monthly_count = env['res.partner'].sudo().search_count([
+            ('company_id', '=', company.id),
+            ('customer_type', '=', 'monthly'),
+            ('type', '!=', 'private')
+        ])
+        ordinary_count = env['res.partner'].sudo().search_count([
+            ('company_id', '=', company.id),
+            ('customer_type', '=', 'ordinary'),
+            ('type', '!=', 'private')
+        ])
+
+        customers_data = []
+        for p in partners:
+            customers_data.append({
+                'id': p.id,
+                'ref': p.ref or '',
+                'name': p.display_name or p.name or '',
+                'vat': p.vat or '',
+                'customer_type': p.customer_type or 'ordinary',
+                'station_name': p.station_id.name if p.station_id else 'Todas',
+                'phone': p.phone or p.mobile or '',
+                'email': p.email or '',
+                'city': p.city or '',
+            })
+
+        # 3. Inventario / Stock
+        warehouses = env['stock.warehouse'].sudo().search([('company_id', '=', company.id)])
+        warehouses_data = [{'id': w.id, 'name': w.name, 'code': w.code} for w in warehouses]
+
+        # Carburantes
+        fuels = [
+            {'code': 'GA', 'name': 'Gasóleo A', 'price': '1.389 €/L', 'status': 'En servicio'},
+            {'code': '95', 'name': 'Sin Plomo 95', 'price': '1.499 €/L', 'status': 'En servicio'},
+            {'code': 'G+', 'name': 'Gasóleo Plus', 'price': '1.489 €/L', 'status': 'En servicio'},
+        ]
+
+        total_products = env['product.template'].sudo().search_count([
+            '|', ('company_id', '=', False), ('company_id', '=', company.id)
+        ])
+
+        return {
+            'status': 'success',
+            'company': {
+                'id': company.id,
+                'name': company.name,
+                'vat': company.vat or '',
+                'street': company.street or '',
+                'zip': company.zip or '',
+                'city': company.city or '',
+                'phone': company.phone or '',
+                'email': company.email or '',
+                'logo_url': f'/web/image?model=res.company&id={company.id}&field=logo' if company.logo else None,
+            },
+            'stations': stations_data,
+            'customers': customers_data,
+            'customer_stats': {
+                'total': total_customers,
+                'credit': credit_count,
+                'monthly': monthly_count,
+                'ordinary': ordinary_count,
+            },
+            'inventory': {
+                'warehouses': warehouses_data,
+                'fuels': fuels,
+                'total_products': total_products,
+            }
+        }
+
+    # ==================== GESTIÓN DE ADMINISTRADORES POR EMPRESA (VPN) ====================
+    @http.route('/pos_gas_station/vpn_company_admins/data', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_vpn_company_admins_data(self):
+        """Retorna el listado de personas físicas con VPN y su asignación como administradores por empresa."""
+        env = request.env
+        user = env.user
+        forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+        ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
+        vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+
+        can_manage = bool(
+            user._is_admin() or 
+            user.has_group('base.group_system') or 
+            user.has_group('pos_gas_station.group_utrecar_manage_staff') or 
+            (vpn_admin and vpn_admin.can_manage_staff)
+        )
+        if not can_manage:
+            return {'status': 'error', 'message': 'No tiene autorización para gestionar administradores.'}
+
+        VpnAdmin = env['utrecar.vpn.admin'].sudo()
+        if not VpnAdmin.search_count([]):
+            VpnAdmin.ensure_default_admins()
+
+        companies = env['res.company'].sudo().search([], order='id')
+        companies_data = [{'id': c.id, 'name': c.name} for c in companies]
+
+        admins = VpnAdmin.search([], order='name asc')
+        admins_data = []
+        for a in admins:
+            admins_data.append({
+                'id': a.id,
+                'name': a.name,
+                'vpn_ip': a.vpn_ip,
+                'active': a.active,
+                'can_manage_staff': a.can_manage_staff,
+                'user_id': a.user_id.id if a.user_id else None,
+                'user_name': a.user_id.name if a.user_id else '',
+                'user_login': a.user_id.login if a.user_id else '',
+                'company_ids': a.company_ids.ids,
+                'notes': a.notes or '',
+            })
+
+        users = env['res.users'].sudo().search([('active', '=', True)], order='name asc')
+        users_data = [{'id': u.id, 'name': u.name, 'login': u.login} for u in users]
+
+        company_counts = {}
+        for c in companies:
+            company_counts[c.id] = sum(1 for a in admins_data if a['active'] and c.id in a['company_ids'])
+
+        return {
+            'status': 'success',
+            'admins': admins_data,
+            'companies': companies_data,
+            'users': users_data,
+            'stats': {
+                'total_admins': len(admins_data),
+                'active_admins': sum(1 for a in admins_data if a['active']),
+                'can_manage_staff_count': sum(1 for a in admins_data if a['active'] and a['can_manage_staff']),
+                'company_counts': company_counts,
+            }
+        }
+
+    @http.route('/pos_gas_station/vpn_company_admins/toggle_company', type='json', auth='user', methods=['POST'], csrf=False)
+    def toggle_vpn_admin_company(self, admin_id=None, company_id=None, enable=True):
+        """Activa o desactiva a un administrador VPN en una empresa específica."""
+        env = request.env
+        user = env.user
+        forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+        ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
+        vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+
+        can_manage = bool(
+            user._is_admin() or 
+            user.has_group('base.group_system') or 
+            user.has_group('pos_gas_station.group_utrecar_manage_staff') or 
+            (vpn_admin and vpn_admin.can_manage_staff)
+        )
+        if not can_manage:
+            return {'status': 'error', 'message': 'No tiene autorización para modificar administradores.'}
+
+        admin = env['utrecar.vpn.admin'].sudo().browse(int(admin_id))
+        company = env['res.company'].sudo().browse(int(company_id))
+        if not admin.exists() or not company.exists():
+            return {'status': 'error', 'message': 'Administrador o Empresa no encontrados'}
+
+        if enable:
+            admin.write({'company_ids': [(4, company.id)]})
+            if admin.user_id and company.id not in admin.user_id.company_ids.ids:
+                admin.user_id.sudo().write({'company_ids': [(4, company.id)]})
+        else:
+            admin.write({'company_ids': [(3, company.id)]})
+
+        return {
+            'status': 'success',
+            'company_ids': admin.company_ids.ids,
+            'message': f"{'Asignado' if enable else 'Desasignado'} {admin.name} en {company.name}"
+        }
+
+    @http.route('/pos_gas_station/vpn_company_admins/toggle_field', type='json', auth='user', methods=['POST'], csrf=False)
+    def toggle_vpn_admin_field(self, admin_id=None, field=None, value=None):
+        """Conmuta can_manage_staff o active de un administrador VPN."""
+        env = request.env
+        user = env.user
+        forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+        ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
+        vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+
+        can_manage = bool(
+            user._is_admin() or 
+            user.has_group('base.group_system') or 
+            user.has_group('pos_gas_station.group_utrecar_manage_staff') or 
+            (vpn_admin and vpn_admin.can_manage_staff)
+        )
+        if not can_manage:
+            return {'status': 'error', 'message': 'No tiene autorización para modificar permisos.'}
+
+        admin = env['utrecar.vpn.admin'].sudo().browse(int(admin_id))
+        if not admin.exists():
+            return {'status': 'error', 'message': 'Administrador no encontrado'}
+
+        if field in ('can_manage_staff', 'active'):
+            admin.write({field: bool(value)})
+            admin._sync_security_groups()
+            return {
+                'status': 'success',
+                'field': field,
+                'value': getattr(admin, field),
+                'message': f"Permiso '{field}' actualizado para {admin.name}"
+            }
+        return {'status': 'error', 'message': 'Campo no permitido'}
+
+    @http.route('/pos_gas_station/vpn_company_admins/save_admin', type='json', auth='user', methods=['POST'], csrf=False)
+    def save_vpn_admin(self, admin_id=None, name=None, vpn_ip=None, user_id=None, can_manage_staff=False, active=True, company_ids=None, notes=''):
+        """Crea o modifica un registro de administrador VPN."""
+        env = request.env
+        user = env.user
+        forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+        ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
+        vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+
+        can_manage = bool(
+            user._is_admin() or 
+            user.has_group('base.group_system') or 
+            user.has_group('pos_gas_station.group_utrecar_manage_staff') or 
+            (vpn_admin and vpn_admin.can_manage_staff)
+        )
+        if not can_manage:
+            return {'status': 'error', 'message': 'No tiene autorización para guardar administradores.'}
+
+        vals = {
+            'name': (name or '').strip(),
+            'vpn_ip': (vpn_ip or '').strip(),
+            'user_id': int(user_id) if user_id else False,
+            'can_manage_staff': bool(can_manage_staff),
+            'active': bool(active),
+            'notes': notes or '',
+        }
+        if company_ids is not None:
+            vals['company_ids'] = [(6, 0, [int(cid) for cid in company_ids])]
+
+        if not vals['name'] or not vals['vpn_ip']:
+            return {'status': 'error', 'message': 'El nombre y la IP de VPN son obligatorios.'}
+
+        VpnAdmin = env['utrecar.vpn.admin'].sudo()
+        if admin_id:
+            admin = VpnAdmin.browse(int(admin_id))
+            if not admin.exists():
+                return {'status': 'error', 'message': 'Administrador no encontrado'}
+            admin.write(vals)
+        else:
+            admin = VpnAdmin.create(vals)
+
+        return {'status': 'success', 'admin_id': admin.id, 'message': f"Administrador {admin.name} guardado correctamente."}
 
     @http.route('/pos_gas_station/company_employees_data', type='json', auth='user', methods=['POST'], csrf=False)
     def get_company_employees_data(self, company_id=None):
@@ -2763,6 +3119,19 @@ class PosGasStationController(http.Controller):
     def get_employee_company_roles_data(self):
         """Devuelve el catálogo completo de personal con su rol y acceso específico por cada empresa."""
         env = request.env
+        user = env.user
+        forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+        ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
+        vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+        can_manage = bool(
+            user._is_admin() or 
+            user.has_group('base.group_system') or 
+            user.has_group('pos_gas_station.group_utrecar_manage_staff') or 
+            (vpn_admin and vpn_admin.can_manage_staff)
+        )
+        if not can_manage:
+            return {'status': 'error', 'message': 'No tiene autorización para gestionar personal.'}
+
         User = env['res.users'].sudo()
         Company = env['res.company'].sudo()
         Role = env['utrecar.role'].sudo()
@@ -2921,6 +3290,19 @@ class PosGasStationController(http.Controller):
     def update_employee_company_access(self, user_id, company_id, active=None, **kw):
         """Actualiza el acceso activo de un empleado en una empresa para el TPV."""
         env = request.env
+        user = env.user
+        forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
+        ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
+        vpn_admin = env['utrecar.vpn.admin'].sudo().search([('vpn_ip', '=', ip), ('active', '=', True)], limit=1)
+        can_manage = bool(
+            user._is_admin() or 
+            user.has_group('base.group_system') or 
+            user.has_group('pos_gas_station.group_utrecar_manage_staff') or 
+            (vpn_admin and vpn_admin.can_manage_staff)
+        )
+        if not can_manage:
+            return {'status': 'error', 'message': 'No tiene autorización para modificar personal.'}
+
         User = env['res.users'].sudo()
         Access = env['utrecar.employee.company.access'].sudo()
         Role = env['utrecar.role'].sudo()
