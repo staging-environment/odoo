@@ -1357,6 +1357,7 @@ class PosGasStationController(http.Controller):
                 'zip': c.zip or '',
                 'phone': c.phone or '',
                 'email': c.email or '',
+                'website': c.website or '',
                 'has_logo': has_logo,
                 'logo_url': f'/web/image?model=res.company&id={c.id}&field=logo' if has_logo else None,
                 'stations': accessible_stations,
@@ -1433,7 +1434,22 @@ class PosGasStationController(http.Controller):
         if not vpn_admin and user:
             vpn_admin = env['utrecar.vpn.admin'].sudo().search([('user_id', '=', user.id), ('active', '=', True)], limit=1)
 
-        company = env.company if getattr(env, 'company', None) else user.company_id
+        # Empresas autorizadas para este usuario/VPN admin
+        if vpn_admin and vpn_admin.company_ids:
+            authorized_companies = vpn_admin.company_ids
+        elif user._is_admin() or user.has_group('base.group_system'):
+            authorized_companies = env['res.company'].sudo().search([], order='id')
+        else:
+            authorized_companies = user.company_ids or env['res.company'].sudo().search([], order='id')
+
+        auth_comp_list = [{'id': c.id, 'name': c.name} for c in authorized_companies]
+
+        # Empresa activa actual
+        active_cid = request.session.get('admin_active_company_id') or (env.company.id if getattr(env, 'company', None) else user.company_id.id)
+        current_comp = env['res.company'].sudo().browse(active_cid) if active_cid else user.company_id
+        if not current_comp.exists() or (auth_comp_list and current_comp.id not in [c['id'] for c in auth_comp_list]):
+            current_comp = authorized_companies[0] if authorized_companies else user.company_id
+
         admin_display_name = vpn_admin.name if vpn_admin else user.name
 
         return {
@@ -1443,8 +1459,9 @@ class PosGasStationController(http.Controller):
             'user_login': user.login,
             'vpn_admin_name': vpn_admin.name if vpn_admin else '',
             'vpn_ip': vpn_admin.vpn_ip if vpn_admin else ip,
-            'company_name': company.name if company else '',
-            'company_id': company.id if company else False,
+            'company_name': current_comp.name if current_comp else '',
+            'company_id': current_comp.id if current_comp else False,
+            'companies': auth_comp_list,
         }
 
     @http.route('/pos_gas_station/company_detail_data', type='json', auth='user', methods=['POST'], csrf=False)
@@ -1544,6 +1561,7 @@ class PosGasStationController(http.Controller):
                 'city': company.city or '',
                 'phone': company.phone or '',
                 'email': company.email or '',
+                'website': company.website or '',
                 'logo_url': f'/web/image?model=res.company&id={company.id}&field=logo' if company.logo else None,
             },
             'stations': stations_data,
@@ -2739,11 +2757,11 @@ class PosGasStationController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/rename_company', type='json', auth='user', methods=['POST'], csrf=False)
-    def rename_company(self, company_id, name, vat=None, street=None, zip=None, city=None, phone=None, email=None):
-        return self.update_company(company_id=company_id, name=name, vat=vat, street=street, zip=zip, city=city, phone=phone, email=email)
+    def rename_company(self, company_id, name, vat=None, street=None, zip=None, city=None, phone=None, email=None, website=None):
+        return self.update_company(company_id=company_id, name=name, vat=vat, street=street, zip=zip, city=city, phone=phone, email=email, website=website)
 
     @http.route('/pos_gas_station/update_company', type='json', auth='user', methods=['POST'], csrf=False)
-    def update_company(self, company_id, name, vat=None, street=None, zip=None, city=None, phone=None, email=None):
+    def update_company(self, company_id, name, vat=None, street=None, zip=None, city=None, phone=None, email=None, website=None):
         try:
             env = request.env
             if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
@@ -2762,6 +2780,7 @@ class PosGasStationController(http.Controller):
                 'city': (city or '').strip() or False,
                 'phone': (phone or '').strip() or False,
                 'email': (email or '').strip() or False,
+                'website': (website or '').strip() or False,
             }
             comp.write(vals)
             return {'status': 'success', 'name': clean_name, 'message': f'Empresa "{clean_name}" actualizada correctamente.'}

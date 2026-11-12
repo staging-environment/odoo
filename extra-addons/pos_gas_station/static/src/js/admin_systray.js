@@ -30,17 +30,25 @@ export class AdminSystrayMenu extends Component {
         this.user = useService("user");
         this.companyService = useService("company");
         const initialCompany = this.companyService?.currentCompany?.name || "";
+        const initialCompanyId = this.companyService?.currentCompany?.id || null;
 
         this.state = useState({
             adminName: this.user.name || "Administrador",
             vpnIp: "",
             companyName: initialCompany,
+            companyId: initialCompanyId,
+            companies: [],
             loading: true,
         });
 
         this.handleCompanyChange = (ev) => {
-            if (ev.detail && ev.detail.companyName) {
-                this.state.companyName = ev.detail.companyName;
+            if (ev.detail) {
+                if (ev.detail.companyName) {
+                    this.state.companyName = ev.detail.companyName;
+                }
+                if (ev.detail.companyId) {
+                    this.state.companyId = parseInt(ev.detail.companyId);
+                }
             }
         };
         window.addEventListener("admin-company-changed", this.handleCompanyChange);
@@ -61,11 +69,42 @@ export class AdminSystrayMenu extends Component {
                 this.state.adminName = data.admin_name || this.user.name;
                 this.state.vpnIp = data.vpn_ip || "";
                 this.state.companyName = data.company_name || this.state.companyName;
+                this.state.companyId = data.company_id || this.state.companyId;
+                this.state.companies = data.companies || [];
             }
         } catch (e) {
             console.warn("Could not load VPN admin info for systray:", e);
         } finally {
             this.state.loading = false;
+        }
+    }
+
+    async onSwitchCompany(newCompanyId) {
+        const cid = parseInt(newCompanyId);
+        if (!cid || cid === this.state.companyId) {
+            return;
+        }
+        try {
+            const res = await jsonrpc("/pos_gas_station/switch_dashboard_company", {
+                company_id: cid,
+            });
+            if (res && res.status === "success") {
+                this.state.companyId = cid;
+                this.state.companyName = res.company_name || "";
+
+                // Cambiar de empresa en toda la aplicación Odoo actualizando cids en URL
+                const url = new URL(window.location.href);
+                url.searchParams.set("cids", String(cid));
+                if (url.hash) {
+                    url.hash = url.hash.replace(/cids=[^&]*/g, `cids=${cid}`);
+                    if (!url.hash.includes("cids=")) {
+                        url.hash += `&cids=${cid}`;
+                    }
+                }
+                window.location.href = url.toString();
+            }
+        } catch (e) {
+            console.error("Error switching company from navbar:", e);
         }
     }
 

@@ -3,6 +3,20 @@
 
     <t t-name="pos_gas_station.AdminSystrayMenu" owl="1">
         <div class="o_admin_systray_container">
+            <!-- Selector de Empresa (Dropdown Pill interactivo a la izquierda del Administrador) -->
+            <div class="admin-systray-company-selector" t-if="state.companies and state.companies.length > 0">
+                <select class="company-systray-select"
+                        t-att-value="state.companyId"
+                        t-on-change="(ev) => this.onSwitchCompany(ev.target.value)"
+                        title="Cambiar de empresa en cualquier pantalla de Odoo">
+                    <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                        <option t-att-value="comp.id" t-att-selected="state.companyId === comp.id">
+                            🏢 <t t-esc="comp.name"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+
             <!-- Cápsula Identificadora del Administrador -->
             <div class="admin-systray-capsule" t-att-title="state.vpnIp ? ('Conectado vía WireGuard VPN ' + state.vpnIp) : 'Administrador activo'">
                 <!-- Avatar Icon -->
@@ -17,14 +31,6 @@
 
                 <!-- Separador -->
                 <span class="admin-systray-divider">|</span>
-
-                <!-- Empresa Asignada -->
-                <t t-if="state.companyName">
-                    <div class="admin-systray-company" t-att-title="'Empresa administrada: ' + state.companyName">
-                        <i class="fa fa-building text-primary me-1" style="font-size: 0.68rem;"/>
-                        <t t-esc="state.companyName"/>
-                    </div>
-                </t>
 
                 <!-- IP WireGuard VPN -->
                 <t t-if="state.vpnIp">

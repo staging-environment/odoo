@@ -66,6 +66,7 @@ export class GasStationDashboard extends Component {
             editCompanyCity: "",
             editCompanyPhone: "",
             editCompanyEmail: "",
+            editCompanyWebsite: "",
             renameStationId: null,
             renameStationName: "",
             actionLoading: false,
@@ -173,6 +174,7 @@ export class GasStationDashboard extends Component {
         this.state.editCompanyCity = comp.city || "";
         this.state.editCompanyPhone = comp.phone || "";
         this.state.editCompanyEmail = comp.email || "";
+        this.state.editCompanyWebsite = comp.website || "";
         this.state.companyEditError = null;
         this.state.showEditCompanyModal = true;
     }
@@ -188,6 +190,17 @@ export class GasStationDashboard extends Component {
 
     closeRenameCompanyModal() {
         this.closeEditCompanyModal();
+    }
+
+    openFullCompanyForm(companyId) {
+        this.closeEditCompanyModal();
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            res_model: "res.company",
+            res_id: companyId,
+            views: [[false, "form"]],
+            target: "current",
+        });
     }
 
     async submitEditCompany() {
@@ -209,10 +222,14 @@ export class GasStationDashboard extends Component {
                 city: this.state.editCompanyCity,
                 phone: this.state.editCompanyPhone,
                 email: this.state.editCompanyEmail,
+                website: this.state.editCompanyWebsite,
             });
             if (res.status === "success") {
                 this.notification.add(res.message, { type: "success" });
                 this.closeEditCompanyModal();
+                if (this.state.viewMode === "company_detail" && this.state.selectedDetailCompany) {
+                    await this.loadCompanyDetailData(this.state.editCompanyId);
+                }
                 await this.loadDashboardData();
             } else {
                 this.state.companyEditError = res.message || "Error al actualizar empresa";

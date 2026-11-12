@@ -31,41 +31,6 @@
                     </div>
 
                     <div class="topbar-actions">
-                        <!-- Conmutador de Empresa para administradores multi-empresa -->
-                        <t t-if="state.allAuthorizedCompanies and state.allAuthorizedCompanies.length > 1">
-                            <!-- Si hay de 2 a 4 empresas: Segmented Capsule táctil ultra limpio -->
-                            <t t-if="state.allAuthorizedCompanies.length &lt;= 4">
-                                <div class="company-switch-capsule me-2">
-                                    <span class="company-switch-label">
-                                        <i class="fa fa-building text-primary me-1"/> Empresa:
-                                    </span>
-                                    <t t-foreach="state.allAuthorizedCompanies" t-as="ac" t-key="ac.id">
-                                        <button type="button"
-                                                class="company-switch-btn"
-                                                t-att-class="(state.companies.length === 1 and state.companies[0].id === ac.id) ? 'active' : ''"
-                                                t-on-click="() => this.switchDashboardCompany(ac.id)">
-                                            <i t-attf-class="fa #{ac.id === 4 ? 'fa-gas-pump' : 'fa-building-o'} me-1.5 opacity-75"/>
-                                            <t t-esc="ac.name"/>
-                                        </button>
-                                    </t>
-                                </div>
-                            </t>
-
-                            <!-- Si hay más de 4 empresas: Select con padding amplio y sin solapamiento de flecha -->
-                            <t t-else="">
-                                <div class="d-inline-block me-2">
-                                    <select class="form-select company-switch-select"
-                                            t-on-change="(ev) => this.switchDashboardCompany(ev.target.value)">
-                                        <t t-foreach="state.allAuthorizedCompanies" t-as="ac" t-key="ac.id">
-                                            <option t-att-value="ac.id" t-att-selected="state.companies.length === 1 and state.companies[0].id === ac.id">
-                                                🏢 <t t-esc="ac.name"/>
-                                            </option>
-                                        </t>
-                                    </select>
-                                </div>
-                            </t>
-                        </t>
-
                         <!-- Botón Nueva Empresa (Solo para Administradores de Sistema) -->
                         <button class="btn btn-primary btn-sm me-2 fw-semibold rounded-pill px-3 shadow-sm" 
                                 style="height: 36px;"
@@ -296,9 +261,17 @@
                                             <t t-esc="state.selectedDetailCompany.vat"/>
                                         </span>
                                     </div>
-                                    <h2 class="fw-bold mb-1 text-dark">
-                                        <t t-esc="state.selectedDetailCompany.name"/>
-                                    </h2>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h2 class="fw-bold mb-0 text-dark">
+                                            <t t-esc="state.selectedDetailCompany.name"/>
+                                        </h2>
+                                        <button class="btn btn-sm btn-link text-muted p-0" 
+                                                t-if="state.isManager" 
+                                                t-on-click="() => this.promptEditCompany(state.selectedDetailCompany)" 
+                                                title="Modificar datos de la empresa">
+                                            <i class="fa fa-pencil text-secondary fs-5"/>
+                                        </button>
+                                    </div>
                                     <div class="text-muted small d-flex align-items-center gap-3 flex-wrap">
                                         <span t-if="state.selectedDetailCompany.street">
                                             <i class="fa fa-map-marker text-danger me-1"/> <t t-esc="state.selectedDetailCompany.street"/> <t t-esc="state.selectedDetailCompany.city"/>
@@ -308,6 +281,9 @@
                                         </span>
                                         <span t-if="state.selectedDetailCompany.email">
                                             <i class="fa fa-envelope text-primary me-1"/> <t t-esc="state.selectedDetailCompany.email"/>
+                                        </span>
+                                        <span t-if="state.selectedDetailCompany.website">
+                                            <i class="fa fa-globe text-info me-1"/> <t t-esc="state.selectedDetailCompany.website"/>
                                         </span>
                                     </div>
                                 </div>
@@ -391,15 +367,6 @@
                                                         <i class="fa fa-circle-o text-muted"/> Turno Cerrado (Listo)
                                                     </div>
                                                 </t>
-                                            </div>
-
-                                            <div class="d-flex gap-2">
-                                                <a t-attf-href="/pos/ui?config_id=#{st.id}" target="_blank" class="btn btn-primary btn-sm flex-grow-1 fw-bold">
-                                                    <i class="fa fa-external-link me-1"/> Abrir TPV
-                                                </a>
-                                                <a t-attf-href="/pos_gas_station/switch_cashier?config_id=#{st.id}" class="btn btn-outline-secondary btn-sm" title="Cambiar Cajero">
-                                                    <i class="fa fa-users"/>
-                                                </a>
                                             </div>
                                         </div>
                                     </div>
@@ -815,13 +782,24 @@
                                         <label class="form-label fw-semibold text-dark small mb-1">Correo Electrónico (Facturación)</label>
                                         <input type="email" class="form-control" placeholder="Ej: administracion@utrecar.com" t-model="state.editCompanyEmail"/>
                                     </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Sitio Web</label>
+                                        <input type="text" class="form-control" placeholder="Ej: https://www.utrecar.com" t-model="state.editCompanyWebsite"/>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-outline-secondary" t-on-click="() => this.closeEditCompanyModal()">Cancelar</button>
-                                <button type="button" class="btn btn-primary fw-bold" t-att-disabled="state.actionLoading" t-on-click="() => this.submitEditCompany()">
-                                    <i class="fa fa-check me-1"/> Guardar Cambios
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-between align-items-center">
+                                <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-0" 
+                                        t-on-click="() => this.openFullCompanyForm(state.editCompanyId)"
+                                        title="Abrir formulario completo en Odoo para bancos, contabilidad y opciones avanzadas">
+                                    <i class="fa fa-external-link me-1"/> Ficha Completa en Odoo ↗
                                 </button>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-secondary" t-on-click="() => this.closeEditCompanyModal()">Cancelar</button>
+                                    <button type="button" class="btn btn-primary fw-bold" t-att-disabled="state.actionLoading" t-on-click="() => this.submitEditCompany()">
+                                        <i class="fa fa-check me-1"/> Guardar Cambios
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
