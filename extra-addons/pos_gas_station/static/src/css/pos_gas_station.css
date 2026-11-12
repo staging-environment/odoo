@@ -5237,8 +5237,8 @@
 }
 
 .shift-order-row .cell-partner {
-    width: 190px !important;
-    max-width: 190px !important;
+    width: 230px !important;
+    max-width: 230px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
@@ -5256,7 +5256,7 @@
 }
 
 .shift-order-row .cell-actions {
-    width: 220px !important;
+    width: 180px !important;
     white-space: nowrap !important;
     text-align: center !important;
 }
