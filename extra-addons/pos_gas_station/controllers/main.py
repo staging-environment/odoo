@@ -1519,7 +1519,7 @@ class PosGasStationController(http.Controller):
         partners = env['res.partner'].sudo().search([
             ('company_id', '=', company.id),
             ('type', '!=', 'private'),
-        ], order='ref desc, name asc', limit=300)
+        ], order='name asc', limit=100)
 
         total_customers = env['res.partner'].sudo().search_count([
             ('company_id', '=', company.id),
@@ -1550,6 +1550,7 @@ class PosGasStationController(http.Controller):
                 'vat': p.vat or '',
                 'customer_type': p.customer_type or 'ordinary',
                 'station_name': p.station_id.name if p.station_id else 'Todas',
+                'company_name': company.name,
                 'phone': p.phone or p.mobile or '',
                 'email': p.email or '',
                 'city': p.city or '',
@@ -1598,6 +1599,68 @@ class PosGasStationController(http.Controller):
                 'total_products': total_products,
             }
         }
+
+    @http.route('/pos_gas_station/company_customers', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_company_customers(self, company_id=None, search_term=None, customer_type=None, limit=100, offset=0, **kw):
+        try:
+            env = request.env
+            if not company_id:
+                return {'status': 'error', 'message': 'ID de empresa obligatorio', 'customers': [], 'total': 0}
+
+            company = env['res.company'].sudo().browse(int(company_id))
+            if not company.exists():
+                return {'status': 'error', 'message': 'Empresa no encontrada', 'customers': [], 'total': 0}
+
+            domain = [
+                ('company_id', '=', company.id),
+                ('type', '!=', 'private'),
+            ]
+            if customer_type and customer_type != 'all':
+                domain.append(('customer_type', '=', customer_type))
+
+            q = (search_term or '').strip()
+            if q:
+                search_filter = [
+                    '|', '|', '|', '|',
+                    ('name', 'ilike', q),
+                    ('vat', 'ilike', q),
+                    ('ref', 'ilike', q),
+                    ('phone', 'ilike', q),
+                    ('email', 'ilike', q)
+                ]
+                domain.extend(search_filter)
+
+            total_count = env['res.partner'].sudo().search_count(domain)
+            partners = env['res.partner'].sudo().search(
+                domain,
+                order='name asc',
+                limit=int(limit or 100),
+                offset=int(offset or 0)
+            )
+
+            customers_data = []
+            for p in partners:
+                customers_data.append({
+                    'id': p.id,
+                    'ref': p.ref or '',
+                    'name': p.display_name or p.name or '',
+                    'vat': p.vat or '',
+                    'customer_type': p.customer_type or 'ordinary',
+                    'station_name': p.station_id.name if p.station_id else 'Todas',
+                    'company_name': company.name,
+                    'phone': p.phone or p.mobile or '',
+                    'email': p.email or '',
+                    'city': p.city or '',
+                })
+
+            return {
+                'status': 'success',
+                'customers': customers_data,
+                'total': total_count
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/company_customers: %s", e)
+            return {'status': 'error', 'message': str(e), 'customers': [], 'total': 0}
 
     # ==================== GESTIÓN DE ADMINISTRADORES POR EMPRESA (VPN) ====================
     @http.route('/pos_gas_station/vpn_company_admins/data', type='json', auth='user', methods=['POST'], csrf=False)
@@ -2435,14 +2498,10 @@ class PosGasStationController(http.Controller):
             if config_id:
                 try:
                     cfg = env['pos.config'].sudo().browse(int(config_id))
-                    if cfg.exists():
+                    if cfg.exists() and cfg.company_id:
                         base_domain = [
                             ('active', '=', True),
-                            '|',
-                            ('station_id', '=', cfg.id),
-                            '&',
-                            ('station_id', '=', False),
-                            ('company_id', 'in', [cfg.company_id.id, False])
+                            ('company_id', '=', cfg.company_id.id)
                         ]
                 except Exception:
                     pass
@@ -2455,9 +2514,6 @@ class PosGasStationController(http.Controller):
                 ]
                 search_filter = ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('ref', 'ilike', q)] if q else []
                 partners = env['res.partner'].sudo().search(base_domain + credit_filter + search_filter, order='name asc', limit=60)
-                if not partners:
-                    # Fallback sin filtro de estación por si los clientes de crédito son globales
-                    partners = env['res.partner'].sudo().search([('active', '=', True)] + credit_filter + search_filter, order='name asc', limit=60)
             else:
                 search_filter = ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('ref', 'ilike', q)]
                 partners = env['res.partner'].sudo().search(base_domain + search_filter, order='name asc', limit=25)

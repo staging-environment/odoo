@@ -631,29 +631,43 @@ export class GasStationDashboard extends Component {
         this.state.detailTab = tab;
     }
 
-    setCustomerFilter(type) {
+    async setCustomerFilter(type) {
         this.state.customerFilterType = type;
+        await this.searchCompanyCustomers();
+    }
+
+    onCustomerSearchInput(ev) {
+        this.state.customerSearchTerm = ev.target.value;
+        if (this.customerSearchDebounceTimer) {
+            clearTimeout(this.customerSearchDebounceTimer);
+        }
+        this.customerSearchDebounceTimer = setTimeout(() => {
+            this.searchCompanyCustomers();
+        }, 300);
+    }
+
+    async searchCompanyCustomers() {
+        if (!this.state.selectedDetailCompany) return;
+        try {
+            const res = await jsonrpc("/pos_gas_station/company_customers", {
+                company_id: this.state.selectedDetailCompany.id,
+                search_term: this.state.customerSearchTerm,
+                customer_type: this.state.customerFilterType,
+                limit: 100,
+            });
+            if (res && res.status === "success" && this.state.companyDetailData) {
+                this.state.companyDetailData.customers = res.customers || [];
+            }
+        } catch (e) {
+            console.error("Error searching company customers:", e);
+        }
     }
 
     get filteredCompanyCustomers() {
         if (!this.state.companyDetailData || !this.state.companyDetailData.customers) {
             return [];
         }
-        let list = this.state.companyDetailData.customers;
-        if (this.state.customerFilterType !== "all") {
-            list = list.filter(c => c.customer_type === this.state.customerFilterType);
-        }
-        if (this.state.customerSearchTerm) {
-            const q = this.state.customerSearchTerm.trim().toLowerCase();
-            list = list.filter(c => {
-                const name = (c.name || "").toLowerCase();
-                const vat = (c.vat || "").toLowerCase();
-                const ref = (c.ref || "").toLowerCase();
-                const phone = (c.phone || "").toLowerCase();
-                return name.includes(q) || vat.includes(q) || ref.includes(q) || phone.includes(q);
-            });
-        }
-        return list;
+        return this.state.companyDetailData.customers;
     }
 
     openPartnerForm(partnerId) {

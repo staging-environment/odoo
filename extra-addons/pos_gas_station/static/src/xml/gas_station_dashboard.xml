@@ -438,7 +438,8 @@
                                         <input type="text" 
                                                class="form-control form-control-sm ps-5 rounded-pill" 
                                                placeholder="Buscar por nombre, CIF, código o teléfono..."
-                                               t-model="state.customerSearchTerm"/>
+                                               t-att-value="state.customerSearchTerm"
+                                               t-on-input="(ev) => this.onCustomerSearchInput(ev)"/>
                                     </div>
 
                                     <div class="d-flex gap-1.5 flex-wrap">
@@ -493,7 +494,7 @@
                                                     <th class="py-1.5">Nombre / Razón Social</th>
                                                     <th class="py-1.5" style="width: 125px;">CIF / NIF</th>
                                                     <th class="py-1.5 text-center" style="width: 130px;">Facturación</th>
-                                                    <th class="py-1.5">Estación</th>
+                                                    <th class="py-1.5">Empresa</th>
                                                     <th class="py-1.5">Contacto</th>
                                                     <th class="py-1.5">Ciudad</th>
                                                     <th class="text-center pe-3 py-1.5" style="width: 85px;">Acción</th>
@@ -523,7 +524,10 @@
                                                             </span>
                                                         </td>
                                                         <td class="py-1 small text-muted" style="font-size: 11.5px;">
-                                                            <t t-esc="cust.station_name"/>
+                                                            <span class="badge bg-light text-dark border">
+                                                                <i class="fa fa-building-o me-1 text-primary"/>
+                                                                <t t-esc="cust.company_name || state.selectedDetailCompany.name"/>
+                                                            </span>
                                                         </td>
                                                         <td class="py-1 small text-muted" style="font-size: 11.5px;">
                                                             <span t-if="cust.phone" class="d-inline-block me-2"><i class="fa fa-phone me-1"/> <t t-esc="cust.phone"/></span>

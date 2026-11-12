@@ -2608,10 +2608,11 @@ export class UtrecarMainScreen extends Component {
     get filteredClients() {
         const search = (this.state.clientSearch || "").toLowerCase().trim();
         const allPartners = Object.values(this.pos.db.partner_by_id || {});
-        // Separar clientes por estación: solo mostrar clientes de esta estación o generales
+        // Filtrar estrictamente por la empresa asignada a la estación (no por estación ni clientes sin empresa)
+        const configCompanyId = this.pos.config.company_id ? (Array.isArray(this.pos.config.company_id) ? this.pos.config.company_id[0] : this.pos.config.company_id) : null;
         let list = allPartners.filter(p => {
-            const stId = Array.isArray(p.station_id) ? p.station_id[0] : p.station_id;
-            return !stId || stId === this.configId;
+            const pCompId = p.company_id ? (Array.isArray(p.company_id) ? p.company_id[0] : p.company_id) : null;
+            return pCompId && pCompId === configCompanyId;
         });
         if (search) {
             list = allPartners.filter(p => {

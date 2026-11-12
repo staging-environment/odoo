@@ -15,6 +15,9 @@ class ResPartner(models.Model):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
+        if self.env.context.get('default_company_id'):
+            res['company_id'] = self.env.context.get('default_company_id')
+            return res
         if self.env.context.get('res_company_partner_create') or self.env.context.get('skip_partner_company_default') or self.env.context.get('default_company_id') is False:
             return res
         if 'company_id' in fields_list and not res.get('company_id'):
@@ -23,7 +26,7 @@ class ResPartner(models.Model):
             user = self.env.user
             if len(user.pos_config_ids) == 1:
                 res['station_id'] = user.pos_config_ids[0].id
-                if user.pos_config_ids[0].company_id:
+                if user.pos_config_ids[0].company_id and not res.get('company_id'):
                     res['company_id'] = user.pos_config_ids[0].company_id.id
         return res
 
