@@ -1489,18 +1489,18 @@
                                                             👁 Ver
                                                         </button>
                                                         <t t-if="!ord.is_ticket_annulled">
-                                                            <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir ticket">
-                                                                🖨️ Ticket
-                                                            </button>
                                                             <t t-if="ord.is_invoiced">
-                                                                <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura PDF">
-                                                                    🖨️ PDF
+                                                                <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura oficial">
+                                                                    🖨️ Imprimir
                                                                 </button>
                                                                 <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo electrónico" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
                                                                     📧 Email
                                                                 </button>
                                                             </t>
                                                             <t t-else="">
+                                                                <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir ticket">
+                                                                    🖨️ Ticket
+                                                                </button>
                                                                 <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
                                                                     📄 Facturar
                                                                 </button>
@@ -1508,7 +1508,7 @@
                                                         </t>
                                                         <t t-else="">
                                                             <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir justificante de anulación">
-                                                                🖨️ Justificante
+                                                                🖨️ Imprimir
                                                             </button>
                                                         </t>
                                                     </td>
@@ -1543,25 +1543,28 @@
                                                                                 </td>
                                                                                 <td style="width: 220px; text-align: center;" t-on-click.stop="">
                                                                                     <t t-if="item.type === 'annulment'">
-                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printAnnulmentReceipt(ord, item)" title="Imprimir justificante oficial de anulación">
-                                                                                            🖨️ Justificante
-                                                                                        </button>
                                                                                         <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
                                                                                             👁 Ver
                                                                                         </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printAnnulmentReceipt(ord, item)" title="Imprimir justificante oficial de anulación">
+                                                                                            🖨️ Imprimir
+                                                                                        </button>
                                                                                     </t>
                                                                                     <t t-elif="item.type === 'invoice'">
-                                                                                        <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura PDF">
-                                                                                            🖨️ PDF
+                                                                                        <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
+                                                                                            👁 Ver
+                                                                                        </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura oficial">
+                                                                                            🖨️ Imprimir
                                                                                         </button>
                                                                                         <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
                                                                                             📧 Email
                                                                                         </button>
+                                                                                    </t>
+                                                                                    <t t-elif="item.type === 'albaran'">
                                                                                         <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
                                                                                             👁 Ver
                                                                                         </button>
-                                                                                    </t>
-                                                                                    <t t-elif="item.type === 'albaran'">
                                                                                         <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir Albarán firmado de crédito">
                                                                                             📋 Albarán
                                                                                         </button>
@@ -1570,9 +1573,6 @@
                                                                                                 📄 Facturar
                                                                                             </button>
                                                                                         </t>
-                                                                                        <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
-                                                                                            👁 Ver
-                                                                                        </button>
                                                                                     </t>
                                                                                 </td>
                                                                             </tr>
