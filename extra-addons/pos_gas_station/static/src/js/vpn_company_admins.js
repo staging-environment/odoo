@@ -269,3 +269,4 @@ export class VpnCompanyAdminsView extends Component {
 }
 
 registry.category("actions").add("vpn_company_admins", VpnCompanyAdminsView);
+

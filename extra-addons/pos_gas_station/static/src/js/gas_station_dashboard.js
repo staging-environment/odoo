@@ -604,7 +604,6 @@ export class GasStationDashboard extends Component {
     openVpnCompanyAdmins() {
         this.actionService.doAction("pos_gas_station.action_vpn_company_admins");
     }
-    }
 }
 
 registry.category("actions").add("gas_station_dashboard", GasStationDashboard);

@@ -150,3 +150,4 @@ class UtrecarVpnAdmin(models.Model):
                     vals['user_id'] = user.id
                 if vals:
                     existing.write(vals)
+

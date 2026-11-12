@@ -252,7 +252,7 @@
             </t>
 
             <!-- ==================== VISTA DETALLE DE EMPRESA ==================== -->
-            <t t-elif="state.viewMode === 'company_detail' and state.selectedDetailCompany">
+            <t t-if="state.viewMode === 'company_detail' and state.selectedDetailCompany">
                 <div class="company-detail-page bg-light py-4 px-4" style="min-height: 100vh;">
                     
                     <!-- CABECERA DE LA EMPRESA -->
