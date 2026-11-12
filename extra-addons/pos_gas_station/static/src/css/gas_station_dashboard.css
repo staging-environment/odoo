@@ -962,137 +962,158 @@ thead .sticky-cell {
 }
 
 /* ==========================================================================
-   INDICADORES DE SECCIÓN ACTIVA EN MENÚ PRINCIPAL Y SUBMENÚS CON PUNTITO
+   NAVEGACIÓN SUPERIOR: SECCIONES ACTIVAS ESTILO ELEGANTE ODOO (CAPTURA 3)
    ========================================================================== */
 
-/* Estilos base para los elementos de navegación en la barra superior */
-.o_main_navbar .o_menu_brand,
-.o_main_navbar .o_menu_sections .dropdown-toggle {
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    border-radius: 8px !important;
-    padding: 6px 14px !important;
-    margin: 4px 4px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    font-weight: 500;
-    cursor: pointer;
+/* Barra de navegación superior */
+.o_main_navbar {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.15) !important;
 }
 
+/* Elementos de navegación en la barra superior (Gestión de gasolineras, Usuarios) */
+.o_main_navbar .o_menu_brand,
+.o_main_navbar .o_menu_sections .dropdown-toggle {
+    height: 100% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 0 16px !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease !important;
+}
+
+/* Hover limpio al ras de la barra, sin pestañas que cuelguen ni bordes redondeados */
 .o_main_navbar .o_menu_brand:hover,
 .o_main_navbar .o_menu_sections .dropdown-toggle:hover {
-    background: rgba(255, 255, 255, 0.12) !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+    border-radius: 0 !important;
+}
+
+/* Evitar que el dropdown al estar abierto deforme la barra */
+.o_main_navbar .o_menu_sections .dropdown.show > .dropdown-toggle {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+    border-radius: 0 !important;
 }
 
 /* --- CASO 1: SECCIÓN PRINCIPAL ACTIVA: GESTIÓN DE GASOLINERAS --- */
-body:has(.gas-station-dashboard-page) .o_main_navbar .o_menu_brand,
 body[data-active-nav-section="dashboard"] .o_main_navbar .o_menu_brand,
+body:has(.gas-station-dashboard-wrapper) .o_main_navbar .o_menu_brand,
+body:has(.gas-station-dashboard-page) .o_main_navbar .o_menu_brand,
 .o_main_navbar .o_menu_brand.o_nav_active {
-    background: rgba(255, 255, 255, 0.22) !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
     color: #ffffff !important;
     font-weight: 700 !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
-    backdrop-filter: blur(4px);
+    border-bottom: 3px solid #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
-body:has(.gas-station-dashboard-page) .o_main_navbar .o_menu_brand::before,
-body[data-active-nav-section="dashboard"] .o_main_navbar .o_menu_brand::before,
-.o_main_navbar .o_menu_brand.o_nav_active::before {
-    content: "●";
-    color: #4ade80 !important;
-    font-size: 11px;
-    line-height: 1;
-    text-shadow: 0 0 6px rgba(74, 222, 128, 0.8);
-    margin-right: 2px;
-}
-
-/* --- CASO 2: MENÚ PADRE ACTIVO: USUARIOS (cuando estamos en Expendedores o Administración) --- */
-body:has(.employee-company-roles-view) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
-body:has(.vpn-admins-page) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
+/* --- CASO 2: SECCIÓN PADRE ACTIVA: USUARIOS (cuando estamos en Expendedores o Administración) --- */
 body[data-active-nav-section="expendedores"] .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
 body[data-active-nav-section="administracion"] .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
+body:has(.emp-roles-page) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
+body:has(.employee-company-roles-view) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
+body:has(.vpn-admins-page) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
+body:has(.vpn-admins-view) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
 .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"].o_nav_active {
-    background: rgba(255, 255, 255, 0.22) !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
     color: #ffffff !important;
     font-weight: 700 !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
-    backdrop-filter: blur(4px);
+    border-bottom: 3px solid #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
-body:has(.employee-company-roles-view) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"]::before,
-body:has(.vpn-admins-page) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"]::before,
-body[data-active-nav-section="expendedores"] .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"]::before,
-body[data-active-nav-section="administracion"] .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"]::before,
-.o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"].o_nav_active::before {
-    content: "●";
-    color: #4ade80 !important;
-    font-size: 11px;
-    line-height: 1;
-    text-shadow: 0 0 6px rgba(74, 222, 128, 0.8);
-    margin-right: 2px;
+/* ==========================================================================
+   DESPLEGABLE DE USUARIOS (SUBMENÚS): LIMPIO, SIN SCROLL Y CON PUNTITO ACTIVO
+   ========================================================================== */
+
+/* Contenedor del desplegable de navegación */
+.o_main_navbar .dropdown-menu {
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.06) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    padding: 6px 0 !important;
+    margin-top: 0 !important;
+    min-width: 200px !important;
+    overflow: visible !important; /* CRÍTICO: Elimina el scroll indeseado */
+    max-height: none !important;
 }
 
-/* --- SUBMENÚ DESPLEGABLE: ITEMS DE USUARIOS --- */
-.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"],
-.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"] {
-    position: relative !important;
-    padding: 8px 16px 8px 12px !important;
-    font-size: 0.92rem !important;
+/* Elementos del desplegable */
+.o_main_navbar .dropdown-menu .dropdown-item {
+    margin: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 10px 18px !important;
+    font-size: 13.5px !important;
     font-weight: 500 !important;
     color: #334155 !important;
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
-    transition: all 0.15s ease-in-out !important;
-    border-radius: 6px;
-    margin: 2px 6px;
+    justify-content: space-between !important;
+    transition: background-color 0.15s ease, color 0.15s ease !important;
+    cursor: pointer !important;
+    border-radius: 0 !important;
+    position: relative !important;
 }
 
-/* Puntito invisible por defecto para alinear el texto de forma simétrica */
-.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]::before,
-.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]::before {
-    content: "●";
-    color: transparent;
-    font-size: 13px;
-    line-height: 1;
-    width: 14px;
-    display: inline-block;
-    transition: all 0.2s ease;
+/* Hover de cada opción del submenú */
+.o_main_navbar .dropdown-menu .dropdown-item:hover {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
 }
 
-/* --- PUNTITO ACTIVO EN SUBMENÚ: EXPENDEDORES --- */
-body:has(.employee-company-roles-view) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"],
+/* --- SUBMENÚ ACTIVO: EXPENDEDORES --- */
 body[data-active-nav-section="expendedores"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"],
+body:has(.emp-roles-page) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"],
+body:has(.employee-company-roles-view) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"],
 .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"].o_submenu_item_active {
-    background: #f0fdf4 !important;
-    color: #15803d !important;
+    background-color: #f5f0f7 !important; /* Tono suave odoo */
+    color: #714B67 !important;            /* Púrpura corporativo odoo */
     font-weight: 700 !important;
 }
 
-body:has(.employee-company-roles-view) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]::before,
-body[data-active-nav-section="expendedores"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]::before,
-.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"].o_submenu_item_active::before {
-    color: #16a34a !important; /* Puntito verde vistoso */
-    text-shadow: 0 0 6px rgba(22, 163, 74, 0.4);
-    transform: scale(1.15);
+body[data-active-nav-section="expendedores"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]::after,
+body:has(.emp-roles-page) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]::after,
+body:has(.employee-company-roles-view) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]::after,
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"].o_submenu_item_active::after {
+    content: "●" !important;
+    color: #714B67 !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    margin-left: auto !important;
+    padding-left: 14px !important;
+    display: inline-block !important;
 }
 
-/* --- PUNTITO ACTIVO EN SUBMENÚ: ADMINISTRACIÓN --- */
-body:has(.vpn-admins-page) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"],
+/* --- SUBMENÚ ACTIVO: ADMINISTRACIÓN --- */
 body[data-active-nav-section="administracion"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"],
+body:has(.vpn-admins-page) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"],
+body:has(.vpn-admins-view) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"],
 .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"].o_submenu_item_active {
-    background: #f0fdf4 !important;
-    color: #15803d !important;
+    background-color: #f5f0f7 !important; /* Tono suave odoo */
+    color: #714B67 !important;            /* Púrpura corporativo odoo */
     font-weight: 700 !important;
 }
 
-body:has(.vpn-admins-page) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]::before,
-body[data-active-nav-section="administracion"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]::before,
-.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"].o_submenu_item_active::before {
-    color: #16a34a !important; /* Puntito verde vistoso */
-    text-shadow: 0 0 6px rgba(22, 163, 74, 0.4);
-    transform: scale(1.15);
+body[data-active-nav-section="administracion"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]::after,
+body:has(.vpn-admins-page) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]::after,
+body:has(.vpn-admins-view) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]::after,
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"].o_submenu_item_active::after {
+    content: "●" !important;
+    color: #714B67 !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    margin-left: auto !important;
+    padding-left: 14px !important;
+    display: inline-block !important;
 }
 

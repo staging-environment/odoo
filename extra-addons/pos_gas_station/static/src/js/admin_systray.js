@@ -23,19 +23,42 @@ for (const key of itemsToRemove) {
     }
 }
 
-function updateNavActiveState() {
-    const isExpendedores = Boolean(document.querySelector(".employee-company-roles-view"));
-    const isAdmins = Boolean(document.querySelector(".vpn-admins-page"));
-    const isDashboard = Boolean(document.querySelector(".gas-station-dashboard-page"));
-
-    const hash = window.location.hash || "";
+function updateNavActiveState(actionService = null) {
     let activeSection = "";
-    if (isExpendedores || hash.includes("action_employee_company_roles") || hash.includes("employee_company_roles")) {
-        activeSection = "expendedores";
-    } else if (isAdmins || hash.includes("action_vpn_company_admins") || hash.includes("vpn_company_admins")) {
-        activeSection = "administracion";
-    } else if (isDashboard || hash.includes("action_gas_station_dashboard") || hash === "" || hash === "#") {
-        activeSection = "dashboard";
+
+    // 1. Chequeo por controlador activo en actionService de Odoo
+    if (actionService?.currentController?.action) {
+        const tag = actionService.currentController.action.tag;
+        if (tag === "employee_company_roles") {
+            activeSection = "expendedores";
+        } else if (tag === "vpn_company_admins") {
+            activeSection = "administracion";
+        } else if (tag === "gas_station_dashboard") {
+            activeSection = "dashboard";
+        }
+    }
+
+    // 2. Chequeo por elementos presentes en el DOM
+    if (!activeSection) {
+        if (document.querySelector(".emp-roles-page, .employee-company-roles-view, [data-page='employee_company_roles']")) {
+            activeSection = "expendedores";
+        } else if (document.querySelector(".vpn-admins-page, .vpn-admins-view, [data-page='vpn_company_admins']")) {
+            activeSection = "administracion";
+        } else if (document.querySelector(".gas-station-dashboard-wrapper, .gas-station-dashboard-page, [data-page='gas_station_dashboard']")) {
+            activeSection = "dashboard";
+        }
+    }
+
+    // 3. Chequeo por hash en URL de Odoo
+    if (!activeSection) {
+        const hash = window.location.hash || "";
+        if (hash.includes("action_employee_company_roles") || hash.includes("employee_company_roles")) {
+            activeSection = "expendedores";
+        } else if (hash.includes("action_vpn_company_admins") || hash.includes("vpn_company_admins")) {
+            activeSection = "administracion";
+        } else {
+            activeSection = "dashboard";
+        }
     }
 
     if (document.body.dataset.activeNavSection !== activeSection) {
@@ -67,6 +90,7 @@ export class AdminSystrayMenu extends Component {
     setup() {
         this.user = useService("user");
         this.companyService = useService("company");
+        this.actionService = useService("action");
         const initialCompany = this.companyService?.currentCompany?.name || "";
         const initialCompanyId = this.companyService?.currentCompany?.id || null;
 
@@ -91,8 +115,8 @@ export class AdminSystrayMenu extends Component {
         };
         window.addEventListener("admin-company-changed", this.handleCompanyChange);
 
-        this.handleNavUpdate = () => updateNavActiveState();
-        this.navCheckInterval = setInterval(updateNavActiveState, 350);
+        this.handleNavUpdate = () => updateNavActiveState(this.actionService);
+        this.navCheckInterval = setInterval(this.handleNavUpdate, 200);
         window.addEventListener("hashchange", this.handleNavUpdate);
         window.addEventListener("popstate", this.handleNavUpdate);
         if (this.env?.bus) {
@@ -100,15 +124,22 @@ export class AdminSystrayMenu extends Component {
             this.env.bus.addEventListener("MENUS:APP-CHANGED", this.handleNavUpdate);
         }
 
+        // Actualizar al hacer clic en cualquier parte del navbar o desplegables
+        this.handleDocClick = () => {
+            setTimeout(this.handleNavUpdate, 40);
+        };
+        document.addEventListener("click", this.handleDocClick);
+
         onMounted(() => {
             this.loadAdminInfo();
-            updateNavActiveState();
+            updateNavActiveState(this.actionService);
         });
 
         onWillUnmount(() => {
             window.removeEventListener("admin-company-changed", this.handleCompanyChange);
             window.removeEventListener("hashchange", this.handleNavUpdate);
             window.removeEventListener("popstate", this.handleNavUpdate);
+            document.removeEventListener("click", this.handleDocClick);
             if (this.env?.bus) {
                 this.env.bus.removeEventListener("ACTION_MANAGER:UPDATE", this.handleNavUpdate);
                 this.env.bus.removeEventListener("MENUS:APP-CHANGED", this.handleNavUpdate);

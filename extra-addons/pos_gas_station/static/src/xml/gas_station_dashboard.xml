@@ -2,7 +2,7 @@
 <templates id="template" xml:space="preserve">
 
     <t t-name="pos_gas_station.GasStationDashboard" owl="1">
-        <div class="gas-station-dashboard-wrapper">
+        <div class="gas-station-dashboard-wrapper gas-station-dashboard-page" data-page="gas_station_dashboard">
             <!-- ==================== VISTA DASHBOARD GENERAL ==================== -->
             <t t-if="state.viewMode === 'dashboard'">
                 <!-- CABECERA SUPERIOR DEL DASHBOARD -->
