@@ -2612,6 +2612,37 @@ export class UtrecarMainScreen extends Component {
         this.state.clientSearch = "";
     }
 
+    clearClientSearch() {
+        this.state.clientSearch = "";
+    }
+
+    setConvertAlbaranPlate(plate) {
+        this.state.convertAlbaranPlate = plate || "";
+    }
+
+    onEditingPartnerNewPlateKeyDown(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.addVehicleToEditingPartner();
+        }
+    }
+
+    get currentCompanyName() {
+        if (this.pos.company && this.pos.company.name) {
+            return this.pos.company.name;
+        }
+        if (this.pos.config && this.pos.config.company_id) {
+            if (Array.isArray(this.pos.config.company_id)) {
+                return this.pos.config.company_id[1];
+            }
+            if (this.pos.companies && Array.isArray(this.pos.companies)) {
+                const c = this.pos.companies.find(comp => comp.id === this.pos.config.company_id);
+                if (c) return c.name;
+            }
+        }
+        return "";
+    }
+
     onClientSearchInput(ev) {
         this.state.clientSearch = ev.target.value;
     }

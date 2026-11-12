@@ -797,7 +797,7 @@
                                 <i class="fa fa-address-card fs-5 text-white"/>
                                 <span class="fw-bold fs-6 text-white text-uppercase tracking-wider">SELECCIÓN DE CLIENTE</span>
                                 <span class="badge bg-white text-primary fw-bold ms-2 px-2 py-1 shadow-sm" style="font-size: 11px;">
-                                    <t t-esc="pos.config.company_id ? pos.config.company_id[1] : (pos.company ? pos.company.name : '')"/>
+                                    <t t-esc="currentCompanyName"/>
                                 </span>
                             </div>
                             <div class="header-actions d-flex align-items-center gap-2 text-nowrap">
@@ -835,7 +835,7 @@
                                        t-on-input="(ev) => this.onClientSearchInput(ev)" />
                                 <button t-if="state.clientSearch" class="btn btn-sm btn-link text-muted position-absolute end-0 me-2 p-0 border-0"
                                         style="width: 28px; height: 28px;"
-                                        t-on-click="() => { this.state.clientSearch = ''; }">
+                                        t-on-click="() => this.clearClientSearch()">
                                     <i class="fa fa-times-circle"/>
                                 </button>
                             </div>
@@ -947,7 +947,7 @@
                                     </h4>
                                     <span class="text-white-50 small">
                                         <t t-if="state.editingPartner.id"><t t-esc="state.editingPartner.name"/></t>
-                                        <t t-else="">Registro para empresa: <t t-esc="pos.config.company_id ? pos.config.company_id[1] : (pos.company ? pos.company.name : '')"/></t>
+                                        <t t-else="">Registro para empresa: <t t-esc="currentCompanyName"/></t>
                                     </span>
                                 </div>
                             </div>
@@ -1068,7 +1068,7 @@
                                     <select class="form-select-custom" t-model="state.editingPartner.state_id">
                                         <option value="">-- Seleccionar Provincia --</option>
                                         <t t-foreach="spanishStates" t-as="st" t-key="st.id">
-                                            <option t-att-value="st.id" t-att-selected="state.editingPartner.state_id == st.id">
+                                            <option t-att-value="st.id">
                                                 <t t-esc="st.name"/>
                                             </option>
                                         </t>
@@ -1103,7 +1103,7 @@
                                     <div class="d-flex align-items-center gap-2" style="max-width: 380px;">
                                         <input type="text" class="form-control-custom text-uppercase" placeholder="Añadir Matrícula (ej: 1234BBB)" 
                                                t-model="state.editingPartner.new_plate"
-                                               t-on-keydown="(ev) => { if (ev.key === 'Enter') { ev.preventDefault(); this.addVehicleToEditingPartner(); } }"/>
+                                               t-on-keydown="(ev) => this.onEditingPartnerNewPlateKeyDown(ev)"/>
                                         <button type="button" class="btn btn-sm btn-primary px-3 text-nowrap fw-bold" 
                                                 style="height: 38px; border-radius: 6px;"
                                                 t-on-click="() => this.addVehicleToEditingPartner()">
@@ -2640,7 +2640,7 @@
                                                 <button type="button" 
                                                         class="btn btn-sm btn-outline-primary py-0 px-2" 
                                                         style="font-size: 11px;"
-                                                        t-on-click="() => { this.state.convertAlbaranPlate = veh.name; }">
+                                                        t-on-click="() => this.setConvertAlbaranPlate(veh.name)">
                                                     🚗 <t t-esc="veh.name"/>
                                                 </button>
                                             </t>
@@ -3261,12 +3261,6 @@
                 </t>
             </div>
         </xpath>
-    </t>
-
-    <!-- OCULTAR BOTONES DE PEDIDOS Y MÁS INFORMACIÓN EN DETALLES DE CLIENTE DEL TPV -->
-    <t t-name="pos_gas_station.PartnerListScreen" t-inherit="point_of_sale.PartnerListScreen" t-inherit-mode="extension" owl="1">
-        <xpath expr="//div[hasclass('top-right-buttons')]//div[hasclass('more-info')]" position="replace" />
-        <xpath expr="//div[hasclass('top-right-buttons')]//div[hasclass('more-info')]" position="replace" />
     </t>
 
 </templates>
