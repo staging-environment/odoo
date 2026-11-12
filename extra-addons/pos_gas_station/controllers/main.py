@@ -2486,6 +2486,59 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error in /pos_gas_station/search_partners: %s", e)
             return {'status': 'error', 'message': str(e)}
 
+    @http.route('/pos_gas_station/get_partner_vehicles', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_partner_vehicles(self, partner_id, **kw):
+        try:
+            if not partner_id:
+                return {'status': 'error', 'message': 'ID de cliente no proporcionado', 'vehicles': []}
+            partner = request.env['res.partner'].sudo().browse(int(partner_id))
+            if not partner.exists():
+                return {'status': 'error', 'message': 'Cliente no encontrado', 'vehicles': []}
+            vehicles = [{'id': v.id, 'name': v.name, 'notes': v.notes or ''} for v in getattr(partner, 'vehicle_ids', [])]
+            return {'status': 'success', 'vehicles': vehicles}
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/get_partner_vehicles: %s", e)
+            return {'status': 'error', 'message': str(e), 'vehicles': []}
+
+    @http.route('/pos_gas_station/save_partner_vehicle', type='json', auth='user', methods=['POST'], csrf=False)
+    def save_partner_vehicle(self, partner_id, plate, notes=None, **kw):
+        try:
+            if not partner_id:
+                return {'status': 'error', 'message': 'ID de cliente no proporcionado'}
+            partner = request.env['res.partner'].sudo().browse(int(partner_id))
+            if not partner.exists():
+                return {'status': 'error', 'message': 'Cliente no encontrado'}
+
+            clean_plate = (plate or '').strip().upper()
+            if not clean_plate or len(clean_plate) < 3:
+                return {'status': 'error', 'message': 'La matrícula debe tener al menos 3 caracteres'}
+
+            existing_veh = request.env['res.partner.vehicle'].sudo().search([
+                ('name', '=', clean_plate),
+                ('partner_id', '=', partner.id)
+            ], limit=1)
+
+            if existing_veh:
+                veh = existing_veh
+                if notes and str(notes).strip() and not veh.notes:
+                    veh.write({'notes': str(notes).strip()})
+            else:
+                veh = request.env['res.partner.vehicle'].sudo().create({
+                    'name': clean_plate,
+                    'partner_id': partner.id,
+                    'notes': str(notes).strip() if notes else False
+                })
+
+            vehicles = [{'id': v.id, 'name': v.name, 'notes': v.notes or ''} for v in getattr(partner, 'vehicle_ids', [])]
+            return {
+                'status': 'success',
+                'vehicle': {'id': veh.id, 'name': veh.name, 'notes': veh.notes or ''},
+                'vehicles': vehicles
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/save_partner_vehicle: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
     def _get_or_create_credit_partner(self, env, partner_data, config_id=None, company_id=None, vehicle_plate=None):
         name = str((partner_data or {}).get('name') or '').strip()
         vat = str((partner_data or {}).get('vat') or '').strip().upper()

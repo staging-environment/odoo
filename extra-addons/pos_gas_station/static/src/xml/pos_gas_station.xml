@@ -27,14 +27,80 @@
                                 </t>
                             </button>
                         </div>
-                        <div class="virtus-plate-box">
-                            <span class="eu-flag-box">🇪🇸 E</span>
-                            <input type="text" 
-                                   class="virtus-plate-input" 
-                                   placeholder="3696 GBC" 
-                                   t-att-value="state.vehiclePlate"
-                                   t-on-input="(ev) => this.onPlateChange(ev)" />
-                        </div>
+                        <!-- CAJA DE MATRÍCULA -->
+                        <!-- Caso 1: El cliente tiene matrículas asignadas en su ficha (Selector dinámico) -->
+                        <t t-if="currentOrderPartner and state.partnerVehicles and state.partnerVehicles.length > 0 and !state.isAddingNewPlate">
+                            <div class="virtus-plate-box has-vehicles" title="Matrículas registradas del cliente">
+                                <span class="eu-flag-box">🇪🇸 E</span>
+                                <select class="virtus-plate-select" t-on-change="(ev) => this.onPlateSelect(ev)">
+                                    <option value="" t-att-selected="!state.vehiclePlate">Matrícula...</option>
+                                    <t t-foreach="state.partnerVehicles" t-as="veh" t-key="veh.id">
+                                        <option t-att-value="veh.name" t-att-selected="state.vehiclePlate === veh.name">
+                                            <t t-esc="veh.name"/>
+                                        </option>
+                                    </t>
+                                    <option value="__NEW__" class="fw-bold text-primary">➕ Agregar nueva matrícula...</option>
+                                </select>
+                            </div>
+                        </t>
+
+                        <!-- Caso 2: El cliente tiene matrículas pero seleccionó "Agregar nueva matrícula..." -->
+                        <t t-elif="currentOrderPartner and state.isAddingNewPlate">
+                            <div class="virtus-plate-box adding-new" title="Introduzca la nueva matrícula para este cliente">
+                                <span class="eu-flag-box">🇪🇸 E</span>
+                                <input type="text"
+                                       class="virtus-plate-input virtus-new-plate-input"
+                                       placeholder="NUEVA MATRÍCULA"
+                                       t-att-value="state.newPlateInput"
+                                       t-on-input="(ev) => this.state.newPlateInput = ev.target.value.toUpperCase()"
+                                       t-on-keydown="(ev) => this.onNewPlateKeyDown(ev)" />
+                                <button type="button" class="virtus-plate-btn-save"
+                                        t-on-click="() => this.saveNewPlateAndAssign()"
+                                        t-att-disabled="state.isSavingPlate"
+                                        title="Guardar en ficha del cliente y seleccionar">
+                                    <i class="fa fa-check"/>
+                                </button>
+                                <button type="button" class="virtus-plate-btn-cancel"
+                                        t-on-click="() => this.cancelAddNewPlate()"
+                                        title="Cancelar">
+                                    <i class="fa fa-times"/>
+                                </button>
+                            </div>
+                        </t>
+
+                        <!-- Caso 3: Cliente seleccionado pero NO tiene matrículas asignadas en su ficha -->
+                        <t t-elif="currentOrderPartner">
+                            <div class="virtus-plate-box no-vehicles" title="Cliente sin matrículas. Escriba la matrícula para asignarla a su ficha.">
+                                <span class="eu-flag-box">🇪🇸 E</span>
+                                <input type="text" 
+                                       class="virtus-plate-input" 
+                                       placeholder="3696 GBC" 
+                                       t-att-value="state.vehiclePlate"
+                                       t-on-input="(ev) => this.onPlateChange(ev)"
+                                       t-on-change="(ev) => this.onPartnerPlateInputChange(ev)"
+                                       t-on-keydown="(ev) => this.onPartnerPlateInputKeyDown(ev)" />
+                                <t t-if="state.vehiclePlate and state.vehiclePlate.length >= 3">
+                                    <button type="button" class="virtus-plate-btn-save"
+                                            t-on-click="() => this.savePlateToPartner(state.vehiclePlate)"
+                                            t-att-disabled="state.isSavingPlate"
+                                            title="Guardar esta matrícula en la ficha del cliente">
+                                        <i class="fa fa-floppy-o"/>
+                                    </button>
+                                </t>
+                            </div>
+                        </t>
+
+                        <!-- Caso 4: Venta ordinaria sin cliente asignado -->
+                        <t t-else="">
+                            <div class="virtus-plate-box" title="Matrícula para el ticket">
+                                <span class="eu-flag-box">🇪🇸 E</span>
+                                <input type="text" 
+                                       class="virtus-plate-input" 
+                                       placeholder="3696 GBC" 
+                                       t-att-value="state.vehiclePlate"
+                                       t-on-input="(ev) => this.onPlateChange(ev)" />
+                            </div>
+                        </t>
                         <div class="virtus-user-badge" t-on-click="() => this.changeCashierName()" t-attf-title="Cajero: #{pos.user ? pos.user.name : 'SUPERVISOR'}. Clic para cambiar de cajero / operador." style="cursor: pointer;">
                             <i class="fa fa-user mr-1 text-primary flex-shrink-0"/>
                             <span class="user-name"><t t-esc="pos.user ? pos.user.name : 'SUPERVISOR'"/></span>
@@ -742,7 +808,14 @@
                                     <span><t t-esc="state.clientSortDirection === 'asc' ? 'A → Z' : 'Z → A'"/></span>
                                 </button>
                             </div>
-                            <div class="header-actions">
+                            <div class="header-actions d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center gap-1"
+                                        style="height: 32px; padding: 0 10px; font-size: 12px; border-radius: 4px;"
+                                        t-on-click="() => this.createNewClient()"
+                                        title="Crear un nuevo cliente">
+                                    <i class="fa fa-user-plus"/>
+                                    <span>+ Nuevo Cliente</span>
+                                </button>
                                 <button class="btn-clear-client" t-on-click="() => this.removeClient()" title="Desasignar cliente">
                                     Quitar Cliente
                                 </button>
@@ -753,28 +826,29 @@
                             <table class="client-modal-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 38%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('name')" title="Ordenar por Nombre (Ascendente / Descendente)">
+                                        <th style="width: 34%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('name')" title="Ordenar por Nombre (Ascendente / Descendente)">
                                             Nombre / Razón Social
                                             <i t-if="state.clientSortField === 'name'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                         </th>
-                                        <th style="width: 18%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('vat')" title="Ordenar por CIF/NIF">
+                                        <th style="width: 16%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('vat')" title="Ordenar por CIF/NIF">
                                             CIF / NIF
                                             <i t-if="state.clientSortField === 'vat'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                         </th>
-                                        <th style="width: 18%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('phone')" title="Ordenar por Teléfono">
+                                        <th style="width: 16%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('phone')" title="Ordenar por Teléfono">
                                             Teléfono
                                             <i t-if="state.clientSortField === 'phone'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                         </th>
-                                        <th style="width: 26%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('city')" title="Ordenar por Población / Email">
+                                        <th style="width: 24%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('city')" title="Ordenar por Población / Email">
                                             Email / Población
                                             <i t-if="state.clientSortField === 'city'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                         </th>
+                                        <th style="width: 10%; text-align: center;">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <t t-if="filteredClients.length === 0">
                                         <tr>
-                                            <td colspan="4" class="text-center py-4 text-muted">
+                                            <td colspan="5" class="text-center py-4 text-muted">
                                                 No se encontraron clientes con ese criterio.
                                             </td>
                                         </tr>
@@ -803,6 +877,15 @@
                                             </td>
                                             <td>
                                                 <t t-esc="c.email || c.city || '-'"/>
+                                            </td>
+                                            <td class="text-center" t-on-click.stop="" style="white-space: nowrap;">
+                                                <button class="btn btn-sm btn-outline-primary py-0 px-2 fw-bold d-inline-flex align-items-center gap-1"
+                                                        style="font-size: 11px; height: 26px;"
+                                                        t-on-click.stop="() => this.editClient(c)"
+                                                        title="Editar ficha de este cliente">
+                                                    <i class="fa fa-pencil"/>
+                                                    <span>Editar</span>
+                                                </button>
                                             </td>
                                         </tr>
                                     </t>

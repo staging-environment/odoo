@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 import { Component, useState, onMounted, onWillUnmount } from "@odoo/owl";
+import { session } from "@web/session";
 import { ProductScreen } from "@point_of_sale/app/screens/product_screen/product_screen";
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { PaymentScreenStatus } from "@point_of_sale/app/screens/payment_screen/payment_status/payment_status";
@@ -171,6 +172,10 @@ export class UtrecarMainScreen extends Component {
             pendingModalPump: null,
             stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
             vehiclePlate: "",
+            partnerVehicles: [],
+            isAddingNewPlate: false,
+            newPlateInput: "",
+            isSavingPlate: false,
             selectedPumpId: null,
             selectedLineId: null,
             orderVersion: 0,
@@ -335,6 +340,16 @@ export class UtrecarMainScreen extends Component {
                         if (!hasFuelLine) {
                             this.state.selectedFuel = null;
                             this.state.presetValue = 0;
+                        }
+
+                        // Sincronizar cliente y matrículas de la orden activa
+                        const p = ord.get_partner ? ord.get_partner() : null;
+                        this.state.vehiclePlate = ord.vehicle_plate || "";
+                        this.state.isAddingNewPlate = false;
+                        if (p && p.id) {
+                            this.loadPartnerVehicles(p.id);
+                        } else {
+                            this.state.partnerVehicles = [];
                         }
                     }
                     const linesCount = (ord.get_orderlines ? (ord.get_orderlines() ? ord.get_orderlines().length : 0) : 0) || (ord.orderlines ? ord.orderlines.length : 0) || 0;
@@ -1050,12 +1065,135 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
-    onPlateChange(ev) {
-        const plate = ev.target.value.toUpperCase();
+    setVehiclePlate(plate) {
+        plate = (plate || "").trim().toUpperCase();
         this.state.vehiclePlate = plate;
         const currentOrder = this.getOrCreateOrder();
         if (currentOrder) {
-            if (currentOrder.set_note) currentOrder.set_note(plate ? `Matrícula: ${plate}` : "");
+            currentOrder.vehicle_plate = plate;
+            if (currentOrder.set_note) {
+                currentOrder.set_note(plate ? `Matrícula: ${plate}` : "");
+            }
+        }
+        this.state.orderVersion = Date.now();
+    }
+
+    onPlateChange(ev) {
+        const plate = ev.target.value.toUpperCase();
+        this.setVehiclePlate(plate);
+    }
+
+    onPlateSelect(ev) {
+        const val = ev.target.value;
+        if (val === "__NEW__") {
+            this.state.isAddingNewPlate = true;
+            this.state.newPlateInput = "";
+            setTimeout(() => {
+                const input = document.querySelector(".virtus-new-plate-input");
+                if (input) input.focus();
+            }, 60);
+            return;
+        }
+        this.setVehiclePlate(val);
+    }
+
+    cancelAddNewPlate() {
+        this.state.isAddingNewPlate = false;
+        this.state.newPlateInput = "";
+    }
+
+    async saveNewPlateAndAssign() {
+        const plate = this.state.newPlateInput;
+        if (!plate || !plate.trim()) return;
+        await this.savePlateToPartner(plate);
+    }
+
+    onNewPlateKeyDown(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.saveNewPlateAndAssign();
+        } else if (ev.key === "Escape") {
+            this.cancelAddNewPlate();
+        }
+    }
+
+    async savePlateToPartner(plate) {
+        const partner = this.currentOrderPartner;
+        if (!partner || !partner.id) return;
+        const cleanPlate = (plate || "").trim().toUpperCase();
+        if (!cleanPlate || cleanPlate.length < 3) return;
+
+        this.state.isSavingPlate = true;
+        try {
+            const res = await this.env.services.rpc("/pos_gas_station/save_partner_vehicle", {
+                partner_id: partner.id,
+                plate: cleanPlate
+            });
+            if (res && res.status === "success") {
+                this.state.partnerVehicles = res.vehicles || [];
+                this.state.isAddingNewPlate = false;
+                this.state.newPlateInput = "";
+                this.setVehiclePlate(cleanPlate);
+                if (this.env.services.notification) {
+                    this.env.services.notification.add(
+                        `Matrícula ${cleanPlate} guardada en la ficha del cliente`,
+                        { type: "success", sticky: false, duration: 2500 }
+                    );
+                }
+            } else {
+                console.warn("No se pudo guardar la matrícula:", res ? res.message : "Error");
+            }
+        } catch (e) {
+            console.error("Error savePlateToPartner:", e);
+        } finally {
+            this.state.isSavingPlate = false;
+        }
+    }
+
+    onPartnerPlateInputChange(ev) {
+        const val = ev.target.value;
+        if (val && val.trim().length >= 4 && this.currentOrderPartner) {
+            this.savePlateToPartner(val);
+        }
+    }
+
+    onPartnerPlateInputKeyDown(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            const val = ev.target.value;
+            if (val && val.trim().length >= 3 && this.currentOrderPartner) {
+                this.savePlateToPartner(val);
+            }
+        }
+    }
+
+    async loadPartnerVehicles(partnerId) {
+        if (!partnerId) {
+            this.state.partnerVehicles = [];
+            this.state.isAddingNewPlate = false;
+            return;
+        }
+        try {
+            const res = await this.env.services.rpc("/pos_gas_station/get_partner_vehicles", {
+                partner_id: partnerId
+            });
+            if (res && res.status === "success") {
+                this.state.partnerVehicles = res.vehicles || [];
+                this.state.isAddingNewPlate = false;
+                // Si el cliente tiene exactamente 1 matrícula registrada y la orden no tiene aún matrícula:
+                if (this.state.partnerVehicles.length === 1 && !this.state.vehiclePlate) {
+                    this.setVehiclePlate(this.state.partnerVehicles[0].name);
+                } else if (this.state.partnerVehicles.length > 0 && this.state.vehiclePlate) {
+                    // Si ya tenía matrícula escrita, verificar si coincide con alguna del cliente
+                    const found = this.state.partnerVehicles.some(v => v.name === this.state.vehiclePlate);
+                    if (!found && this.state.partnerVehicles.length === 1) {
+                        this.setVehiclePlate(this.state.partnerVehicles[0].name);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Error al cargar matrículas del cliente:", e);
+            this.state.partnerVehicles = [];
         }
     }
 
@@ -2497,13 +2635,22 @@ export class UtrecarMainScreen extends Component {
         }).slice(0, 50);
     }
 
-    selectClient(partner) {
+    async selectClient(partner) {
         const order = this.pos.get_order();
         if (order) {
             order.set_partner(partner);
             this.state.orderVersion = Date.now();
         }
         this.closeClientModal();
+        if (partner && partner.id) {
+            await this.loadPartnerVehicles(partner.id);
+            if (this.state.vehiclePlate && (!this.state.partnerVehicles || this.state.partnerVehicles.length === 0)) {
+                await this.savePlateToPartner(this.state.vehiclePlate);
+            }
+        } else {
+            this.state.partnerVehicles = [];
+            this.state.isAddingNewPlate = false;
+        }
     }
 
     removeClient() {
@@ -2512,7 +2659,49 @@ export class UtrecarMainScreen extends Component {
             order.set_partner(null);
             this.state.orderVersion = Date.now();
         }
+        this.state.partnerVehicles = [];
+        this.state.isAddingNewPlate = false;
         this.closeClientModal();
+    }
+
+    async editClient(partner) {
+        this.closeClientModal();
+        const { confirmed, payload: updatedPartner } = await this.pos.showTempScreen(
+            "PartnerListScreen",
+            { partner: partner, editModeProps: true }
+        );
+        if (confirmed && updatedPartner) {
+            const order = this.pos.get_order();
+            if (order) {
+                order.set_partner(updatedPartner);
+            }
+            await this.loadPartnerVehicles(updatedPartner.id);
+            this.state.orderVersion = Date.now();
+        } else if (!confirmed) {
+            this.openClientModal();
+        }
+    }
+
+    async createNewClient() {
+        this.closeClientModal();
+        const { country_id, state_id } = this.pos.company;
+        const { confirmed, payload: newPartner } = await this.pos.showTempScreen(
+            "PartnerListScreen",
+            {
+                partner: { country_id, state_id, lang: session?.user_context?.lang || "es_ES" },
+                editModeProps: true
+            }
+        );
+        if (confirmed && newPartner) {
+            const order = this.pos.get_order();
+            if (order) {
+                order.set_partner(newPartner);
+            }
+            await this.loadPartnerVehicles(newPartner.id);
+            this.state.orderVersion = Date.now();
+        } else if (!confirmed) {
+            this.openClientModal();
+        }
     }
 
     async onClickPartner() {
@@ -2526,6 +2715,10 @@ export class UtrecarMainScreen extends Component {
             if (order) {
                 order.set_partner(newPartner);
             }
+            if (newPartner && newPartner.id) {
+                await this.loadPartnerVehicles(newPartner.id);
+            }
+            this.state.orderVersion = Date.now();
         }
     }
 
