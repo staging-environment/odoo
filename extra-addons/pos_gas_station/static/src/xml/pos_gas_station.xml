@@ -1478,7 +1478,7 @@
                                                     </td>
                                                     <td class="cell-total" style="text-align: right;">
                                                         <t t-if="ord.is_ticket_annulled">
-                                                            <strong style="color: #dc2626; text-decoration: line-through;"><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
+                                                            <strong style="color: #dc2626;"><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
                                                         </t>
                                                         <t t-else="">
                                                             <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
