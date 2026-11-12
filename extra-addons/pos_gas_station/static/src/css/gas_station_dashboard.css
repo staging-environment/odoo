@@ -892,6 +892,64 @@ thead .sticky-cell {
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08) !important;
 }
 
+/* BOTÓN DE EDICIÓN PROMINENTE Y VISTOSO (LÁPIZ EN ESQUINA SUPERIOR DERECHA) */
+.btn-card-edit-prominent {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 1.5px solid #93c5fd;
+    color: #1d4ed8;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12);
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.btn-card-edit-prominent:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border-color: #1e40af;
+    color: #ffffff;
+    transform: translateY(-1px) scale(1.08);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.btn-card-edit-prominent:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* NOMBRE DE ESTACIÓN CLICABLE HACIA FICHA DETALLADA */
+.station-name-clickable {
+    cursor: pointer;
+    transition: color 0.18s ease-in-out, transform 0.18s ease-in-out;
+}
+
+.station-name-clickable:hover {
+    color: #2563eb !important;
+    text-decoration: underline;
+}
+
+/* VISTA DETALLE FICHA DE ESTACIÓN */
+.station-detail-page {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    padding-bottom: 90px !important;
+    animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.station-detail-icon-box {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;

@@ -16,6 +16,34 @@ class PosConfig(models.Model):
         string='Código Estación Admin Platform',
         help='Código numérico de estación (gasolinera_codigo) en la base de datos de admin-platform'
     )
+    street = fields.Char(string='Dirección / Calle')
+    zip = fields.Char(string='Código Postal')
+    city = fields.Char(string='Localidad / Población')
+    phone = fields.Char(string='Teléfono de la Estación')
+    email = fields.Char(string='Email de la Estación')
+
+    @api.model
+    def _init_station_addresses(self):
+        """Inicializa direcciones por defecto para las estaciones conocidas si no tienen valor."""
+        defaults = {
+            7: {'street': 'C/ Trieste, s/n (SE-30 Calonge)', 'zip': '41007', 'city': 'Sevilla'},
+            5: {'street': 'Ronda Norte, s/n', 'zip': '41710', 'city': 'Utrera'},
+            3: {'street': 'Av. Vistalegre, s/n', 'zip': '41710', 'city': 'Utrera'},
+            2: {'street': 'Ctra. Nacional IV, Km 612 (Rodalabota)', 'zip': '41749', 'city': 'El Cuervo de Sevilla'},
+            6: {'street': 'Av. Atenas, s/n', 'zip': '41400', 'city': 'Écija'},
+        }
+        for sid, vals in defaults.items():
+            st = self.browse(sid)
+            if st.exists():
+                to_write = {}
+                if not st.street and vals.get('street'):
+                    to_write['street'] = vals['street']
+                if not st.zip and vals.get('zip'):
+                    to_write['zip'] = vals['zip']
+                if not st.city and vals.get('city'):
+                    to_write['city'] = vals['city']
+                if to_write:
+                    st.write(to_write)
 
     @api.model
     def _get_default_station_vpn_mapping(self):

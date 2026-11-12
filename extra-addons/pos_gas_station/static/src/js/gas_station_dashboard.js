@@ -75,7 +75,13 @@ export class GasStationDashboard extends Component {
             editStationVpnIp: "",
             editStationAdminPlatformCode: "",
             editStationCompanyId: null,
+            editStationStreet: "",
+            editStationZip: "",
+            editStationCity: "",
+            editStationPhone: "",
+            editStationEmail: "",
             stationEditError: null,
+            selectedDetailStation: null,
             actionLoading: false,
 
             // Modal de asignación de empleados por empresa
@@ -332,10 +338,40 @@ export class GasStationDashboard extends Component {
         this.state.editStationVpnIp = st.vpn_ip || "";
         this.state.editStationAdminPlatformCode = st.admin_platform_code || "";
         this.state.editStationCompanyId = st.company_id || (this.state.companies[0] ? this.state.companies[0].id : null);
+        this.state.editStationStreet = st.street || "";
+        this.state.editStationZip = st.zip || "";
+        this.state.editStationCity = st.city || "";
+        this.state.editStationPhone = st.phone || "";
+        this.state.editStationEmail = st.email || "";
         this.state.renameStationId = st.id;
         this.state.renameStationName = st.name || "";
         this.state.stationEditError = null;
         this.state.showEditStationModal = true;
+    }
+
+    openStationDetail(st) {
+        this.state.selectedDetailStation = Object.assign({}, st);
+        this.state.editStationId = st.id;
+        this.state.editStationName = st.name || "";
+        this.state.editStationVpnIp = st.vpn_ip || "";
+        this.state.editStationAdminPlatformCode = st.admin_platform_code || "";
+        this.state.editStationCompanyId = st.company_id || (this.state.companies[0] ? this.state.companies[0].id : null);
+        this.state.editStationStreet = st.street || "";
+        this.state.editStationZip = st.zip || "";
+        this.state.editStationCity = st.city || "";
+        this.state.editStationPhone = st.phone || "";
+        this.state.editStationEmail = st.email || "";
+        this.state.stationEditError = null;
+        this.state.viewMode = "station_detail";
+    }
+
+    backFromStationDetail() {
+        this.state.selectedDetailStation = null;
+        if (this.state.selectedDetailCompany) {
+            this.state.viewMode = "company_detail";
+        } else {
+            this.state.viewMode = "dashboard";
+        }
     }
 
     promptRenameStation(st) {
@@ -378,11 +414,31 @@ export class GasStationDashboard extends Component {
                 name: name,
                 vpn_ip: this.state.editStationVpnIp,
                 admin_platform_code: this.state.editStationAdminPlatformCode,
-                company_id: this.state.editStationCompanyId
+                company_id: this.state.editStationCompanyId,
+                street: this.state.editStationStreet,
+                zip: this.state.editStationZip,
+                city: this.state.editStationCity,
+                phone: this.state.editStationPhone,
+                email: this.state.editStationEmail,
             });
             if (res.status === "success") {
                 this.notification.add(res.message, { type: "success" });
                 this.closeEditStationModal();
+                if (this.state.selectedDetailStation && this.state.selectedDetailStation.id === (this.state.editStationId || this.state.renameStationId)) {
+                    this.state.selectedDetailStation.name = name;
+                    this.state.selectedDetailStation.company_id = this.state.editStationCompanyId;
+                    this.state.selectedDetailStation.vpn_ip = this.state.editStationVpnIp;
+                    this.state.selectedDetailStation.admin_platform_code = this.state.editStationAdminPlatformCode;
+                    this.state.selectedDetailStation.street = this.state.editStationStreet;
+                    this.state.selectedDetailStation.zip = this.state.editStationZip;
+                    this.state.selectedDetailStation.city = this.state.editStationCity;
+                    this.state.selectedDetailStation.phone = this.state.editStationPhone;
+                    this.state.selectedDetailStation.email = this.state.editStationEmail;
+                    const matchedComp = this.state.allAuthorizedCompanies.find(c => c.id == this.state.editStationCompanyId);
+                    if (matchedComp) {
+                        this.state.selectedDetailStation.company_name = matchedComp.name;
+                    }
+                }
                 if (this.state.viewMode === "company_detail" && this.state.selectedDetailCompany) {
                     await this.loadCompanyDetailData(this.state.selectedDetailCompany.id);
                 }
@@ -566,6 +622,7 @@ export class GasStationDashboard extends Component {
     backToDashboard() {
         this.state.viewMode = "dashboard";
         this.state.selectedDetailCompany = null;
+        this.state.selectedDetailStation = null;
         this.state.companyDetailData = null;
         this.loadDashboardData();
     }

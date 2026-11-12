@@ -1233,6 +1233,12 @@ class PosGasStationController(http.Controller):
         user = env.user
         is_manager = user.has_group('point_of_sale.group_pos_manager') or user._is_admin()
 
+        # Inicializar direcciones de estaciones si faltan
+        try:
+            env['pos.config'].sudo()._init_station_addresses()
+        except Exception:
+            pass
+
         # Determinar IP del cliente y registro de VPN admin si aplica
         forwarded_for = request.httprequest.headers.get('X-Forwarded-For')
         ip = forwarded_for.split(',')[0].strip() if forwarded_for else (request.httprequest.remote_addr or '').strip()
@@ -1326,6 +1332,11 @@ class PosGasStationController(http.Controller):
                     'company_name': c.name,
                     'vpn_ip': st.vpn_ip or '',
                     'admin_platform_code': st.admin_platform_code or '',
+                    'street': st.street or '',
+                    'zip': st.zip or '',
+                    'city': st.city or '',
+                    'phone': st.phone or '',
+                    'email': st.email or '',
                     'pumps_count': pumps_cnt,
                     'has_active_session': bool(active_session),
                     'session_state': active_session.state if active_session else 'closed',
@@ -1493,6 +1504,11 @@ class PosGasStationController(http.Controller):
                 'company_name': company.name,
                 'vpn_ip': st.vpn_ip or '',
                 'admin_platform_code': st.admin_platform_code or '',
+                'street': st.street or '',
+                'zip': st.zip or '',
+                'city': st.city or '',
+                'phone': st.phone or '',
+                'email': st.email or '',
                 'has_active_session': bool(active_session),
                 'cashier_name': active_session.user_id.name if active_session else None,
                 'session_start': active_session.start_at.strftime('%d/%m/%Y %H:%M') if (active_session and active_session.start_at) else None,
@@ -2879,7 +2895,8 @@ class PosGasStationController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/update_station', type='json', auth='user', methods=['POST'], csrf=False)
-    def update_station(self, config_id, name, vpn_ip=None, admin_platform_code=None, company_id=None):
+    def update_station(self, config_id, name, vpn_ip=None, admin_platform_code=None, company_id=None,
+                       street=None, zip=None, city=None, phone=None, email=None):
         try:
             env = request.env
             if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
@@ -2894,6 +2911,11 @@ class PosGasStationController(http.Controller):
             vals = {
                 'name': clean_name,
                 'vpn_ip': (vpn_ip or '').strip() or False,
+                'street': (street or '').strip() or False,
+                'zip': (zip or '').strip() or False,
+                'city': (city or '').strip() or False,
+                'phone': (phone or '').strip() or False,
+                'email': (email or '').strip() or False,
             }
             if admin_platform_code is not None:
                 ap_str = str(admin_platform_code).strip()
