@@ -1246,8 +1246,12 @@ class PosGasStationController(http.Controller):
             (vpn_admin and vpn_admin.can_manage_staff)
         )
 
-        # Compañía activa en la sesión (o asignada al hacer clic en 'Administrar X')
-        session_company_id = request.session.get('admin_active_company_id') or request.session.get('current_company_id')
+        # Compañía activa en la sesión (o asignada al hacer clic en 'Administrar X' o en URL cids)
+        session_company_id = (
+            request.session.get('admin_active_company_id') or 
+            (request.env.company.id if getattr(request.env, 'company', None) else False) or 
+            request.session.get('current_company_id')
+        )
         if not session_company_id and request.session.get('allowed_company_ids'):
             session_company_id = request.session['allowed_company_ids'][0]
 

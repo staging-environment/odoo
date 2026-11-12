@@ -71,7 +71,7 @@
                                 </div>
                                 <div>
                                     <span class="text-muted small fw-semibold d-block text-truncate" style="max-width: 150px;" t-att-title="comp.name">Admins <t t-esc="comp.name"/></span>
-                                    <h3 class="fw-bold mb-0 text-dark"><t t-esc="(state.stats.company_counts and state.stats.company_counts[comp.id]) || 0"/></h3>
+                                    <h3 class="fw-bold mb-0 text-dark"><t t-esc="this.getCompanyAdminCount(comp.id)"/></h3>
                                 </div>
                             </div>
                         </div>
@@ -100,7 +100,7 @@
                                t-model="state.searchTerm"/>
                         <button t-if="state.searchTerm" 
                                 class="btn btn-sm btn-link text-muted position-absolute top-50 end-0 translate-middle-y me-2 p-0"
-                                t-on-click="() => state.searchTerm = ''">
+                                t-on-click="() => this.clearSearch()">
                             <i class="fa fa-times-circle"></i>
                         </button>
                     </div>
@@ -113,9 +113,9 @@
                         </button>
                         <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
                             <button class="btn btn-sm fw-semibold rounded-pill px-3"
-                                    t-att-class="state.filterCompany === String(comp.id) ? 'btn-primary' : 'btn-outline-secondary'"
-                                    t-on-click="() => this.setFilter(String(comp.id))">
-                                <t t-esc="comp.name"/> (<t t-esc="(state.stats.company_counts and state.stats.company_counts[comp.id]) || 0"/>)
+                                    t-att-class="state.filterCompany === comp.id ? 'btn-primary' : 'btn-outline-secondary'"
+                                    t-on-click="() => this.setFilter(comp.id)">
+                                <t t-esc="comp.name"/> (<t t-esc="this.getCompanyAdminCount(comp.id)"/>)
                             </button>
                         </t>
                         <button class="btn btn-sm fw-semibold rounded-pill px-3"
@@ -143,16 +143,6 @@
                         <p class="text-muted">Cargando administradores VPN...</p>
                     </div>
                 </t>
-                <t t-elif="!filteredAdmins.length">
-                    <div class="text-center py-5">
-                        <i class="fa fa-user-secret fa-3x text-muted mb-3 opacity-50"></i>
-                        <h5 class="fw-bold text-secondary">No se encontraron administradores VPN</h5>
-                        <p class="text-muted small">Pruebe ajustando los términos de búsqueda o filtros, o registre uno nuevo.</p>
-                        <button class="btn btn-primary btn-sm fw-bold" t-on-click="() => this.openNewAdminModal()">
-                            <i class="fa fa-plus-circle me-1"></i> Registrar Administrador VPN
-                        </button>
-                    </div>
-                </t>
                 <t t-else="">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
@@ -173,116 +163,127 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <t t-foreach="filteredAdmins" t-as="admin" t-key="admin.id">
-                                    <tr t-att-class="!admin.active ? 'opacity-50 bg-light' : ''">
-                                        <!-- PERSONA FÍSICA Y DATOS DE CONEXIÓN -->
-                                        <td class="ps-4 py-3">
-                                            <div class="d-flex align-items-center gap-3">
-                                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
-                                                     t-attf-style="width: 44px; height: 44px; font-size: 1.1rem; background: #{admin.active ? 'linear-gradient(135deg, #0f172a, #2563eb)' : '#94a3b8'};">
-                                                    <t t-esc="admin.name.substring(0, 2).toUpperCase()"/>
-                                                </div>
-                                                <div>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <span class="fw-bold text-dark fs-6"><t t-esc="admin.name"/></span>
-                                                        <span class="badge bg-dark-subtle text-dark border font-monospace px-2 py-1" style="font-size: 0.78rem;">
-                                                            <i class="fa fa-wifi me-1 text-primary"/> <t t-esc="admin.vpn_ip"/>
-                                                        </span>
-                                                    </div>
-                                                    <div class="small text-muted d-flex align-items-center gap-2 mt-1">
-                                                        <t t-if="admin.user_login">
-                                                            <span><i class="fa fa-user me-1"></i> <t t-esc="admin.user_name"/> (<t t-esc="admin.user_login"/>)</span>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <span class="text-warning"><i class="fa fa-exclamation-triangle me-1"></i> Sin usuario Odoo vinculado</span>
-                                                        </t>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        <!-- ACTIVO GENERAL -->
-                                        <td class="text-center py-3">
-                                            <div class="form-check form-switch d-inline-block m-0" t-attf-title="Activar o desactivar este administrador VPN">
-                                                <input class="form-check-input" 
-                                                       type="checkbox" 
-                                                       style="width: 2.6rem; height: 1.3rem; cursor: pointer;"
-                                                       t-att-checked="admin.active"
-                                                       t-att-disabled="state.updatingKey === 'active_' + admin.id"
-                                                       t-on-click="() => this.toggleField(admin, 'active', admin.active)"/>
-                                            </div>
-                                            <div class="small mt-1">
-                                                <span t-if="admin.active" class="badge bg-success-subtle text-success border border-success-subtle">Activo</span>
-                                                <span t-else="" class="badge bg-light text-muted border">Inactivo</span>
-                                            </div>
-                                        </td>
-
-                                        <!-- CHECK GESTION DE PERSONAL Y ADMINISTRADORES -->
-                                        <td class="text-center py-3">
-                                            <div class="form-check form-switch d-inline-block m-0" title="Autorizar a este usuario a gestionar empleados y administradores">
-                                                <input class="form-check-input" 
-                                                       type="checkbox" 
-                                                       style="width: 2.6rem; height: 1.3rem; cursor: pointer;"
-                                                       t-att-checked="admin.can_manage_staff"
-                                                       t-att-disabled="state.updatingKey === 'can_manage_staff_' + admin.id"
-                                                       t-on-click="() => this.toggleField(admin, 'can_manage_staff', admin.can_manage_staff)"/>
-                                            </div>
-                                            <div class="small mt-1">
-                                                <t t-if="admin.can_manage_staff">
-                                                    <span class="badge border fw-semibold" style="background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe !important;">
-                                                        <i class="fa fa-check me-1"/> Autorizado
-                                                    </span>
-                                                </t>
-                                                <t t-else="">
-                                                    <span class="badge bg-light text-muted border">Sin permiso</span>
-                                                </t>
-                                            </div>
-                                        </td>
-
-                                        <!-- COLUMNAS DE EMPRESAS (SWITCH ASIGNACIÓN) -->
-                                        <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
-                                            <t t-set="isAssigned" t-value="admin.company_ids and admin.company_ids.includes(comp.id)"/>
-                                            <t t-set="isUpdating" t-value="state.updatingKey === 'comp_' + admin.id + '_' + comp.id"/>
-
-                                            <td class="text-center py-3 border-start" t-attf-class="#{isAssigned ? 'bg-primary-subtle bg-opacity-10' : ''}">
-                                                <div class="d-flex align-items-center justify-content-center gap-2">
-                                                    <div class="form-check form-switch m-0" t-attf-title="Asignar o desasignar como administrador de #{comp.name}">
-                                                        <input class="form-check-input" 
-                                                               type="checkbox" 
-                                                               style="width: 2.6rem; height: 1.3rem; cursor: pointer;"
-                                                               t-att-checked="isAssigned"
-                                                               t-att-disabled="isUpdating || !admin.active"
-                                                               t-on-click="() => this.toggleCompany(admin, comp.id, isAssigned)"/>
-                                                    </div>
-                                                    <div>
-                                                        <t t-if="isUpdating">
-                                                            <span class="badge bg-light text-primary border">...</span>
-                                                        </t>
-                                                        <t t-elif="isAssigned">
-                                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size: 0.8rem;">
-                                                                <i class="fa fa-shield me-1"/> Administrador
-                                                            </span>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.8rem; opacity: 0.6;">
-                                                                Sin acceso
-                                                            </span>
-                                                        </t>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </t>
-
-                                        <!-- ACCIONES -->
-                                        <td class="text-center pe-4 py-3">
-                                            <button class="btn btn-sm btn-outline-secondary rounded-circle" 
-                                                    style="width: 32px; height: 32px; padding: 0;"
-                                                    t-on-click="() => this.editAdmin(admin)"
-                                                    title="Modificar datos del administrador">
-                                                <i class="fa fa-pencil"></i>
+                                <t t-if="!filteredAdmins.length">
+                                    <tr>
+                                        <td t-att-colspan="4 + state.companies.length" class="text-center py-5">
+                                            <i class="fa fa-user-secret fa-3x text-muted mb-3 opacity-50 d-block"></i>
+                                            <h5 class="fw-bold text-secondary">No se encontraron administradores VPN</h5>
+                                            <p class="text-muted small">Pruebe ajustando los términos de búsqueda o filtros, o registre uno nuevo.</p>
+                                            <button class="btn btn-primary btn-sm fw-bold" t-on-click="() => this.openNewAdminModal()">
+                                                <i class="fa fa-plus-circle me-1"></i> Registrar Administrador VPN
                                             </button>
                                         </td>
                                     </tr>
+                                </t>
+                                <t t-else="">
+                                    <t t-foreach="filteredAdmins" t-as="admin" t-key="admin.id">
+                                        <tr t-att-class="!admin.active ? 'opacity-50 bg-light' : ''">
+                                            <!-- PERSONA FÍSICA Y DATOS DE CONEXIÓN -->
+                                            <td class="ps-4 py-3">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                                                         t-attf-style="width: 44px; height: 44px; font-size: 1.1rem; background: #{admin.active ? 'linear-gradient(135deg, #0f172a, #2563eb)' : '#94a3b8'};">
+                                                        <t t-esc="this.getAdminInitials(admin)"/>
+                                                    </div>
+                                                    <div>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <span class="fw-bold text-dark fs-6"><t t-esc="admin.name"/></span>
+                                                            <span class="badge bg-dark-subtle text-dark border font-monospace px-2 py-1" style="font-size: 0.78rem;">
+                                                                <i class="fa fa-wifi me-1 text-primary"/> <t t-esc="admin.vpn_ip"/>
+                                                            </span>
+                                                        </div>
+                                                        <div class="small text-muted d-flex align-items-center gap-2 mt-1">
+                                                            <t t-if="admin.user_login">
+                                                                <span><i class="fa fa-user me-1"></i> <t t-esc="admin.user_name"/> (<t t-esc="admin.user_login"/>)</span>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <span class="text-warning"><i class="fa fa-exclamation-triangle me-1"></i> Sin usuario Odoo vinculado</span>
+                                                            </t>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- ACTIVO GENERAL -->
+                                            <td class="text-center py-3">
+                                                <div class="form-check form-switch d-inline-block m-0" t-attf-title="Activar o desactivar este administrador VPN">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           style="width: 2.6rem; height: 1.3rem; cursor: pointer;"
+                                                           t-att-checked="admin.active"
+                                                           t-att-disabled="this.isUpdatingKey('active_' + admin.id)"
+                                                           t-on-click="() => this.toggleField(admin, 'active', admin.active)"/>
+                                                </div>
+                                                <div class="small mt-1">
+                                                    <span t-if="admin.active" class="badge bg-success-subtle text-success border border-success-subtle">Activo</span>
+                                                    <span t-else="" class="badge bg-light text-muted border">Inactivo</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- CHECK GESTION DE PERSONAL Y ADMINISTRADORES -->
+                                            <td class="text-center py-3">
+                                                <div class="form-check form-switch d-inline-block m-0" title="Autorizar a este usuario a gestionar empleados y administradores">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           style="width: 2.6rem; height: 1.3rem; cursor: pointer;"
+                                                           t-att-checked="admin.can_manage_staff"
+                                                           t-att-disabled="this.isUpdatingKey('can_manage_staff_' + admin.id)"
+                                                           t-on-click="() => this.toggleField(admin, 'can_manage_staff', admin.can_manage_staff)"/>
+                                                </div>
+                                                <div class="small mt-1">
+                                                    <t t-if="admin.can_manage_staff">
+                                                        <span class="badge border fw-semibold" style="background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe !important;">
+                                                            <i class="fa fa-check me-1"/> Autorizado
+                                                        </span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="badge bg-light text-muted border">Sin permiso</span>
+                                                    </t>
+                                                </div>
+                                            </td>
+
+                                            <!-- COLUMNAS DE EMPRESAS (SWITCH ASIGNACIÓN) -->
+                                            <t t-foreach="state.companies" t-as="comp" t-key="comp.id">
+                                                <td class="text-center py-3 border-start" t-attf-class="#{this.isCompanyAssigned(admin, comp.id) ? 'bg-primary-subtle bg-opacity-10' : ''}">
+                                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                                        <div class="form-check form-switch m-0" t-attf-title="Asignar o desasignar como administrador de #{comp.name}">
+                                                            <input class="form-check-input" 
+                                                                   type="checkbox" 
+                                                                   style="width: 2.6rem; height: 1.3rem; cursor: pointer;"
+                                                                   t-att-checked="this.isCompanyAssigned(admin, comp.id)"
+                                                                   t-att-disabled="this.isUpdatingKey('comp_' + admin.id + '_' + comp.id) || !admin.active"
+                                                                   t-on-click="() => this.toggleCompany(admin, comp.id, this.isCompanyAssigned(admin, comp.id))"/>
+                                                        </div>
+                                                        <div>
+                                                            <t t-if="this.isUpdatingKey('comp_' + admin.id + '_' + comp.id)">
+                                                                <span class="badge bg-light text-primary border">...</span>
+                                                            </t>
+                                                            <t t-elif="this.isCompanyAssigned(admin, comp.id)">
+                                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size: 0.8rem;">
+                                                                    <i class="fa fa-shield me-1"/> Administrador
+                                                                </span>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.8rem; opacity: 0.6;">
+                                                                    Sin acceso
+                                                                </span>
+                                                            </t>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </t>
+
+                                            <!-- ACCIONES -->
+                                            <td class="text-center pe-4 py-3">
+                                                <button class="btn btn-sm btn-outline-secondary rounded-circle" 
+                                                        style="width: 32px; height: 32px; padding: 0;"
+                                                        t-on-click="() => this.editAdmin(admin)"
+                                                        title="Modificar datos del administrador">
+                                                    <i class="fa fa-pencil"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </t>
                                 </t>
                             </tbody>
                         </table>
@@ -332,9 +333,9 @@
                             <t t-foreach="state.companies" t-as="c" t-key="c.id">
                                 <button type="button" 
                                         class="btn btn-sm rounded-pill px-3 fw-semibold"
-                                        t-att-class="state.modalCompanyIds.includes(c.id) ? 'btn-primary' : 'btn-outline-secondary'"
+                                        t-att-class="this.isModalCompanySelected(c.id) ? 'btn-primary' : 'btn-outline-secondary'"
                                         t-on-click="() => this.toggleModalCompany(c.id)">
-                                    <i t-attf-class="fa #{state.modalCompanyIds.includes(c.id) ? 'fa-check' : 'fa-plus'} me-1"/>
+                                    <i t-attf-class="fa #{this.isModalCompanySelected(c.id) ? 'fa-check' : 'fa-plus'} me-1"/>
                                     <t t-esc="c.name"/>
                                 </button>
                             </t>
@@ -379,4 +380,3 @@
     </t>
 
 </templates>
-

@@ -93,6 +93,31 @@ export class VpnCompanyAdminsView extends Component {
         return list;
     }
 
+    clearSearch() {
+        this.state.searchTerm = "";
+    }
+
+    getAdminInitials(admin) {
+        if (!admin || !admin.name) return "??";
+        return admin.name.trim().substring(0, 2).toUpperCase();
+    }
+
+    isCompanyAssigned(admin, compId) {
+        return Boolean(admin && admin.company_ids && admin.company_ids.includes(compId));
+    }
+
+    isUpdatingKey(key) {
+        return this.state.updatingKey === key;
+    }
+
+    isModalCompanySelected(compId) {
+        return Boolean(this.state.modalCompanyIds && this.state.modalCompanyIds.includes(compId));
+    }
+
+    getCompanyAdminCount(compId) {
+        return (this.state.stats && this.state.stats.company_counts && this.state.stats.company_counts[compId]) || 0;
+    }
+
     async toggleCompany(admin, companyId, isAssigned) {
         const key = `comp_${admin.id}_${companyId}`;
         this.state.updatingKey = key;
