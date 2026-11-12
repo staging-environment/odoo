@@ -506,10 +506,10 @@
                                                             <span t-if="cust.customer_type === 'credit'" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
                                                                 Crédito (Albarán)
                                                             </span>
-                                                            <span t-elif="cust.customer_type === 'monthly'" class="badge bg-info-subtle text-info border border-info-subtle">
+                                                            <span t-if="cust.customer_type === 'monthly'" class="badge bg-info-subtle text-info border border-info-subtle">
                                                                 Mensual
                                                             </span>
-                                                            <span t-else="" class="badge bg-light text-muted border">
+                                                            <span t-if="cust.customer_type !== 'credit' and cust.customer_type !== 'monthly'" class="badge bg-light text-muted border">
                                                                 Ordinaria
                                                             </span>
                                                         </td>

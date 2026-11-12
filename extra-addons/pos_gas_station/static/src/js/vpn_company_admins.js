@@ -190,18 +190,15 @@ export class VpnCompanyAdminsView extends Component {
         let manageStaffCount = 0;
 
         for (const a of this.state.admins || []) {
-            if (a.active) {
-                activeCount++;
-                if (a.can_manage_staff) manageStaffCount++;
-                for (const cid of (a.company_ids || [])) {
-                    company_counts[cid] = (company_counts[cid] || 0) + 1;
-                }
+            if (a.can_manage_staff) manageStaffCount++;
+            for (const cid of (a.company_ids || [])) {
+                company_counts[cid] = (company_counts[cid] || 0) + 1;
             }
         }
 
         this.state.stats = {
             total_admins: (this.state.admins || []).length,
-            active_admins: activeCount,
+            active_admins: (this.state.admins || []).length,
             can_manage_staff_count: manageStaffCount,
             company_counts: company_counts,
         };

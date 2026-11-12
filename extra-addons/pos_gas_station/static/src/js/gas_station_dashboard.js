@@ -560,7 +560,7 @@ export class GasStationDashboard extends Component {
             type: "ir.actions.act_window",
             name: `Clientes - ${this.state.selectedDetailCompany ? this.state.selectedDetailCompany.name : ''}`,
             res_model: "res.partner",
-            views: [[false, "tree"], [false, "form"]],
+            views: [[false, "list"], [false, "form"]],
             domain: [["company_id", "=", compId], ["type", "!=", "private"]],
             context: {
                 default_company_id: compId,

@@ -1576,7 +1576,7 @@ class PosGasStationController(http.Controller):
 
         company_counts = {}
         for c in companies:
-            company_counts[c.id] = sum(1 for a in admins_data if a['active'] and c.id in a['company_ids'])
+            company_counts[c.id] = sum(1 for a in admins_data if c.id in a['company_ids'])
 
         return {
             'status': 'success',
@@ -1585,8 +1585,8 @@ class PosGasStationController(http.Controller):
             'users': users_data,
             'stats': {
                 'total_admins': len(admins_data),
-                'active_admins': sum(1 for a in admins_data if a['active']),
-                'can_manage_staff_count': sum(1 for a in admins_data if a['active'] and a['can_manage_staff']),
+                'active_admins': len(admins_data),
+                'can_manage_staff_count': sum(1 for a in admins_data if a['can_manage_staff']),
                 'company_counts': company_counts,
             }
         }
