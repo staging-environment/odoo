@@ -1436,13 +1436,13 @@
                                                 <th class="th-sortable" style="width: 160px;" t-on-click="() => this.sortShiftOrders('receipt')" title="Ordenar por Nº de Recibo">
                                                     RECIBO <i t-attf-class="fa #{getSortIcon('receipt')}"/>
                                                 </th>
-                                                <th class="th-sortable" style="width: 230px;" t-on-click="() => this.sortShiftOrders('partner')" title="Ordenar por Cliente">
+                                                <th class="th-sortable" style="width: 210px;" t-on-click="() => this.sortShiftOrders('partner')" title="Ordenar por Cliente">
                                                     CLIENTE <i t-attf-class="fa #{getSortIcon('partner')}"/>
                                                 </th>
                                                 <th class="th-sortable" style="width: 80px; text-align: right;" t-on-click="() => this.sortShiftOrders('total')" title="Ordenar por Importe Total">
                                                     TOTAL <i t-attf-class="fa #{getSortIcon('total')}"/>
                                                 </th>
-                                                <th style="width: 180px; text-align: center;">ACCIONES</th>
+                                                <th style="width: 200px; text-align: center;">ACCIONES</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1492,7 +1492,10 @@
                                                         <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
                                                     </td>
                                                     <td class="cell-actions" style="text-align: center;" t-on-click.stop="">
-                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir ticket">
+                                                        <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderTicket(ord, false, false)" title="Visualizar ticket en pantalla">
+                                                            👁
+                                                        </button>
+                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false, true)" title="Imprimir ticket">
                                                             🖨️ Imprimir
                                                         </button>
                                                         <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
@@ -1528,13 +1531,19 @@
                                                                                         <t t-esc="item.amount"/> €
                                                                                     </strong>
                                                                                 </td>
-                                                                                <td style="width: 180px; text-align: center;" t-on-click.stop="">
+                                                                                <td style="width: 200px; text-align: center;" t-on-click.stop="">
                                                                                     <t t-if="item.type === 'annulment'">
-                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printAnnulmentReceipt(ord, item)" title="Imprimir justificante oficial de anulación">
+                                                                                        <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printAnnulmentReceipt(ord, item, false)" title="Visualizar justificante de anulación en pantalla">
+                                                                                            👁
+                                                                                        </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printAnnulmentReceipt(ord, item, true)" title="Imprimir justificante oficial de anulación">
                                                                                             🖨️ Imprimir
                                                                                         </button>
                                                                                     </t>
                                                                                     <t t-elif="item.type === 'invoice'">
+                                                                                        <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Visualizar Factura oficial en pantalla (PDF)">
+                                                                                            👁
+                                                                                        </button>
                                                                                         <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura oficial">
                                                                                             🖨️ Imprimir
                                                                                         </button>
@@ -1543,8 +1552,11 @@
                                                                                         </button>
                                                                                     </t>
                                                                                     <t t-elif="item.type === 'albaran'">
-                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir Albarán firmado de crédito">
-                                                                                            📋 Albarán
+                                                                                        <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderTicket(ord, false, false)" title="Visualizar Albarán de crédito en pantalla">
+                                                                                            👁
+                                                                                        </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false, true)" title="Imprimir Albarán firmado de crédito">
+                                                                                            🖨️ Imprimir
                                                                                         </button>
                                                                                         <t t-if="!ord.is_invoiced">
                                                                                             <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Facturar Albarán">

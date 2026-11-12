@@ -1508,7 +1508,7 @@ export class UtrecarMainScreen extends Component {
         return Boolean(this.state.expandedShiftOrderIds && this.state.expandedShiftOrderIds[orderId]);
     }
 
-    printAnnulmentReceipt(order, historyItem) {
+    printAnnulmentReceipt(order, historyItem, autoPrint = true) {
         if (!order) return;
         const comp = order.company || {};
         const refAnnul = (historyItem && historyItem.ref) ? historyItem.ref : (order.annulment_ref || 'TTTR_ANUL');
@@ -1524,11 +1524,30 @@ export class UtrecarMainScreen extends Component {
             </tr>
         `).join("");
 
-        const receiptWindow = window.open("", "_blank", "width=400,height=650");
+        const receiptWindow = window.open("", "_blank", "width=420,height=680");
         if (!receiptWindow) {
-            alert("Por favor permita las ventanas emergentes en su navegador para imprimir.");
+            alert("Por favor permita las ventanas emergentes en su navegador para imprimir o visualizar.");
             return;
         }
+
+        const topToolbar = autoPrint ? '' : `
+            <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -10px -10px 12px -10px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -10px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
+                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: Justificante Anulación</span>
+                <div>
+                    <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; margin-right: 6px;">🖨️ Imprimir</button>
+                    <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">✖ Cerrar</button>
+                </div>
+            </div>
+        `;
+
+        const printScript = autoPrint ? `
+            <script>
+                window.onload = function() {
+                    window.print();
+                    window.close();
+                };
+            </script>
+        ` : '';
 
         receiptWindow.document.write(`
             <!DOCTYPE html>
@@ -1537,6 +1556,7 @@ export class UtrecarMainScreen extends Component {
                 <meta charset="utf-8">
                 <title>Justificante Anulación ${refAnnul}</title>
                 <style>
+                    @media print { .no-print { display: none !important; } }
                     body { font-family: monospace, sans-serif; font-size: 12px; margin: 0; padding: 10px; color: #000; }
                     .text-center { text-align: center; }
                     .fw-bold { font-weight: bold; }
@@ -1552,7 +1572,8 @@ export class UtrecarMainScreen extends Component {
                     }
                 </style>
             </head>
-            <body onload="window.print(); window.close();">
+            <body>
+                ${topToolbar}
                 <div class="text-center fw-bold" style="font-size: 15px;">${comp.name || 'UTRECAR S.L.'}</div>
                 <div class="text-center" style="font-size: 11px;">
                     ${comp.vat ? `CIF: ${comp.vat}<br/>` : ''}
@@ -1601,6 +1622,7 @@ export class UtrecarMainScreen extends Component {
                     Documento de trazabilidad fiscal y rectificación de ticket.<br/>
                     Conservar junto con el cierre de turno.
                 </div>
+                ${printScript}
             </body>
             </html>
         `);
@@ -1620,7 +1642,7 @@ export class UtrecarMainScreen extends Component {
         this.state.shiftActiveTab = tab;
     }
 
-    printShiftOrderTicket(order, isCopy = false) {
+    printShiftOrderTicket(order, isCopy = false, autoPrint = true) {
         if (!order) return;
         const comp = order.company || {};
         const linesHtml = (order.lines || []).map(l => `
@@ -1694,11 +1716,29 @@ export class UtrecarMainScreen extends Component {
             </div>
         ` : '';
 
-        const receiptWindow = window.open("", "_blank", "width=400,height=650");
+        const receiptWindow = window.open("", "_blank", "width=420,height=680");
         if (!receiptWindow) {
-            alert("Por favor permita las ventanas emergentes en su navegador para imprimir.");
+            alert("Por favor permita las ventanas emergentes en su navegador para imprimir o visualizar.");
             return;
         }
+
+        const topToolbar = autoPrint ? '' : `
+            <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
+                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${order.is_albaran ? 'Albarán de Crédito' : 'Ticket de Venta'}</span>
+                <div>
+                    <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; margin-right: 6px;">🖨️ Imprimir</button>
+                    <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">✖ Cerrar</button>
+                </div>
+            </div>
+        `;
+
+        const printScript = autoPrint ? `
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            </script>
+        ` : '';
 
         receiptWindow.document.write(`
             <!DOCTYPE html>
@@ -1721,11 +1761,13 @@ export class UtrecarMainScreen extends Component {
                     .grand-total { font-size: 15px; font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 0; margin: 6px 0; }
                     .footer { text-align: center; margin-top: 15px; font-size: 11px; }
                     @media print {
+                        .no-print { display: none !important; }
                         body { padding: 0; }
                     }
                 </style>
             </head>
             <body>
+                ${topToolbar}
                 ${copyBanner}
                 ${albaranBanner}
                 ${annulBanner}
@@ -1775,11 +1817,7 @@ export class UtrecarMainScreen extends Component {
                 <div class="footer">
                     <p>*** ${order.is_albaran ? 'ALBARÁN FIRMADO POR EL CLIENTE' : 'GRACIAS POR SU VISITA'} ***</p>
                 </div>
-                <script>
-                    window.onload = function() {
-                        window.print();
-                    };
-                </script>
+                ${printScript}
             </body>
             </html>
         `);
