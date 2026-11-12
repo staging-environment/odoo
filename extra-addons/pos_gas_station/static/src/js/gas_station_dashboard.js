@@ -595,8 +595,11 @@ export class GasStationDashboard extends Component {
                 company_id: companyId
             });
             if (res.status === "success") {
-                this.notification.add("Empresa activa actualizada", { type: "success" });
+                this.notification.add("Empresa activa: " + (res.company_name || ""), { type: "success" });
                 await this.loadDashboardData();
+                window.dispatchEvent(new CustomEvent("admin-company-changed", {
+                    detail: { companyId: companyId, companyName: res.company_name }
+                }));
             } else {
                 this.notification.add(res.message || "No se pudo cambiar de empresa", { type: "danger" });
             }

@@ -1417,7 +1417,8 @@ class PosGasStationController(http.Controller):
             if cid not in user.company_ids.ids:
                 user.sudo().write({'company_ids': [(4, cid)]})
 
-            return {'status': 'success', 'company_id': cid}
+            comp = env['res.company'].sudo().browse(cid)
+            return {'status': 'success', 'company_id': cid, 'company_name': comp.name if comp.exists() else ''}
         except Exception as e:
             return {'status': 'error', 'message': str(e)}
 

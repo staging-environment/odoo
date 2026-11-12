@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, useState, onMounted } from "@odoo/owl";
+import { Component, useState, onMounted, onWillUnmount } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { jsonrpc } from "@web/core/network/rpc_service";
@@ -38,8 +38,19 @@ export class AdminSystrayMenu extends Component {
             loading: true,
         });
 
+        this.handleCompanyChange = (ev) => {
+            if (ev.detail && ev.detail.companyName) {
+                this.state.companyName = ev.detail.companyName;
+            }
+        };
+        window.addEventListener("admin-company-changed", this.handleCompanyChange);
+
         onMounted(() => {
             this.loadAdminInfo();
+        });
+
+        onWillUnmount(() => {
+            window.removeEventListener("admin-company-changed", this.handleCompanyChange);
         });
     }
 

@@ -31,35 +31,55 @@
                     </div>
 
                     <div class="topbar-actions">
-                        <!-- Conmutador rápido de empresa para administradores multi-empresa -->
-                        <div class="d-inline-block me-2" t-if="state.allAuthorizedCompanies and state.allAuthorizedCompanies.length > 1">
-                            <select class="form-select form-select-sm fw-bold border-secondary-subtle rounded-pill px-3"
-                                    style="font-size: 0.82rem; height: 32px;"
-                                    t-on-change="(ev) => this.switchDashboardCompany(ev.target.value)">
-                                <t t-foreach="state.allAuthorizedCompanies" t-as="ac" t-key="ac.id">
-                                    <option t-att-value="ac.id" t-att-selected="state.companies.length === 1 and state.companies[0].id === ac.id">
-                                        🏢 <t t-esc="ac.name"/>
-                                    </option>
-                                </t>
-                            </select>
-                        </div>
+                        <!-- Conmutador de Empresa para administradores multi-empresa -->
+                        <t t-if="state.allAuthorizedCompanies and state.allAuthorizedCompanies.length > 1">
+                            <!-- Si hay de 2 a 4 empresas: Segmented Capsule táctil ultra limpio -->
+                            <t t-if="state.allAuthorizedCompanies.length &lt;= 4">
+                                <div class="company-switch-capsule me-2">
+                                    <span class="company-switch-label">
+                                        <i class="fa fa-building text-primary me-1"/> Empresa:
+                                    </span>
+                                    <t t-foreach="state.allAuthorizedCompanies" t-as="ac" t-key="ac.id">
+                                        <button type="button"
+                                                class="company-switch-btn"
+                                                t-att-class="(state.companies.length === 1 and state.companies[0].id === ac.id) ? 'active' : ''"
+                                                t-on-click="() => this.switchDashboardCompany(ac.id)">
+                                            <i t-attf-class="fa #{ac.id === 4 ? 'fa-gas-pump' : 'fa-building-o'} me-1.5 opacity-75"/>
+                                            <t t-esc="ac.name"/>
+                                        </button>
+                                    </t>
+                                </div>
+                            </t>
 
-                        <button class="btn btn-outline-info btn-sm me-2 fw-semibold" 
-                                t-if="state.canManageStaff"
-                                t-on-click="() => this.openEmployeeCompanyRoles()" 
-                                title="Gestión de activación de personal por empresa">
-                            <i class="fa fa-users me-1"/> Personal y Empresas
-                        </button>
-                        <button class="btn btn-outline-primary btn-sm me-2 fw-semibold" 
-                                t-if="state.canManageStaff"
-                                t-on-click="() => this.openVpnCompanyAdmins()" 
-                                title="Asignación de administradores VPN por empresa">
-                            <i class="fa fa-user-secret me-1"/> Administradores por Empresa
-                        </button>
-                        <button class="btn btn-primary btn-sm me-2 fw-semibold" t-on-click="() => this.openNewCompany()" t-if="state.isManager" title="Crear una nueva empresa">
+                            <!-- Si hay más de 4 empresas: Select con padding amplio y sin solapamiento de flecha -->
+                            <t t-else="">
+                                <div class="d-inline-block me-2">
+                                    <select class="form-select company-switch-select"
+                                            t-on-change="(ev) => this.switchDashboardCompany(ev.target.value)">
+                                        <t t-foreach="state.allAuthorizedCompanies" t-as="ac" t-key="ac.id">
+                                            <option t-att-value="ac.id" t-att-selected="state.companies.length === 1 and state.companies[0].id === ac.id">
+                                                🏢 <t t-esc="ac.name"/>
+                                            </option>
+                                        </t>
+                                    </select>
+                                </div>
+                            </t>
+                        </t>
+
+                        <!-- Botón Nueva Empresa (Solo para Administradores de Sistema) -->
+                        <button class="btn btn-primary btn-sm me-2 fw-semibold rounded-pill px-3 shadow-sm" 
+                                style="height: 36px;"
+                                t-on-click="() => this.openNewCompany()" 
+                                t-if="state.isManager" 
+                                title="Crear una nueva empresa">
                             <i class="fa fa-plus me-1"/> Nueva Empresa
                         </button>
-                        <button class="btn btn-outline-secondary btn-sm fw-semibold" t-on-click="() => this.loadDashboardData()" title="Actualizar datos">
+
+                        <!-- Botón Actualizar Datos -->
+                        <button class="btn btn-outline-secondary btn-sm fw-semibold rounded-pill px-3 shadow-sm" 
+                                style="height: 36px;"
+                                t-on-click="() => this.loadDashboardData()" 
+                                title="Actualizar datos">
                             <i class="fa fa-refresh me-1" t-att-class="state.loading ? 'fa-spin' : ''"/> Actualizar
                         </button>
                     </div>
