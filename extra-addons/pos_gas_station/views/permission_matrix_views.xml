@@ -87,16 +87,16 @@
         <field name="target">current</field>
     </record>
 
-        <!-- ACCION CLIENTE: GESTION DE PERSONAL Y EMPRESAS -->
+        <!-- ACCION CLIENTE: GESTION DE EXPENDEDORES -->
     <record id="action_employee_company_roles" model="ir.actions.client">
-        <field name="name">Personal y Empresas</field>
+        <field name="name">Expendedores</field>
         <field name="tag">employee_company_roles</field>
         <field name="target">current</field>
     </record>
 
-    <!-- ACCION CLIENTE: GESTION DE ADMINISTRADORES POR EMPRESA (VPN) -->
+    <!-- ACCION CLIENTE: GESTION DE ADMINISTRACION (VPN) -->
     <record id="action_vpn_company_admins" model="ir.actions.client">
-        <field name="name">Administradores por Empresa</field>
+        <field name="name">Administración</field>
         <field name="tag">vpn_company_admins</field>
         <field name="target">current</field>
     </record>
@@ -113,24 +113,24 @@
               web_icon="pos_gas_station,static/description/icon.png"
               sequence="1"/>
 
-    <!-- MENÚ SUPERIOR DESPLEGABLE: PERSONAL Y EMPRESAS -->
+    <!-- MENÚ SUPERIOR DESPLEGABLE: USUARIOS -->
     <menuitem id="menu_gas_station_staff_parent"
-              name="Personal y Empresas"
+              name="Usuarios"
               parent="menu_gas_station_root"
               sequence="2"
               groups="pos_gas_station.group_utrecar_manage_staff"/>
 
-    <!-- SUBMENÚ 1: PERSONAL Y EMPRESAS -->
+    <!-- SUBMENÚ 1: EXPENDEDORES -->
     <menuitem id="menu_gas_station_sub_employee_roles"
-              name="Personal y Empresas"
+              name="Expendedores"
               parent="menu_gas_station_staff_parent"
               action="action_employee_company_roles"
               sequence="1"
               groups="pos_gas_station.group_utrecar_manage_staff"/>
 
-    <!-- SUBMENÚ 2: ADMINISTRADORES POR EMPRESA -->
+    <!-- SUBMENÚ 2: ADMINISTRACIÓN -->
     <menuitem id="menu_gas_station_sub_company_admins"
-              name="Administradores por Empresa"
+              name="Administración"
               parent="menu_gas_station_staff_parent"
               action="action_vpn_company_admins"
               sequence="2"

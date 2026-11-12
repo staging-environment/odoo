@@ -89,7 +89,7 @@
                                                 </span>
                                                 <span class="badge bg-info-subtle text-info border border-info-subtle cursor-pointer" 
                                                       t-on-click="() => this.openEmployeeCompanyRoles()" 
-                                                      title="Gestionar en Personal y Empresas">
+                                                      title="Gestionar en Expendedores">
                                                     <i class="fa fa-users me-1"/> <t t-esc="comp.employees_count || 0"/> Empleados activos
                                                 </span>
                                             </div>

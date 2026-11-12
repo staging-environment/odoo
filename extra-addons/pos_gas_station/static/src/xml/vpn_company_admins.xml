@@ -26,7 +26,7 @@
                             <i class="fa fa-plus-circle"></i> Nuevo Administrador VPN
                         </button>
                         <button class="btn btn-outline-info btn-sm d-flex align-items-center gap-2 fw-semibold" t-on-click="() => this.openEmployeeCompanyRoles()">
-                            <i class="fa fa-users"></i> Personal y Empresas
+                            <i class="fa fa-users"></i> Expendedores
                         </button>
                         <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 fw-semibold" t-on-click="() => this.openDashboard()">
                             <i class="fa fa-arrow-left"></i> Panel Gasolineras
@@ -324,7 +324,7 @@
                                 Autorizar Gestión de Personal y Administradores
                             </label>
                         </div>
-                        <small class="text-muted d-block mt-1">Si está desmarcado, el usuario no verá el menú "Personal y Empresas" ni podrá modificar accesos.</small>
+                        <small class="text-muted d-block mt-1">Si está desmarcado, el usuario no verá el menú "Usuarios" ni podrá modificar accesos.</small>
                     </div>
 
                     <div class="d-flex justify-content-end gap-2 border-top pt-3">
