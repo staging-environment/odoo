@@ -1518,15 +1518,10 @@
                                                     <tr class="shift-order-subrow">
                                                         <td colspan="8" class="p-0">
                                                             <div class="order-history-panel">
-                                                                <div class="history-tree-header">
-                                                                    <i class="fa fa-history text-primary me-2"/>
-                                                                    <strong>Historial del Suministro <t t-esc="ord.name"/></strong>
-                                                                    <span class="text-muted ms-2">(<t t-esc="ord.history.length"/> documento<t t-if="ord.history.length > 1">s</t> vinculado<t t-if="ord.history.length > 1">s</t>)</span>
-                                                                </div>
                                                                 <table class="history-subtable">
                                                                     <tbody>
                                                                         <t t-foreach="ord.history" t-as="item" t-key="item_index">
-                                                                            <tr t-attf-class="history-item-row history-type-#{item.type}">
+                                                                            <tr t-attf-class="history-item-row history-type-#{item.type}" t-att-title="item.description">
                                                                                 <td style="width: 32px; text-align: center;">
                                                                                     <i t-attf-class="fa #{item.icon} text-muted"/>
                                                                                 </td>
@@ -1535,13 +1530,10 @@
                                                                                         <t t-esc="item.type_label"/>
                                                                                     </span>
                                                                                 </td>
-                                                                                <td style="width: 140px;">
+                                                                                <td style="width: 160px;">
                                                                                     <strong class="font-monospace text-dark"><t t-esc="item.ref"/></strong>
                                                                                 </td>
-                                                                                <td>
-                                                                                    <span class="text-secondary" style="font-size: 12px;"><t t-esc="item.description"/></span>
-                                                                                </td>
-                                                                                <td style="width: 130px; font-size: 11px; color: #64748b;">
+                                                                                <td style="font-size: 11px; color: #64748b;">
                                                                                     <t t-esc="item.date"/>
                                                                                 </td>
                                                                                 <td style="width: 90px; text-align: right;">
