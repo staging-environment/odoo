@@ -785,43 +785,75 @@
             </t>
 
             <!-- ======================================================== -->
+            <!-- ======================================================== -->
             <!-- MODAL FLOTANTE DE BÚSQUEDA Y SELECCIÓN DE CLIENTE        -->
             <!-- ======================================================== -->
             <t t-if="state.isClientModalOpen">
                 <div class="utrecar-modal-backdrop" t-on-click="() => this.closeClientModal()">
-                    <div class="utrecar-client-modal" t-on-click.stop="">
+                    <div class="utrecar-client-modal shadow-lg" t-on-click.stop="">
+                        <!-- Barra Superior (Nivel 1): Título de pantalla y Botones Principales -->
                         <div class="client-modal-header">
-                            <div class="modal-title">
-                                <i class="fa fa-address-card mr-2"/>
-                                <strong>SELECCIÓN DE CLIENTE</strong>
+                            <div class="modal-title d-flex align-items-center gap-2 text-nowrap">
+                                <i class="fa fa-address-card fs-5 text-white"/>
+                                <span class="fw-bold fs-6 text-white text-uppercase tracking-wider">SELECCIÓN DE CLIENTE</span>
+                                <span class="badge bg-white text-primary fw-bold ms-2 px-2 py-1 shadow-sm" style="font-size: 11px;">
+                                    <t t-esc="pos.config.company_id ? pos.config.company_id[1] : (pos.company ? pos.company.name : '')"/>
+                                </span>
                             </div>
-                            <div class="modal-search-box d-flex align-items-center gap-2">
-                                <input type="text" class="client-search-input flex-grow-1" 
-                                       placeholder="Buscar por Nombre, CIF/NIF, Código, Teléfono..." 
-                                       t-att-value="state.clientSearch" 
-                                       t-on-input="(ev) => this.onClientSearchInput(ev)" />
-                                <button class="btn btn-sm btn-light text-dark fw-bold px-2 py-1 d-flex align-items-center text-nowrap"
-                                        style="height: 32px; border: 1px solid #cbd5e1;"
-                                        t-on-click="() => this.toggleClientSort('name')"
-                                        title="Cambiar orden Ascendente / Descendente">
-                                    <i t-attf-class="fa #{state.clientSortDirection === 'asc' ? 'fa-sort-alpha-asc' : 'fa-sort-alpha-desc'} me-1"/>
-                                    <span><t t-esc="state.clientSortDirection === 'asc' ? 'A → Z' : 'Z → A'"/></span>
-                                </button>
-                            </div>
-                            <div class="header-actions d-flex align-items-center gap-2">
-                                <button class="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center gap-1"
-                                        style="height: 32px; padding: 0 10px; font-size: 12px; border-radius: 4px;"
+                            <div class="header-actions d-flex align-items-center gap-2 text-nowrap">
+                                <button class="btn btn-success text-white fw-bold d-inline-flex align-items-center gap-1 shadow-sm text-nowrap"
+                                        style="height: 36px; padding: 0 14px; font-size: 13px; border-radius: 6px; border: none; background: #16a34a;"
                                         t-on-click="() => this.createNewClient()"
-                                        title="Crear un nuevo cliente">
+                                        title="Crear un nuevo cliente para esta empresa">
                                     <i class="fa fa-user-plus"/>
                                     <span>+ Nuevo Cliente</span>
                                 </button>
-                                <button class="btn-clear-client" t-on-click="() => this.removeClient()" title="Desasignar cliente">
-                                    Quitar Cliente
+                                <button class="btn btn-danger text-white fw-bold d-inline-flex align-items-center gap-1 shadow-sm text-nowrap"
+                                        style="height: 36px; padding: 0 12px; font-size: 13px; border-radius: 6px; border: none; background: #dc2626;"
+                                        t-on-click="() => this.removeClient()" 
+                                        title="Desasignar cliente del ticket">
+                                    <i class="fa fa-user-times"/>
+                                    <span>Quitar Cliente</span>
                                 </button>
-                                <button class="btn-close-modal" t-on-click="() => this.closeClientModal()">✖</button>
+                                <button class="btn btn-light text-dark fw-bold d-flex align-items-center justify-content-center shadow-sm"
+                                        style="width: 36px; height: 36px; font-size: 16px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc;"
+                                        t-on-click="() => this.closeClientModal()"
+                                        title="Cerrar ventana">
+                                    ✖
+                                </button>
                             </div>
                         </div>
+
+                        <!-- Barra de Búsqueda y Filtros (Nivel 2): Entrada de texto, orden y contador -->
+                        <div class="client-modal-toolbar d-flex align-items-center justify-content-between gap-3 px-3 py-2 bg-light border-bottom">
+                            <div class="d-flex align-items-center flex-grow-1 position-relative">
+                                <i class="fa fa-search text-muted position-absolute ms-3" style="font-size: 14px;"/>
+                                <input type="text" class="client-search-input flex-grow-1 ps-5 pe-4" 
+                                       style="height: 40px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;"
+                                       placeholder="Buscar por Nombre, CIF/NIF, Código Aseproda, Teléfono, Población..." 
+                                       t-att-value="state.clientSearch" 
+                                       t-on-input="(ev) => this.onClientSearchInput(ev)" />
+                                <button t-if="state.clientSearch" class="btn btn-sm btn-link text-muted position-absolute end-0 me-2 p-0 border-0"
+                                        style="width: 28px; height: 28px;"
+                                        t-on-click="() => { this.state.clientSearch = ''; }">
+                                    <i class="fa fa-times-circle"/>
+                                </button>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 text-nowrap">
+                                <button class="btn btn-light text-dark fw-bold px-3 d-flex align-items-center gap-2 border shadow-sm text-nowrap"
+                                        style="height: 40px; border-radius: 6px; font-size: 13px; background: #ffffff;"
+                                        t-on-click="() => this.toggleClientSort('name')"
+                                        title="Cambiar orden Ascendente / Descendente">
+                                    <i t-attf-class="fa #{state.clientSortDirection === 'asc' ? 'fa-sort-alpha-asc text-primary' : 'fa-sort-alpha-desc text-primary'}"/>
+                                    <span><t t-esc="state.clientSortDirection === 'asc' ? 'A → Z' : 'Z → A'"/></span>
+                                </button>
+                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-2 fw-bold" style="font-size: 12px;">
+                                    <t t-esc="filteredClients.length"/> clientes
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de clientes -->
                         <div class="client-table-wrapper">
                             <table class="client-modal-table">
                                 <thead>
@@ -880,7 +912,7 @@
                                             </td>
                                             <td class="text-center" t-on-click.stop="" style="white-space: nowrap;">
                                                 <button class="btn btn-sm btn-outline-primary py-0 px-2 fw-bold d-inline-flex align-items-center gap-1"
-                                                        style="font-size: 11px; height: 26px;"
+                                                        style="font-size: 11px; height: 28px; border-radius: 4px;"
                                                         t-on-click.stop="() => this.editClient(c)"
                                                         title="Editar ficha de este cliente">
                                                     <i class="fa fa-pencil"/>
@@ -891,6 +923,213 @@
                                     </t>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- ======================================================== -->
+            <!-- MODAL FLOTANTE DE EDICIÓN / ALTA DE CLIENTE              -->
+            <!-- ======================================================== -->
+            <t t-if="state.isEditPartnerModalOpen">
+                <div class="utrecar-modal-backdrop utrecar-edit-partner-backdrop" t-on-click="() => this.closeEditPartnerModal()">
+                    <div class="utrecar-edit-partner-modal shadow-lg" t-on-click.stop="">
+                        <!-- Cabecera -->
+                        <div class="edit-partner-header">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="edit-partner-header-icon">
+                                    <i t-attf-class="fa #{state.editingPartner.id ? 'fa-pencil-square-o' : 'fa-user-plus'}"/>
+                                </div>
+                                <div>
+                                    <h4 class="m-0 fw-bold text-white fs-6">
+                                        <t t-if="state.editingPartner.id">MODIFICAR FICHA DE CLIENTE</t>
+                                        <t t-else="">NUEVO CLIENTE</t>
+                                    </h4>
+                                    <span class="text-white-50 small">
+                                        <t t-if="state.editingPartner.id"><t t-esc="state.editingPartner.name"/></t>
+                                        <t t-else="">Registro para empresa: <t t-esc="pos.config.company_id ? pos.config.company_id[1] : (pos.company ? pos.company.name : '')"/></t>
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="btn-modal-close text-white" t-on-click="() => this.closeEditPartnerModal()" title="Cerrar ventana">✖</button>
+                        </div>
+
+                        <!-- Alerta de error -->
+                        <div t-if="state.editPartnerError" class="alert alert-danger mx-4 mt-3 mb-0 py-2 px-3 small d-flex align-items-center gap-2">
+                            <i class="fa fa-exclamation-triangle fs-5 text-danger"/>
+                            <span><t t-esc="state.editPartnerError"/></span>
+                        </div>
+
+                        <!-- Cuerpo del formulario -->
+                        <div class="edit-partner-body">
+                            <div class="row g-3">
+                                
+                                <!-- SECCIÓN 1: DATOS FISCALES Y EMPRESA -->
+                                <div class="col-12">
+                                    <div class="section-badge mb-2">
+                                        <i class="fa fa-id-card-o me-1"/> 1. IDENTIFICACIÓN Y TIPO DE FACTURACIÓN
+                                    </div>
+                                </div>
+
+                                <div class="col-md-7">
+                                    <label class="form-label-custom">Nombre / Razón Social <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control-custom" placeholder="Ej: TRANSPORTES GARCIA S.L." 
+                                           t-model="state.editingPartner.name"/>
+                                </div>
+
+                                <div class="col-md-5">
+                                    <label class="form-label-custom">CIF / NIF</label>
+                                    <input type="text" class="form-control-custom text-uppercase" placeholder="Ej: B12345678" 
+                                           t-model="state.editingPartner.vat"/>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label-custom">Código Aseproda / Ref</label>
+                                    <input type="text" class="form-control-custom" placeholder="Ej: 1450" 
+                                           t-model="state.editingPartner.ref"/>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label-custom">Tipo de Facturación</label>
+                                    <select class="form-select-custom" t-model="state.editingPartner.customer_type">
+                                        <option value="ordinary">Facturación Ordinaria (Contado)</option>
+                                        <option value="credit">Crédito en Pista (Albarán)</option>
+                                        <option value="monthly">Facturación Mensual</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label-custom">Modo de Pago</label>
+                                    <select class="form-select-custom" t-model="state.editingPartner.customer_payment_mode">
+                                        <option value="cash">Efectivo / Tarjeta</option>
+                                        <option value="credit">Crédito</option>
+                                        <option value="bank">Domiciliación Bancaria</option>
+                                    </select>
+                                </div>
+
+                                <!-- SECCIÓN 2: CONTACTO -->
+                                <div class="col-12 mt-4">
+                                    <div class="section-badge mb-2">
+                                        <i class="fa fa-phone me-1"/> 2. DATOS DE CONTACTO
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label-custom">Teléfono Fijo</label>
+                                    <input type="text" class="form-control-custom" placeholder="Ej: 955 86 00 00" 
+                                           t-model="state.editingPartner.phone"/>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label-custom">Teléfono Móvil</label>
+                                    <input type="text" class="form-control-custom" placeholder="Ej: 610 12 34 56" 
+                                           t-model="state.editingPartner.mobile"/>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label-custom">Correo Electrónico</label>
+                                    <input type="email" class="form-control-custom" placeholder="cliente@correo.com" 
+                                           t-model="state.editingPartner.email"/>
+                                </div>
+
+                                <!-- SECCIÓN 3: DIRECCIÓN FISCAL -->
+                                <div class="col-12 mt-4">
+                                    <div class="section-badge mb-2">
+                                        <i class="fa fa-map-marker me-1"/> 3. DIRECCIÓN FISCAL
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label-custom">Dirección / Calle</label>
+                                    <input type="text" class="form-control-custom" placeholder="Ej: C/ San Fernando 12" 
+                                           t-model="state.editingPartner.street"/>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <label class="form-label-custom">C.P.</label>
+                                    <input type="text" class="form-control-custom" placeholder="Ej: 41710" 
+                                           t-model="state.editingPartner.zip"/>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label-custom">Población / Ciudad</label>
+                                    <input type="text" class="form-control-custom" placeholder="Ej: Utrera" 
+                                           t-model="state.editingPartner.city"/>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label-custom">Provincia</label>
+                                    <select class="form-select-custom" t-model="state.editingPartner.state_id">
+                                        <option value="">-- Seleccionar Provincia --</option>
+                                        <t t-foreach="spanishStates" t-as="st" t-key="st.id">
+                                            <option t-att-value="st.id" t-att-selected="state.editingPartner.state_id == st.id">
+                                                <t t-esc="st.name"/>
+                                            </option>
+                                        </t>
+                                    </select>
+                                </div>
+
+                                <!-- SECCIÓN 4: VEHÍCULOS Y MATRÍCULAS -->
+                                <div class="col-12 mt-4">
+                                    <div class="section-badge mb-2 d-flex align-items-center justify-content-between">
+                                        <span><i class="fa fa-car me-1"/> 4. MATRÍCULAS ASOCIADAS</span>
+                                        <small class="text-muted fw-normal" style="font-size: 11px;">Aparecen en el TPV al seleccionar este cliente</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                                        <t t-if="state.editingPartner.vehicles.length === 0">
+                                            <span class="text-muted small fst-italic">No tiene matrículas asignadas todavía.</span>
+                                        </t>
+                                        <t t-foreach="state.editingPartner.vehicles" t-as="veh" t-key="veh.name">
+                                            <span class="badge bg-warning-subtle text-dark border border-warning px-2 py-1 fs-6 d-inline-flex align-items-center gap-2">
+                                                <i class="fa fa-car text-warning-emphasis"/>
+                                                <strong><t t-esc="veh.name"/></strong>
+                                                <button type="button" class="btn btn-sm btn-link text-danger p-0 border-0" 
+                                                        t-on-click="() => this.removeVehicleFromEditingPartner(veh)"
+                                                        title="Eliminar matrícula">
+                                                    <i class="fa fa-times"/>
+                                                </button>
+                                            </span>
+                                        </t>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2" style="max-width: 380px;">
+                                        <input type="text" class="form-control-custom text-uppercase" placeholder="Añadir Matrícula (ej: 1234BBB)" 
+                                               t-model="state.editingPartner.new_plate"
+                                               t-on-keydown="(ev) => { if (ev.key === 'Enter') { ev.preventDefault(); this.addVehicleToEditingPartner(); } }"/>
+                                        <button type="button" class="btn btn-sm btn-primary px-3 text-nowrap fw-bold" 
+                                                style="height: 38px; border-radius: 6px;"
+                                                t-on-click="() => this.addVehicleToEditingPartner()">
+                                            <i class="fa fa-plus me-1"/> Añadir
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Pie del modal -->
+                        <div class="edit-partner-footer">
+                            <button type="button" class="btn btn-light border text-secondary px-4 fw-bold" 
+                                    style="height: 40px; border-radius: 6px;"
+                                    t-on-click="() => this.closeEditPartnerModal()"
+                                    t-att-disabled="state.isSavingPartner">
+                                Cancelar
+                            </button>
+                            <button type="button" class="btn btn-primary px-4 fw-bold d-inline-flex align-items-center gap-2" 
+                                    style="height: 40px; border-radius: 6px; background: #1e3a8a; border-color: #1e3a8a;"
+                                    t-on-click="() => this.saveEditPartner()"
+                                    t-att-disabled="state.isSavingPartner">
+                                <t t-if="state.isSavingPartner">
+                                    <i class="fa fa-spinner fa-spin"/>
+                                    <span>Guardando...</span>
+                                </t>
+                                <t t-else="">
+                                    <i class="fa fa-check"/>
+                                    <span>Guardar Cambios</span>
+                                </t>
+                            </button>
                         </div>
                     </div>
                 </div>

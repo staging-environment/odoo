@@ -194,6 +194,26 @@ export class UtrecarMainScreen extends Component {
             dragOverGridIndex: null,
             isStoreModalOpen: false,
             isClientModalOpen: false,
+            isEditPartnerModalOpen: false,
+            isSavingPartner: false,
+            editPartnerError: null,
+            editingPartner: {
+                id: null,
+                name: "",
+                vat: "",
+                ref: "",
+                customer_type: "ordinary",
+                customer_payment_mode: "cash",
+                phone: "",
+                mobile: "",
+                email: "",
+                street: "",
+                zip: "",
+                city: "",
+                state_id: false,
+                new_plate: "",
+                vehicles: [],
+            },
             isAuthModalOpen: false,
             authModalPump: null,
             isCancelModalOpen: false,
@@ -2605,6 +2625,11 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
+    get spanishStates() {
+        if (!this.pos.states || !Array.isArray(this.pos.states)) return [];
+        return [...this.pos.states].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    }
+
     get filteredClients() {
         const search = (this.state.clientSearch || "").toLowerCase().trim();
         const allPartners = Object.values(this.pos.db.partner_by_id || {});
@@ -2615,7 +2640,7 @@ export class UtrecarMainScreen extends Component {
             return pCompId && pCompId === configCompanyId;
         });
         if (search) {
-            list = allPartners.filter(p => {
+            list = list.filter(p => {
                 const name = (p.name || "").toLowerCase();
                 const vat = (p.vat || "").toLowerCase();
                 const ref = (p.ref || "").toLowerCase();
@@ -2665,43 +2690,200 @@ export class UtrecarMainScreen extends Component {
         this.closeClientModal();
     }
 
-    async editClient(partner) {
-        this.closeClientModal();
-        const { confirmed, payload: updatedPartner } = await this.pos.showTempScreen(
-            "PartnerListScreen",
-            { partner: partner, editModeProps: true }
-        );
-        if (confirmed && updatedPartner) {
-            const order = this.pos.get_order();
-            if (order) {
-                order.set_partner(updatedPartner);
+    editClient(partner) {
+        this.openEditPartnerModal(partner);
+    }
+
+    createNewClient() {
+        this.openEditPartnerModal(null);
+    }
+
+    openEditPartnerModal(partner = null) {
+        if (partner) {
+            const stateId = partner.state_id ? (Array.isArray(partner.state_id) ? partner.state_id[0] : partner.state_id) : false;
+            this.state.editingPartner = {
+                id: partner.id,
+                name: partner.name || "",
+                vat: partner.vat || "",
+                ref: partner.ref || "",
+                customer_type: partner.customer_type || "ordinary",
+                customer_payment_mode: partner.customer_payment_mode || "cash",
+                phone: partner.phone || "",
+                mobile: partner.mobile || "",
+                email: partner.email || "",
+                street: partner.street || "",
+                zip: partner.zip || "",
+                city: partner.city || "",
+                state_id: stateId,
+                new_plate: "",
+                vehicles: (partner.vehicles && Array.isArray(partner.vehicles)) ? [...partner.vehicles] : [],
+            };
+            this.loadEditPartnerVehicles(partner.id);
+        } else {
+            const defaultState = this.pos.company && this.pos.company.state_id ? (Array.isArray(this.pos.company.state_id) ? this.pos.company.state_id[0] : this.pos.company.state_id) : false;
+            this.state.editingPartner = {
+                id: null,
+                name: "",
+                vat: "",
+                ref: "",
+                customer_type: "ordinary",
+                customer_payment_mode: "cash",
+                phone: "",
+                mobile: "",
+                email: "",
+                street: "",
+                zip: "",
+                city: "",
+                state_id: defaultState,
+                new_plate: "",
+                vehicles: [],
+            };
+        }
+        this.state.editPartnerError = null;
+        this.state.isSavingPartner = false;
+        this.state.isEditPartnerModalOpen = true;
+    }
+
+    closeEditPartnerModal() {
+        this.state.isEditPartnerModalOpen = false;
+        this.state.editPartnerError = null;
+    }
+
+    async loadEditPartnerVehicles(partnerId) {
+        if (!partnerId) return;
+        try {
+            const res = await this.env.services.rpc("/pos_gas_station/get_partner_vehicles", {
+                partner_id: partnerId
+            });
+            if (res && res.status === "success" && this.state.editingPartner && this.state.editingPartner.id === partnerId) {
+                this.state.editingPartner.vehicles = res.vehicles || [];
             }
-            await this.loadPartnerVehicles(updatedPartner.id);
-            this.state.orderVersion = Date.now();
-        } else if (!confirmed) {
-            this.openClientModal();
+        } catch (e) {
+            console.error("Error al cargar matrículas de edición:", e);
         }
     }
 
-    async createNewClient() {
-        this.closeClientModal();
-        const { country_id, state_id } = this.pos.company;
-        const { confirmed, payload: newPartner } = await this.pos.showTempScreen(
-            "PartnerListScreen",
-            {
-                partner: { country_id, state_id, lang: session?.user_context?.lang || "es_ES" },
-                editModeProps: true
+    async addVehicleToEditingPartner() {
+        const plate = (this.state.editingPartner.new_plate || "").trim().toUpperCase();
+        if (!plate || plate.length < 3) return;
+        if (this.state.editingPartner.id) {
+            try {
+                const res = await this.env.services.rpc("/pos_gas_station/save_partner_vehicle", {
+                    partner_id: this.state.editingPartner.id,
+                    plate: plate
+                });
+                if (res && res.status === "success") {
+                    this.state.editingPartner.vehicles = res.vehicles || [];
+                    this.state.editingPartner.new_plate = "";
+                }
+            } catch (e) {
+                console.error("Error guardando matrícula:", e);
             }
-        );
-        if (confirmed && newPartner) {
-            const order = this.pos.get_order();
-            if (order) {
-                order.set_partner(newPartner);
+        } else {
+            if (!this.state.editingPartner.vehicles.some(v => v.name === plate)) {
+                this.state.editingPartner.vehicles.push({ id: null, name: plate });
             }
-            await this.loadPartnerVehicles(newPartner.id);
-            this.state.orderVersion = Date.now();
-        } else if (!confirmed) {
-            this.openClientModal();
+            this.state.editingPartner.new_plate = "";
+        }
+    }
+
+    async removeVehicleFromEditingPartner(veh) {
+        if (veh.id) {
+            try {
+                const res = await this.env.services.rpc("/pos_gas_station/remove_partner_vehicle", {
+                    vehicle_id: veh.id
+                });
+                if (res && res.status === "success") {
+                    this.state.editingPartner.vehicles = res.vehicles || [];
+                }
+            } catch (e) {
+                console.error("Error eliminando matrícula:", e);
+            }
+        } else {
+            this.state.editingPartner.vehicles = this.state.editingPartner.vehicles.filter(v => v !== veh);
+        }
+    }
+
+    async saveEditPartner() {
+        const p = this.state.editingPartner;
+        if (!p.name || !p.name.trim()) {
+            this.state.editPartnerError = "El Nombre o Razón Social es obligatorio.";
+            return;
+        }
+        this.state.isSavingPartner = true;
+        this.state.editPartnerError = null;
+        try {
+            const partnerData = {
+                id: p.id || false,
+                name: p.name.trim(),
+                vat: (p.vat || "").trim().toUpperCase(),
+                ref: (p.ref || "").trim(),
+                customer_type: p.customer_type || "ordinary",
+                customer_payment_mode: p.customer_payment_mode || "cash",
+                phone: (p.phone || "").trim(),
+                mobile: (p.mobile || "").trim(),
+                email: (p.email || "").trim(),
+                street: (p.street || "").trim(),
+                zip: (p.zip || "").trim(),
+                city: (p.city || "").trim(),
+                state_id: p.state_id ? parseInt(p.state_id) : false,
+                config_id: this.pos.config.id,
+                company_id: this.pos.config.company_id ? (Array.isArray(this.pos.config.company_id) ? this.pos.config.company_id[0] : this.pos.config.company_id) : false,
+                new_plate: (p.new_plate || "").trim().toUpperCase(),
+            };
+
+            const res = await this.env.services.rpc("/pos_gas_station/save_partner", {
+                partner_data: partnerData
+            });
+
+            if (res && res.status === "success" && res.partner) {
+                const saved = res.partner;
+                // Si había matrículas en memoria añadidas antes de guardar el cliente nuevo:
+                if (!p.id && p.vehicles && p.vehicles.length > 0) {
+                    for (const v of p.vehicles) {
+                        if (v.name && v.name !== partnerData.new_plate) {
+                            try {
+                                await this.env.services.rpc("/pos_gas_station/save_partner_vehicle", {
+                                    partner_id: saved.id,
+                                    plate: v.name
+                                });
+                            } catch (ve) {
+                                console.error("Error guardando matrícula secundaria:", ve);
+                            }
+                        }
+                    }
+                }
+
+                // Actualizar en memoria POS
+                this.pos.db.partner_by_id[saved.id] = Object.assign(this.pos.db.partner_by_id[saved.id] || {}, saved);
+                if (typeof this.pos._loadPartners === "function") {
+                    await this.pos._loadPartners([saved.id]);
+                }
+
+                // Actualizar orden actual si corresponde
+                const order = this.pos.get_order();
+                if (order && ((order.get_partner() && order.get_partner().id === saved.id) || !p.id)) {
+                    order.set_partner(saved);
+                    await this.loadPartnerVehicles(saved.id);
+                }
+
+                this.state.orderVersion = Date.now();
+                this.closeEditPartnerModal();
+
+                if (this.env.services.notification) {
+                    this.env.services.notification.add(
+                        p.id ? "Ficha de cliente actualizada correctamente" : "Nuevo cliente creado correctamente",
+                        { type: "success" }
+                    );
+                }
+            } else {
+                this.state.editPartnerError = res?.message || "Error al guardar el cliente.";
+            }
+        } catch (e) {
+            console.error("Error al guardar cliente:", e);
+            this.state.editPartnerError = e.message || "Error al conectar con el servidor.";
+        } finally {
+            this.state.isSavingPartner = false;
         }
     }
 

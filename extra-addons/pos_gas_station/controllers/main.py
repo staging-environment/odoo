@@ -2595,6 +2595,131 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error in /pos_gas_station/save_partner_vehicle: %s", e)
             return {'status': 'error', 'message': str(e)}
 
+    @http.route('/pos_gas_station/save_partner', type='json', auth='user', methods=['POST'], csrf=False)
+    def save_partner(self, partner_data, **kw):
+        """Crear o editar cliente directamente desde el modal del TPV con validación y asignación a la empresa del TPV."""
+        try:
+            env = request.env
+            partner_id = partner_data.get('id')
+            name = (partner_data.get('name') or '').strip()
+            if not name:
+                return {'status': 'error', 'message': 'El Nombre o Razón Social es obligatorio.'}
+
+            config_id = partner_data.get('config_id')
+            company_id = partner_data.get('company_id')
+            if not company_id and config_id:
+                try:
+                    cfg = env['pos.config'].sudo().browse(int(config_id))
+                    if cfg.exists() and cfg.company_id:
+                        company_id = cfg.company_id.id
+                except Exception:
+                    pass
+            if not company_id:
+                company_id = env.company.id
+
+            vals = {
+                'name': name,
+                'vat': (partner_data.get('vat') or '').strip().upper() or False,
+                'ref': (partner_data.get('ref') or '').strip() or False,
+                'street': (partner_data.get('street') or '').strip() or False,
+                'zip': (partner_data.get('zip') or '').strip() or False,
+                'city': (partner_data.get('city') or '').strip() or False,
+                'phone': (partner_data.get('phone') or '').strip() or False,
+                'mobile': (partner_data.get('mobile') or '').strip() or False,
+                'email': (partner_data.get('email') or '').strip() or False,
+                'customer_rank': 1,
+            }
+
+            state_id = partner_data.get('state_id')
+            if state_id:
+                try:
+                    vals['state_id'] = int(state_id)
+                except (ValueError, TypeError):
+                    vals['state_id'] = False
+            else:
+                vals['state_id'] = False
+
+            if 'customer_type' in partner_data:
+                vals['customer_type'] = partner_data.get('customer_type') or 'ordinary'
+            if 'customer_payment_mode' in partner_data:
+                vals['customer_payment_mode'] = partner_data.get('customer_payment_mode') or 'cash'
+
+            if partner_id:
+                partner = env['res.partner'].sudo().browse(int(partner_id))
+                if not partner.exists():
+                    return {'status': 'error', 'message': 'Cliente no encontrado.'}
+                partner.write(vals)
+            else:
+                vals['company_id'] = company_id
+                partner = env['res.partner'].sudo().create(vals)
+
+            # Matrícula si se ha introducido
+            new_plate = (partner_data.get('new_plate') or '').strip().upper()
+            if new_plate and len(new_plate) >= 3:
+                existing_veh = env['res.partner.vehicle'].sudo().search([
+                    ('name', '=', new_plate),
+                    ('partner_id', '=', partner.id)
+                ], limit=1)
+                if not existing_veh:
+                    env['res.partner.vehicle'].sudo().create({
+                        'name': new_plate,
+                        'partner_id': partner.id
+                    })
+
+            # Devolver objeto completo de partner para el frontend
+            state_val = [partner.state_id.id, partner.state_id.name] if partner.state_id else False
+            country_val = [partner.country_id.id, partner.country_id.name] if partner.country_id else False
+            comp_val = [partner.company_id.id, partner.company_id.name] if partner.company_id else False
+
+            partner_dict = {
+                'id': partner.id,
+                'name': partner.name,
+                'vat': partner.vat or '',
+                'ref': partner.ref or '',
+                'street': partner.street or '',
+                'zip': partner.zip or '',
+                'city': partner.city or '',
+                'state_id': state_val,
+                'country_id': country_val,
+                'phone': partner.phone or '',
+                'mobile': partner.mobile or '',
+                'email': partner.email or '',
+                'barcode': partner.barcode or '',
+                'company_id': comp_val,
+                'customer_type': getattr(partner, 'customer_type', 'ordinary') or 'ordinary',
+                'customer_payment_mode': getattr(partner, 'customer_payment_mode', 'cash') or 'cash',
+                'invoice_periodicity': getattr(partner, 'invoice_periodicity', 'daily') or 'daily',
+                'credit_blocked': getattr(partner, 'credit_blocked', False) or False,
+                'credit_limit_amount': float(getattr(partner, 'credit_limit_amount', 0.0) or 0.0),
+                'vehicles': [{'id': v.id, 'name': v.name, 'notes': v.notes or ''} for v in getattr(partner, 'vehicle_ids', [])],
+            }
+
+            return {
+                'status': 'success',
+                'partner': partner_dict,
+                'message': 'Cliente guardado correctamente.'
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/save_partner: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/remove_partner_vehicle', type='json', auth='user', methods=['POST'], csrf=False)
+    def remove_partner_vehicle(self, vehicle_id, **kw):
+        try:
+            if not vehicle_id:
+                return {'status': 'error', 'message': 'ID de vehículo no proporcionado'}
+            veh = request.env['res.partner.vehicle'].sudo().browse(int(vehicle_id))
+            if veh.exists():
+                partner_id = veh.partner_id.id
+                veh.unlink()
+                partner = request.env['res.partner'].sudo().browse(partner_id)
+                vehicles = [{'id': v.id, 'name': v.name, 'notes': v.notes or ''} for v in getattr(partner, 'vehicle_ids', [])]
+                return {'status': 'success', 'vehicles': vehicles}
+            return {'status': 'error', 'message': 'Vehículo no encontrado'}
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/remove_partner_vehicle: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
     def _get_or_create_credit_partner(self, env, partner_data, config_id=None, company_id=None, vehicle_plate=None):
         name = str((partner_data or {}).get('name') or '').strip()
         vat = str((partner_data or {}).get('vat') or '').strip().upper()
