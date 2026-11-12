@@ -1424,12 +1424,24 @@
                                         <thead>
                                             <tr>
                                                 <th style="width: 32px; text-align: center;"></th>
-                                                <th style="width: 135px;">FECHA / HORA</th>
-                                                <th style="width: 85px;">Nº TICKET</th>
-                                                <th style="width: 80px; text-align: center;">CALLE</th>
-                                                <th style="width: 160px;">RECIBO</th>
-                                                <th style="width: 230px;">CLIENTE</th>
-                                                <th style="width: 80px; text-align: right;">TOTAL</th>
+                                                <th class="th-sortable" style="width: 135px;" t-on-click="() => this.sortShiftOrders('date')" title="Ordenar por Fecha y Hora">
+                                                    FECHA / HORA <i t-attf-class="fa #{getSortIcon('date')}"/>
+                                                </th>
+                                                <th class="th-sortable" style="width: 85px;" t-on-click="() => this.sortShiftOrders('ticket')" title="Ordenar por Nº de Ticket">
+                                                    Nº TICKET <i t-attf-class="fa #{getSortIcon('ticket')}"/>
+                                                </th>
+                                                <th class="th-sortable" style="width: 80px; text-align: center;" t-on-click="() => this.sortShiftOrders('pump')" title="Ordenar por Calle de Suministro">
+                                                    CALLE <i t-attf-class="fa #{getSortIcon('pump')}"/>
+                                                </th>
+                                                <th class="th-sortable" style="width: 160px;" t-on-click="() => this.sortShiftOrders('receipt')" title="Ordenar por Nº de Recibo">
+                                                    RECIBO <i t-attf-class="fa #{getSortIcon('receipt')}"/>
+                                                </th>
+                                                <th class="th-sortable" style="width: 230px;" t-on-click="() => this.sortShiftOrders('partner')" title="Ordenar por Cliente">
+                                                    CLIENTE <i t-attf-class="fa #{getSortIcon('partner')}"/>
+                                                </th>
+                                                <th class="th-sortable" style="width: 80px; text-align: right;" t-on-click="() => this.sortShiftOrders('total')" title="Ordenar por Importe Total">
+                                                    TOTAL <i t-attf-class="fa #{getSortIcon('total')}"/>
+                                                </th>
                                                 <th style="width: 180px; text-align: center;">ACCIONES</th>
                                             </tr>
                                         </thead>

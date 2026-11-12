@@ -1756,6 +1756,7 @@ class PosGasStationController(http.Controller):
                     'name': o.name,
                     'pos_reference': o.pos_reference or o.name,
                     'date_order': date_str,
+                    'date_order_raw': o.date_order.isoformat() if o.date_order else '',
                     'session_id': session.id,
                     'session_name': session.name,
                     'user_name': o.user_id.name or 'Cajero',

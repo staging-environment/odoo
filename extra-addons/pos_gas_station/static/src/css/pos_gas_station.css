@@ -5150,6 +5150,39 @@
     white-space: nowrap !important;
 }
 
+.shift-orders-table thead th.th-sortable {
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.shift-orders-table thead th.th-sortable:hover {
+    background: #334155 !important;
+    color: #f8fafc !important;
+}
+
+.shift-orders-table thead th .sort-icon {
+    font-size: 11px !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    margin-left: 4px !important;
+}
+
+.shift-orders-table thead th .sort-icon.active {
+    color: #fbbf24 !important;
+    opacity: 1 !important;
+}
+
+.shift-orders-table thead th .sort-icon.inactive {
+    color: #94a3b8 !important;
+    opacity: 0.35 !important;
+}
+
+.shift-orders-table thead th.th-sortable:hover .sort-icon.inactive {
+    opacity: 0.8 !important;
+    color: #cbd5e1 !important;
+}
+
 .shift-order-row {
     border-bottom: 1px solid #e2e8f0 !important;
     cursor: pointer !important;

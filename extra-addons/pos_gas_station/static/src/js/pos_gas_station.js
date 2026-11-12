@@ -214,6 +214,8 @@ export class UtrecarMainScreen extends Component {
             selectedShiftOrder: null,
             shiftActiveTab: 'products',
             shiftOrderSearch: "",
+            shiftOrderSortField: "date",
+            shiftOrderSortDirection: "desc",
             expandedShiftOrderIds: {},
             isInvoiceModalOpen: false,
             invoicePartnerSearch: "",
@@ -1405,18 +1407,94 @@ export class UtrecarMainScreen extends Component {
 
     get filteredShiftOrders() {
         if (!this.state.shiftOrders) return [];
+        let list = this.state.shiftOrders;
         const q = (this.state.shiftOrderSearch || "").toLowerCase().trim();
-        if (!q) return this.state.shiftOrders;
-        return this.state.shiftOrders.filter(o => 
-            (o.name && o.name.toLowerCase().includes(q)) ||
-            (o.pos_reference && o.pos_reference.toLowerCase().includes(q)) ||
-            (o.partner_name && o.partner_name.toLowerCase().includes(q)) ||
-            (o.partner_vat && o.partner_vat.toLowerCase().includes(q)) ||
-            (o.account_move_name && o.account_move_name.toLowerCase().includes(q)) ||
-            (o.pump_id && `calle ${o.pump_id}`.includes(q)) ||
-            (o.pump_name && o.pump_name.toLowerCase().includes(q)) ||
-            String(o.amount_total).includes(q)
-        );
+        if (q) {
+            list = list.filter(o => 
+                (o.name && o.name.toLowerCase().includes(q)) ||
+                (o.pos_reference && o.pos_reference.toLowerCase().includes(q)) ||
+                (o.partner_name && o.partner_name.toLowerCase().includes(q)) ||
+                (o.partner_vat && o.partner_vat.toLowerCase().includes(q)) ||
+                (o.account_move_name && o.account_move_name.toLowerCase().includes(q)) ||
+                (o.pump_id && `calle ${o.pump_id}`.includes(q)) ||
+                (o.pump_name && o.pump_name.toLowerCase().includes(q)) ||
+                String(o.amount_total).includes(q)
+            );
+        }
+
+        const field = this.state.shiftOrderSortField || "date";
+        const dir = this.state.shiftOrderSortDirection || "desc";
+        const modifier = dir === "asc" ? 1 : -1;
+
+        return [...list].sort((a, b) => {
+            let diff = 0;
+            switch (field) {
+                case "date": {
+                    const valA = a.date_order_raw || a.id;
+                    const valB = b.date_order_raw || b.id;
+                    diff = valA > valB ? 1 : (valA < valB ? -1 : 0);
+                    break;
+                }
+                case "ticket": {
+                    const valA = a.name || "";
+                    const valB = b.name || "";
+                    diff = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: "base" });
+                    break;
+                }
+                case "pump": {
+                    const valA = Number(a.pump_id) || 0;
+                    const valB = Number(b.pump_id) || 0;
+                    diff = valA - valB;
+                    break;
+                }
+                case "receipt": {
+                    const valA = a.pos_reference || a.name || "";
+                    const valB = b.pos_reference || b.name || "";
+                    diff = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: "base" });
+                    break;
+                }
+                case "partner": {
+                    const valA = a.partner_name || "";
+                    const valB = b.partner_name || "";
+                    if (!valA && valB) diff = 1;
+                    else if (valA && !valB) diff = -1;
+                    else diff = valA.localeCompare(valB, undefined, { sensitivity: "base" });
+                    break;
+                }
+                case "total": {
+                    const valA = Number(a.amount_total) || 0;
+                    const valB = Number(b.amount_total) || 0;
+                    diff = valA - valB;
+                    break;
+                }
+                default:
+                    diff = (a.id || 0) - (b.id || 0);
+            }
+            if (diff === 0) {
+                diff = (a.id || 0) - (b.id || 0);
+            }
+            return diff * modifier;
+        });
+    }
+
+    sortShiftOrders(field) {
+        if (this.state.shiftOrderSortField === field) {
+            this.state.shiftOrderSortDirection = this.state.shiftOrderSortDirection === "asc" ? "desc" : "asc";
+        } else {
+            this.state.shiftOrderSortField = field;
+            if (field === "date" || field === "total") {
+                this.state.shiftOrderSortDirection = "desc";
+            } else {
+                this.state.shiftOrderSortDirection = "asc";
+            }
+        }
+    }
+
+    getSortIcon(field) {
+        if (this.state.shiftOrderSortField === field) {
+            return this.state.shiftOrderSortDirection === "asc" ? "fa-sort-asc sort-icon active" : "fa-sort-desc sort-icon active";
+        }
+        return "fa-sort sort-icon inactive";
     }
 
     toggleOrderHistory(orderId) {
