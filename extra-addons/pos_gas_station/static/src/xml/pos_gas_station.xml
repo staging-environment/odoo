@@ -1480,29 +1480,12 @@
                                                         <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
                                                     </td>
                                                     <td class="cell-actions" style="text-align: center;" t-on-click.stop="">
-                                                        <t t-if="!ord.is_ticket_annulled">
-                                                            <t t-if="ord.is_invoiced">
-                                                                <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura oficial">
-                                                                    🖨️ Imprimir
-                                                                </button>
-                                                                <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo electrónico" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
-                                                                    📧 Email
-                                                                </button>
-                                                            </t>
-                                                            <t t-else="">
-                                                                <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir ticket">
-                                                                    🖨️ Imprimir
-                                                                </button>
-                                                                <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
-                                                                    📄 Facturar
-                                                                </button>
-                                                            </t>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir justificante de anulación">
-                                                                🖨️ Imprimir
-                                                            </button>
-                                                        </t>
+                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir ticket">
+                                                            🖨️ Imprimir
+                                                        </button>
+                                                        <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
+                                                            📄 Facturar
+                                                        </button>
                                                     </td>
                                                 </tr>
                                                 <!-- SUB-FILA DESPLEGABLE: HISTORIAL DEL PEDIDO (ANULACIÓN, FACTURA, ALBARÁN) -->
