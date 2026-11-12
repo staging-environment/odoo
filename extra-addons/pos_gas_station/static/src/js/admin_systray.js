@@ -23,6 +23,44 @@ for (const key of itemsToRemove) {
     }
 }
 
+function updateNavActiveState() {
+    const isExpendedores = Boolean(document.querySelector(".employee-company-roles-view"));
+    const isAdmins = Boolean(document.querySelector(".vpn-admins-page"));
+    const isDashboard = Boolean(document.querySelector(".gas-station-dashboard-page"));
+
+    const hash = window.location.hash || "";
+    let activeSection = "";
+    if (isExpendedores || hash.includes("action_employee_company_roles") || hash.includes("employee_company_roles")) {
+        activeSection = "expendedores";
+    } else if (isAdmins || hash.includes("action_vpn_company_admins") || hash.includes("vpn_company_admins")) {
+        activeSection = "administracion";
+    } else if (isDashboard || hash.includes("action_gas_station_dashboard") || hash === "" || hash === "#") {
+        activeSection = "dashboard";
+    }
+
+    if (document.body.dataset.activeNavSection !== activeSection) {
+        document.body.dataset.activeNavSection = activeSection;
+    }
+
+    const brand = document.querySelector(".o_main_navbar .o_menu_brand");
+    const parentToggle = document.querySelector('.o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"]');
+    const subExp = document.querySelector('[data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]');
+    const subAdm = document.querySelector('[data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]');
+
+    if (brand) {
+        brand.classList.toggle("o_nav_active", activeSection === "dashboard");
+    }
+    if (parentToggle) {
+        parentToggle.classList.toggle("o_nav_active", activeSection === "expendedores" || activeSection === "administracion");
+    }
+    if (subExp) {
+        subExp.classList.toggle("o_submenu_item_active", activeSection === "expendedores");
+    }
+    if (subAdm) {
+        subAdm.classList.toggle("o_submenu_item_active", activeSection === "administracion");
+    }
+}
+
 export class AdminSystrayMenu extends Component {
     static template = "pos_gas_station.AdminSystrayMenu";
 
@@ -53,12 +91,31 @@ export class AdminSystrayMenu extends Component {
         };
         window.addEventListener("admin-company-changed", this.handleCompanyChange);
 
+        this.handleNavUpdate = () => updateNavActiveState();
+        this.navCheckInterval = setInterval(updateNavActiveState, 350);
+        window.addEventListener("hashchange", this.handleNavUpdate);
+        window.addEventListener("popstate", this.handleNavUpdate);
+        if (this.env?.bus) {
+            this.env.bus.addEventListener("ACTION_MANAGER:UPDATE", this.handleNavUpdate);
+            this.env.bus.addEventListener("MENUS:APP-CHANGED", this.handleNavUpdate);
+        }
+
         onMounted(() => {
             this.loadAdminInfo();
+            updateNavActiveState();
         });
 
         onWillUnmount(() => {
             window.removeEventListener("admin-company-changed", this.handleCompanyChange);
+            window.removeEventListener("hashchange", this.handleNavUpdate);
+            window.removeEventListener("popstate", this.handleNavUpdate);
+            if (this.env?.bus) {
+                this.env.bus.removeEventListener("ACTION_MANAGER:UPDATE", this.handleNavUpdate);
+                this.env.bus.removeEventListener("MENUS:APP-CHANGED", this.handleNavUpdate);
+            }
+            if (this.navCheckInterval) {
+                clearInterval(this.navCheckInterval);
+            }
         });
     }
 

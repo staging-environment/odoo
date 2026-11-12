@@ -961,3 +961,138 @@ thead .sticky-cell {
     }
 }
 
+/* ==========================================================================
+   INDICADORES DE SECCIÓN ACTIVA EN MENÚ PRINCIPAL Y SUBMENÚS CON PUNTITO
+   ========================================================================== */
+
+/* Estilos base para los elementos de navegación en la barra superior */
+.o_main_navbar .o_menu_brand,
+.o_main_navbar .o_menu_sections .dropdown-toggle {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    border-radius: 8px !important;
+    padding: 6px 14px !important;
+    margin: 4px 4px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.o_main_navbar .o_menu_brand:hover,
+.o_main_navbar .o_menu_sections .dropdown-toggle:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* --- CASO 1: SECCIÓN PRINCIPAL ACTIVA: GESTIÓN DE GASOLINERAS --- */
+body:has(.gas-station-dashboard-page) .o_main_navbar .o_menu_brand,
+body[data-active-nav-section="dashboard"] .o_main_navbar .o_menu_brand,
+.o_main_navbar .o_menu_brand.o_nav_active {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(4px);
+}
+
+body:has(.gas-station-dashboard-page) .o_main_navbar .o_menu_brand::before,
+body[data-active-nav-section="dashboard"] .o_main_navbar .o_menu_brand::before,
+.o_main_navbar .o_menu_brand.o_nav_active::before {
+    content: "●";
+    color: #4ade80 !important;
+    font-size: 11px;
+    line-height: 1;
+    text-shadow: 0 0 6px rgba(74, 222, 128, 0.8);
+    margin-right: 2px;
+}
+
+/* --- CASO 2: MENÚ PADRE ACTIVO: USUARIOS (cuando estamos en Expendedores o Administración) --- */
+body:has(.employee-company-roles-view) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
+body:has(.vpn-admins-page) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
+body[data-active-nav-section="expendedores"] .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
+body[data-active-nav-section="administracion"] .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"],
+.o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"].o_nav_active {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(4px);
+}
+
+body:has(.employee-company-roles-view) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"]::before,
+body:has(.vpn-admins-page) .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"]::before,
+body[data-active-nav-section="expendedores"] .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"]::before,
+body[data-active-nav-section="administracion"] .o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"]::before,
+.o_main_navbar [data-menu-xmlid="pos_gas_station.menu_gas_station_staff_parent"].o_nav_active::before {
+    content: "●";
+    color: #4ade80 !important;
+    font-size: 11px;
+    line-height: 1;
+    text-shadow: 0 0 6px rgba(74, 222, 128, 0.8);
+    margin-right: 2px;
+}
+
+/* --- SUBMENÚ DESPLEGABLE: ITEMS DE USUARIOS --- */
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"],
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"] {
+    position: relative !important;
+    padding: 8px 16px 8px 12px !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
+    color: #334155 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    transition: all 0.15s ease-in-out !important;
+    border-radius: 6px;
+    margin: 2px 6px;
+}
+
+/* Puntito invisible por defecto para alinear el texto de forma simétrica */
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]::before,
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]::before {
+    content: "●";
+    color: transparent;
+    font-size: 13px;
+    line-height: 1;
+    width: 14px;
+    display: inline-block;
+    transition: all 0.2s ease;
+}
+
+/* --- PUNTITO ACTIVO EN SUBMENÚ: EXPENDEDORES --- */
+body:has(.employee-company-roles-view) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"],
+body[data-active-nav-section="expendedores"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"],
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"].o_submenu_item_active {
+    background: #f0fdf4 !important;
+    color: #15803d !important;
+    font-weight: 700 !important;
+}
+
+body:has(.employee-company-roles-view) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]::before,
+body[data-active-nav-section="expendedores"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"]::before,
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_employee_roles"].o_submenu_item_active::before {
+    color: #16a34a !important; /* Puntito verde vistoso */
+    text-shadow: 0 0 6px rgba(22, 163, 74, 0.4);
+    transform: scale(1.15);
+}
+
+/* --- PUNTITO ACTIVO EN SUBMENÚ: ADMINISTRACIÓN --- */
+body:has(.vpn-admins-page) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"],
+body[data-active-nav-section="administracion"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"],
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"].o_submenu_item_active {
+    background: #f0fdf4 !important;
+    color: #15803d !important;
+    font-weight: 700 !important;
+}
+
+body:has(.vpn-admins-page) .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]::before,
+body[data-active-nav-section="administracion"] .dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"]::before,
+.dropdown-menu [data-menu-xmlid="pos_gas_station.menu_gas_station_sub_company_admins"].o_submenu_item_active::before {
+    color: #16a34a !important; /* Puntito verde vistoso */
+    text-shadow: 0 0 6px rgba(22, 163, 74, 0.4);
+    transform: scale(1.15);
+}
+
