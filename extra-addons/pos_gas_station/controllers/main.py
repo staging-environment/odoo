@@ -2703,6 +2703,12 @@ class PosGasStationController(http.Controller):
             name = comp.name
             partner_id = partner.id if partner else None
 
+            # Fallback de empresa activa para usuarios y sesiones
+            fallback_comp = env['res.company'].sudo().browse(4)
+            if not fallback_comp.exists() or fallback_comp.id == cid:
+                fallback_comp = env['res.company'].sudo().search([('id', '!=', cid)], limit=1)
+            fallback_id = fallback_comp.id if fallback_comp else False
+
             # 1. Reglas de stock (deben eliminarse antes de los almacenes para evitar ForeignKeyViolation con stock_picking_type)
             rules = env['stock.rule'].sudo().search([('company_id', '=', cid)])
             if rules:
@@ -2714,9 +2720,6 @@ class PosGasStationController(http.Controller):
                 warehouses.unlink()
 
             # 3. Propiedades de configuración (ir.property): ELIMINAR DIRECTAMENTE VÍA SQL
-            # En Odoo ir.property sobreescribe search() para filtrar por contexto multi-compañía
-            # lo que impedía que ORM unlink borrara las filas antes de que PostgreSQL activara
-            # el ON DELETE SET NULL, provocando colisión en el índice único "ir_property_unique_index".
             env.cr.execute("DELETE FROM ir_property WHERE company_id = %s", [cid])
             env.cr.execute("DELETE FROM ir_property WHERE res_id = %s", [f'res.company,{cid}'])
             if partner_id:
@@ -2730,20 +2733,53 @@ class PosGasStationController(http.Controller):
             # 5. Secuencias generadas para la empresa
             env['ir.sequence'].sudo().search([('company_id', '=', cid)]).unlink()
 
-            # 6. Desvincular de usuarios
+            # 6. Desvincular de usuarios: primero reasignar la empresa principal por defecto si era cid
+            if fallback_id:
+                users_with_default = env['res.users'].sudo().search([('company_id', '=', cid)])
+                for u in users_with_default:
+                    u.write({'company_id': fallback_id})
+
             users = env['res.users'].sudo().search([('company_ids', 'in', [cid])])
             for u in users:
                 u.write({'company_ids': [(3, cid)]})
 
-            # 7. Eliminar accesos de roles por empresa
+            # Limpiar sesión actual si apuntaba a la empresa eliminada
+            if request.session.get('admin_active_company_id') == cid and fallback_id:
+                request.session['admin_active_company_id'] = fallback_id
+            if request.session.get('current_company_id') == cid and fallback_id:
+                request.session['current_company_id'] = fallback_id
+            if request.session.get('allowed_company_ids') == [cid] and fallback_id:
+                request.session['allowed_company_ids'] = [fallback_id]
+
+            # 7. Desvincular de Administradores VPN (utrecar_vpn_admin_company_rel)
+            env.cr.execute("DELETE FROM utrecar_vpn_admin_company_rel WHERE company_id = %s", [cid])
+
+            # 8. Romper FK circular de calendario laboral antes de borrar resource.calendar
+            try:
+                comp.write({'resource_calendar_id': False})
+            except Exception:
+                pass
+            env['resource.calendar'].sudo().search([('company_id', '=', cid)]).unlink()
+            env['product.pricelist'].sudo().search([('company_id', '=', cid)]).unlink()
+
+            # 9. Eliminar accesos de roles por empresa
             accs = env['utrecar.employee.company.access'].sudo().search([('company_id', '=', cid)])
             if accs:
                 accs.unlink()
 
-            # 8. Unlink de la compañía
+            # 10. Desvincular partners creados con esa compañía
+            other_partners = env['res.partner'].sudo().search([('company_id', '=', cid)])
+            for p in other_partners:
+                if p.id != partner_id:
+                    try:
+                        p.write({'company_id': False})
+                    except Exception:
+                        pass
+
+            # 11. Unlink de la compañía
             comp.unlink()
 
-            # 9. Eliminar el partner creado para la empresa si no tiene usuarios vinculados y no es del sistema
+            # 12. Eliminar el partner creado para la empresa si no tiene usuarios vinculados y no es del sistema
             if partner_id and partner_id not in [1, 2, 41, 2254, 2255]:
                 try:
                     p = env['res.partner'].sudo().browse(partner_id)
