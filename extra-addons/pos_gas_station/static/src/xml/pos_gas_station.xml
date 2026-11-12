@@ -1523,7 +1523,7 @@
                                                                                         </button>
                                                                                     </t>
                                                                                     <t t-elif="item.type === 'invoice'">
-                                                                                        <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura oficial">
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura oficial">
                                                                                             🖨️ Imprimir
                                                                                         </button>
                                                                                         <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">

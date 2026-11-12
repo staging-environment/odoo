@@ -5454,9 +5454,8 @@
 }
 
 .btn-tbl-detail { color: #4338ca !important; border-color: #c7d2fe !important; }
-.btn-tbl-ticket { color: #15803d !important; border-color: #bbf7d0 !important; }
+.btn-tbl-ticket, .btn-tbl-pdf { color: #15803d !important; border-color: #bbf7d0 !important; background: #ffffff !important; }
 .btn-tbl-invoice { color: #0284c7 !important; border-color: #bae6fd !important; }
-.btn-tbl-pdf { color: #b91c1c !important; border-color: #fecaca !important; background: #fff1f2 !important; }
 
 /* MODAL FLOTANTE DE CONFIRMACIÓN DE ANULACIÓN DE TICKET */
 .annul-order-modal-backdrop {
