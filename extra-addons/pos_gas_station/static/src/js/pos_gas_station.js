@@ -1412,6 +1412,8 @@ export class UtrecarMainScreen extends Component {
             (o.partner_name && o.partner_name.toLowerCase().includes(q)) ||
             (o.partner_vat && o.partner_vat.toLowerCase().includes(q)) ||
             (o.account_move_name && o.account_move_name.toLowerCase().includes(q)) ||
+            (o.pump_id && `calle ${o.pump_id}`.includes(q)) ||
+            (o.pump_name && o.pump_name.toLowerCase().includes(q)) ||
             String(o.amount_total).includes(q)
         );
     }
@@ -2668,6 +2670,7 @@ export class UtrecarMainScreen extends Component {
 
         currentOrder.pending_sale_id = sale.id;
         currentOrder.pending_pump_id = sale.pumpId;
+        currentOrder.pump_id = sale.pumpId;
 
         // 1. Añadir combustible
         if (sale.fuel) {
@@ -2690,6 +2693,9 @@ export class UtrecarMainScreen extends Component {
                 if (activeLine) {
                     activeLine.pump_id = sale.pumpId;
                     activeLine.fuel_display_price = sale.fuel.price;
+                    if (activeLine.set_customer_note) {
+                        activeLine.set_customer_note(`Calle ${sale.pumpId} - ${sale.fuel.name} (${sale.fuel.liters.toFixed(2)}L)`);
+                    }
                     if (targetTotal > 0) {
                         const currentDisp = activeLine.get_display_price ? activeLine.get_display_price() : (activeLine.price * activeLine.quantity);
                         const diff = Math.round((targetTotal - currentDisp) * 100) / 100;
@@ -3074,6 +3080,11 @@ export class UtrecarMainScreen extends Component {
         const plateInfo = this.state.vehiclePlate ? `Matrícula: ${this.state.vehiclePlate} | ` : "";
         if (currentOrder.set_note) {
             currentOrder.set_note(`${plateInfo}Calle ${pumpId} [Prepago: ${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}]`);
+        }
+
+        currentOrder.pump_id = pumpId;
+        if (activeLine && activeLine.set_customer_note) {
+            activeLine.set_customer_note(`Calle ${pumpId} [Prepago: ${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'}]`);
         }
 
         currentOrder.pending_prepay = {
@@ -3803,6 +3814,11 @@ export class UtrecarMainScreen extends Component {
                     }
                 }
 
+                currentOrder.pump_id = pump.id;
+                if (activeLine && activeLine.set_customer_note) {
+                    activeLine.set_customer_note(`Calle ${pump.id} - ${product.display_name} (${targetQty.toFixed(2)}L)`);
+                }
+
                 // Blindaje milimétrico de redondeo: garantiza que el importe coincida exactamente con la bomba
                 if (activeLine && targetTotal > 0) {
                     const currentDisp = activeLine.get_display_price();
@@ -3899,6 +3915,14 @@ patch(Order.prototype, {
         json.is_albaran = Boolean(this.is_albaran);
         json.vehicle_plate = this.vehicle_plate || '';
         json.vehicle_driver = this.vehicle_driver || '';
+
+        let pumpId = this.pump_id || this.pending_pump_id || (this.pending_prepay ? this.pending_prepay.pump_id : 0) || this.extraction_pump_id || 0;
+        if (!pumpId && (this.get_orderlines || this.orderlines)) {
+            const linesList = this.get_orderlines ? this.get_orderlines() : this.orderlines;
+            const fuelLine = (linesList || []).find(l => l.pump_id);
+            if (fuelLine) pumpId = fuelLine.pump_id;
+        }
+        json.pump_id = parseInt(pumpId) || 0;
         return json;
     },
     export_for_printing() {
@@ -3906,10 +3930,20 @@ patch(Order.prototype, {
         res.is_albaran = Boolean(this.is_albaran);
         res.vehicle_plate = this.vehicle_plate || '';
         res.vehicle_driver = this.vehicle_driver || '';
+
+        let pumpId = this.pump_id || this.pending_pump_id || (this.pending_prepay ? this.pending_prepay.pump_id : 0) || this.extraction_pump_id || 0;
+        if (!pumpId && (this.get_orderlines || this.orderlines)) {
+            const linesList = this.get_orderlines ? this.get_orderlines() : this.orderlines;
+            const fuelLine = (linesList || []).find(l => l.pump_id);
+            if (fuelLine) pumpId = fuelLine.pump_id;
+        }
+        res.pump_id = parseInt(pumpId) || 0;
+
         if (res.headerData) {
             res.headerData.is_albaran = Boolean(this.is_albaran);
             res.headerData.vehicle_plate = this.vehicle_plate || '';
             res.headerData.vehicle_driver = this.vehicle_driver || '';
+            res.headerData.pump_id = parseInt(pumpId) || 0;
         }
         res.cashier = null;
         if (res.headerData) {

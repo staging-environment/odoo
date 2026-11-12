@@ -5228,22 +5228,32 @@
     white-space: nowrap !important;
 }
 
+.shift-order-row .cell-pump {
+    width: 80px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+.badge-shift-pump {
+    display: inline-block !important;
+    background: #e0f2fe !important;
+    color: #0369a1 !important;
+    font-weight: 700 !important;
+    font-size: 11px !important;
+    padding: 2px 7px !important;
+    border-radius: 4px !important;
+    border: 1px solid #bae6fd !important;
+    white-space: nowrap !important;
+}
+
 .shift-order-row .cell-ref {
-    width: 155px !important;
+    width: 160px !important;
     white-space: nowrap !important;
 }
 
 .shift-order-row .cell-partner {
-    width: 180px !important;
-    max-width: 180px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-}
-
-.shift-order-row .cell-user {
-    width: 130px !important;
-    max-width: 130px !important;
+    width: 190px !important;
+    max-width: 190px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;

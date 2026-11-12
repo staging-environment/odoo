@@ -1425,9 +1425,9 @@
                                             <tr>
                                                 <th style="width: 135px;">FECHA / HORA</th>
                                                 <th style="width: 85px;">Nº TICKET</th>
-                                                <th style="width: 155px;">RECIBO</th>
-                                                <th style="width: 180px;">CLIENTE</th>
-                                                <th style="width: 130px;">CAJERO</th>
+                                                <th style="width: 80px; text-align: center;">CALLE</th>
+                                                <th style="width: 160px;">RECIBO</th>
+                                                <th style="width: 190px;">CLIENTE</th>
                                                 <th style="width: 80px; text-align: right;">TOTAL</th>
                                                 <th style="width: 220px; text-align: center;">ACCIONES</th>
                                             </tr>
@@ -1441,6 +1441,21 @@
                                                     <td class="cell-name" t-att-title="ord.is_ticket_annulled ? ('Ticket Anulado' + (ord.annulment_ref ? ' [' + ord.annulment_ref + ']' : '')) : ''">
                                                         <strong><t t-esc="ord.name"/></strong>
                                                     </td>
+                                                    <td class="cell-pump" style="text-align: center;">
+                                                        <t t-if="ord.pump_id">
+                                                            <span class="badge-shift-pump">
+                                                                Calle <t t-esc="ord.pump_id"/>
+                                                            </span>
+                                                        </t>
+                                                        <t t-elif="ord.pump_name">
+                                                            <span class="badge-shift-pump">
+                                                                <t t-esc="ord.pump_name"/>
+                                                            </span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span class="text-muted" style="font-size: 11px;">-</span>
+                                                        </t>
+                                                    </td>
                                                     <td class="cell-ref"><t t-esc="ord.pos_reference"/></td>
                                                     <td class="cell-partner" t-att-title="ord.partner_name ? (ord.partner_name + (ord.partner_vat ? ' (' + ord.partner_vat + ')' : '')) : '- Contado -'">
                                                         <t t-if="ord.partner_name">
@@ -1451,7 +1466,6 @@
                                                             <span class="text-muted">- Contado -</span>
                                                         </t>
                                                     </td>
-                                                    <td class="cell-user" t-att-title="ord.user_name"><t t-esc="ord.user_name"/></td>
                                                     <td class="cell-total" style="text-align: right;">
                                                         <t t-if="ord.is_ticket_annulled">
                                                             <strong style="color: #dc2626; text-decoration: line-through;"><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
@@ -1619,6 +1633,15 @@
                                             <div class="meta-row">
                                                 <span class="meta-label">Usuario</span>
                                                 <span class="meta-value"><t t-esc="state.selectedShiftOrder.user_name"/></span>
+                                            </div>
+                                            <div class="meta-row" t-if="state.selectedShiftOrder.pump_id || state.selectedShiftOrder.pump_name">
+                                                <span class="meta-label">Surtidor / Calle</span>
+                                                <span class="meta-value">
+                                                    <strong style="color: #0284c7;">
+                                                        <t t-if="state.selectedShiftOrder.pump_id">Calle <t t-esc="state.selectedShiftOrder.pump_id"/></t>
+                                                        <t t-else=""><t t-esc="state.selectedShiftOrder.pump_name"/></t>
+                                                    </strong>
+                                                </span>
                                             </div>
                                             <div class="meta-row" t-if="state.selectedShiftOrder.annulment_ref">
                                                 <span class="meta-label">Ref. Anulación</span>

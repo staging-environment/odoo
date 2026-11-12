@@ -48,6 +48,12 @@ class PosOrder(models.Model):
         string="Surtidor / Calle Extracción",
         default=0
     )
+    pump_id = fields.Integer(
+        string="Surtidor / Calle",
+        default=0,
+        copy=False,
+        help="Número de la calle o surtidor del suministro"
+    )
     is_albaran = fields.Boolean(
         string="Es Albarán de Crédito",
         default=False,
@@ -214,6 +220,7 @@ class PosOrder(models.Model):
         fields['is_albaran'] = ui_order.get('is_albaran', False)
         fields['vehicle_plate'] = ui_order.get('vehicle_plate', False)
         fields['vehicle_driver'] = ui_order.get('vehicle_driver', False)
+        fields['pump_id'] = ui_order.get('pump_id', 0)
         return fields
 
     @api.model
@@ -236,4 +243,5 @@ class PosOrder(models.Model):
                         r['is_albaran'] = o.is_albaran
                         r['vehicle_plate'] = o.vehicle_plate
                         r['vehicle_driver'] = o.vehicle_driver
+                        r['pump_id'] = o.pump_id
         return order_sync_results

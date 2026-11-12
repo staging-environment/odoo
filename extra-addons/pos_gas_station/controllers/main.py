@@ -1,6 +1,7 @@
 import subprocess
 import tempfile
 import os
+import re
 # -*- coding: utf-8 -*-
 from odoo import http, fields
 from odoo.exceptions import UserError
@@ -1651,6 +1652,20 @@ class PosGasStationController(http.Controller):
                 is_annulled = (bool(getattr(o, 'is_ticket_annulled', False)) or o.state == 'cancel') and not is_inv
                 order_state = 'extraction' if getattr(o, 'is_extraction', False) else ('annulled' if is_annulled else ('invoiced' if is_inv else ('albaran' if getattr(o, 'is_albaran', False) else o.state)))
 
+                pump_val = getattr(o, 'pump_id', 0) or getattr(o, 'extraction_pump_id', 0) or 0
+                if not pump_val and o.note:
+                    m = re.search(r'(?:Calle|Surtidor)\s*[:#]?\s*(\d+)', o.note, re.IGNORECASE)
+                    if m:
+                        pump_val = int(m.group(1))
+                if not pump_val:
+                    for l in o.lines:
+                        c_note = getattr(l, 'customer_note', '') or ''
+                        if c_note:
+                            m = re.search(r'(?:Calle|Surtidor)\s*[:#]?\s*(\d+)', c_note, re.IGNORECASE)
+                            if m:
+                                pump_val = int(m.group(1))
+                                break
+
                 orders_list.append({
                     'id': o.id,
                     'name': o.name,
@@ -1659,6 +1674,8 @@ class PosGasStationController(http.Controller):
                     'session_id': session.id,
                     'session_name': session.name,
                     'user_name': o.user_id.name or 'Cajero',
+                    'pump_id': pump_val,
+                    'pump_name': f"Calle {pump_val}" if pump_val else "",
                     'partner_id': o.partner_id.id if o.partner_id else False,
                     'partner_name': o.partner_id.name if o.partner_id else False,
                     'partner_ref': o.partner_id.ref or (f"CLI-{o.partner_id.id}" if o.partner_id else ''),
