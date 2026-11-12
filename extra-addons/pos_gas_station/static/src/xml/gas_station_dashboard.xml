@@ -62,27 +62,6 @@
                         <button class="btn btn-outline-secondary btn-sm fw-semibold" t-on-click="() => this.loadDashboardData()" title="Actualizar datos">
                             <i class="fa fa-refresh me-1" t-att-class="state.loading ? 'fa-spin' : ''"/> Actualizar
                         </button>
-
-                        <!-- Info Administrador Activo en Dashboard -->
-                        <div class="d-inline-flex align-items-center bg-white border rounded-pill px-3 py-1 ms-2 me-2 shadow-sm" 
-                             style="height: 32px;"
-                             t-if="state.adminName or state.userName">
-                            <i class="fa fa-user-circle text-primary me-2 fs-6"></i>
-                            <span class="fw-bold text-dark me-2" style="font-size: 0.82rem;">
-                                <t t-esc="state.adminName || state.userName"/>
-                            </span>
-                            <span class="badge bg-light text-secondary border font-monospace" style="font-size: 0.72rem;" t-if="state.vpnIp">
-                                <i class="fa fa-wifi me-1 text-primary"></i><t t-esc="state.vpnIp"/>
-                            </span>
-                        </div>
-
-                        <!-- Botón Salir de Sesión a Home inicial -->
-                        <a href="/pos_gas_station/admin_logout" 
-                           class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold shadow-sm d-inline-flex align-items-center"
-                           style="height: 32px; font-size: 0.82rem;"
-                           title="Salir del usuario activo y volver a la selección inicial de gasolinera / administración">
-                            <i class="fa fa-sign-out me-1"></i> Salir
-                        </a>
                     </div>
                 </div>
 
