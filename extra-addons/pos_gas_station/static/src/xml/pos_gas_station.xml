@@ -2935,4 +2935,10 @@
         </xpath>
     </t>
 
+    <!-- OCULTAR BOTONES DE PEDIDOS Y MÁS INFORMACIÓN EN DETALLES DE CLIENTE DEL TPV -->
+    <t t-name="pos_gas_station.PartnerListScreen" t-inherit="point_of_sale.PartnerListScreen" t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('top-right-buttons')]//div[hasclass('more-info')]" position="replace" />
+        <xpath expr="//div[hasclass('top-right-buttons')]//div[hasclass('more-info')]" position="replace" />
+    </t>
+
 </templates>

@@ -6971,3 +6971,12 @@
 .btn-refund-btn:active {
     transform: scale(0.97) !important;
 }
+
+/* ==========================================================================
+   OCULTAR BOTONES DE PEDIDOS Y MÁS INFORMACIÓN EN FICHA DE CLIENTE DEL TPV
+   ========================================================================== */
+.partnerlist-screen .top-content .top-right-buttons .button.more-info,
+.partnerlist-screen .button.more-info,
+.partnerlist-screen .top-right-buttons a[target="_blank"] {
+    display: none !important;
+}
