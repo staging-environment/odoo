@@ -1745,7 +1745,6 @@ export class UtrecarMainScreen extends Component {
     openAnnulOrderModal(order) {
         if (!order) return;
         this.state.annulModalOrder = order;
-        this.state.annulModalReason = "Anulación a petición del cliente";
         this.state.isAnnulingOrder = false;
         this.state.isAnnulOrderModalOpen = true;
     }
@@ -1760,7 +1759,7 @@ export class UtrecarMainScreen extends Component {
         if (!this.state.annulModalOrder || this.state.isAnnulingOrder) return;
         this.state.isAnnulingOrder = true;
         const order = this.state.annulModalOrder;
-        const reason = this.state.annulModalReason || "Anulación manual";
+        const reason = "Anulación de ticket";
 
         try {
             const res = await this.env.services.rpc("/pos_gas_station/annul_order", {

@@ -2516,18 +2516,6 @@
                             </div>
                         </div>
 
-                        <!-- Selector de Motivo -->
-                        <div class="annul-reason-group">
-                            <label class="annul-reason-label">Motivo de la anulación:</label>
-                            <select class="form-select annul-reason-select" t-model="state.annulModalReason">
-                                <option value="Anulación a petición del cliente">Anulación a petición del cliente</option>
-                                <option value="Error de cobro / importe incorrecto">Error de cobro / importe incorrecto</option>
-                                <option value="Error en forma de pago">Error en forma de pago</option>
-                                <option value="Devolución de mercancía">Devolución de mercancía</option>
-                                <option value="Prueba / Ticket erróneo">Prueba / Ticket erróneo</option>
-                            </select>
-                        </div>
-
                         <div class="annul-legal-notice">
                             <i class="fa fa-info-circle me-1"/> El ticket se conservará en el sistema con serie oficial <strong>TTTR_</strong> para trazabilidad legal.
                         </div>
