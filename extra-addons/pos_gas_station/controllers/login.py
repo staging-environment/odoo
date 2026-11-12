@@ -63,13 +63,17 @@ class UtrecarPosController(PosController):
             config = PosConfig.get_station_by_vpn_ip(ip)
 
         if config:
+            # Blindaje multi-compañía: asegurar que el usuario actual tenga la compañía de esta estación asignada
+            user = request.env.user
+            if user and config.company_id and config.company_id.id not in user.company_ids.ids:
+                user.sudo().write({'company_ids': [(4, config.company_id.id)]})
+
             active_session = request.env['pos.session'].sudo().search([
                 ('config_id', '=', config.id),
                 ('state', '=', 'opened')
             ], limit=1)
 
             if not active_session or k.get('select_employee'):
-                user = request.env.user
                 is_admin = bool(user and (user._is_admin() or user.has_group('base.group_erp_manager') or user.has_group('base.group_system')))
                 if is_admin:
                     config.open_shift_for_user(user)

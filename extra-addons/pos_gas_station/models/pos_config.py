@@ -340,6 +340,8 @@ class PosConfig(models.Model):
     def open_shift_for_user(self, user, latitude=None, longitude=None, employee_id=None):
         """Abre o reanuda el turno (pos.session) en este TPV para el empleado seleccionado y registra checkin en admin-platform."""
         self.ensure_one()
+        if self.company_id and self.company_id.id not in user.company_ids.ids:
+            user.sudo().write({'company_ids': [(4, self.company_id.id)]})
         Session = self.env['pos.session'].sudo()
 
         session = Session.search([
