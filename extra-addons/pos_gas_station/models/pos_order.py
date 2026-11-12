@@ -97,19 +97,48 @@ class PosOrder(models.Model):
 
     def _generate_annulment_ref(self):
         self.ensure_one()
-        orig_name = self.name or ''
-        digits = ''.join(c for c in orig_name if c.isdigit())
-        if not digits:
-            digits = str(self.id).zfill(4)
-        else:
-            digits = digits[-4:].zfill(4)
-        return f"TTTR_{digits}"
+        config = self.session_id.config_id or self.config_id
+        base_prefix = "TTTR"
+        if config and config.sequence_id and config.sequence_id.prefix:
+            clean_p = config.sequence_id.prefix.strip().rstrip('/')
+            if clean_p:
+                base_prefix = clean_p
+
+        seq_code = f"pos.order.annulment.{config.id}" if config else "pos.order.annulment"
+        sequence = self.env['ir.sequence'].sudo().search([('code', '=', seq_code)], limit=1)
+        if not sequence:
+            # Buscar el mayor correlativo existente con este prefijo para continuar la serie
+            self.env.cr.execute("""
+                SELECT annulment_ref FROM pos_order 
+                WHERE annulment_ref IS NOT NULL AND annulment_ref LIKE %s
+            """, (f"{base_prefix}_%",))
+            existing_refs = [r[0] for r in self.env.cr.fetchall() if r[0]]
+            max_num = 0
+            for ref_str in existing_refs:
+                parts = ref_str.split('_')
+                if len(parts) >= 2 and parts[-1].isdigit():
+                    num = int(parts[-1])
+                    if num > max_num:
+                        max_num = num
+
+            next_num = max_num + 1
+            sequence = self.env['ir.sequence'].sudo().create({
+                'name': f"Secuencia de Anulación TPV {config.name if config else ''}",
+                'code': seq_code,
+                'prefix': f"{base_prefix}_",
+                'padding': 4,
+                'number_next': next_num,
+                'number_increment': 1,
+                'company_id': self.company_id.id if self.company_id else False,
+            })
+
+        return sequence.next_by_id()
 
     def action_annul_ticket(self, reason=None):
         for order in self:
-            if order.is_ticket_annulled:
+            if order.is_ticket_annulled and order.annulment_ref:
                 continue
-            ref = order._generate_annulment_ref()
+            ref = order.annulment_ref or order._generate_annulment_ref()
             order.write({
                 'is_ticket_annulled': True,
                 'annulment_ref': ref,
@@ -122,7 +151,7 @@ class PosOrder(models.Model):
         res = super().action_pos_order_invoice()
         for order in self:
             if order.account_move:
-                ref = order._generate_annulment_ref()
+                ref = order.annulment_ref or order._generate_annulment_ref()
                 inv_name = order.account_move.name or 'Factura emitida'
                 order.write({
                     'is_ticket_annulled': True,

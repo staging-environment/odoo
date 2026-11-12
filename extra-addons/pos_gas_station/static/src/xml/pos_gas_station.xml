@@ -1423,6 +1423,7 @@
                                     <table class="shift-orders-table">
                                         <thead>
                                             <tr>
+                                                <th style="width: 32px; text-align: center;"></th>
                                                 <th style="width: 135px;">FECHA / HORA</th>
                                                 <th style="width: 85px;">Nº TICKET</th>
                                                 <th style="width: 80px; text-align: center;">CALLE</th>
@@ -1437,6 +1438,15 @@
                                                 <tr t-attf-class="shift-order-row #{ord.is_ticket_annulled ? 'order-row-annulled' : ''}" 
                                                     t-att-title="ord.is_ticket_annulled ? ('Ticket Anulado' + (ord.annulment_ref ? ' [' + ord.annulment_ref + ']' : '')) : ''"
                                                     t-on-click="() => this.selectShiftOrder(ord)">
+                                                    <td class="cell-toggle" style="text-align: center; width: 32px; padding: 4px 2px !important;" t-on-click.stop="">
+                                                        <t t-if="ord.has_history">
+                                                            <button class="btn-toggle-history" 
+                                                                    t-on-click="() => this.toggleOrderHistory(ord.id)" 
+                                                                    t-attf-title="#{isOrderExpanded(ord.id) ? 'Plegar historial' : 'Desplegar historial (anulación, factura, albarán)'}">
+                                                                <i t-attf-class="fa #{isOrderExpanded(ord.id) ? 'fa-chevron-down' : 'fa-chevron-right'}"/>
+                                                            </button>
+                                                        </t>
+                                                    </td>
                                                     <td class="cell-date"><t t-esc="ord.date_order"/></td>
                                                     <td class="cell-name" t-att-title="ord.is_ticket_annulled ? ('Ticket Anulado' + (ord.annulment_ref ? ' [' + ord.annulment_ref + ']' : '')) : ''">
                                                         <strong><t t-esc="ord.name"/></strong>
@@ -1503,6 +1513,84 @@
                                                         </t>
                                                     </td>
                                                 </tr>
+                                                <!-- SUB-FILA DESPLEGABLE: HISTORIAL DEL PEDIDO (ANULACIÓN, FACTURA, ALBARÁN) -->
+                                                <t t-if="ord.has_history &amp;&amp; isOrderExpanded(ord.id)">
+                                                    <tr class="shift-order-subrow">
+                                                        <td colspan="8" class="p-0">
+                                                            <div class="order-history-panel">
+                                                                <div class="history-tree-header">
+                                                                    <i class="fa fa-history text-primary me-2"/>
+                                                                    <strong>Historial del Suministro <t t-esc="ord.name"/></strong>
+                                                                    <span class="text-muted ms-2">(<t t-esc="ord.history.length"/> documento<t t-if="ord.history.length > 1">s</t> vinculado<t t-if="ord.history.length > 1">s</t>)</span>
+                                                                </div>
+                                                                <table class="history-subtable">
+                                                                    <tbody>
+                                                                        <t t-foreach="ord.history" t-as="item" t-key="item_index">
+                                                                            <tr t-attf-class="history-item-row history-type-#{item.type}">
+                                                                                <td style="width: 32px; text-align: center;">
+                                                                                    <i t-attf-class="fa #{item.icon} text-muted"/>
+                                                                                </td>
+                                                                                <td style="width: 140px;">
+                                                                                    <span t-attf-class="badge-hist-type #{item.badge_class}">
+                                                                                        <t t-esc="item.type_label"/>
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td style="width: 140px;">
+                                                                                    <strong class="font-monospace text-dark"><t t-esc="item.ref"/></strong>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <span class="text-secondary" style="font-size: 12px;"><t t-esc="item.description"/></span>
+                                                                                </td>
+                                                                                <td style="width: 130px; font-size: 11px; color: #64748b;">
+                                                                                    <t t-esc="item.date"/>
+                                                                                </td>
+                                                                                <td style="width: 90px; text-align: right;">
+                                                                                    <strong t-attf-style="#{item.type === 'annulment' ? 'color: #dc2626;' : 'color: #0f172a;'}">
+                                                                                        <t t-esc="item.amount"/> €
+                                                                                    </strong>
+                                                                                </td>
+                                                                                <td style="width: 220px; text-align: center;" t-on-click.stop="">
+                                                                                    <t t-if="item.type === 'annulment'">
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printAnnulmentReceipt(ord, item)" title="Imprimir justificante oficial de anulación">
+                                                                                            🖨️ Justificante
+                                                                                        </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
+                                                                                            👁 Ver
+                                                                                        </button>
+                                                                                    </t>
+                                                                                    <t t-elif="item.type === 'invoice'">
+                                                                                        <button class="btn-tbl-action btn-tbl-pdf" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura PDF">
+                                                                                            🖨️ PDF
+                                                                                        </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
+                                                                                            📧 Email
+                                                                                        </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
+                                                                                            👁 Ver
+                                                                                        </button>
+                                                                                    </t>
+                                                                                    <t t-elif="item.type === 'albaran'">
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false)" title="Imprimir Albarán firmado de crédito">
+                                                                                            📋 Albarán
+                                                                                        </button>
+                                                                                        <t t-if="!ord.is_invoiced">
+                                                                                            <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Facturar Albarán">
+                                                                                                📄 Facturar
+                                                                                            </button>
+                                                                                        </t>
+                                                                                        <button class="btn-tbl-action btn-tbl-detail" t-on-click="() => this.selectShiftOrder(ord)" title="Ver detalle completo">
+                                                                                            👁 Ver
+                                                                                        </button>
+                                                                                    </t>
+                                                                                </td>
+                                                                            </tr>
+                                                                        </t>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </t>
                                             </t>
                                         </tbody>
                                     </table>

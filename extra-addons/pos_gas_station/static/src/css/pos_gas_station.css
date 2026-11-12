@@ -5328,6 +5328,124 @@
     font-size: 10px !important;
     font-weight: 700 !important;
     border: 1px solid #a7f3d0 !important;
+}
+
+/* ======================================================== */
+/* SUB-FILA DESPLEGABLE: HISTORIAL DE PEDIDO (ANULACIÓN/FACTURA/CRÉDITO) */
+/* ======================================================== */
+.cell-toggle {
+    width: 32px !important;
+    text-align: center !important;
+    padding: 2px !important;
+    vertical-align: middle !important;
+}
+
+.btn-toggle-history {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    color: #475569 !important;
+    font-size: 11px !important;
+    width: 22px !important;
+    height: 22px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    padding: 0 !important;
+}
+
+.btn-toggle-history:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+    transform: scale(1.05) !important;
+}
+
+.shift-order-subrow {
+    background-color: #f8fafc !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+}
+
+.shift-order-subrow td {
+    padding: 0 !important;
+    background: #f8fafc !important;
+}
+
+.order-history-panel {
+    padding: 8px 14px 10px 38px !important;
+    background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%) !important;
+    border-left: 5px solid #2563eb !important;
+}
+
+.history-tree-header {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    margin-bottom: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.history-subtable {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+.history-subtable tr {
+    border-bottom: 1px solid #f1f5f9 !important;
+    height: 36px !important;
+    transition: background 0.1s ease !important;
+}
+
+.history-subtable tr:last-child {
+    border-bottom: none !important;
+}
+
+.history-subtable tr:hover {
+    background: #f8fafc !important;
+}
+
+.history-subtable td {
+    padding: 5px 8px !important;
+    vertical-align: middle !important;
+    font-size: 11.5px !important;
+}
+
+.badge-hist-type {
+    display: inline-block !important;
+    padding: 2px 7px !important;
+    border-radius: 4px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.3px !important;
+    white-space: nowrap !important;
+}
+
+.badge-history-annulment {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+    border: 1px solid #fecaca !important;
+}
+
+.badge-history-invoice {
+    background: #dbeafe !important;
+    color: #1e40af !important;
+    border: 1px solid #bfdbfe !important;
+}
+
+.badge-history-albaran {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px solid #fde68a !important;
+}
     white-space: nowrap !important;
 }
 

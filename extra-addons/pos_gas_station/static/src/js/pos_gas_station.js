@@ -214,6 +214,7 @@ export class UtrecarMainScreen extends Component {
             selectedShiftOrder: null,
             shiftActiveTab: 'products',
             shiftOrderSearch: "",
+            expandedShiftOrderIds: {},
             isInvoiceModalOpen: false,
             invoicePartnerSearch: "",
             invoiceEmail: "",
@@ -1416,6 +1417,116 @@ export class UtrecarMainScreen extends Component {
             (o.pump_name && o.pump_name.toLowerCase().includes(q)) ||
             String(o.amount_total).includes(q)
         );
+    }
+
+    toggleOrderHistory(orderId) {
+        if (!this.state.expandedShiftOrderIds) {
+            this.state.expandedShiftOrderIds = {};
+        }
+        this.state.expandedShiftOrderIds[orderId] = !this.state.expandedShiftOrderIds[orderId];
+    }
+
+    isOrderExpanded(orderId) {
+        return Boolean(this.state.expandedShiftOrderIds && this.state.expandedShiftOrderIds[orderId]);
+    }
+
+    printAnnulmentReceipt(order, historyItem) {
+        if (!order) return;
+        const comp = order.company || {};
+        const refAnnul = (historyItem && historyItem.ref) ? historyItem.ref : (order.annulment_ref || 'TTTR_ANUL');
+        const dateAnnul = (historyItem && historyItem.date) ? historyItem.date : (order.annulment_date || order.date_order);
+        const reasonAnnul = (historyItem && historyItem.description) ? historyItem.description : (order.annulment_reason || 'Anulación oficial de ticket');
+
+        const linesHtml = (order.lines || []).map(l => `
+            <tr>
+                <td style="text-align: left; padding: 4px 0;">${l.product_name}</td>
+                <td style="text-align: right; padding: 4px 0;">-${Number(l.qty).toFixed(2)}</td>
+                <td style="text-align: right; padding: 4px 0;">${Number(l.price_unit).toFixed(3)} €</td>
+                <td style="text-align: right; padding: 4px 0; font-weight: bold; color: #b71c1c;">-${Number(l.price_subtotal_incl).toFixed(2)} €</td>
+            </tr>
+        `).join("");
+
+        const receiptWindow = window.open("", "_blank", "width=400,height=650");
+        if (!receiptWindow) {
+            alert("Por favor permita las ventanas emergentes en su navegador para imprimir.");
+            return;
+        }
+
+        receiptWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Justificante Anulación ${refAnnul}</title>
+                <style>
+                    body { font-family: monospace, sans-serif; font-size: 12px; margin: 0; padding: 10px; color: #000; }
+                    .text-center { text-align: center; }
+                    .fw-bold { font-weight: bold; }
+                    .divider { border-bottom: 1px dashed #000; margin: 8px 0; }
+                    .annul-box {
+                        border: 2px dashed #b71c1c;
+                        background: #ffebee;
+                        color: #b71c1c;
+                        padding: 8px;
+                        text-align: center;
+                        margin-bottom: 10px;
+                        font-weight: bold;
+                    }
+                </style>
+            </head>
+            <body onload="window.print(); window.close();">
+                <div class="text-center fw-bold" style="font-size: 15px;">${comp.name || 'UTRECAR S.L.'}</div>
+                <div class="text-center" style="font-size: 11px;">
+                    ${comp.vat ? `CIF: ${comp.vat}<br/>` : ''}
+                    ${comp.street || ''} ${comp.city || ''}<br/>
+                    ${comp.phone ? `Tlf: ${comp.phone}` : ''}
+                </div>
+                <div class="divider"></div>
+                
+                <div class="annul-box">
+                    <div style="font-size: 13px; letter-spacing: 1px;">*** JUSTIFICANTE DE ANULACIÓN ***</div>
+                    <div style="font-size: 15px; margin-top: 3px;">Nº ANULACIÓN: ${refAnnul}</div>
+                    <div style="font-size: 11px; margin-top: 2px;">FECHA: ${dateAnnul}</div>
+                </div>
+
+                <div style="font-size: 11px; margin-bottom: 6px;">
+                    <div><strong>TICKET ORIGINAL ANULADO:</strong> ${order.name}</div>
+                    <div><strong>FECHA EMISIÓN TICKET:</strong> ${order.date_order}</div>
+                    ${order.pump_name ? `<div><strong>CALLE / SURTIDOR:</strong> ${order.pump_name}</div>` : (order.pump_id ? `<div><strong>CALLE:</strong> Calle ${order.pump_id}</div>` : '')}
+                    ${order.partner_name ? `<div><strong>CLIENTE:</strong> ${order.partner_name}</div>` : ''}
+                    <div style="margin-top: 4px; font-style: italic;"><strong>MOTIVO:</strong> ${reasonAnnul}</div>
+                </div>
+
+                <div class="divider"></div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #000;">
+                            <th style="text-align: left; padding-bottom: 3px;">Artículo</th>
+                            <th style="text-align: right; padding-bottom: 3px;">Cant.</th>
+                            <th style="text-align: right; padding-bottom: 3px;">Precio</th>
+                            <th style="text-align: right; padding-bottom: 3px;">Rectificado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${linesHtml}
+                    </tbody>
+                </table>
+                <div class="divider"></div>
+
+                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; color: #b71c1c; margin-top: 6px;">
+                    <span>TOTAL RECTIFICADO:</span>
+                    <span>-${Number(order.amount_total).toFixed(2)} €</span>
+                </div>
+
+                <div class="divider"></div>
+                <div class="text-center" style="font-size: 10px; margin-top: 10px; color: #444;">
+                    Documento de trazabilidad fiscal y rectificación de ticket.<br/>
+                    Conservar junto con el cierre de turno.
+                </div>
+            </body>
+            </html>
+        `);
+        receiptWindow.document.close();
     }
 
     selectShiftOrder(order) {

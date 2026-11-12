@@ -1649,8 +1649,10 @@ class PosGasStationController(http.Controller):
 
                 is_inv = bool(o.account_move)
                 inv_url = f'/report/pdf/account.report_invoice_with_payments/{o.account_move.id}' if is_inv else False
-                is_annulled = (bool(getattr(o, 'is_ticket_annulled', False)) or o.state == 'cancel') and not is_inv
-                order_state = 'extraction' if getattr(o, 'is_extraction', False) else ('annulled' if is_annulled else ('invoiced' if is_inv else ('albaran' if getattr(o, 'is_albaran', False) else o.state)))
+                has_annulment = bool(getattr(o, 'is_ticket_annulled', False)) or bool(getattr(o, 'annulment_ref', False)) or (o.state == 'cancel')
+                is_albaran = bool(getattr(o, 'is_albaran', False))
+                is_annulled_only = has_annulment and not is_inv
+                order_state = 'extraction' if getattr(o, 'is_extraction', False) else ('annulled' if is_annulled_only else ('invoiced' if is_inv else ('albaran' if is_albaran else o.state)))
 
                 pump_val = getattr(o, 'pump_id', 0) or getattr(o, 'extraction_pump_id', 0) or 0
                 if not pump_val and o.note:
@@ -1665,6 +1667,89 @@ class PosGasStationController(http.Controller):
                             if m:
                                 pump_val = int(m.group(1))
                                 break
+
+                annul_ref_val = getattr(o, 'annulment_ref', False) or ''
+                if not annul_ref_val and has_annulment:
+                    digits = ''.join(c for c in (o.name or '') if c.isdigit()) or str(o.id)
+                    annul_ref_val = f"TTTR_{digits[-4:].zfill(4)}"
+
+                annul_date_str = ""
+                if getattr(o, 'annulment_date', False):
+                    try:
+                        a_date = fields.Datetime.context_timestamp(o, o.annulment_date)
+                        annul_date_str = a_date.strftime("%d/%m/%Y %H:%M:%S")
+                    except Exception:
+                        annul_date_str = str(o.annulment_date)
+                if not annul_date_str and has_annulment:
+                    annul_date_str = date_str
+
+                inv_date_str = ""
+                if is_inv and o.account_move:
+                    inv_d = o.account_move.invoice_date or o.account_move.date
+                    if inv_d:
+                        try:
+                            inv_date_str = inv_d.strftime("%d/%m/%Y")
+                        except Exception:
+                            inv_date_str = str(inv_d)
+                if not inv_date_str and is_inv:
+                    inv_date_str = date_str
+
+                order_history = []
+                # 1. Ticket de Anulación si fue anulado (directo o por factura)
+                if has_annulment:
+                    annul_reason = getattr(o, 'annulment_reason', '') or ('Anulado por canje a factura' if is_inv else 'Anulación de ticket')
+                    order_history.append({
+                        'type': 'annulment',
+                        'type_label': 'Ticket Anulación',
+                        'icon': 'fa-ban',
+                        'badge_class': 'badge-history-annulment',
+                        'ref': annul_ref_val,
+                        'date': annul_date_str,
+                        'description': annul_reason,
+                        'amount': f"-{o.amount_total:.2f}",
+                        'amount_raw': -o.amount_total,
+                    })
+
+                # 2. Factura oficial emitida
+                if is_inv:
+                    partner_desc = o.partner_id.name if o.partner_id else 'Cliente'
+                    if o.partner_id and o.partner_id.vat:
+                        partner_desc += f" ({o.partner_id.vat})"
+                    order_history.append({
+                        'type': 'invoice',
+                        'type_label': 'Factura Oficial',
+                        'icon': 'fa-file-text-o',
+                        'badge_class': 'badge-history-invoice',
+                        'ref': o.account_move.name or f"FACT-{o.account_move.id}",
+                        'account_move_id': o.account_move.id,
+                        'date': inv_date_str,
+                        'description': f"Facturado a {partner_desc}",
+                        'amount': f"{o.amount_total:.2f}",
+                        'amount_raw': o.amount_total,
+                        'invoice_url': inv_url,
+                    })
+
+                # 3. Cliente de crédito / Albarán
+                if is_albaran:
+                    plate_driver = []
+                    if getattr(o, 'vehicle_plate', ''):
+                        plate_driver.append(f"Matrícula: {o.vehicle_plate}")
+                    if getattr(o, 'vehicle_driver', ''):
+                        plate_driver.append(f"Conductor: {o.vehicle_driver}")
+                    extra_info = f" ({' | '.join(plate_driver)})" if plate_driver else ""
+                    order_history.append({
+                        'type': 'albaran',
+                        'type_label': 'Cliente Crédito',
+                        'icon': 'fa-credit-card',
+                        'badge_class': 'badge-history-albaran',
+                        'ref': f"Albarán Crédito ({o.name})",
+                        'date': date_str,
+                        'description': f"Suministro a crédito: {o.partner_id.name if o.partner_id else 'Cliente'}{extra_info}",
+                        'amount': f"{o.amount_total:.2f}",
+                        'amount_raw': o.amount_total,
+                    })
+
+                has_history = len(order_history) > 0
 
                 orders_list.append({
                     'id': o.id,
@@ -1693,19 +1778,22 @@ class PosGasStationController(http.Controller):
                     'state': order_state,
                     'is_invoiced': is_inv,
                     'is_extraction': getattr(o, 'is_extraction', False),
-                    'is_albaran': getattr(o, 'is_albaran', False),
+                    'is_albaran': is_albaran,
                     'vehicle_plate': getattr(o, 'vehicle_plate', '') or '',
                     'vehicle_driver': getattr(o, 'vehicle_driver', '') or '',
                     'extraction_reason': getattr(o, 'extraction_reason', '') or '',
                     'extraction_liters': float(getattr(o, 'extraction_liters', 0.0) or 0.0),
                     'extraction_pump_id': int(getattr(o, 'extraction_pump_id', 0) or 0),
-                    'is_ticket_annulled': is_annulled,
-                    'annulment_ref': getattr(o, 'annulment_ref', False) or (f"TTTR_{(''.join(c for c in (o.name or '') if c.isdigit()) or str(o.id))[-4:].zfill(4)}" if is_annulled else ''),
-                    'annulment_reason': getattr(o, 'annulment_reason', False) or ('Anulación de ticket' if is_annulled else ''),
-                    'annulment_date': str(getattr(o, 'annulment_date', '')) if getattr(o, 'annulment_date', False) else '',
+                    'is_ticket_annulled': is_annulled_only,
+                    'has_annulment': has_annulment,
+                    'annulment_ref': annul_ref_val,
+                    'annulment_reason': getattr(o, 'annulment_reason', False) or ('Anulación de ticket' if has_annulment else ''),
+                    'annulment_date': annul_date_str,
                     'account_move_id': o.account_move.id if is_inv else False,
                     'account_move_name': o.account_move.name if is_inv else '',
                     'invoice_url': inv_url,
+                    'has_history': has_history,
+                    'history': order_history,
                     'amount_total': round(o.amount_total, 2),
                     'amount_total_str': f"{o.amount_total:.2f}",
                     'amount_tax': round(o.amount_tax, 2),
@@ -1834,8 +1922,7 @@ class PosGasStationController(http.Controller):
             if hasattr(order, 'action_annul_ticket'):
                 order.action_annul_ticket(reason=reason)
             else:
-                digits = ''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id)
-                ref = f"TTTR_{digits[-4:].zfill(4)}"
+                ref = order._generate_annulment_ref() if hasattr(order, '_generate_annulment_ref') else f"TTTR_{(''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id))[-4:].zfill(4)}"
                 order.write({
                     'is_ticket_annulled': True,
                     'annulment_ref': ref,
