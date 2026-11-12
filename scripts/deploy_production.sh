@@ -17,3 +17,4 @@ echo "=== WAITING FOR ODOO TO BE READY ==="
 sleep 4
 ssh utrecar-dev "docker logs --tail 20 ddev-odoo-odoo"
 echo "=== DEPLOYMENT COMPLETE ==="
+

@@ -2,7 +2,7 @@
 <templates id="template" xml:space="preserve">
 
     <t t-name="pos_gas_station.VpnCompanyAdminsView" owl="1">
-        <div class="vpn-admins-page container-fluid py-4 px-4 bg-light" style="min-height: 100vh;">
+        <div class="vpn-admins-page container-fluid py-4 px-4 bg-light">
 
             <!-- CABECERA SUPERIOR -->
             <div class="bg-white p-4 rounded-3 shadow-sm border mb-4">

@@ -1,6 +1,25 @@
-/* Estilos para VpnCompanyAdminsView */
+/* ==========================================================================
+   ADMINISTRADORES POR EMPRESA (VPN) - GESTIÓN MULTI-EMPRESA UTRECAR
+   ========================================================================== */
+
+/* Habilitar scroll completo en el contenedor de acción de Odoo 17 */
+.o_content:has(.vpn-admins-page),
+.o_client_action:has(.vpn-admins-page),
+.o_action_manager:has(.vpn-admins-page) {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
 .vpn-admins-page {
-    background-color: #f8fafc;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background-color: #f8fafc !important;
+    padding-bottom: 90px !important;
+    box-sizing: border-box !important;
 }
 
 .modal-backdrop-custom {
