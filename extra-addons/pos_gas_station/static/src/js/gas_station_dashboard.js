@@ -69,6 +69,13 @@ export class GasStationDashboard extends Component {
             editCompanyWebsite: "",
             renameStationId: null,
             renameStationName: "",
+            showEditStationModal: false,
+            editStationId: null,
+            editStationName: "",
+            editStationVpnIp: "",
+            editStationAdminPlatformCode: "",
+            editStationCompanyId: null,
+            stationEditError: null,
             actionLoading: false,
 
             // Modal de asignación de empleados por empresa
@@ -319,41 +326,82 @@ export class GasStationDashboard extends Component {
         }
     }
 
-    promptRenameStation(st) {
+    promptEditStation(st) {
+        this.state.editStationId = st.id;
+        this.state.editStationName = st.name || "";
+        this.state.editStationVpnIp = st.vpn_ip || "";
+        this.state.editStationAdminPlatformCode = st.admin_platform_code || "";
+        this.state.editStationCompanyId = st.company_id || (this.state.companies[0] ? this.state.companies[0].id : null);
         this.state.renameStationId = st.id;
-        this.state.renameStationName = st.name;
-        this.state.showRenameStationModal = true;
+        this.state.renameStationName = st.name || "";
+        this.state.stationEditError = null;
+        this.state.showEditStationModal = true;
     }
 
-    closeRenameStationModal() {
+    promptRenameStation(st) {
+        this.promptEditStation(st);
+    }
+
+    closeEditStationModal() {
+        this.state.stationEditError = null;
+        this.state.showEditStationModal = false;
         this.state.showRenameStationModal = false;
     }
 
-    async submitRenameStation() {
-        const name = (this.state.renameStationName || "").trim();
+    closeRenameStationModal() {
+        this.closeEditStationModal();
+    }
+
+    openFullStationForm(stationId) {
+        this.closeEditStationModal();
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            res_model: "pos.config",
+            res_id: stationId,
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+
+    async submitEditStation() {
+        this.state.stationEditError = null;
+        const name = (this.state.editStationName || this.state.renameStationName || "").trim();
         if (!name) {
-            this.notification.add("El nombre no puede estar vacío.", { type: "warning" });
+            this.state.stationEditError = "El nombre de la estación no puede estar vacío.";
+            this.notification.add("El nombre de la estación no puede estar vacío.", { type: "warning" });
             return;
         }
         this.state.actionLoading = true;
         try {
-            const res = await jsonrpc("/pos_gas_station/rename_station", {
-                config_id: this.state.renameStationId,
-                name: name
+            const res = await jsonrpc("/pos_gas_station/update_station", {
+                config_id: this.state.editStationId || this.state.renameStationId,
+                name: name,
+                vpn_ip: this.state.editStationVpnIp,
+                admin_platform_code: this.state.editStationAdminPlatformCode,
+                company_id: this.state.editStationCompanyId
             });
             if (res.status === "success") {
                 this.notification.add(res.message, { type: "success" });
-                this.closeRenameStationModal();
+                this.closeEditStationModal();
+                if (this.state.viewMode === "company_detail" && this.state.selectedDetailCompany) {
+                    await this.loadCompanyDetailData(this.state.selectedDetailCompany.id);
+                }
                 await this.loadDashboardData();
             } else {
-                this.notification.add(res.message || "Error al renombrar estación", { type: "danger" });
+                this.state.stationEditError = res.message || "Error al actualizar estación";
+                this.notification.add(res.message || "Error al actualizar estación", { type: "danger" });
             }
         } catch (e) {
-            console.error("Error renaming station:", e);
-            this.notification.add("Error de conexión al renombrar estación", { type: "danger" });
+            console.error("Error updating station:", e);
+            this.state.stationEditError = "Error de conexión con el servidor al actualizar la estación.";
+            this.notification.add("Error de conexión al actualizar estación", { type: "danger" });
         } finally {
             this.state.actionLoading = false;
         }
+    }
+
+    async submitRenameStation() {
+        return this.submitEditStation();
     }
 
     async deleteStation(st) {

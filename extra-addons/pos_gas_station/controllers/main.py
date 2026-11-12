@@ -1325,6 +1325,7 @@ class PosGasStationController(http.Controller):
                     'company_id': c.id,
                     'company_name': c.name,
                     'vpn_ip': st.vpn_ip or '',
+                    'admin_platform_code': st.admin_platform_code or '',
                     'pumps_count': pumps_cnt,
                     'has_active_session': bool(active_session),
                     'session_state': active_session.state if active_session else 'closed',
@@ -1488,7 +1489,10 @@ class PosGasStationController(http.Controller):
             stations_data.append({
                 'id': st.id,
                 'name': st.name,
+                'company_id': company.id,
+                'company_name': company.name,
                 'vpn_ip': st.vpn_ip or '',
+                'admin_platform_code': st.admin_platform_code or '',
                 'has_active_session': bool(active_session),
                 'cashier_name': active_session.user_id.name if active_session else None,
                 'session_start': active_session.start_at.strftime('%d/%m/%Y %H:%M') if (active_session and active_session.start_at) else None,
@@ -2873,6 +2877,50 @@ class PosGasStationController(http.Controller):
         except Exception as e:
             _logger.exception("Error in create_station_quick: %s", e)
             return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/update_station', type='json', auth='user', methods=['POST'], csrf=False)
+    def update_station(self, config_id, name, vpn_ip=None, admin_platform_code=None, company_id=None):
+        try:
+            env = request.env
+            if not (env.user.has_group('point_of_sale.group_pos_manager') or env.user._is_admin()):
+                return {'status': 'error', 'message': 'No tiene permisos para modificar estaciones.'}
+            st = env['pos.config'].sudo().browse(int(config_id))
+            if not st.exists():
+                return {'status': 'error', 'message': 'Estación no encontrada.'}
+            clean_name = (name or '').strip()
+            if not clean_name:
+                return {'status': 'error', 'message': 'El nombre de la estación es obligatorio.'}
+
+            vals = {
+                'name': clean_name,
+                'vpn_ip': (vpn_ip or '').strip() or False,
+            }
+            if admin_platform_code is not None:
+                ap_str = str(admin_platform_code).strip()
+                vals['admin_platform_code'] = int(ap_str) if ap_str else False
+
+            if company_id:
+                new_comp = env['res.company'].sudo().browse(int(company_id))
+                if new_comp.exists() and new_comp.id != st.company_id.id:
+                    active_sess = env['pos.session'].sudo().search([('config_id', '=', st.id), ('state', '!=', 'closed')], limit=1)
+                    if active_sess:
+                        return {'status': 'error', 'message': f'No se puede cambiar la empresa de la estación mientras tenga un turno abierto ({active_sess.name}). Cierre el turno primero.'}
+                    vals['company_id'] = new_comp.id
+
+            st.write(vals)
+            return {
+                'status': 'success',
+                'config_id': st.id,
+                'name': st.name,
+                'message': f'Estación "{st.name}" actualizada correctamente.'
+            }
+        except Exception as e:
+            _logger.exception("Error in update_station: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/rename_station', type='json', auth='user', methods=['POST'], csrf=False)
+    def rename_station(self, config_id, name):
+        return self.update_station(config_id=config_id, name=name)
 
     @http.route('/pos_gas_station/register_extraction', type='json', auth='user', methods=['POST'], csrf=False)
     def register_extraction(self, session_id=None, order_lines=None, reason=None, pump_id=None, notes=None):

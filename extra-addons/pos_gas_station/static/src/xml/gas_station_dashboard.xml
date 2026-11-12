@@ -151,8 +151,8 @@
                                                                         <h4 class="station-title-text mb-0 text-truncate" t-att-title="st.name"><t t-esc="st.name"/></h4>
                                                                         <button class="btn btn-sm btn-link text-muted p-0 ms-1 flex-shrink-0" 
                                                                                 t-if="state.isManager" 
-                                                                                t-on-click="() => this.promptRenameStation(st)" 
-                                                                                title="Modificar nombre de la estación">
+                                                                                t-on-click="() => this.promptEditStation(st)" 
+                                                                                title="Modificar datos de la estación">
                                                                             <i class="fa fa-pencil text-secondary" style="font-size: 11px;"/>
                                                                         </button>
                                                                     </div>
@@ -344,6 +344,12 @@
                                             <div class="d-flex justify-content-between align-items-center mb-2">
                                                 <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                                                     ⛽ <t t-esc="st.name"/>
+                                                    <button class="btn btn-sm btn-link text-muted p-0 ms-1 flex-shrink-0" 
+                                                            t-if="state.isManager" 
+                                                            t-on-click="() => this.promptEditStation(st)" 
+                                                            title="Modificar datos de la estación">
+                                                        <i class="fa fa-pencil text-secondary" style="font-size: 12px;"/>
+                                                    </button>
                                                 </h5>
                                                 <span class="badge bg-light text-muted border font-monospace small">
                                                     <t t-esc="st.pumps_count"/> Surt.
@@ -806,28 +812,73 @@
                 </div>
             </t>
 
-            <!-- MODAL INLINE: RENOMBRAR ESTACIÓN -->
-            <t t-if="state.showRenameStationModal">
+            <!-- MODAL INLINE: MODIFICAR / EDITAR DATOS DE LA ESTACIÓN -->
+            <t t-if="state.showEditStationModal or state.showRenameStationModal">
                 <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1060;" role="dialog">
-                    <div class="modal-dialog modal-dialog-centered" role="document">
-                        <div class="modal-content shadow-lg border-0" style="border-radius: 14px; overflow: hidden; background: #ffffff;">
-                            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-primary text-white py-3 px-4 d-flex justify-content-between align-items-center">
                                 <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
-                                    <i class="fa fa-pencil text-warning"/> Modificar Nombre de la Estación
+                                    <i class="fa fa-gas-pump text-white"/> Modificar Datos de la Estación
                                 </h5>
-                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeRenameStationModal()" aria-label="Cerrar"></button>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeEditStationModal()" aria-label="Cerrar"></button>
                             </div>
                             <div class="modal-body p-4">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold text-dark">Nombre de la Estación</label>
-                                    <input type="text" class="form-control" t-model="state.renameStationName"/>
+                                <div t-if="state.stationEditError" class="alert alert-danger py-2 px-3 small d-flex align-items-center gap-2 mb-3 rounded-2">
+                                    <i class="fa fa-exclamation-circle"/> <t t-esc="state.stationEditError"/>
+                                </div>
+                                <div class="row g-3">
+                                    <!-- Información Principal -->
+                                    <div class="col-12">
+                                        <div class="text-uppercase text-primary fw-bold small pb-1 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa fa-info-circle"/> Información Principal
+                                        </div>
+                                    </div>
+                                    <div class="col-md-7">
+                                        <label class="form-label fw-bold text-dark small mb-1">Nombre de la Estación / TPV <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" placeholder="Ej: E.S. Ronda Norte" t-model="state.editStationName"/>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-bold text-dark small mb-1">Empresa Propietaria</label>
+                                        <select class="form-select" t-model="state.editStationCompanyId">
+                                            <t t-foreach="state.allAuthorizedCompanies" t-as="ac" t-key="ac.id">
+                                                <option t-att-value="ac.id" t-att-selected="state.editStationCompanyId == ac.id">
+                                                    🏢 <t t-esc="ac.name"/>
+                                                </option>
+                                            </t>
+                                        </select>
+                                    </div>
+
+                                    <!-- Conectividad y Red VPN -->
+                                    <div class="col-12 mt-3">
+                                        <div class="text-uppercase text-primary fw-bold small pb-1 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa fa-shield"/> Conectividad y Red VPN
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-semibold text-dark small mb-1">IPs VPN de WireGuard (Pista)</label>
+                                        <input type="text" class="form-control font-monospace" placeholder="Ej: 10.8.0.6, 10.8.0.7" t-model="state.editStationVpnIp"/>
+                                        <small class="text-muted d-block mt-1">Si un equipo accede con esta IP, Odoo abre el TPV de esta estación automáticamente.</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark small mb-1">Código en Admin Platform</label>
+                                        <input type="number" class="form-control font-monospace" placeholder="Ej: 2" t-model="state.editStationAdminPlatformCode"/>
+                                        <small class="text-muted d-block mt-1">ID numérico en la plataforma de personal.</small>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-outline-secondary" t-on-click="() => this.closeRenameStationModal()">Cancelar</button>
-                                <button type="button" class="btn btn-primary fw-bold" t-att-disabled="state.actionLoading" t-on-click="() => this.submitRenameStation()">
-                                    <i class="fa fa-check me-1"/> Guardar Nombre
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-between align-items-center">
+                                <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-0" 
+                                        t-on-click="() => this.openFullStationForm(state.editStationId)"
+                                        title="Abrir configuración completa de este Punto de Venta en Odoo">
+                                    <i class="fa fa-external-link me-1"/> Ficha Completa de Estación / TPV ↗
                                 </button>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-secondary" t-on-click="() => this.closeEditStationModal()">Cancelar</button>
+                                    <button type="button" class="btn btn-primary fw-bold" t-att-disabled="state.actionLoading" t-on-click="() => this.submitEditStation()">
+                                        <i class="fa fa-check me-1"/> Guardar Cambios
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
