@@ -2093,7 +2093,13 @@ export class UtrecarMainScreen extends Component {
         this.state.invoicePartnerSearch = query;
         if (query && query.trim().length >= 2) {
             try {
-                const res = await this.env.services.rpc("/pos_gas_station/search_partners", { query: query.trim() });
+                const configId = this.configId || (this.pos && this.pos.config ? this.pos.config.id : null);
+                const companyId = this.pos && this.pos.company ? this.pos.company.id : (this.pos && this.pos.config && this.pos.config.company_id ? (Array.isArray(this.pos.config.company_id) ? this.pos.config.company_id[0] : this.pos.config.company_id.id || this.pos.config.company_id) : null);
+                const res = await this.env.services.rpc("/pos_gas_station/search_partners", {
+                    query: query.trim(),
+                    config_id: configId,
+                    company_id: companyId
+                });
                 if (res && res.status === "success") {
                     this.state.invoicePartnerResults = res.partners || [];
                 }
@@ -2309,11 +2315,13 @@ export class UtrecarMainScreen extends Component {
     async loadCreditPartnersForAlbaran(query = "") {
         this.state.convertAlbaranLoading = true;
         try {
-            const configId = this.pos && this.pos.config ? this.pos.config.id : null;
+            const configId = this.configId || (this.pos && this.pos.config ? this.pos.config.id : null);
+            const companyId = this.pos && this.pos.company ? this.pos.company.id : (this.pos && this.pos.config && this.pos.config.company_id ? (Array.isArray(this.pos.config.company_id) ? this.pos.config.company_id[0] : this.pos.config.company_id.id || this.pos.config.company_id) : null);
             const res = await this.env.services.rpc("/pos_gas_station/search_partners", {
                 query: (query || "").trim(),
                 credit_only: true,
-                config_id: configId
+                config_id: configId,
+                company_id: companyId
             });
             if (res && res.status === "success") {
                 this.state.convertAlbaranPartnerResults = (res.partners || []).map(p => ({

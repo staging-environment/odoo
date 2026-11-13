@@ -2354,11 +2354,17 @@ class PosGasStationController(http.Controller):
             if partner_id:
                 p = env['res.partner'].sudo().browse(int(partner_id))
                 if p.exists():
+                    if p.company_id and order.company_id and p.company_id.id != order.company_id.id:
+                        return {'status': 'error', 'message': f'El cliente {p.name} pertenece a otra empresa ({p.company_id.name}). No se puede utilizar en pedidos de {order.company_id.name}.'}
                     partner = p
             elif partner_data and partner_data.get('vat'):
                 vat = str(partner_data['vat']).strip().upper()
                 name = str(partner_data.get('name') or vat).strip()
-                partner = env['res.partner'].sudo().search([('vat', '=', vat)], limit=1)
+                # Buscar cliente por VAT dentro de la MISMA empresa del pedido exclusivamente:
+                partner = env['res.partner'].sudo().search([
+                    ('vat', '=', vat),
+                    ('company_id', '=', order.company_id.id)
+                ], limit=1)
                 if not partner:
                     partner = env['res.partner'].sudo().create({
                         'name': name,
@@ -2491,24 +2497,33 @@ class PosGasStationController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/search_partners', type='json', auth='user', methods=['POST'], csrf=False)
-    def search_partners(self, query='', credit_only=False, config_id=None, **kw):
+    def search_partners(self, query='', credit_only=False, config_id=None, company_id=None, **kw):
         try:
             env = request.env
             q = (query or '').strip()
             if not credit_only and (not q or len(q) < 2):
                 return {'status': 'success', 'partners': []}
 
-            base_domain = [('active', '=', True)]
-            if config_id:
+            # DETERMINAR EMPRESA OBLIGATORIA PARA NO MEZCLAR CLIENTES ENTRE EMPRESAS
+            target_company_id = None
+            if company_id:
+                try:
+                    target_company_id = int(company_id)
+                except Exception:
+                    pass
+            if not target_company_id and config_id:
                 try:
                     cfg = env['pos.config'].sudo().browse(int(config_id))
                     if cfg.exists() and cfg.company_id:
-                        base_domain = [
-                            ('active', '=', True),
-                            ('company_id', '=', cfg.company_id.id)
-                        ]
+                        target_company_id = cfg.company_id.id
                 except Exception:
                     pass
+            if not target_company_id and env.company:
+                target_company_id = env.company.id
+
+            base_domain = [('active', '=', True)]
+            if target_company_id:
+                base_domain.append(('company_id', '=', target_company_id))
 
             if credit_only:
                 credit_filter = [
@@ -2647,6 +2662,8 @@ class PosGasStationController(http.Controller):
                 partner = env['res.partner'].sudo().browse(int(partner_id))
                 if not partner.exists():
                     return {'status': 'error', 'message': 'Cliente no encontrado.'}
+                if partner.company_id and company_id and partner.company_id.id != company_id:
+                    return {'status': 'error', 'message': f'El cliente pertenece a otra empresa ({partner.company_id.name}).'}
                 # Regla de seguridad: Un expendedor NO puede modificar el tipo de facturación ni crédito desde el TPV.
                 # El tipo de facturación y condiciones comerciales solo pueden cambiarse desde la administración de Odoo.
                 partner.write(vals)
@@ -2834,6 +2851,12 @@ class PosGasStationController(http.Controller):
             partner = env['res.partner'].sudo().browse(int(partner_id))
             if not partner.exists():
                 return {'status': 'error', 'message': 'Cliente no encontrado.'}
+
+            if partner.company_id and order.company_id and partner.company_id.id != order.company_id.id:
+                return {
+                    'status': 'error',
+                    'message': f'El cliente {partner.name} pertenece a {partner.company_id.name}. No se puede utilizar en pedidos de {order.company_id.name}.'
+                }
 
             # Validar que el cliente tenga crédito autorizado previamente desde Administración
             has_credit = (

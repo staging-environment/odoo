@@ -281,9 +281,9 @@ class PosSession(models.Model):
 
     def get_pos_ui_res_partner_by_params(self, custom_search_params):
         """Asegurar que cualquier búsqueda dinámica filtre SIEMPRE por la empresa de este TPV."""
-        if 'domain' in custom_search_params:
-            comp_domain = [('company_id', '=', self.config_id.company_id.id)]
-            custom_search_params['domain'] = comp_domain + (custom_search_params['domain'] or [])
+        comp_domain = [('company_id', '=', self.config_id.company_id.id)]
+        current_domain = custom_search_params.get('domain') or []
+        custom_search_params['domain'] = comp_domain + current_domain
         return super().get_pos_ui_res_partner_by_params(custom_search_params)
 
     def _get_pos_ui_pos_payment_method(self, params):
