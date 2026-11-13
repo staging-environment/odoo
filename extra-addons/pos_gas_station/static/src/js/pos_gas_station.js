@@ -2722,11 +2722,38 @@ export class UtrecarMainScreen extends Component {
         }).slice(0, 50);
     }
 
+    recheckFuelLinesRounding(order) {
+        if (!order) return;
+        const lines = order.get_orderlines ? order.get_orderlines() : [];
+        for (const line of lines) {
+            const target = line.target_total || (line.pump_id && order.pending_prepay ? order.pending_prepay.amount : null);
+            if (target && target > 0) {
+                line.price_type = "manual";
+                line.target_total = target;
+                if (line.get_display_price) {
+                    const curDisp = line.get_display_price();
+                    const diff = Math.round((target - curDisp) * 100) / 100;
+                    if (Math.abs(diff) >= 0.005) {
+                        const q = line.get_quantity() || 1;
+                        const taxes = line.get_taxes ? line.get_taxes() : [];
+                        let taxFactor = 1.0;
+                        if (taxes && taxes.length > 0 && !taxes[0].price_include) {
+                            const taxRate = taxes.reduce((s, t) => s + (t.amount || 0), 0);
+                            taxFactor = 1.0 + (taxRate / 100.0);
+                        }
+                        line.set_unit_price(line.get_unit_price() + (diff / (q * taxFactor)));
+                    }
+                }
+            }
+        }
+    }
+
     async selectClient(partner) {
         const order = this.pos.get_order();
         const prevPartner = order && order.get_partner ? order.get_partner() : null;
         if (order) {
             order.set_partner(partner);
+            this.recheckFuelLinesRounding(order);
             this.state.orderVersion = Date.now();
         }
         this.closeClientModal();
@@ -2960,6 +2987,7 @@ export class UtrecarMainScreen extends Component {
             const order = this.pos.get_order();
             if (order) {
                 order.set_partner(newPartner);
+                this.recheckFuelLinesRounding(order);
             }
             if (newPartner && newPartner.id) {
                 await this.loadPartnerVehicles(newPartner.id);
@@ -3349,8 +3377,10 @@ export class UtrecarMainScreen extends Component {
                     price: unitPrice,
                     extras: {
                         price_manually_set: true,
+                        price_type: "manual",
                         pump_id: sale.pumpId,
                         fuel_display_price: sale.fuel.price,
+                        target_total: targetTotal,
                         customerNote: `Calle ${sale.pumpId} - ${sale.fuel.name} (${sale.fuel.liters.toFixed(2)}L)`
                     }
                 });
@@ -3358,15 +3388,23 @@ export class UtrecarMainScreen extends Component {
                 if (activeLine) {
                     activeLine.pump_id = sale.pumpId;
                     activeLine.fuel_display_price = sale.fuel.price;
+                    activeLine.target_total = targetTotal;
+                    activeLine.price_type = "manual";
                     if (activeLine.set_customer_note) {
                         activeLine.set_customer_note(`Calle ${sale.pumpId} - ${sale.fuel.name} (${sale.fuel.liters.toFixed(2)}L)`);
                     }
                     if (targetTotal > 0) {
                         const currentDisp = activeLine.get_display_price ? activeLine.get_display_price() : (activeLine.price * activeLine.quantity);
                         const diff = Math.round((targetTotal - currentDisp) * 100) / 100;
-                        if (Math.abs(diff) >= 0.01) {
+                        if (Math.abs(diff) >= 0.005) {
                             const curQty = activeLine.get_quantity() || 1;
-                            activeLine.set_unit_price(activeLine.get_unit_price() + (diff / curQty));
+                            const taxes = activeLine.get_taxes ? activeLine.get_taxes() : [];
+                            let taxFactor = 1.0;
+                            if (taxes && taxes.length > 0 && !taxes[0].price_include) {
+                                const taxRate = taxes.reduce((s, t) => s + (t.amount || 0), 0);
+                                taxFactor = 1.0 + (taxRate / 100.0);
+                            }
+                            activeLine.set_unit_price(activeLine.get_unit_price() + (diff / (curQty * taxFactor)));
                         }
                     }
                 }
@@ -3714,30 +3752,42 @@ export class UtrecarMainScreen extends Component {
             existingLine.set_unit_price(unitPrice);
             existingLine.pump_id = pumpId;
             existingLine.fuel_display_price = currentFuelPrice;
+            existingLine.target_total = targetTotal;
+            existingLine.price_type = "manual";
         } else {
             await currentOrder.add_product(product, {
                 quantity: qty,
                 price: unitPrice,
                 extras: {
                     price_manually_set: true,
+                    price_type: "manual",
                     pump_id: pumpId,
-                    fuel_display_price: currentFuelPrice
+                    fuel_display_price: currentFuelPrice,
+                    target_total: targetTotal
                 }
             });
             activeLine = currentOrder.get_last_orderline();
             if (activeLine) {
                 activeLine.pump_id = pumpId;
                 activeLine.fuel_display_price = currentFuelPrice;
+                activeLine.target_total = targetTotal;
+                activeLine.price_type = "manual";
             }
         }
 
-        // Blindaje milimétrico de redondeo: garantiza que el importe sea exactamente presetVal
+        // Blindaje milimétrico de redondeo: garantiza que el importe sea exactamente presetVal (sin saltos de céntimo)
         if (activeLine && targetTotal > 0) {
             const currentDisp = activeLine.get_display_price();
             const diff = Math.round((targetTotal - currentDisp) * 100) / 100;
-            if (Math.abs(diff) >= 0.01) {
+            if (Math.abs(diff) >= 0.005) {
                 const curQty = activeLine.get_quantity() || 1;
-                activeLine.set_unit_price(activeLine.get_unit_price() + (diff / curQty));
+                const taxes = activeLine.get_taxes ? activeLine.get_taxes() : [];
+                let taxFactor = 1.0;
+                if (taxes && taxes.length > 0 && !taxes[0].price_include) {
+                    const taxRate = taxes.reduce((s, t) => s + (t.amount || 0), 0);
+                    taxFactor = 1.0 + (taxRate / 100.0);
+                }
+                activeLine.set_unit_price(activeLine.get_unit_price() + (diff / (curQty * taxFactor)));
             }
         }
 
@@ -4196,20 +4246,26 @@ export class UtrecarMainScreen extends Component {
                         existingLine.set_quantity(qty);
                         existingLine.set_unit_price(unitPrice);
                         existingLine.fuel_display_price = currentFuelPrice;
+                        existingLine.target_total = targetTotal;
+                        existingLine.price_type = "manual";
                     } else {
                         await currentOrder.add_product(product, {
                             quantity: qty,
                             price: unitPrice,
                             extras: {
                                 price_manually_set: true,
+                                price_type: "manual",
                                 pump_id: pumpId,
-                                fuel_display_price: currentFuelPrice
+                                fuel_display_price: currentFuelPrice,
+                                target_total: targetTotal
                             }
                         });
                         activeLine = currentOrder.get_last_orderline();
                         if (activeLine) {
                             activeLine.pump_id = pumpId;
                             activeLine.fuel_display_price = currentFuelPrice;
+                            activeLine.target_total = targetTotal;
+                            activeLine.price_type = "manual";
                         }
                     }
 
@@ -4217,9 +4273,15 @@ export class UtrecarMainScreen extends Component {
                     if (activeLine && targetTotal > 0) {
                         const currentDisp = activeLine.get_display_price();
                         const diff = Math.round((targetTotal - currentDisp) * 100) / 100;
-                        if (Math.abs(diff) >= 0.01) {
+                        if (Math.abs(diff) >= 0.005) {
                             const curQty = activeLine.get_quantity() || 1;
-                            activeLine.set_unit_price(activeLine.get_unit_price() + (diff / curQty));
+                            const taxes = activeLine.get_taxes ? activeLine.get_taxes() : [];
+                            let taxFactor = 1.0;
+                            if (taxes && taxes.length > 0 && !taxes[0].price_include) {
+                                const taxRate = taxes.reduce((s, t) => s + (t.amount || 0), 0);
+                                taxFactor = 1.0 + (taxRate / 100.0);
+                            }
+                            activeLine.set_unit_price(activeLine.get_unit_price() + (diff / (curQty * taxFactor)));
                         }
                     }
 
@@ -4462,20 +4524,42 @@ export class UtrecarMainScreen extends Component {
                     existingLine.set_quantity(targetQty);
                     existingLine.set_unit_price(unitPrice);
                     existingLine.fuel_display_price = fuelPvp;
+                    existingLine.target_total = targetTotal;
+                    existingLine.price_type = "manual";
                 } else {
                     await currentOrder.add_product(product, {
                         quantity: targetQty,
                         price: unitPrice,
                         extras: {
                             price_manually_set: true,
+                            price_type: "manual",
                             pump_id: pump.id,
-                            fuel_display_price: fuelPvp
+                            fuel_display_price: fuelPvp,
+                            target_total: targetTotal
                         }
                     });
                     activeLine = currentOrder.get_last_orderline();
                     if (activeLine) {
                         activeLine.pump_id = pump.id;
                         activeLine.fuel_display_price = fuelPvp;
+                        activeLine.target_total = targetTotal;
+                        activeLine.price_type = "manual";
+                    }
+                }
+
+                // Blindaje milimétrico de redondeo: garantiza que el importe coincida exactamente con el surtidor
+                if (activeLine && targetTotal > 0) {
+                    const currentDisp = activeLine.get_display_price();
+                    const diff = Math.round((targetTotal - currentDisp) * 100) / 100;
+                    if (Math.abs(diff) >= 0.005) {
+                        const curQty = activeLine.get_quantity() || 1;
+                        const taxes = activeLine.get_taxes ? activeLine.get_taxes() : [];
+                        let taxFactor = 1.0;
+                        if (taxes && taxes.length > 0 && !taxes[0].price_include) {
+                            const taxRate = taxes.reduce((s, t) => s + (t.amount || 0), 0);
+                            taxFactor = 1.0 + (taxRate / 100.0);
+                        }
+                        activeLine.set_unit_price(activeLine.get_unit_price() + (diff / (curQty * taxFactor)));
                     }
                 }
 
@@ -4570,6 +4654,42 @@ ProductScreen.components = {
 
 
 patch(Order.prototype, {
+    set_partner(partner) {
+        // 1. Registrar el importe objetivo de cada línea de combustible antes de que Odoo aplique pricelist
+        const fuelTargets = new Map();
+        const lines = this.get_orderlines ? this.get_orderlines() : [];
+        for (const line of lines) {
+            if (line.target_total || line.pump_id || line.fuel_display_price) {
+                const target = line.target_total || (this.pending_prepay && this.pending_prepay.amount > 0 ? this.pending_prepay.amount : (line.get_display_price ? line.get_display_price() : (line.price * line.quantity)));
+                if (target && target > 0) {
+                    fuelTargets.set(line, target);
+                }
+            }
+        }
+
+        super.set_partner(partner);
+
+        // 2. Blindaje milimétrico: garantizar que el importe de combustible permanezca invariable
+        for (const [line, target] of fuelTargets.entries()) {
+            line.price_type = "manual";
+            line.target_total = target;
+            if (line.get_display_price) {
+                const curDisp = line.get_display_price();
+                const diff = Math.round((target - curDisp) * 100) / 100;
+                if (Math.abs(diff) >= 0.005) {
+                    const q = line.get_quantity() || 1;
+                    const taxes = line.get_taxes ? line.get_taxes() : [];
+                    let taxFactor = 1.0;
+                    if (taxes && taxes.length > 0 && !taxes[0].price_include) {
+                        const taxRate = taxes.reduce((s, t) => s + (t.amount || 0), 0);
+                        taxFactor = 1.0 + (taxRate / 100.0);
+                    }
+                    line.set_unit_price(line.get_unit_price() + (diff / (q * taxFactor)));
+                }
+            }
+        }
+    },
+
     export_as_JSON() {
         const json = super.export_as_JSON(...arguments);
         json.is_albaran = Boolean(this.is_albaran);
