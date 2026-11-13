@@ -17,12 +17,16 @@ import { SelectionPopup } from "@point_of_sale/app/utils/input_popups/selection_
 
 export class GasStationClosePosPopup extends ClosePosPopup {
     async downloadSalesReport() {
-        const sessionId = (this.pos && this.pos.pos_session) ? this.pos.pos_session.id : null;
+        const sessionId = (this.pos && this.pos.pos_session) ? this.pos.pos_session.id : (this.pos && this.pos.config ? this.pos.config.current_session_id?.[0] : null);
         if (sessionId) {
             window.open(`/pos_gas_station/shift_report_pdf/${sessionId}`, '_blank');
         } else {
-            return super.downloadSalesReport();
+            window.open(`/pos_gas_station/shift_report_pdf`, '_blank');
         }
+    }
+
+    async printShiftReport() {
+        return this.downloadSalesReport();
     }
 
     static template = "pos_gas_station.ClosePosPopup";
@@ -5367,5 +5371,19 @@ patch(PaymentScreen.prototype, {
             if (this.pos.resetProductScreenSearch) { this.pos.resetProductScreenSearch(); };
         }
         this.pos.showScreen("ProductScreen");
+    }
+});
+
+patch(ClosePosPopup.prototype, {
+    async downloadSalesReport() {
+        const sessionId = (this.pos && this.pos.pos_session) ? this.pos.pos_session.id : (this.pos && this.pos.config ? this.pos.config.current_session_id?.[0] : null);
+        if (sessionId) {
+            window.open(`/pos_gas_station/shift_report_pdf/${sessionId}`, '_blank');
+        } else {
+            window.open(`/pos_gas_station/shift_report_pdf`, '_blank');
+        }
+    },
+    async printShiftReport() {
+        return this.downloadSalesReport();
     }
 });

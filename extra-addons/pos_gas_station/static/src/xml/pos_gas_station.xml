@@ -3135,11 +3135,19 @@
     <!-- MODAL DE CIERRE DE TURNO SIMPLIFICADO UTRECAR -->
     <t t-name="pos_gas_station.ClosePosPopup">
         <div class="popup close-pos-popup">
-            <div class="modal-header">
-                <h4 class="modal-title">Cerrar sesión</h4>
+            <div class="modal-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <h4 class="modal-title m-0 fw-bold"><i class="fa fa-sign-out text-danger me-2"/>Cierre de Turno</h4>
+                    <button class="button icon btn btn-sm btn-dark text-white fw-bold shadow-sm d-flex align-items-center gap-1 px-3 py-1"
+                        t-on-click="downloadSalesReport"
+                        title="Imprimir informe oficial de Cierre de Turno en PDF">
+                            <i class="fa fa-print text-warning me-1" role="img"/>
+                            Imprimir Cierre de Turno
+                    </button>
+                </div>
                 <div class="total-orders fw-bolder">
                     Total <t t-esc="props.orders_details.quantity"/> pedidos:
-                    <span class="amount" t-esc="env.utils.formatCurrency(props.orders_details.amount)"/>
+                    <span class="amount text-primary" t-esc="env.utils.formatCurrency(props.orders_details.amount)"/>
                 </div>
             </div>
             <main class="modal-body">
@@ -3189,26 +3197,40 @@
                     </div>
                 </div>
             </main>
-            <footer class="footer modal-footer justify-content-between">
+            <footer class="footer modal-footer justify-content-between align-items-center">
                 <div class="modal-footer-left d-flex gap-2">
-                    <button class="button highlight btn btn-lg btn-primary" t-att-disabled="!canConfirm()" t-on-click="confirm">Cerrar sesión</button>
+                    <button class="button highlight btn btn-lg btn-primary fw-bold" t-att-disabled="!canConfirm()" t-on-click="confirm">
+                        <i class="fa fa-check-circle me-1"/> Cerrar sesión
+                    </button>
                     <button class="button btn btn-lg btn-secondary" t-att-disabled="!canCancel()" t-on-click="cancel">Descartar</button>
                 </div>
                 <!-- Download Sale Details -->
-                <div class="modal-footer-right d-flex gap-2">
-                    <button class="button icon btn btn-lg btn-secondary"
+                <div class="modal-footer-right d-flex gap-2 align-items-center">
+                    <button class="button icon btn btn-lg btn-dark text-white fw-bold shadow-sm d-flex align-items-center gap-2 px-3"
                         t-on-click="downloadSalesReport"
-                        title="Imprimir informe de ventas del turno actual">
-                            Imprimir
-                            <i class="fa fa-print ms-1" role="img"/>
+                        title="Imprimir informe oficial de Cierre de Turno en PDF">
+                            <i class="fa fa-print text-warning fs-5" role="img"/>
+                            <span>Imprimir Cierre de Turno</span>
                     </button>
                     <!-- Print Sale Details -->
-                    <button t-if="hardwareProxy.printer" class="button icon btn btn-lg btn-secondary">
+                    <button t-if="hardwareProxy.printer" class="button icon btn btn-lg btn-outline-secondary">
                         <SaleDetailsButton/>
                     </button>
                 </div>
             </footer>
         </div>
+    </t>
+
+    <!-- SOBRESCRIBIR CLOSEPOSPOPUP BASE: BOTÓN PROMINENTE DE IMPRIMIR CIERRE DE TURNO -->
+    <t t-name="pos_gas_station.ClosePosPopupInherit" t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension" owl="1">
+        <xpath expr="//button[@t-on-click='downloadSalesReport']" position="replace">
+            <button class="button icon btn btn-lg btn-dark text-white fw-bold shadow-sm d-flex align-items-center gap-2 px-3"
+                t-on-click="downloadSalesReport"
+                title="Imprimir informe oficial de Cierre de Turno en PDF">
+                    <i class="fa fa-print text-warning fs-5" role="img"/>
+                    <span>Imprimir Cierre de Turno</span>
+            </button>
+        </xpath>
     </t>
 
 
