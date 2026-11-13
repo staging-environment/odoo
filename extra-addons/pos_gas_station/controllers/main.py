@@ -1603,7 +1603,7 @@ class PosGasStationController(http.Controller):
         } for p in partners]
 
     @http.route('/pos_gas_station/company_customers', type='json', auth='user', methods=['POST'], csrf=False)
-    def get_company_customers(self, company_id=None, search_term=None, customer_type=None, limit=30, offset=0, sort_field='name', sort_dir='asc', **kw):
+    def get_company_customers(self, company_id=None, search_term=None, code_term=None, customer_type=None, limit=30, offset=0, sort_field='name', sort_dir='asc', **kw):
         try:
             env = request.env
             if not company_id:
@@ -1619,6 +1619,10 @@ class PosGasStationController(http.Controller):
             ]
             if customer_type and customer_type != 'all':
                 domain.append(('customer_type', '=', customer_type))
+
+            c_term = (code_term or kw.get('customer_code_term') or '').strip()
+            if c_term:
+                domain.append(('ref', 'ilike', c_term))
 
             q = (search_term or '').strip()
             if q:

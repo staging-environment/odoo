@@ -232,6 +232,7 @@ export class UtrecarMainScreen extends Component {
             currentStorePage: 1,
             selectedModalCategory: null,
             clientSearch: "",
+            clientCodeSearch: "",
             clientSortDirection: "asc",
             clientSortField: "name",
             storeSearch: "",
@@ -2631,8 +2632,9 @@ export class UtrecarMainScreen extends Component {
     openClientModal() {
         this.state.isClientModalOpen = true;
         this.state.clientSearch = "";
+        this.state.clientCodeSearch = "";
         setTimeout(() => {
-            const input = document.querySelector(".client-search-input");
+            const input = document.querySelector(".client-search-code-input") || document.querySelector(".client-search-input");
             if (input) input.focus();
         }, 100);
     }
@@ -2640,10 +2642,19 @@ export class UtrecarMainScreen extends Component {
     closeClientModal() {
         this.state.isClientModalOpen = false;
         this.state.clientSearch = "";
+        this.state.clientCodeSearch = "";
     }
 
     clearClientSearch() {
         this.state.clientSearch = "";
+    }
+
+    clearClientCodeSearch() {
+        this.state.clientCodeSearch = "";
+    }
+
+    onClientCodeSearchInput(ev) {
+        this.state.clientCodeSearch = ev.target.value;
     }
 
     setConvertAlbaranPlate(plate) {
@@ -2692,6 +2703,7 @@ export class UtrecarMainScreen extends Component {
     }
 
     get filteredClients() {
+        const codeSearch = (this.state.clientCodeSearch || "").toLowerCase().trim();
         const search = (this.state.clientSearch || "").toLowerCase().trim();
         const allPartners = Object.values(this.pos.db.partner_by_id || {});
         // Filtrar estrictamente por la empresa asignada a la estación (no por estación ni clientes sin empresa)
@@ -2700,6 +2712,12 @@ export class UtrecarMainScreen extends Component {
             const pCompId = p.company_id ? (Array.isArray(p.company_id) ? p.company_id[0] : p.company_id) : null;
             return pCompId && pCompId === configCompanyId;
         });
+        if (codeSearch) {
+            list = list.filter(p => {
+                const ref = (p.ref || "").toLowerCase();
+                return ref.includes(codeSearch);
+            });
+        }
         if (search) {
             list = list.filter(p => {
                 const name = (p.name || "").toLowerCase();

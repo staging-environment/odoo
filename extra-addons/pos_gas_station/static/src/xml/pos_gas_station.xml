@@ -872,18 +872,35 @@
 
                         <!-- Barra de Búsqueda y Filtros (Nivel 2): Entrada de texto, orden y contador -->
                         <div class="client-modal-toolbar d-flex align-items-center justify-content-between gap-3 px-3 py-2 bg-light border-bottom">
-                            <div class="d-flex align-items-center flex-grow-1 position-relative">
-                                <i class="fa fa-search text-muted position-absolute ms-3" style="font-size: 14px;"/>
-                                <input type="text" class="client-search-input flex-grow-1 ps-5 pe-4" 
-                                       style="height: 40px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;"
-                                       placeholder="Buscar por Nombre, CIF/NIF, Código Aseproda, Teléfono, Población..." 
-                                       t-att-value="state.clientSearch" 
-                                       t-on-input="(ev) => this.onClientSearchInput(ev)" />
-                                <button t-if="state.clientSearch" class="btn btn-sm btn-link text-muted position-absolute end-0 me-2 p-0 border-0"
-                                        style="width: 28px; height: 28px;"
-                                        t-on-click="() => this.clearClientSearch()">
-                                    <i class="fa fa-times-circle"/>
-                                </button>
+                            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                <!-- Buscador por Nº de Cliente a la izquierda -->
+                                <div class="position-relative" style="width: 160px; min-width: 130px;">
+                                    <i class="fa fa-hashtag text-muted position-absolute top-50 start-0 translate-middle-y ms-3" style="font-size: 13px;"/>
+                                    <input type="text" class="client-search-code-input w-100 ps-5 pe-4" 
+                                           style="height: 40px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;"
+                                           placeholder="Nº Cliente..." 
+                                           t-att-value="state.clientCodeSearch" 
+                                           t-on-input="(ev) => this.onClientCodeSearchInput(ev)" />
+                                    <button t-if="state.clientCodeSearch" class="btn btn-sm btn-link text-muted position-absolute end-0 top-50 translate-middle-y me-1 p-0 border-0"
+                                            style="width: 28px; height: 28px;"
+                                            t-on-click="() => this.clearClientCodeSearch()">
+                                        <i class="fa fa-times-circle"/>
+                                    </button>
+                                </div>
+                                <!-- Buscador general por nombre, CIF, teléfono... -->
+                                <div class="position-relative flex-grow-1">
+                                    <i class="fa fa-search text-muted position-absolute top-50 start-0 translate-middle-y ms-3" style="font-size: 14px;"/>
+                                    <input type="text" class="client-search-input w-100 ps-5 pe-4" 
+                                           style="height: 40px; font-size: 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;"
+                                           placeholder="Buscar por Nombre, CIF/NIF, Teléfono, Población..." 
+                                           t-att-value="state.clientSearch" 
+                                           t-on-input="(ev) => this.onClientSearchInput(ev)" />
+                                    <button t-if="state.clientSearch" class="btn btn-sm btn-link text-muted position-absolute end-0 top-50 translate-middle-y me-2 p-0 border-0"
+                                            style="width: 28px; height: 28px;"
+                                            t-on-click="() => this.clearClientSearch()">
+                                        <i class="fa fa-times-circle"/>
+                                    </button>
+                                </div>
                             </div>
                             <div class="d-flex align-items-center gap-2 text-nowrap">
                                 <button class="btn btn-light text-dark fw-bold px-3 d-flex align-items-center gap-2 border shadow-sm text-nowrap"
@@ -904,19 +921,23 @@
                             <table class="client-modal-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 34%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('name')" title="Ordenar por Nombre (Ascendente / Descendente)">
+                                        <th style="width: 12%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('ref')" title="Ordenar por Nº Cliente">
+                                            Nº Cliente
+                                            <i t-if="state.clientSortField === 'ref'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                        </th>
+                                        <th style="width: 32%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('name')" title="Ordenar por Nombre (Ascendente / Descendente)">
                                             Nombre / Razón Social
                                             <i t-if="state.clientSortField === 'name'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                         </th>
-                                        <th style="width: 16%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('vat')" title="Ordenar por CIF/NIF">
+                                        <th style="width: 15%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('vat')" title="Ordenar por CIF/NIF">
                                             CIF / NIF
                                             <i t-if="state.clientSortField === 'vat'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                         </th>
-                                        <th style="width: 16%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('phone')" title="Ordenar por Teléfono">
+                                        <th style="width: 15%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('phone')" title="Ordenar por Teléfono">
                                             Teléfono
                                             <i t-if="state.clientSortField === 'phone'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                         </th>
-                                        <th style="width: 24%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('city')" title="Ordenar por Población / Email">
+                                        <th style="width: 16%; cursor: pointer; user-select: none;" t-on-click="() => this.toggleClientSort('city')" title="Ordenar por Población / Email">
                                             Email / Población
                                             <i t-if="state.clientSortField === 'city'" t-attf-class="fa ms-1 #{state.clientSortDirection === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                         </th>
@@ -926,7 +947,7 @@
                                 <tbody>
                                     <t t-if="filteredClients.length === 0">
                                         <tr>
-                                            <td colspan="5" class="text-center py-4 text-muted">
+                                            <td colspan="6" class="text-center py-4 text-muted">
                                                 No se encontraron clientes con ese criterio.
                                             </td>
                                         </tr>
@@ -934,9 +955,11 @@
                                     <t t-foreach="filteredClients" t-as="c" t-key="c.id">
                                         <tr t-att-class="(currentOrderPartner and currentOrderPartner.id === c.id) ? 'client-row selected' : 'client-row'"
                                             t-on-click="() => this.selectClient(c)">
+                                            <td class="font-monospace fw-bold text-secondary" style="font-size: 13px;">
+                                                <t t-esc="c.ref || '-'"/>
+                                            </td>
                                             <td>
                                                 <strong><t t-esc="c.name"/></strong>
-                                                <small class="text-muted ms-1" t-if="c.ref">(<t t-esc="c.ref"/>)</small>
                                                 <t t-if="c.customer_type === 'credit' || c.customer_payment_mode === 'credit'">
                                                     <span class="badge-customer-type credit ms-2">Crédito</span>
                                                 </t>

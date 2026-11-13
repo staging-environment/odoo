@@ -468,13 +468,25 @@
 
                                 <!-- FILTROS Y ACCIONES DE CLIENTES -->
                                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
-                                    <div class="position-relative" style="min-width: 260px; flex: 1; max-width: 440px;">
-                                        <i class="fa fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 12px;"></i>
-                                        <input type="text" 
-                                               class="form-control form-control-sm ps-5 rounded-pill" 
-                                               placeholder="Buscar por nombre, CIF, código o teléfono..."
-                                               t-att-value="state.customerSearchTerm"
-                                               t-on-input="(ev) => this.onCustomerSearchInput(ev)"/>
+                                    <div class="d-flex align-items-center gap-2" style="flex: 1; max-width: 520px;">
+                                        <!-- Buscador por Nº Cliente a la izquierda -->
+                                        <div class="position-relative" style="width: 145px; min-width: 125px;">
+                                            <i class="fa fa-hashtag position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 11px;"></i>
+                                            <input type="text" 
+                                                   class="form-control form-control-sm ps-5 rounded-pill" 
+                                                   placeholder="Nº Cliente..."
+                                                   t-att-value="state.customerCodeSearchTerm"
+                                                   t-on-input="(ev) => this.onCustomerCodeSearchInput(ev)"/>
+                                        </div>
+                                        <!-- Buscador general a la derecha -->
+                                        <div class="position-relative flex-grow-1" style="min-width: 220px;">
+                                            <i class="fa fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 12px;"></i>
+                                            <input type="text" 
+                                                   class="form-control form-control-sm ps-5 rounded-pill" 
+                                                   placeholder="Buscar por nombre, CIF, teléfono..."
+                                                   t-att-value="state.customerSearchTerm"
+                                                   t-on-input="(ev) => this.onCustomerSearchInput(ev)"/>
+                                        </div>
                                     </div>
 
                                     <div class="d-flex gap-2 flex-wrap">
@@ -527,8 +539,8 @@
                                         <table class="table table-hover align-middle mb-0 company-detail-table">
                                             <thead class="bg-light sticky-top">
                                                 <tr>
-                                                    <th class="ps-3 py-1.5 sortable-th" style="width: 110px;" t-on-click="() => this.sortCompanyCustomers('ref')" title="Ordenar por Código">
-                                                        Código
+                                                    <th class="ps-3 py-1.5 sortable-th" style="width: 110px;" t-on-click="() => this.sortCompanyCustomers('ref')" title="Ordenar por Nº Cliente">
+                                                        Nº Cliente
                                                         <i t-if="state.customerSortField === 'ref'" t-attf-class="fa ms-1 text-primary #{state.customerSortDir === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                                         <i t-else="" class="fa fa-sort ms-1 text-muted opacity-50"/>
                                                     </th>

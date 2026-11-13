@@ -32,6 +32,7 @@ export class GasStationDashboard extends Component {
             companyDetailData: null,
             detailLoading: false,
             customerSearchTerm: "",
+            customerCodeSearchTerm: "",
             customerFilterType: "all",
             customerPage: 1,
             customerPageSize: 30,
@@ -602,6 +603,7 @@ export class GasStationDashboard extends Component {
         this.state.viewMode = "company_detail";
         this.state.detailTab = "stations";
         this.state.customerSearchTerm = "";
+        this.state.customerCodeSearchTerm = "";
         this.state.customerFilterType = "all";
         this.state.customerPage = 1;
         this.state.customerTotalCount = 0;
@@ -661,6 +663,17 @@ export class GasStationDashboard extends Component {
         }, 300);
     }
 
+    onCustomerCodeSearchInput(ev) {
+        this.state.customerCodeSearchTerm = ev.target.value;
+        if (this.customerCodeSearchDebounceTimer) {
+            clearTimeout(this.customerCodeSearchDebounceTimer);
+        }
+        this.customerCodeSearchDebounceTimer = setTimeout(() => {
+            this.state.customerPage = 1;
+            this.searchCompanyCustomers();
+        }, 300);
+    }
+
     async sortCompanyCustomers(field) {
         if (this.state.customerSortField === field) {
             this.state.customerSortDir = this.state.customerSortDir === "asc" ? "desc" : "asc";
@@ -687,6 +700,7 @@ export class GasStationDashboard extends Component {
             const res = await jsonrpc("/pos_gas_station/company_customers", {
                 company_id: this.state.selectedDetailCompany.id,
                 search_term: this.state.customerSearchTerm,
+                code_term: this.state.customerCodeSearchTerm,
                 customer_type: this.state.customerFilterType,
                 limit: this.state.customerPageSize,
                 offset: offset,
