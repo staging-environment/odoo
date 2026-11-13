@@ -2074,6 +2074,9 @@ class PosGasStationController(http.Controller):
                 ('state', 'in', ['paid', 'done', 'invoiced', 'cancel'])
             ], order='date_order desc, id desc')
 
+            # Excluir documentos de anulación negativos de la lista maestra (se muestran en el desplegable de historial del pedido padre)
+            orders = [o for o in orders if not (o.name and o.name.endswith('_')) and not (getattr(o, 'is_albaran', False) and o.amount_total < 0)]
+
             payments = env['pos.payment'].sudo().search([('session_id', '=', session.id)])
             non_ext_orders = [o for o in orders if not getattr(o, 'is_extraction', False)]
             active_sales_orders = [o for o in non_ext_orders if not getattr(o, 'is_ticket_annulled', False) and o.state != 'cancel' and o.amount_total > 0]
