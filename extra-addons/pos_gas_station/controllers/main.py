@@ -2821,11 +2821,58 @@ class PosGasStationController(http.Controller):
         }
 
     @http.route('/pos_gas_station/convert_to_albaran', type='json', auth='user', methods=['POST'], csrf=False)
-    def convert_to_albaran(self, order_id, partner_id=None, partner_data=None, vehicle_plate=None, vehicle_driver=None, **kw):
-        return {
-            'status': 'error',
-            'message': 'No está permitido convertir tickets a albaranes de crédito desde el TPV. La gestión de crédito debe realizarse exclusivamente desde la Administración.'
-        }
+    def convert_to_albaran(self, order_id, partner_id=None, vehicle_plate=None, vehicle_driver=None, **kw):
+        try:
+            env = request.env
+            order = env['pos.order'].sudo().browse(int(order_id))
+            if not order.exists():
+                return {'status': 'error', 'message': 'Pedido no encontrado.'}
+
+            if not partner_id:
+                return {'status': 'error', 'message': 'Debe seleccionar un cliente con crédito autorizado.'}
+
+            partner = env['res.partner'].sudo().browse(int(partner_id))
+            if not partner.exists():
+                return {'status': 'error', 'message': 'Cliente no encontrado.'}
+
+            # Validar que el cliente tenga crédito autorizado previamente desde Administración
+            has_credit = (
+                getattr(partner, 'customer_payment_mode', '') == 'credit' or
+                getattr(partner, 'customer_type', '') in ['credit', 'monthly']
+            )
+            if not has_credit:
+                return {
+                    'status': 'error',
+                    'message': f'El cliente {partner.name} es de facturación ordinaria (contado). No se puede convertir a crédito desde el TPV. El crédito debe ser autorizado previamente desde Administración.'
+                }
+
+            if getattr(partner, 'credit_blocked', False):
+                return {
+                    'status': 'error',
+                    'message': f'El cliente {partner.name} tiene el crédito BLOQUEADO en Administración.'
+                }
+
+            order.action_convert_to_albaran(
+                partner_id=partner.id,
+                vehicle_plate=vehicle_plate,
+                vehicle_driver=vehicle_driver
+            )
+
+            return {
+                'status': 'success',
+                'order_id': order.id,
+                'order_name': order.name,
+                'partner_id': order.partner_id.id,
+                'partner_name': order.partner_id.name,
+                'partner_vat': order.partner_id.vat or '',
+                'is_albaran': True,
+                'vehicle_plate': order.vehicle_plate or '',
+                'vehicle_driver': order.vehicle_driver or '',
+                'message': f"Pedido {order.name} convertido con éxito en Albarán de Crédito para {order.partner_id.name}."
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/convert_to_albaran: %s", e)
+            return {'status': 'error', 'message': str(e)}
 
 
     @http.route('/pos_gas_station/delete_station', type='json', auth='user', methods=['POST'], csrf=False)

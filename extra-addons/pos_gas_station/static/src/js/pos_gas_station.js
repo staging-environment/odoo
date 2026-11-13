@@ -2259,6 +2259,147 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
+    openConvertAlbaranModal(order) {
+        if (!order) return;
+        this.state.convertAlbaranOrder = order;
+        this.state.convertAlbaranPlate = order.vehicle_plate || "";
+        this.state.convertAlbaranDriver = order.vehicle_driver || "";
+        this.state.convertAlbaranPartnerSearch = "";
+        this.state.convertAlbaranPartnerResults = [];
+        this.state.convertAlbaranLoading = false;
+
+        const hasCredit = (order.partner_customer_payment_mode === 'credit' || order.partner_customer_type === 'credit' || order.partner_customer_type === 'monthly') && !order.partner_credit_blocked;
+
+        if (order.partner_id && hasCredit) {
+            this.state.convertAlbaranSelectedPartner = {
+                id: order.partner_id,
+                name: order.partner_name,
+                vat: order.partner_vat,
+                street: order.partner_street,
+                city: order.partner_city,
+                customer_type: order.partner_customer_type,
+                customer_payment_mode: order.partner_customer_payment_mode,
+                credit_blocked: order.partner_credit_blocked,
+                hasCredit: true,
+                vehicles: order.partner_vehicles || []
+            };
+        } else {
+            this.state.convertAlbaranSelectedPartner = null;
+        }
+
+        this.state.isConvertAlbaranModalOpen = true;
+        if (!this.state.convertAlbaranSelectedPartner) {
+            this.loadCreditPartnersForAlbaran("");
+        }
+    }
+
+    closeConvertAlbaranModal() {
+        this.state.isConvertAlbaranModalOpen = false;
+        this.state.convertAlbaranOrder = null;
+        this.state.convertAlbaranSelectedPartner = null;
+        this.state.convertAlbaranPartnerResults = [];
+    }
+
+    onConvertAlbaranPartnerSearch(ev) {
+        const val = (ev.target.value || "").trim();
+        this.state.convertAlbaranPartnerSearch = val;
+        this.loadCreditPartnersForAlbaran(val);
+    }
+
+    async loadCreditPartnersForAlbaran(query = "") {
+        this.state.convertAlbaranLoading = true;
+        try {
+            const configId = this.pos && this.pos.config ? this.pos.config.id : null;
+            const res = await this.env.services.rpc("/pos_gas_station/search_partners", {
+                query: (query || "").trim(),
+                credit_only: true,
+                config_id: configId
+            });
+            if (res && res.status === "success") {
+                this.state.convertAlbaranPartnerResults = (res.partners || []).map(p => ({
+                    ...p,
+                    hasCredit: (p.customer_payment_mode === 'credit' || p.customer_type === 'credit' || p.customer_type === 'monthly') && !p.credit_blocked
+                }));
+            } else {
+                this.state.convertAlbaranPartnerResults = [];
+            }
+        } catch (e) {
+            console.error("Error search_partners credit:", e);
+            this.state.convertAlbaranPartnerResults = [];
+        } finally {
+            this.state.convertAlbaranLoading = false;
+        }
+    }
+
+    selectPartnerForConvertAlbaran(partner) {
+        if (!partner.hasCredit) {
+            alert("⚠️ El cliente seleccionado no tiene crédito autorizado en Administración.");
+            return;
+        }
+        if (partner.credit_blocked) {
+            alert("⚠️ El cliente seleccionado tiene el crédito bloqueado en Administración.");
+            return;
+        }
+        this.state.convertAlbaranSelectedPartner = partner;
+        if (partner && partner.vehicles && partner.vehicles.length > 0 && !this.state.convertAlbaranPlate) {
+            this.state.convertAlbaranPlate = partner.vehicles[0].name;
+        }
+    }
+
+    clearSelectedPartnerForConvertAlbaran() {
+        this.state.convertAlbaranSelectedPartner = null;
+        this.state.convertAlbaranPartnerSearch = "";
+        this.loadCreditPartnersForAlbaran("");
+    }
+
+    async confirmConvertToAlbaran() {
+        const order = this.state.convertAlbaranOrder;
+        if (!order) return;
+
+        const partner = this.state.convertAlbaranSelectedPartner;
+        if (!partner) {
+            alert("⚠️ Por favor seleccione un cliente con crédito autorizado de la lista.");
+            return;
+        }
+
+        const confirmText = order.is_invoiced
+            ? `¿Está seguro de que desea anular la factura ${order.account_move_name} y convertir este pedido en Albarán de Crédito para ${partner.name}?`
+            : `¿Está seguro de que desea convertir el ticket ${order.name} en Albarán de Crédito para ${partner.name}?`;
+
+        if (!confirm(confirmText)) return;
+
+        this.state.convertAlbaranLoading = true;
+        try {
+            const res = await this.env.services.rpc("/pos_gas_station/convert_to_albaran", {
+                order_id: order.id,
+                partner_id: partner.id,
+                vehicle_plate: this.state.convertAlbaranPlate,
+                vehicle_driver: this.state.convertAlbaranDriver
+            });
+
+            if (res && res.status === "success") {
+                this.closeConvertAlbaranModal();
+                alert(`✅ ${res.message || "Pedido convertido con éxito en Albarán de Crédito."}`);
+                await this.loadShiftOrders();
+
+                const updatedOrder = (this.state.shiftOrders || []).find(o => o.id === order.id);
+                if (updatedOrder) {
+                    this.state.selectedShiftOrder = updatedOrder;
+                    if (confirm("¿Desea imprimir el Albarán de Crédito firmado ahora?")) {
+                        this.printShiftOrderTicket(updatedOrder, false);
+                    }
+                }
+            } else {
+                alert("Error al convertir a albarán: " + (res ? res.message : "Error desconocido"));
+            }
+        } catch (e) {
+            console.error("Error confirmConvertToAlbaran:", e);
+            alert("Error al comunicarse con el servidor: " + (e.message || e));
+        } finally {
+            this.state.convertAlbaranLoading = false;
+        }
+    }
+
     get currentOrderTotalLiters() {
         const lines = this.currentOrderLines;
         if (!lines) return 0.0;
