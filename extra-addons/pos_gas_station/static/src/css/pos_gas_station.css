@@ -2961,6 +2961,15 @@
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
+    width: 28% !important;
+    min-width: 270px !important;
+    max-width: 340px !important;
+    flex: 0 0 auto !important;
+}
+
+.pos .payment-screen .right-content {
+    display: none !important;
+    width: 0 !important;
 }
 
 .pos .payment-screen .paymentmethods .paymentmethod {
@@ -2994,25 +3003,47 @@
     letter-spacing: 0.5px !important;
 }
 
-/* Área central de Cobro */
+/* Área central de Cobro: Ocupa todo el resto del ancho y expande la calculadora */
 .pos .payment-screen .center-content {
     background: #f1f5f9 !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
     align-items: stretch !important;
-    padding: 8px 12px !important;
+    padding: 8px 16px !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    max-width: none !important;
+}
+
+/* Banner de Cliente en Calculadora */
+.payment-customer-status-banner {
+    max-width: 880px !important;
+    width: 96% !important;
+    margin: 0 auto 8px auto !important;
+}
+.payment-customer-status-banner .no-customer-box {
+    border-radius: 8px !important;
+    background: #f8fafc !important;
+    border: 1.5px dashed #cbd5e1 !important;
+}
+.payment-customer-status-banner .customer-info-box {
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    border: 1.5px solid #0284c7 !important;
 }
 
 /* 1. VISOR / BARRA DE ARRIBA DE IMPORTES (MÁS GRANDE Y DESTACADA) */
 .pos .payment-screen .paymentlines-container {
     background: #ffffff !important;
     border-radius: 10px !important;
-    padding: 20px 28px !important;
-    margin: 8px 6px 14px 6px !important;
+    padding: 18px 28px !important;
+    margin: 8px auto 10px auto !important;
+    max-width: 880px !important;
+    width: 96% !important;
     border: 1.5px solid #cbd5e1 !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
-    min-height: 105px !important;
+    min-height: 95px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
@@ -3086,36 +3117,36 @@
     color: #64748b !important;
 }
 
-/* 2. CALCULADORA (MÁS AMPLIA Y ERGONÓMICA) */
+/* 2. CALCULADORA (MÁS AMPLIA Y ERGONÓMICA: APROVECHANDO TODO EL ESPACIO GANADO) */
 .pos .payment-screen .center-content .numpad {
     flex-grow: 0 !important;
     flex: 0 0 auto !important;
-    max-width: 680px !important;
+    max-width: 880px !important;
     width: 96% !important;
-    margin: 12px auto 24px auto !important;
+    margin: 6px auto 20px auto !important;
     background: #ffffff !important;
-    padding: 16px !important;
+    padding: 18px !important;
     border-radius: 14px !important;
     border: 1px solid #cbd5e1 !important;
     box-shadow: 0 4px 18px rgba(0,0,0,0.06) !important;
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
-    gap: 12px !important;
+    gap: 14px !important;
 }
 
 .pos .payment-screen .center-content .numpad button {
     width: 100% !important;
     max-width: 100% !important;
     flex: 1 1 auto !important;
-    height: 78px !important;
-    min-height: 78px !important;
-    max-height: 78px !important;
-    font-size: 28px !important;
+    height: 82px !important;
+    min-height: 82px !important;
+    max-height: 82px !important;
+    font-size: 30px !important;
     font-weight: 800 !important;
     color: #1e293b !important;
     background: #ffffff !important;
     border: 1.5px solid #cbd5e1 !important;
-    border-radius: 10px !important;
+    border-radius: 12px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;

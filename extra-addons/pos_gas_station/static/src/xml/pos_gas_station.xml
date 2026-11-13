@@ -2896,10 +2896,47 @@
         </xpath>
     </t>
 
-    <!-- VINCULAR ONNUMPADCLICK AL NUMPAD DE PAYMENTSCREEN -->
+    <!-- VINCULAR ONNUMPADCLICK, ELIMINAR PANEL CLIENTE DERECHA Y AÑADIR AVISO CLIENTE EN CALCULADORA -->
     <t t-name="pos_gas_station.PaymentScreenNumpad" t-inherit="point_of_sale.PaymentScreen" t-inherit-mode="extension" owl="1">
         <xpath expr="//Numpad" position="attributes">
             <attribute name="onClick.bind">onNumpadClick</attribute>
+        </xpath>
+        <!-- ELIMINAR COMPLETAMENTE EL BLOQUE DE LA DERECHA DE CLIENTE -->
+        <xpath expr="//div[hasclass('right-content')]" position="replace" />
+        <!-- AVISO INFORMATIVO O FICHA DE CLIENTE EN LA CALCULADORA -->
+        <xpath expr="//div[hasclass('center-content')]//Numpad" position="before">
+            <div class="payment-customer-status-banner">
+                <t t-if="currentPartner">
+                    <div class="customer-info-box d-flex align-items-center justify-content-between px-3 py-2 shadow-sm">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fs-5">👤</span>
+                            <div>
+                                <span class="fw-bold text-dark fs-6"><t t-esc="currentPartner.name"/></span>
+                                <t t-if="currentPartner.vat">
+                                    <span class="text-muted ms-2" style="font-size: 13px;">[<t t-esc="currentPartner.vat"/>]</span>
+                                </t>
+                            </div>
+                        </div>
+                        <div>
+                            <t t-if="isCreditCustomer">
+                                <span class="badge bg-warning text-dark fw-bold px-2 py-1">CRÉDITO</span>
+                            </t>
+                            <t t-elif="isMonthlyCustomer">
+                                <span class="badge bg-info text-dark fw-bold px-2 py-1">MENSUAL</span>
+                            </t>
+                            <t t-else="">
+                                <span class="badge bg-secondary text-white px-2 py-1">ORDINARIA</span>
+                            </t>
+                        </div>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="no-customer-box d-flex align-items-center justify-content-center px-3 py-2 shadow-sm text-secondary">
+                        <span class="me-2 fs-5">ℹ️</span>
+                        <span class="fw-bold" style="font-size: 14px; color: #475569;">No se ha seleccionado ningún cliente</span>
+                    </div>
+                </t>
+            </div>
         </xpath>
     </t>
 
