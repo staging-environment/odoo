@@ -2425,13 +2425,34 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error in /pos_gas_station/invoice_order: %s", e)
             return {'status': 'error', 'message': str(e)}
 
-    @http.route('/pos_gas_station/annul_order', type='json', auth='user', methods=['POST'], csrf=False)
-    def annul_order(self, order_id, reason=None):
+    @http.route('/pos_gas_station/annul_order', type='json', auth='public', methods=['POST'], csrf=False)
+    def annul_order(self, order_id=None, order_ref=None, pos_reference=None, config_id=None, pump_id=None, reason=None, **kw):
         try:
             env = request.env
-            order = env['pos.order'].sudo().browse(int(order_id))
-            if not order.exists():
-                return {'status': 'error', 'message': 'Pedido no encontrado'}
+            order = None
+            if order_id:
+                try:
+                    order = env['pos.order'].sudo().browse(int(order_id))
+                except Exception:
+                    order = None
+            if (not order or not order.exists()) and (order_ref or pos_reference):
+                ref = str(order_ref or pos_reference).strip()
+                order = env['pos.order'].sudo().search([
+                    '|', ('pos_reference', '=', ref), ('name', '=', ref)
+                ], limit=1)
+            if (not order or not order.exists()) and pump_id:
+                domain = [
+                    '|', ('pump_id', '=', int(pump_id)), ('note', 'ilike', f"Calle {pump_id}"),
+                    ('is_ticket_annulled', '=', False),
+                    ('state', 'in', ['paid', 'done', 'invoiced'])
+                ]
+                if config_id:
+                    domain.append(('config_id', '=', int(config_id)))
+                order = env['pos.order'].sudo().search(domain, order='id desc', limit=1)
+
+            if not order or not order.exists():
+                return {'status': 'error', 'message': 'Pedido no encontrado para anular'}
+
             if hasattr(order, 'action_annul_ticket'):
                 order.action_annul_ticket(reason=reason)
             else:
@@ -2442,10 +2463,55 @@ class PosGasStationController(http.Controller):
                     'annulment_reason': reason or 'Anulación manual de ticket',
                     'annulment_date': fields.Datetime.now(),
                 })
+
+            order_date_str = ""
+            if order.date_order:
+                try:
+                    d = fields.Datetime.context_timestamp(order, order.date_order)
+                    order_date_str = d.strftime("%d/%m/%Y %H:%M:%S")
+                except Exception:
+                    order_date_str = str(order.date_order)
+
+            annul_date_str = ""
+            if order.annulment_date:
+                try:
+                    d = fields.Datetime.context_timestamp(order, order.annulment_date)
+                    annul_date_str = d.strftime("%d/%m/%Y %H:%M:%S")
+                except Exception:
+                    annul_date_str = str(order.annulment_date)
+
+            order_data = {
+                'id': order.id,
+                'name': order.name,
+                'pos_reference': order.pos_reference or order.name,
+                'date_order': order_date_str,
+                'amount_total': order.amount_total,
+                'is_ticket_annulled': True,
+                'annulment_ref': order.annulment_ref,
+                'annulment_reason': order.annulment_reason,
+                'annulment_date': annul_date_str,
+                'pump_id': order.pump_id,
+                'partner_name': order.partner_id.name if order.partner_id else False,
+                'company': {
+                    'name': order.company_id.name if order.company_id else '',
+                    'vat': order.company_id.vat if order.company_id else '',
+                    'street': order.company_id.street if order.company_id else '',
+                    'city': order.company_id.city if order.company_id else '',
+                    'phone': order.company_id.phone if order.company_id else '',
+                },
+                'lines': [{
+                    'product_name': l.product_id.display_name or l.product_id.name or 'Combustible',
+                    'qty': l.qty,
+                    'price_unit': l.price_unit,
+                    'price_subtotal_incl': l.price_subtotal_incl,
+                } for l in order.lines]
+            }
+
             return {
                 'status': 'success',
                 'annulment_ref': order.annulment_ref,
                 'annulment_reason': order.annulment_reason,
+                'order': order_data
             }
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/annul_order: %s", e)

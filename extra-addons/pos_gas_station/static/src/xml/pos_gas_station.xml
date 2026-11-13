@@ -1394,7 +1394,12 @@
                                     <div class="warning-icon">⚠️</div>
                                     <div class="warning-text">
                                         <strong>¿Desea cancelar la autorización?</strong>
-                                        <p>Al cancelar, el surtidor se bloqueará de inmediato y volverá a estar disponible.</p>
+                                        <p t-if="state.cancelModalPump.has_prepay || getPumpPresetAmount(state.cancelModalPump) > 0">
+                                            Al cancelar, el surtidor se bloqueará de inmediato y se generará automáticamente el ticket de anulación sobre la operación cobrada.
+                                        </p>
+                                        <p t-else="">
+                                            Al cancelar, el surtidor se bloqueará de inmediato y volverá a estar disponible.
+                                        </p>
                                     </div>
                                 </div>
                             </div>

@@ -1457,8 +1457,16 @@ export class UtrecarMainScreen extends Component {
         this.state.orderVersion = Date.now();
     }
 
-    async resetAndLockPump(pumpId) {
+    async resetAndLockPump(pumpId, autoAnnulPrepay = true) {
         const target = this.state.pumps.find(p => p.id === pumpId);
+        const preset = (this.state.pumpPresets && this.state.pumpPresets[pumpId]) || 
+                       (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[pumpId]);
+        const isPrepay = Boolean((target && target.has_prepay) || (preset && preset.hasPrepay));
+        const orderRef = (preset && (preset.orderRef || preset.orderPosRef || preset.orderTicketName)) || null;
+        const orderId = (preset && preset.orderBackendId) || null;
+        const posRef = preset ? preset.pos_reference : null;
+        const dispensedLts = (target && typeof target.liters === 'number') ? target.liters : 0;
+
         if (target) {
             target.status = "blocked";
             target.statusText = "SIN PREFIJADO";
@@ -1471,6 +1479,13 @@ export class UtrecarMainScreen extends Component {
         if (this.state.pumpPresets) {
             delete this.state.pumpPresets[pumpId];
         }
+        if (this.pos && this.pos.pumpPresets) {
+            delete this.pos.pumpPresets[pumpId];
+        }
+        if (typeof this.savePumpPresets === 'function') {
+            this.savePumpPresets();
+        }
+
         const currentOrder = this.pos.get_order();
         if (currentOrder) {
             if (currentOrder.pending_prepay && currentOrder.pending_prepay.pump_id === pumpId) {
@@ -1501,6 +1516,32 @@ export class UtrecarMainScreen extends Component {
         } catch (e) {
             console.debug("Error al resetear y bloquear bomba:", e);
         }
+
+        // Si la calle estaba en modalidad PREPAGO ya cobrado y se cancela antes de dispensar,
+        // generar de forma automática el ticket de anulación oficial sobre esa operación
+        if (autoAnnulPrepay && isPrepay && dispensedLts <= 0.05) {
+            try {
+                const res = await jsonrpc("/pos_gas_station/annul_order", {
+                    config_id: this.configId,
+                    pump_id: pumpId,
+                    order_id: orderId,
+                    order_ref: orderRef,
+                    pos_reference: posRef,
+                    reason: `Cancelación de pista en prepago (Calle ${pumpId})`
+                });
+                if (res && res.status === "success" && res.order) {
+                    this.printAnnulmentReceipt(res.order, null, true);
+                    if (typeof this.loadShiftOrders === "function") {
+                        this.loadShiftOrders();
+                    }
+                } else if (res && res.status === "error") {
+                    console.warn("Aviso al anular automáticamente ticket de prepago cancelado:", res.message);
+                }
+            } catch (err) {
+                console.error("Error al anular automáticamente ticket de prepago cancelado:", err);
+            }
+        }
+
         this.state.orderVersion = Date.now();
     }
 
@@ -5379,6 +5420,10 @@ patch(PaymentScreen.prototype, {
                     hasPrepay: true,
                     isLleno: false,
                     orderRef: order.name,
+                    orderPosRef: order.get_name ? order.get_name() : (order.pos_reference || order.name),
+                    orderTicketName: order.backend_name || order.ticket_series_name || order.name,
+                    pos_reference: order.pos_reference || (order.get_name ? order.get_name() : order.name),
+                    orderBackendId: order.server_id || order.id || null,
                     partner: order.get_partner ? order.get_partner() : null,
                     vehiclePlate: (prepay && prepay.vehiclePlate) || (this.state && this.state.vehiclePlate) || "",
                     timestamp: Date.now()
