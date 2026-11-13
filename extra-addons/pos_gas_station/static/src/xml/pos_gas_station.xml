@@ -32,7 +32,9 @@
                         <t t-if="currentOrderPartner and state.partnerVehicles and state.partnerVehicles.length > 0 and !state.isAddingNewPlate">
                             <div class="virtus-plate-box has-vehicles" title="Matrículas registradas del cliente">
                                 <span class="eu-flag-box">🇪🇸 E</span>
-                                <select class="virtus-plate-select" t-on-change="(ev) => this.onPlateSelect(ev)">
+                                <select class="virtus-plate-select"
+                                        t-key="'plate-select-' + (currentOrderPartner ? currentOrderPartner.id : 0) + '-' + state.partnerVehicles.length + '-' + (state.vehiclePlate || '')"
+                                        t-on-change="(ev) => this.onPlateSelect(ev)">
                                     <option value="" t-att-selected="!state.vehiclePlate">Matrícula...</option>
                                     <t t-foreach="state.partnerVehicles" t-as="veh" t-key="veh.id">
                                         <option t-att-value="veh.name" t-att-selected="state.vehiclePlate === veh.name">

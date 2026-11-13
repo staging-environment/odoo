@@ -1138,6 +1138,7 @@ export class UtrecarMainScreen extends Component {
     }
 
     async savePlateToPartner(plate) {
+        if (this.state.isSavingPlate) return;
         const partner = this.currentOrderPartner;
         if (!partner || !partner.id) return;
         const cleanPlate = (plate || "").trim().toUpperCase();
@@ -2694,12 +2695,16 @@ export class UtrecarMainScreen extends Component {
 
     async selectClient(partner) {
         const order = this.pos.get_order();
+        const prevPartner = order && order.get_partner ? order.get_partner() : null;
         if (order) {
             order.set_partner(partner);
             this.state.orderVersion = Date.now();
         }
         this.closeClientModal();
         if (partner && partner.id) {
+            if (prevPartner && prevPartner.id && prevPartner.id !== partner.id) {
+                this.setVehiclePlate("");
+            }
             await this.loadPartnerVehicles(partner.id);
             if (this.state.vehiclePlate && (!this.state.partnerVehicles || this.state.partnerVehicles.length === 0)) {
                 await this.savePlateToPartner(this.state.vehiclePlate);
