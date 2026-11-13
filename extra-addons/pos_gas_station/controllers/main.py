@@ -2572,11 +2572,15 @@ class PosGasStationController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/search_partners', type='json', auth='user', methods=['POST'], csrf=False)
-    def search_partners(self, query='', credit_only=False, config_id=None, company_id=None, **kw):
+    def search_partners(self, query='', code_query='', credit_only=False, config_id=None, company_id=None, **kw):
         try:
             env = request.env
-            q = (query or '').strip()
-            if not credit_only and (not q or len(q) < 2):
+            q = (query or kw.get('search') or '').strip()
+            c_code = (code_query or kw.get('code_term') or '').strip()
+
+            if not credit_only and not q and not c_code:
+                return {'status': 'success', 'partners': []}
+            if not credit_only and q and len(q) < 2 and not c_code:
                 return {'status': 'success', 'partners': []}
 
             # DETERMINAR EMPRESA OBLIGATORIA PARA NO MEZCLAR CLIENTES ENTRE EMPRESAS
@@ -2600,16 +2604,19 @@ class PosGasStationController(http.Controller):
             if target_company_id:
                 base_domain.append(('company_id', '=', target_company_id))
 
+            if c_code:
+                base_domain.append(('ref', 'ilike', c_code))
+
             if credit_only:
                 credit_filter = [
                     '|',
                     ('customer_payment_mode', '=', 'credit'),
                     ('customer_type', 'in', ['credit', 'monthly'])
                 ]
-                search_filter = ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('ref', 'ilike', q)] if q else []
+                search_filter = ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('phone', 'ilike', q)] if q else []
                 partners = env['res.partner'].sudo().search(base_domain + credit_filter + search_filter, order='name asc', limit=60)
             else:
-                search_filter = ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('ref', 'ilike', q)]
+                search_filter = ['|', '|', ('name', 'ilike', q), ('vat', 'ilike', q), ('phone', 'ilike', q)] if q else []
                 partners = env['res.partner'].sudo().search(base_domain + search_filter, order='name asc', limit=25)
 
             results = []

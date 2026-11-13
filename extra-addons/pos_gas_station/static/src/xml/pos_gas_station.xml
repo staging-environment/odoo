@@ -2344,18 +2344,50 @@
 
                             <!-- MODO BÚSQUEDA DE CLIENTE EXISTENTE -->
                             <div class="partner-search-box">
-                                <label class="fw-bold mb-1">Buscar Cliente Existente (Nombre o CIF/NIF):</label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       placeholder="Escriba al menos 2 letras para buscar..." 
-                                       t-att-value="state.invoicePartnerSearch" 
-                                       t-on-input="(ev) => this.onInvoicePartnerSearch(ev)"/>
+                                <label class="fw-bold mb-1">Buscar Cliente Existente:</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <!-- Buscador por Nº Cliente a la izquierda -->
+                                    <div class="position-relative" style="width: 150px; min-width: 130px;">
+                                        <i class="fa fa-hashtag text-muted position-absolute top-50 start-0 translate-middle-y ms-2.5" style="font-size: 12px;"/>
+                                        <input type="text" 
+                                               class="form-control form-control-sm ps-4" 
+                                               style="height: 38px; border-radius: 6px; font-size: 13px;"
+                                               placeholder="Nº Cliente..." 
+                                               t-att-value="state.invoicePartnerCodeSearch" 
+                                               t-on-input="(ev) => this.onInvoicePartnerCodeSearch(ev)"/>
+                                        <button t-if="state.invoicePartnerCodeSearch" class="btn btn-sm btn-link text-muted position-absolute end-0 top-50 translate-middle-y p-0 border-0 me-1"
+                                                style="width: 22px; height: 22px;"
+                                                t-on-click="() => this.clearInvoicePartnerCodeSearch()">
+                                            <i class="fa fa-times-circle"/>
+                                        </button>
+                                    </div>
+                                    <!-- Buscador general por Nombre o CIF/NIF -->
+                                    <div class="position-relative flex-grow-1">
+                                        <i class="fa fa-search text-muted position-absolute top-50 start-0 translate-middle-y ms-2.5" style="font-size: 13px;"/>
+                                        <input type="text" 
+                                               class="form-control form-control-sm ps-4" 
+                                               style="height: 38px; border-radius: 6px; font-size: 13px;"
+                                               placeholder="Buscar por Nombre, CIF o Teléfono..." 
+                                               t-att-value="state.invoicePartnerSearch" 
+                                               t-on-input="(ev) => this.onInvoicePartnerSearch(ev)"/>
+                                        <button t-if="state.invoicePartnerSearch" class="btn btn-sm btn-link text-muted position-absolute end-0 top-50 translate-middle-y p-0 border-0 me-1"
+                                                style="width: 22px; height: 22px;"
+                                                t-on-click="() => this.clearInvoicePartnerSearch()">
+                                            <i class="fa fa-times-circle"/>
+                                        </button>
+                                    </div>
+                                </div>
                                 
                                 <t t-if="state.invoicePartnerResults.length > 0">
                                     <div class="partner-results-list">
                                         <t t-foreach="state.invoicePartnerResults" t-as="p" t-key="p.id">
                                             <div class="partner-result-item" t-on-click="() => this.selectPartnerForInvoice(p)">
-                                                <div class="fw-bold"><t t-esc="p.name"/></div>
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="fw-bold"><t t-esc="p.name"/></div>
+                                                    <span t-if="p.ref" class="badge bg-secondary-subtle text-secondary font-monospace" style="font-size: 11px;">
+                                                        Nº <t t-esc="p.ref"/>
+                                                    </span>
+                                                </div>
                                                 <small class="text-muted">CIF/NIF: <t t-esc="p.vat || 'Sin NIF'"/> | <t t-esc="p.city || ''"/></small>
                                             </div>
                                         </t>

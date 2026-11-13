@@ -254,6 +254,7 @@ export class UtrecarMainScreen extends Component {
             expandedShiftOrderIds: {},
             isInvoiceModalOpen: false,
             invoicePartnerSearch: "",
+            invoicePartnerCodeSearch: "",
             invoiceEmail: "",
             invoicePartnerResults: [],
             invoiceSelectedPartner: null,
@@ -2130,6 +2131,7 @@ export class UtrecarMainScreen extends Component {
         }
         this.state.isInvoiceModalOpen = true;
         this.state.invoicePartnerSearch = "";
+        this.state.invoicePartnerCodeSearch = "";
         this.state.invoicePartnerResults = [];
         this.state.invoiceSelectedPartner = order.partner_id ? {
             id: order.partner_id,
@@ -2146,18 +2148,42 @@ export class UtrecarMainScreen extends Component {
     closeInvoiceModal() {
         this.state.isInvoiceModalOpen = false;
         this.state.invoiceSelectedPartner = null;
+        this.state.invoicePartnerSearch = "";
+        this.state.invoicePartnerCodeSearch = "";
         this.state.invoicePartnerResults = [];
     }
 
+    async onInvoicePartnerCodeSearch(ev) {
+        this.state.invoicePartnerCodeSearch = ev.target.value;
+        await this.searchInvoicePartners();
+    }
+
     async onInvoicePartnerSearch(ev) {
-        const query = ev.target.value;
-        this.state.invoicePartnerSearch = query;
-        if (query && query.trim().length >= 2) {
+        this.state.invoicePartnerSearch = ev.target.value;
+        await this.searchInvoicePartners();
+    }
+
+    async clearInvoicePartnerCodeSearch() {
+        this.state.invoicePartnerCodeSearch = "";
+        await this.searchInvoicePartners();
+    }
+
+    async clearInvoicePartnerSearch() {
+        this.state.invoicePartnerSearch = "";
+        await this.searchInvoicePartners();
+    }
+
+    async searchInvoicePartners() {
+        const query = (this.state.invoicePartnerSearch || "").trim();
+        const codeQuery = (this.state.invoicePartnerCodeSearch || "").trim();
+
+        if (codeQuery.length >= 1 || query.length >= 2) {
             try {
                 const configId = this.configId || (this.pos && this.pos.config ? this.pos.config.id : null);
                 const companyId = this.pos && this.pos.company ? this.pos.company.id : (this.pos && this.pos.config && this.pos.config.company_id ? (Array.isArray(this.pos.config.company_id) ? this.pos.config.company_id[0] : this.pos.config.company_id.id || this.pos.config.company_id) : null);
                 const res = await this.env.services.rpc("/pos_gas_station/search_partners", {
-                    query: query.trim(),
+                    query: query,
+                    code_query: codeQuery,
                     config_id: configId,
                     company_id: companyId
                 });
@@ -2176,6 +2202,7 @@ export class UtrecarMainScreen extends Component {
         this.state.invoiceSelectedPartner = partner;
         this.state.invoicePartnerResults = [];
         this.state.invoicePartnerSearch = partner.name + (partner.vat ? ` (${partner.vat})` : "");
+        this.state.invoicePartnerCodeSearch = partner.ref || "";
         this.state.invoiceEmail = partner.email || "";
         this.state.isCreatingPartner = false;
     }
@@ -2183,6 +2210,7 @@ export class UtrecarMainScreen extends Component {
     clearSelectedPartnerForInvoice() {
         this.state.invoiceSelectedPartner = null;
         this.state.invoicePartnerSearch = "";
+        this.state.invoicePartnerCodeSearch = "";
         this.state.invoiceEmail = "";
     }
 
