@@ -4845,12 +4845,19 @@ patch(Order.prototype, {
         }
 
         let ticketName = this.backend_name;
-        if (!ticketName && this.name && this.name.startsWith("TTTR")) {
+        if (!ticketName && this.name && (this.name.startsWith("TTTR") || this.name.startsWith("AVTR"))) {
             ticketName = this.name;
         }
         if (!ticketName) {
             const seq = this.sequence_number || 1;
-            ticketName = `TTTR${String(seq).padStart(4, "0")}`;
+            const prefix = this.is_albaran ? "AVTR" : "TTTR";
+            ticketName = `${prefix}${String(seq).padStart(4, "0")}`;
+        }
+        if (this.is_albaran && ticketName && ticketName.startsWith("TTTR")) {
+            ticketName = ticketName.replace(/^TTTR/, "AVTR");
+        }
+        if (!this.is_albaran && ticketName && ticketName.startsWith("AVTR")) {
+            ticketName = ticketName.replace(/^AVTR/, "TTTR");
         }
 
         res.ticket_series_name = ticketName;
@@ -5234,6 +5241,12 @@ patch(PaymentScreen.prototype, {
         }
 
         this.currentOrder.is_albaran = true;
+        if (this.currentOrder.name && this.currentOrder.name.startsWith("TTTR")) {
+            this.currentOrder.name = this.currentOrder.name.replace(/^TTTR/, "AVTR");
+        }
+        if (this.currentOrder.backend_name && this.currentOrder.backend_name.startsWith("TTTR")) {
+            this.currentOrder.backend_name = this.currentOrder.backend_name.replace(/^TTTR/, "AVTR");
+        }
         this.currentOrder.set_to_invoice(false);
         this._virtusPrintTicket = true;
         await this.validateOrder(false);

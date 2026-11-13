@@ -419,4 +419,14 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 - **Normalización de Contactos de Empresas (`res.company.partner_id`)**: Se estableció `company_id = False` en los contactos de empresa para que ninguna sociedad quede bloqueada al conmutar entre compañías (`cids=1` / `cids=4`) en el backend o dashboard.
 - **Blindaje en Modelos y Controladores**: `_compute_company_address` en `res_company.py` lee con `sudo()`, y el controlador del dashboard normaliza los partners de empresa en cada carga.
 
+#### F. Nomenclatura Oficial de Albaranes: AVTR (en lugar de TTTR):
+- **Diferenciación de Series**:
+  - **Tickets**: Mantienen la serie `TTTR` (ej. `TTTR0072`, `TTTR0074`).
+  - **Albaranes**: Utilizan la serie oficial `AVTR` (ej. `AVTR0073`, `AVTR0075`).
+  - **Albaranes Negativos de Anulación**: Utilizan la serie `${name}_` con prefijo `AVTR` (ej. `AVTR0073_`, `AVTR0075_`).
+- **Migración de Histórico**: Se actualizaron todos los albaranes existentes en la base de datos de producción cambiando `TTTR` por `AVTR` en sus nombres, referencias de anulación y notas.
+- **Automatización en Nuevos Albaranes**:
+  - Al generar o validar un pedido como albarán desde el TPV (`is_albaran = True`), en backend (`create`, `_compute_order_name`, `_order_fields`) o al convertir un ticket a albarán (`action_convert_to_albaran`), el sistema asigna y garantiza automáticamente la nomenclatura `AVTR`.
+
+
 

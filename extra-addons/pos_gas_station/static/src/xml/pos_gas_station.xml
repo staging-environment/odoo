@@ -2940,7 +2940,16 @@
                         </div>
 
                         <div class="annul-legal-notice">
-                            <i class="fa fa-info-circle me-1"/> El ticket se conservará en el sistema con serie oficial <strong>TTTR_</strong> para trazabilidad legal.
+                            <i class="fa fa-info-circle me-1"/>
+                            <t t-if="state.annulModalOrder and state.annulModalOrder.is_albaran">
+                                El albarán se conservará en el sistema con serie oficial <strong><t t-esc="state.annulModalOrder.name"/>_</strong> para trazabilidad.
+                            </t>
+                            <t t-elif="state.annulModalOrder and state.annulModalOrder.is_invoiced">
+                                La factura rectificativa se registrará en el sistema con serie oficial <strong><t t-esc="state.annulModalOrder.account_move_name || state.annulModalOrder.name"/>_</strong>.
+                            </t>
+                            <t t-else="">
+                                El ticket se conservará en el sistema con serie oficial <strong>TTTR_</strong> para trazabilidad legal.
+                            </t>
                         </div>
                     </div>
 

@@ -2504,7 +2504,10 @@ class PosGasStationController(http.Controller):
 
             # 1. CLIENTE DE CRÉDITO -> ALBARÁN DE CRÉDITO NEGATIVO
             if order_is_albaran:
-                negative_name = f"{order.name}_"
+                alb_name = order.name.replace('TTTR', 'AVTR', 1) if (order.name and order.name.startswith('TTTR')) else order.name
+                if order.name != alb_name:
+                    order.write({'name': alb_name})
+                negative_name = f"{alb_name}_"
                 existing_neg = env['pos.order'].sudo().search([('name', '=', negative_name)], limit=1)
                 if not existing_neg:
                     neg_vals = {

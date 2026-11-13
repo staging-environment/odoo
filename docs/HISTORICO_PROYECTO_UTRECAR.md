@@ -103,6 +103,7 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **13/11/2026** | TPV & Pista | Trazabilidad y anulación automática en prepago cancelado antes de surtir: modal de confirmación sin impresión de ticket innecesario, y generación del documento rectificativo correspondiente (anulación de ticket, albarán negativo o factura rectificativa) | Desplegado y verificado en Cloud |
 | **13/11/2026** | TPV & Historial | Jerarquía limpia en Historial de Pedidos del Turno: la fila maestra es directamente el albarán o factura (sin tickets duplicados ficticios); desplegable solo para eventos derivados y exclusión de albaranes negativos duplicados | Desplegado y verificado en Cloud |
 | **13/11/2026** | Seguridad & ERP Multi-Compañía | Resolución de `AccessError` en `res.partner`: asignación de acceso total `[(1, '=', 1)]` a administradores en `pos_security_rules.xml`, normalización de contactos de empresas (`company_id = False`) y lectura segura con `sudo()` | Desplegado y verificado en Cloud |
+| **13/11/2026** | TPV & Albaranes | Nomenclatura oficial de Albaranes `AVTR`: migración de todos los albaranes existentes en base de datos de `TTTR` a `AVTR` (y sus anulaciones a `AVTR_`), y asignación automática de serie `AVTR` para todos los nuevos albaranes | Desplegado y verificado en Cloud |
 
 ---
 

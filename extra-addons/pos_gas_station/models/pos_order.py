@@ -140,7 +140,8 @@ class PosOrder(models.Model):
             if order.is_ticket_annulled and order.annulment_ref:
                 continue
             if getattr(order, 'is_albaran', False):
-                ref = order.annulment_ref or f"{order.name}_"
+                alb_name = order.name.replace('TTTR', 'AVTR', 1) if (order.name and order.name.startswith('TTTR')) else order.name
+                ref = order.annulment_ref or f"{alb_name}_"
                 order_reason = reason or f"Anulado por Albarán Negativo {ref}"
             elif order.account_move:
                 inv_name = order.account_move.name or order.name
@@ -216,6 +217,8 @@ class PosOrder(models.Model):
             'vehicle_plate': clean_plate,
             'vehicle_driver': clean_driver,
         }
+        if self.name and self.name.startswith('TTTR'):
+            vals_to_write['name'] = self.name.replace('TTTR', 'AVTR', 1)
 
         if clean_plate:
             existing_veh = self.env['res.partner.vehicle'].search([
@@ -254,12 +257,33 @@ class PosOrder(models.Model):
 
         return True
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('is_albaran'):
+                curr_name = vals.get('name')
+                if curr_name and curr_name.startswith('TTTR'):
+                    vals['name'] = curr_name.replace('TTTR', 'AVTR', 1)
+        orders = super().create(vals_list)
+        for order in orders:
+            if order.is_albaran and order.name and order.name.startswith('TTTR'):
+                order.write({'name': order.name.replace('TTTR', 'AVTR', 1)})
+        return orders
+
+    def _compute_order_name(self):
+        name = super()._compute_order_name()
+        if self.is_albaran and name and name.startswith('TTTR'):
+            return name.replace('TTTR', 'AVTR', 1)
+        return name
+
     @api.model
     def _order_fields(self, ui_order):
         fields = super()._order_fields(ui_order)
         fields['is_albaran'] = ui_order.get('is_albaran', False)
         fields['vehicle_plate'] = ui_order.get('vehicle_plate', False)
         fields['vehicle_driver'] = ui_order.get('vehicle_driver', False)
+        if ui_order.get('is_albaran') and ui_order.get('name') and ui_order['name'].startswith('TTTR'):
+            fields['name'] = ui_order['name'].replace('TTTR', 'AVTR', 1)
         pump_id = ui_order.get('pump_id', 0)
         if not pump_id:
             for l in ui_order.get('lines', []):
