@@ -172,6 +172,7 @@ export class UtrecarMainScreen extends Component {
             pendingModalPump: null,
             stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
             vehiclePlate: "",
+            manualBarcode: "",
             partnerVehicles: [],
             isAddingNewPlate: false,
             newPlateInput: "",
@@ -393,14 +394,77 @@ export class UtrecarMainScreen extends Component {
         });
     }
 
-    handleBarcodeScan(code) {
-        if (!code) return;
+    findProductByCode(code) {
+        const clean = (code || "").trim();
+        if (!clean || !this.pos || !this.pos.db) return null;
+        if (typeof this.pos.db.get_product_by_barcode === "function") {
+            const byBarcode = this.pos.db.get_product_by_barcode(clean);
+            if (byBarcode) return byBarcode;
+        }
+        const lower = clean.toLowerCase();
         const all = Object.values(this.pos.db.product_by_id || {});
-        const prod = all.find(p => p.barcode === code || p.default_code === code || (p.barcode && p.barcode.endsWith(code)));
+        return (
+            all.find(p => (p.barcode || "").trim() === clean) ||
+            all.find(p => (p.default_code || "").trim().toLowerCase() === lower) ||
+            (clean.length >= 6 ? all.find(p => p.barcode && p.barcode.trim().endsWith(clean)) : null) ||
+            null
+        );
+    }
+
+    handleBarcodeScan(code) {
+        const prod = this.findProductByCode(code);
         if (prod) {
-            this.addStoreProductToOrder(prod);
+            this.addStoreProductToOrder(prod, true);
+        } else if (this.env.services.notification) {
+            this.env.services.notification.add(
+                `Código "${(code || "").trim()}" no encontrado en el inventario de la estación`,
+                { type: "warning", sticky: false, duration: 2500 }
+            );
+        }
+    }
+
+    onManualBarcodeInput(ev) {
+        this.state.manualBarcode = ev.target.value;
+    }
+
+    async onManualBarcodeKeyDown(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            ev.stopPropagation();
+            await this.submitManualBarcode(ev.target.value);
+        } else if (ev.key === "Escape") {
+            this.state.manualBarcode = "";
+            ev.target.value = "";
+            ev.target.blur();
+        }
+    }
+
+    async submitManualBarcode(rawCode) {
+        const clean = (rawCode !== undefined ? rawCode : this.state.manualBarcode || "").trim();
+        if (!clean) return;
+        const prod = this.findProductByCode(clean);
+        const inputEl = document.querySelector(".virtus-barcode-input");
+        if (prod) {
+            await this.addStoreProductToOrder(prod, true);
+            this.state.manualBarcode = "";
+            if (inputEl) inputEl.value = "";
+            if (this.env.services.notification) {
+                this.env.services.notification.add(
+                    `Añadido: ${prod.display_name || prod.name}`,
+                    { type: "success", sticky: false, duration: 2000 }
+                );
+            }
         } else {
-            console.debug("Código de barras no encontrado:", code);
+            if (this.env.services.notification) {
+                this.env.services.notification.add(
+                    `No se encontró ningún producto con código "${clean}" en el inventario de la estación`,
+                    { type: "warning", sticky: false, duration: 3000 }
+                );
+            }
+            if (inputEl) {
+                inputEl.focus();
+                inputEl.select();
+            }
         }
     }
 
@@ -4509,15 +4573,10 @@ export class UtrecarMainScreen extends Component {
     }
 
     focusBarcode() {
-        const code = prompt("Escanear o teclear código de barras / referencia:");
-        if (code) {
-            const all = Object.values(this.pos.db.product_by_id || {});
-            const prod = all.find(p => p.barcode === code || p.default_code === code);
-            if (prod) {
-                this.addStoreProductToOrder(prod);
-            } else {
-                alert(`No se encontró ningún producto con código ${code}`);
-            }
+        const inputEl = document.querySelector(".virtus-barcode-input");
+        if (inputEl) {
+            inputEl.focus();
+            inputEl.select();
         }
     }
 }

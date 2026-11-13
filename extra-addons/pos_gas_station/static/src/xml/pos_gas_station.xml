@@ -163,9 +163,17 @@
                     <!-- BARRA DE HERRAMIENTAS INFERIOR DE TICKET -->
                     <div class="virtus-ticket-tools-bar">
                         <div class="tools-left-group">
-                            <button class="tool-btn btn-barcode" title="Lector de código de barras" t-on-click="() => this.focusBarcode()">
-                                ▌▌█║▌
-                            </button>
+                            <div class="virtus-barcode-entry-group" title="Escanear o teclear código de barras / referencia y pulsar Intro">
+                                <button type="button" class="tool-btn btn-barcode" title="Enfocar campo de código de barras" t-on-click="() => this.focusBarcode()">
+                                    ▌▌█║▌
+                                </button>
+                                <input type="text"
+                                       class="virtus-barcode-input"
+                                       placeholder="Código barras..."
+                                       t-att-value="state.manualBarcode"
+                                       t-on-input="(ev) => this.onManualBarcodeInput(ev)"
+                                       t-on-keydown="(ev) => this.onManualBarcodeKeyDown(ev)" />
+                            </div>
                             <button class="tool-btn btn-trash-red" title="Borrar línea seleccionada" t-on-click="() => this.deleteSelectedLine()">
                                 🗑 Borrar
                             </button>
