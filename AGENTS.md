@@ -383,3 +383,40 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
   - Carga exitosa comprobada en navegador (`"master": true`).
   - Sondeo en tiempo real de pista (`POST /pos_gas_station/status 200 OK`) restablecido al 100% en el PC de Repsol (`10.8.0.18`).
 
+### 13. Optimización del Flujo de Venta, Calculadora Táctica, Trazabilidad de Documentos por Tipo de Cliente y Corrección de Acceso (13/11/2026)
+#### A. Botonera Táctica de Línea y Cancelación en TPV:
+- **"Cancelar pedido"**: Al pulsar en el botón de cancelar pedido de la cesta, se resetea por completo el ticket en curso y se limpia cualquier cliente asignado previamente desde la barra superior ("Clientes"), dejando el terminal limpio para la siguiente operación.
+- **"Borrar linea"**: Renombrado desde "Borrar". Elimina únicamente la línea de producto seleccionada de la cesta sin afectar al cliente asignado ni al resto del pedido.
+
+#### B. Rediseño y Flujo Dinámico de la Calculadora de Cobro (`PaymentScreen`):
+- **Ampliación de Pantalla**: Eliminado el bloque lateral derecho de datos de cliente para dar mayor anchura a los métodos de pago y al teclado táctil de cobro.
+- **Aviso Informativo**: Si se accede al cobro sin cliente seleccionado, se muestra un mensaje informativo claro indicando que no hay cliente asignado.
+- **Botonera Dinámica según Perfil Fiscal del Cliente**:
+  - *Sin cliente / Venta Directa*: Botones `Ticket`, `Factura` y `Guardar sin cambios`.
+  - *Cliente de Facturación Ordinaria*: Botón exclusivo `Factura` (con opciones de impresión en papel o envío automático por e-mail).
+  - *Cliente a Crédito*: Opciones directas de `Factura` o `Albarán de crédito` (quedando registrado en el sistema como albarán para reportes e informes periódicos).
+  - *Cliente Mensual*: Botones `Ticket`, `Factura` y `Guardar sin cambios`.
+- **Precisión Numérica en Carburantes**: Ajuste en el redondeo a 2 decimales para evitar desajustes de céntimos (p. ej. conversión de 5.00 € a 5.01 €) al asociar clientes a líneas de carburante.
+
+#### C. Buscador Exclusivo por Número / Código de Cliente:
+- **Listado de Clientes en Administración**: Incorporado un segundo buscador exclusivo a la izquierda para filtrar por código numérico de cliente, junto con una columna visible dedicada al código en el extremo izquierdo de la tabla.
+- **Selector de Clientes en TPV**: Añadido campo de búsqueda específico a la izquierda para número de cliente respetando el buscador general, y columna con el código de cliente en la tabla del modal.
+- **Modal de Emisión de Factura Oficial**: Buscador dedicado a la izquierda para filtrar de inmediato por número de cliente.
+
+#### D. Anulación Automática en Prepago y Jerarquía en Historial de Pedidos:
+- **Confirmación Táctil sin Impresión**: Al cerrar/cancelar una calle en prepago antes de suministrar, se despliega una ventana modal de confirmación y se bloquea la orden de impresión automática de recibos no deseados.
+- **Trazabilidad por Tipo de Documento**:
+  - Si el prepago fue un ticket: Genera automáticamente ticket de anulación (`[ANULACIÓN TICKET]`).
+  - Si el cliente fue de crédito: Genera albarán de crédito negativo (`[ALBARÁN NEGATIVO]` con serie `${name}_`).
+  - Si fue factura: Genera factura rectificativa/negativa (`[FACTURA NEGATIVA]` con serie `${name}_`).
+- **Jerarquía Limpia en Historial de Pedidos del Turno**:
+  - Para ventas directas en albarán o factura, la línea maestra en el historial es directamente el documento original (`[ALBARÁN] TTTRxxxx` o `[FACTURA] FTRxxxx`), sin crear tickets redundantes.
+  - El desplegable con flecha solo aparece si el pedido tiene eventos posteriores (p. ej. anulación o facturación posterior).
+  - Los albaranes negativos duplicados quedan excluidos de la lista maestra.
+
+#### E. Corrección de `AccessError: res.partner (read)` para Administradores y Multi-Compañía:
+- **Regla de Seguridad Global**: En `pos_security_rules.xml`, `rule_res_partner_station_manager_all` se actualizó a `[(1, '=', 1)]` para administradores (`base.group_erp_manager`) y responsables de TPV (`point_of_sale.group_pos_manager`).
+- **Normalización de Contactos de Empresas (`res.company.partner_id`)**: Se estableció `company_id = False` en los contactos de empresa para que ninguna sociedad quede bloqueada al conmutar entre compañías (`cids=1` / `cids=4`) en el backend o dashboard.
+- **Blindaje en Modelos y Controladores**: `_compute_company_address` en `res_company.py` lee con `sudo()`, y el controlador del dashboard normaliza los partners de empresa en cada carga.
+
+

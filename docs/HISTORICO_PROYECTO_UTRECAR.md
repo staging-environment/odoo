@@ -1,6 +1,6 @@
 # HISTÓRICO Y REGISTRO TÉCNICO DEL PROYECTO UTRECAR (ODOO 17 ERP & POS)
 
-**Fecha de última actualización:** 07/10/2026  
+**Fecha de última actualización:** 13/11/2026  
 **Entorno de Producción:** `https://odoo.utrecar.com` (VPS: `164.68.101.69`)  
 **Entorno Local:** WSL2 Ubuntu / DDEV (`ddev-odoo-odoo`)  
 **Repositorio Git:** `git@github.com:staging-environment/odoo.git` (Rama: `main`)
@@ -97,6 +97,12 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **12/11/2026** | ERP & TPV | Segregación estricta de clientes por Empresa (`res.company`): aislamiento de clientes de A.R. Trieste (Repsol) y UTRECAR S.L. | Desplegado y verificado en Cloud |
 | **12/11/2026** | TPV & Seguridad | Restricción estricta de tipo de facturación (Crédito/Mensual/Contado): modo solo lectura con candado en TPV y gestión exclusiva para administradores en backend | Desplegado y verificado en Cloud |
 | **12/11/2026** | TPV & Pista Repsol (`10.8.0.18`) | Diagnóstico y solución de congelamiento en 3 puntos (`...`): corrección de sintaxis en compilación Owl de `UtrecarMainScreen` por condicional inline en XML | Resuelto y verificado al 100% en vivo |
+| **13/11/2026** | TPV & Cesta | Renombrado de "Cancelar" a "Cancelar pedido" (con desasignación de cliente) y "Borrar" a "Borrar linea" (eliminación exclusiva de artículo) | Desplegado y verificado en Cloud |
+| **13/11/2026** | TPV & Calculadora | Rediseño de `PaymentScreen`: supresión del panel derecho de cliente para ganar amplitud, aviso informativo si no hay cliente, y botonera dinámica adaptada al tipo fiscal (Ticket/Factura/Guardar para venta directa y mensual; solo Factura para ordinario; Factura o Albarán de crédito para crédito) | Desplegado y verificado en Cloud |
+| **13/11/2026** | TPV & Backend | Buscador numérico exclusivo a la izquierda por código de cliente en: listado de clientes de administración, selector de clientes en TPV y modal de emisión de facturas oficiales; columna visible con código de cliente en listados | Desplegado y verificado en Cloud |
+| **13/11/2026** | TPV & Pista | Trazabilidad y anulación automática en prepago cancelado antes de surtir: modal de confirmación sin impresión de ticket innecesario, y generación del documento rectificativo correspondiente (anulación de ticket, albarán negativo o factura rectificativa) | Desplegado y verificado en Cloud |
+| **13/11/2026** | TPV & Historial | Jerarquía limpia en Historial de Pedidos del Turno: la fila maestra es directamente el albarán o factura (sin tickets duplicados ficticios); desplegable solo para eventos derivados y exclusión de albaranes negativos duplicados | Desplegado y verificado en Cloud |
+| **13/11/2026** | Seguridad & ERP Multi-Compañía | Resolución de `AccessError` en `res.partner`: asignación de acceso total `[(1, '=', 1)]` a administradores en `pos_security_rules.xml`, normalización de contactos de empresas (`company_id = False`) y lectura segura con `sudo()` | Desplegado y verificado en Cloud |
 
 ---
 
