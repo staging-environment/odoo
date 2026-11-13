@@ -2369,6 +2369,9 @@ class PosGasStationController(http.Controller):
                         'email': partner_data.get('email', '').strip(),
                         'phone': partner_data.get('phone', '').strip(),
                         'company_id': order.company_id.id,
+                        'customer_type': 'ordinary',
+                        'customer_payment_mode': 'ordinary',
+                        'customer_rank': 1,
                     })
 
             if partner:
@@ -2812,83 +2815,17 @@ class PosGasStationController(http.Controller):
 
     @http.route('/pos_gas_station/create_credit_partner', type='json', auth='user', methods=['POST'], csrf=False)
     def create_credit_partner(self, partner_data, config_id=None, vehicle_plate=None, **kw):
-        try:
-            env = request.env
-            p = self._get_or_create_credit_partner(
-                env,
-                partner_data=partner_data,
-                config_id=config_id,
-                vehicle_plate=vehicle_plate
-            )
-            return {
-                'status': 'success',
-                'partner': {
-                    'id': p.id,
-                    'name': p.name,
-                    'ref': p.ref or '',
-                    'vat': p.vat or '',
-                    'street': p.street or '',
-                    'city': p.city or '',
-                    'zip': p.zip or '',
-                    'phone': p.phone or '',
-                    'email': p.email or '',
-                    'customer_type': getattr(p, 'customer_type', 'credit') or 'credit',
-                    'customer_payment_mode': 'credit',
-                    'invoice_periodicity': getattr(p, 'invoice_periodicity', 'daily') or 'daily',
-                    'credit_blocked': False,
-                    'credit_limit_amount': float(getattr(p, 'credit_limit_amount', 0.0) or 0.0),
-                    'hasCredit': True,
-                    'vehicles': [{'id': v.id, 'name': v.name} for v in getattr(p, 'vehicle_ids', [])],
-                }
-            }
-        except Exception as e:
-            _logger.exception("Error in /pos_gas_station/create_credit_partner: %s", e)
-            return {'status': 'error', 'message': str(e)}
+        return {
+            'status': 'error',
+            'message': 'No está permitido crear clientes de crédito desde el TPV. La asignación de crédito debe gestionarse exclusivamente desde la Administración.'
+        }
 
     @http.route('/pos_gas_station/convert_to_albaran', type='json', auth='user', methods=['POST'], csrf=False)
     def convert_to_albaran(self, order_id, partner_id=None, partner_data=None, vehicle_plate=None, vehicle_driver=None, **kw):
-        try:
-            env = request.env
-            order = env['pos.order'].sudo().browse(int(order_id))
-            if not order.exists():
-                return {'status': 'error', 'message': 'Pedido no encontrado'}
-
-            if not partner_id and partner_data:
-                cfg_id = order.session_id.config_id.id if (order.session_id and order.session_id.config_id) else None
-                comp_id = order.company_id.id if order.company_id else None
-                new_partner = self._get_or_create_credit_partner(
-                    env,
-                    partner_data=partner_data,
-                    config_id=cfg_id,
-                    company_id=comp_id,
-                    vehicle_plate=vehicle_plate
-                )
-                partner_id = new_partner.id
-
-            if not partner_id:
-                return {'status': 'error', 'message': 'Debe seleccionar o crear un cliente de crédito válido.'}
-
-            order.action_convert_to_albaran(
-                partner_id=partner_id,
-                vehicle_plate=vehicle_plate,
-                vehicle_driver=vehicle_driver
-            )
-
-            return {
-                'status': 'success',
-                'order_id': order.id,
-                'order_name': order.name,
-                'partner_id': order.partner_id.id,
-                'partner_name': order.partner_id.name,
-                'partner_vat': order.partner_id.vat or '',
-                'is_albaran': True,
-                'vehicle_plate': order.vehicle_plate or '',
-                'vehicle_driver': order.vehicle_driver or '',
-                'message': f"Pedido {order.name} convertido con éxito en Albarán de Crédito para {order.partner_id.name}."
-            }
-        except Exception as e:
-            _logger.exception("Error in /pos_gas_station/convert_to_albaran: %s", e)
-            return {'status': 'error', 'message': str(e)}
+        return {
+            'status': 'error',
+            'message': 'No está permitido convertir tickets a albaranes de crédito desde el TPV. La gestión de crédito debe realizarse exclusivamente desde la Administración.'
+        }
 
 
     @http.route('/pos_gas_station/delete_station', type='json', auth='user', methods=['POST'], csrf=False)
