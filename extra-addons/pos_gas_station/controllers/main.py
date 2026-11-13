@@ -1515,11 +1515,11 @@ class PosGasStationController(http.Controller):
                 'pumps_count': pumps_cnt,
             })
 
-        # 2. Clientes asignados a esta empresa
+        # 2. Clientes asignados a esta empresa (primera página de 30)
         partners = env['res.partner'].sudo().search([
             ('company_id', '=', company.id),
             ('type', '!=', 'private'),
-        ], order='name asc', limit=100)
+        ], order='name asc nulls last, id asc', limit=30)
 
         total_customers = env['res.partner'].sudo().search_count([
             ('company_id', '=', company.id),
@@ -1541,20 +1541,7 @@ class PosGasStationController(http.Controller):
             ('type', '!=', 'private')
         ])
 
-        customers_data = []
-        for p in partners:
-            customers_data.append({
-                'id': p.id,
-                'ref': p.ref or '',
-                'name': p.display_name or p.name or '',
-                'vat': p.vat or '',
-                'customer_type': p.customer_type or 'ordinary',
-                'station_name': p.station_id.name if p.station_id else 'Todas',
-                'company_name': company.name,
-                'phone': p.phone or p.mobile or '',
-                'email': p.email or '',
-                'city': p.city or '',
-            })
+        customers_data = self._serialize_company_customers(partners, company.name)
 
         # 3. Inventario / Stock
         warehouses = env['stock.warehouse'].sudo().search([('company_id', '=', company.id)])
@@ -1600,8 +1587,23 @@ class PosGasStationController(http.Controller):
             }
         }
 
+    def _serialize_company_customers(self, partners, company_name):
+        """Serializa registros de res.partner para la tabla de clientes del panel."""
+        return [{
+            'id': p.id,
+            'ref': p.ref or '',
+            'name': p.display_name or p.name or '',
+            'vat': p.vat or '',
+            'customer_type': p.customer_type or 'ordinary',
+            'station_name': p.station_id.name if p.station_id else 'Todas',
+            'company_name': company_name,
+            'phone': p.phone or p.mobile or '',
+            'email': p.email or '',
+            'city': p.city or '',
+        } for p in partners]
+
     @http.route('/pos_gas_station/company_customers', type='json', auth='user', methods=['POST'], csrf=False)
-    def get_company_customers(self, company_id=None, search_term=None, customer_type=None, limit=100, offset=0, **kw):
+    def get_company_customers(self, company_id=None, search_term=None, customer_type=None, limit=30, offset=0, sort_field='name', sort_dir='asc', **kw):
         try:
             env = request.env
             if not company_id:
@@ -1630,28 +1632,27 @@ class PosGasStationController(http.Controller):
                 ]
                 domain.extend(search_filter)
 
+            direction = 'desc' if str(sort_dir or '').lower() == 'desc' else 'asc'
+            sort_columns = {
+                'ref': f'ref {direction} nulls last, name asc, id asc',
+                'name': f'name {direction} nulls last, id asc',
+                'vat': f'vat {direction} nulls last, name asc, id asc',
+                'customer_type': f'customer_type {direction} nulls last, name asc, id asc',
+                'company': f'company_id {direction} nulls last, name asc, id asc',
+                'contact': f'phone {direction} nulls last, mobile {direction} nulls last, email {direction} nulls last, name asc, id asc',
+                'city': f'city {direction} nulls last, name asc, id asc',
+            }
+            order_clause = sort_columns.get(sort_field, f'name {direction} nulls last, id asc')
+
             total_count = env['res.partner'].sudo().search_count(domain)
             partners = env['res.partner'].sudo().search(
                 domain,
-                order='name asc',
-                limit=int(limit or 100),
+                order=order_clause,
+                limit=int(limit or 30),
                 offset=int(offset or 0)
             )
 
-            customers_data = []
-            for p in partners:
-                customers_data.append({
-                    'id': p.id,
-                    'ref': p.ref or '',
-                    'name': p.display_name or p.name or '',
-                    'vat': p.vat or '',
-                    'customer_type': p.customer_type or 'ordinary',
-                    'station_name': p.station_id.name if p.station_id else 'Todas',
-                    'company_name': company.name,
-                    'phone': p.phone or p.mobile or '',
-                    'email': p.email or '',
-                    'city': p.city or '',
-                })
+            customers_data = self._serialize_company_customers(partners, company.name)
 
             return {
                 'status': 'success',

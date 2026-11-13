@@ -33,6 +33,12 @@ export class GasStationDashboard extends Component {
             detailLoading: false,
             customerSearchTerm: "",
             customerFilterType: "all",
+            customerPage: 1,
+            customerPageSize: 30,
+            customerTotalCount: 0,
+            customerSortField: "name",
+            customerSortDir: "asc",
+            customerLoading: false,
             canManageStaff: false,
             allAuthorizedCompanies: [],
             selectedCompanyId: null,
@@ -597,6 +603,10 @@ export class GasStationDashboard extends Component {
         this.state.detailTab = "stations";
         this.state.customerSearchTerm = "";
         this.state.customerFilterType = "all";
+        this.state.customerPage = 1;
+        this.state.customerTotalCount = 0;
+        this.state.customerSortField = "name";
+        this.state.customerSortDir = "asc";
         await this.loadCompanyDetailData(comp.id);
     }
 
@@ -608,6 +618,9 @@ export class GasStationDashboard extends Component {
             });
             if (data.status === "success") {
                 this.state.companyDetailData = data;
+                this.state.customerTotalCount = (data.customer_stats && typeof data.customer_stats.total === "number")
+                    ? data.customer_stats.total
+                    : (data.customers ? data.customers.length : 0);
             } else {
                 this.notification.add(data.message || "Error al cargar detalle de empresa", { type: "danger" });
             }
@@ -633,6 +646,7 @@ export class GasStationDashboard extends Component {
 
     async setCustomerFilter(type) {
         this.state.customerFilterType = type;
+        this.state.customerPage = 1;
         await this.searchCompanyCustomers();
     }
 
@@ -642,25 +656,90 @@ export class GasStationDashboard extends Component {
             clearTimeout(this.customerSearchDebounceTimer);
         }
         this.customerSearchDebounceTimer = setTimeout(() => {
+            this.state.customerPage = 1;
             this.searchCompanyCustomers();
         }, 300);
     }
 
+    async sortCompanyCustomers(field) {
+        if (this.state.customerSortField === field) {
+            this.state.customerSortDir = this.state.customerSortDir === "asc" ? "desc" : "asc";
+        } else {
+            this.state.customerSortField = field;
+            this.state.customerSortDir = "asc";
+        }
+        this.state.customerPage = 1;
+        await this.searchCompanyCustomers();
+    }
+
+    async goToCustomerPage(page) {
+        const target = Math.max(1, Math.min(page, this.customerTotalPages));
+        if (target === this.state.customerPage) return;
+        this.state.customerPage = target;
+        await this.searchCompanyCustomers();
+    }
+
     async searchCompanyCustomers() {
         if (!this.state.selectedDetailCompany) return;
+        this.state.customerLoading = true;
         try {
+            const offset = (this.state.customerPage - 1) * this.state.customerPageSize;
             const res = await jsonrpc("/pos_gas_station/company_customers", {
                 company_id: this.state.selectedDetailCompany.id,
                 search_term: this.state.customerSearchTerm,
                 customer_type: this.state.customerFilterType,
-                limit: 100,
+                limit: this.state.customerPageSize,
+                offset: offset,
+                sort_field: this.state.customerSortField,
+                sort_dir: this.state.customerSortDir,
             });
             if (res && res.status === "success" && this.state.companyDetailData) {
                 this.state.companyDetailData.customers = res.customers || [];
+                this.state.customerTotalCount = typeof res.total === "number"
+                    ? res.total
+                    : (res.customers || []).length;
             }
         } catch (e) {
             console.error("Error searching company customers:", e);
+        } finally {
+            this.state.customerLoading = false;
         }
+    }
+
+    get customerTotalPages() {
+        return Math.max(1, Math.ceil((this.state.customerTotalCount || 0) / this.state.customerPageSize));
+    }
+
+    get customerRangeStart() {
+        if (!this.state.customerTotalCount) return 0;
+        return (this.state.customerPage - 1) * this.state.customerPageSize + 1;
+    }
+
+    get customerRangeEnd() {
+        if (!this.state.customerTotalCount) return 0;
+        return Math.min(this.state.customerPage * this.state.customerPageSize, this.state.customerTotalCount);
+    }
+
+    get customerPaginationPages() {
+        const total = this.customerTotalPages;
+        const current = this.state.customerPage;
+        if (total <= 7) {
+            return Array.from({ length: total }, (_, idx) => ({ key: `p-${idx + 1}`, type: "page", page: idx + 1 }));
+        }
+        const pages = [{ key: "p-1", type: "page", page: 1 }];
+        if (current > 3) {
+            pages.push({ key: "e-left", type: "ellipsis" });
+        }
+        const start = Math.max(2, current - 1);
+        const end = Math.min(total - 1, current + 1);
+        for (let p = start; p <= end; p++) {
+            pages.push({ key: `p-${p}`, type: "page", page: p });
+        }
+        if (current < total - 2) {
+            pages.push({ key: "e-right", type: "ellipsis" });
+        }
+        pages.push({ key: `p-${total}`, type: "page", page: total });
+        return pages;
     }
 
     get filteredCompanyCustomers() {

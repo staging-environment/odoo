@@ -490,13 +490,41 @@
                                         <table class="table table-hover align-middle mb-0 company-detail-table">
                                             <thead class="bg-light sticky-top">
                                                 <tr>
-                                                    <th class="ps-3 py-1.5" style="width: 100px;">Código</th>
-                                                    <th class="py-1.5">Nombre / Razón Social</th>
-                                                    <th class="py-1.5" style="width: 125px;">CIF / NIF</th>
-                                                    <th class="py-1.5 text-center" style="width: 130px;">Facturación</th>
-                                                    <th class="py-1.5">Empresa</th>
-                                                    <th class="py-1.5">Contacto</th>
-                                                    <th class="py-1.5">Ciudad</th>
+                                                    <th class="ps-3 py-1.5 sortable-th" style="width: 110px;" t-on-click="() => this.sortCompanyCustomers('ref')" title="Ordenar por Código">
+                                                        Código
+                                                        <i t-if="state.customerSortField === 'ref'" t-attf-class="fa ms-1 text-primary #{state.customerSortDir === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                                        <i t-else="" class="fa fa-sort ms-1 text-muted opacity-50"/>
+                                                    </th>
+                                                    <th class="py-1.5 sortable-th" t-on-click="() => this.sortCompanyCustomers('name')" title="Ordenar por Nombre / Razón Social">
+                                                        Nombre / Razón Social
+                                                        <i t-if="state.customerSortField === 'name'" t-attf-class="fa ms-1 text-primary #{state.customerSortDir === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                                        <i t-else="" class="fa fa-sort ms-1 text-muted opacity-50"/>
+                                                    </th>
+                                                    <th class="py-1.5 sortable-th" style="width: 130px;" t-on-click="() => this.sortCompanyCustomers('vat')" title="Ordenar por CIF / NIF">
+                                                        CIF / NIF
+                                                        <i t-if="state.customerSortField === 'vat'" t-attf-class="fa ms-1 text-primary #{state.customerSortDir === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                                        <i t-else="" class="fa fa-sort ms-1 text-muted opacity-50"/>
+                                                    </th>
+                                                    <th class="py-1.5 text-center sortable-th" style="width: 135px;" t-on-click="() => this.sortCompanyCustomers('customer_type')" title="Ordenar por Facturación">
+                                                        Facturación
+                                                        <i t-if="state.customerSortField === 'customer_type'" t-attf-class="fa ms-1 text-primary #{state.customerSortDir === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                                        <i t-else="" class="fa fa-sort ms-1 text-muted opacity-50"/>
+                                                    </th>
+                                                    <th class="py-1.5 sortable-th" t-on-click="() => this.sortCompanyCustomers('company')" title="Ordenar por Empresa">
+                                                        Empresa
+                                                        <i t-if="state.customerSortField === 'company'" t-attf-class="fa ms-1 text-primary #{state.customerSortDir === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                                        <i t-else="" class="fa fa-sort ms-1 text-muted opacity-50"/>
+                                                    </th>
+                                                    <th class="py-1.5 sortable-th" t-on-click="() => this.sortCompanyCustomers('contact')" title="Ordenar por Contacto">
+                                                        Contacto
+                                                        <i t-if="state.customerSortField === 'contact'" t-attf-class="fa ms-1 text-primary #{state.customerSortDir === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                                        <i t-else="" class="fa fa-sort ms-1 text-muted opacity-50"/>
+                                                    </th>
+                                                    <th class="py-1.5 sortable-th" t-on-click="() => this.sortCompanyCustomers('city')" title="Ordenar por Ciudad">
+                                                        Ciudad
+                                                        <i t-if="state.customerSortField === 'city'" t-attf-class="fa ms-1 text-primary #{state.customerSortDir === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
+                                                        <i t-else="" class="fa fa-sort ms-1 text-muted opacity-50"/>
+                                                    </th>
                                                     <th class="text-center pe-3 py-1.5" style="width: 85px;">Acción</th>
                                                 </tr>
                                             </thead>
@@ -546,11 +574,38 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div class="p-2 px-3 bg-light border-top text-muted small d-flex justify-content-between align-items-center" style="font-size: 11.5px;">
-                                        <span>Mostrando <strong class="text-dark"><t t-esc="filteredCompanyCustomers.length"/></strong> clientes de <t t-esc="state.selectedDetailCompany.name"/></span>
-                                        <button class="btn btn-link btn-sm text-primary p-0 text-decoration-none fw-semibold" style="font-size: 11.5px;" t-on-click="() => this.openOdooCustomersView()">
-                                            Ver listado completo en Odoo →
-                                        </button>
+                                    <div class="p-2 px-3 bg-light border-top text-muted small d-flex justify-content-between align-items-center flex-wrap gap-2" style="font-size: 12px;">
+                                        <span>
+                                            Mostrando <strong class="text-dark"><t t-esc="customerRangeStart"/>–<t t-esc="customerRangeEnd"/></strong> de <strong class="text-dark"><t t-esc="state.customerTotalCount"/></strong> clientes de <t t-esc="state.selectedDetailCompany.name"/>
+                                            <i t-if="state.customerLoading" class="fa fa-spinner fa-spin text-primary ms-2"/>
+                                        </span>
+                                        <div class="d-flex align-items-center gap-1" t-if="customerTotalPages > 1">
+                                            <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                                    t-att-disabled="state.customerPage &lt;= 1 || state.customerLoading"
+                                                    t-on-click="() => this.goToCustomerPage(state.customerPage - 1)"
+                                                    title="Página anterior">
+                                                <i class="fa fa-chevron-left"/>
+                                            </button>
+                                            <t t-foreach="customerPaginationPages" t-as="item" t-key="item.key">
+                                                <span t-if="item.type === 'ellipsis'" class="px-1 text-muted">…</span>
+                                                <button t-else=""
+                                                        class="btn btn-sm py-0 px-2 fw-semibold"
+                                                        t-att-class="item.page === state.customerPage ? 'btn-primary' : 'btn-outline-secondary'"
+                                                        t-att-disabled="state.customerLoading"
+                                                        t-on-click="() => this.goToCustomerPage(item.page)">
+                                                    <t t-esc="item.page"/>
+                                                </button>
+                                            </t>
+                                            <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                                    t-att-disabled="state.customerPage >= customerTotalPages || state.customerLoading"
+                                                    t-on-click="() => this.goToCustomerPage(state.customerPage + 1)"
+                                                    title="Página siguiente">
+                                                <i class="fa fa-chevron-right"/>
+                                            </button>
+                                            <span class="ms-2 text-muted" style="font-size: 11px;">
+                                                Pág. <strong class="text-dark"><t t-esc="state.customerPage"/></strong>/<t t-esc="customerTotalPages"/>
+                                            </span>
+                                        </div>
                                     </div>
                                 </t>
                             </div>

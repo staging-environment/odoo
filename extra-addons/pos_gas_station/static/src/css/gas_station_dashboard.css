@@ -914,6 +914,17 @@ thead .sticky-cell {
     white-space: nowrap !important;
 }
 
+.company-detail-table thead th.sortable-th {
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.company-detail-table thead th.sortable-th:hover {
+    background-color: #eef2ff !important;
+    color: #1e3a8a !important;
+}
+
 .company-detail-table tbody td {
     padding: 5px 12px !important;
     vertical-align: middle !important;
