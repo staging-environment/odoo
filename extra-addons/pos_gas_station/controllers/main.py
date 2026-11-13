@@ -1233,9 +1233,12 @@ class PosGasStationController(http.Controller):
         user = env.user
         is_manager = user.has_group('point_of_sale.group_pos_manager') or user._is_admin()
 
-        # Inicializar direcciones de estaciones si faltan
+        # Inicializar direcciones de estaciones si faltan y normalizar partners de empresas
         try:
             env['pos.config'].sudo()._init_station_addresses()
+            for comp in env['res.company'].sudo().search([]):
+                if comp.partner_id and comp.partner_id.company_id:
+                    comp.partner_id.sudo().write({'company_id': False})
         except Exception:
             pass
 

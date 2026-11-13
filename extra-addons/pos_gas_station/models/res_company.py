@@ -36,8 +36,8 @@ class ResCompany(models.Model):
             default_company_id=False,
         )).create(vals_list)
         for comp in companies:
-            if comp.partner_id and comp.partner_id.company_id != comp:
-                comp.partner_id.sudo().write({'company_id': comp.id})
+            if comp.partner_id and comp.partner_id.company_id:
+                comp.partner_id.sudo().write({'company_id': False})
         return companies
 
     def _compute_edit_icon(self):
@@ -53,7 +53,7 @@ class ResCompany(models.Model):
     @api.depends('partner_id.street', 'partner_id.street2', 'partner_id.city', 'partner_id.state_id', 'partner_id.zip')
     def _compute_company_address(self):
         for company in self:
-            partner = company.partner_id
+            partner = company.sudo().partner_id
             if partner:
                 parts = []
                 if partner.street:
