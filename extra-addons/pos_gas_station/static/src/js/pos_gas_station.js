@@ -1529,8 +1529,7 @@ export class UtrecarMainScreen extends Component {
                     pos_reference: posRef,
                     reason: `Cancelación de pista en prepago (Calle ${pumpId})`
                 });
-                if (res && res.status === "success" && res.order) {
-                    this.printAnnulmentReceipt(res.order, null, true);
+                if (res && res.status === "success") {
                     if (typeof this.loadShiftOrders === "function") {
                         this.loadShiftOrders();
                     }
@@ -3708,11 +3707,24 @@ export class UtrecarMainScreen extends Component {
     }
 
     async cancelPumpAuthorization(pump) {
-        this.closeCancelModal();
         const pumpId = pump ? pump.id : this.state.selectedPumpId;
-        if (pumpId) {
-            await this.resetAndLockPump(pumpId);
+        if (!pumpId) return;
+
+        const target = pump || this.state.pumps.find(p => p.id === pumpId);
+        const preset = (this.state.pumpPresets && this.state.pumpPresets[pumpId]) || 
+                       (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[pumpId]);
+        const isPrepay = Boolean((target && target.has_prepay) || (preset && preset.hasPrepay));
+        const amt = (preset && preset.amount) || (target && target.preset_amount) || 0;
+
+        if (isPrepay) {
+            const amtStr = amt > 0 ? ` de ${amt.toFixed(2)} €` : "";
+            if (!confirm(`¿Confirma que desea cerrar la Calle ${pumpId} y anular el suministro cobrado${amtStr}?`)) {
+                return;
+            }
         }
+
+        this.closeCancelModal();
+        await this.resetAndLockPump(pumpId);
         this.state.orderVersion = Date.now();
     }
 

@@ -1412,7 +1412,12 @@
                                 ⬅ CERRAR / MANTENER
                             </button>
                             <button class="btn-cancel-modal-action" t-on-click="() => this.cancelPumpAuthorization(state.cancelModalPump)">
-                                🛑 CANCELAR Y BLOQUEAR CALLE <t t-esc="state.cancelModalPump.id"/>
+                                <t t-if="state.cancelModalPump.has_prepay || getPumpPresetAmount(state.cancelModalPump) > 0">
+                                    🛑 CERRAR Y ANULAR SUMINISTRO CALLE <t t-esc="state.cancelModalPump.id"/>
+                                </t>
+                                <t t-else="">
+                                    🛑 CANCELAR Y BLOQUEAR CALLE <t t-esc="state.cancelModalPump.id"/>
+                                </t>
                             </button>
                         </div>
 
