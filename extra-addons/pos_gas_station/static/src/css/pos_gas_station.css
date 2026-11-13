@@ -408,6 +408,170 @@
     color: #94a3b8 !important;
 }
 
+/* ======================================================== */
+/* MODAL BONITO: ARTÍCULO NO ENCONTRADO POR CÓDIGO DE BARRAS */
+/* ======================================================== */
+.barcode-notfound-backdrop {
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(5px) !important;
+    z-index: 10050 !important;
+    animation: fadeInModal 0.15s ease-out !important;
+}
+
+.barcode-notfound-card {
+    background: #ffffff !important;
+    width: 90% !important;
+    max-width: 440px !important;
+    border-radius: 16px !important;
+    padding: 24px 26px 20px 26px !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.8) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    position: relative !important;
+    animation: popInModal 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.barcode-notfound-header {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    position: relative !important;
+    margin-bottom: 14px !important;
+}
+
+.barcode-notfound-icon-wrap {
+    width: 58px !important;
+    height: 58px !important;
+    border-radius: 50% !important;
+    background: #fef2f2 !important;
+    border: 2px solid #fee2e2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #ef4444 !important;
+    font-size: 26px !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15) !important;
+}
+
+.barcode-notfound-close-btn {
+    position: absolute !important;
+    top: -8px !important;
+    right: -8px !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    border: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
+    color: #64748b !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+.barcode-notfound-close-btn:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+.barcode-notfound-body {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+.barcode-notfound-title {
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    margin: 0 0 8px 0 !important;
+    letter-spacing: -0.02em !important;
+}
+
+.barcode-notfound-desc {
+    font-size: 13.5px !important;
+    color: #475569 !important;
+    margin: 0 0 14px 0 !important;
+    line-height: 1.45 !important;
+}
+
+.barcode-notfound-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    margin-bottom: 12px !important;
+    max-width: 100% !important;
+}
+
+.barcode-badge-icon {
+    font-size: 14px !important;
+    color: #64748b !important;
+    letter-spacing: 1px !important;
+    user-select: none !important;
+}
+
+.barcode-badge-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    color: #dc2626 !important;
+    word-break: break-all !important;
+}
+
+.barcode-notfound-hint {
+    font-size: 11.5px !important;
+    color: #94a3b8 !important;
+    margin: 0 0 18px 0 !important;
+    line-height: 1.4 !important;
+}
+
+.barcode-notfound-footer {
+    width: 100% !important;
+}
+
+.btn-barcode-notfound-action {
+    width: 100% !important;
+    height: 42px !important;
+    border: none !important;
+    border-radius: 10px !important;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25) !important;
+    transition: all 0.15s ease !important;
+}
+
+.btn-barcode-notfound-action:hover {
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%) !important;
+    transform: translateY(-1px) !important;
+}
+
+@keyframes popInModal {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 .btn-trash-red {
     background: #fef2f2 !important;
     color: #dc2626 !important;

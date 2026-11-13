@@ -173,6 +173,10 @@ export class UtrecarMainScreen extends Component {
             stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
             vehiclePlate: "",
             manualBarcode: "",
+            barcodeNotFoundModal: {
+                isOpen: false,
+                code: ""
+            },
             partnerVehicles: [],
             isAddingNewPlate: false,
             newPlateInput: "",
@@ -412,14 +416,13 @@ export class UtrecarMainScreen extends Component {
     }
 
     handleBarcodeScan(code) {
-        const prod = this.findProductByCode(code);
+        const clean = (code || "").trim();
+        if (!clean) return;
+        const prod = this.findProductByCode(clean);
         if (prod) {
             this.addStoreProductToOrder(prod, true);
-        } else if (this.env.services.notification) {
-            this.env.services.notification.add(
-                `Código "${(code || "").trim()}" no encontrado en el inventario de la estación`,
-                { type: "warning", sticky: false, duration: 2500 }
-            );
+        } else {
+            this.openBarcodeNotFoundModal(clean);
         }
     }
 
@@ -455,17 +458,29 @@ export class UtrecarMainScreen extends Component {
                 );
             }
         } else {
-            if (this.env.services.notification) {
-                this.env.services.notification.add(
-                    `No se encontró ningún producto con código "${clean}" en el inventario de la estación`,
-                    { type: "warning", sticky: false, duration: 3000 }
-                );
-            }
+            this.openBarcodeNotFoundModal(clean);
+        }
+    }
+
+    openBarcodeNotFoundModal(code) {
+        this.state.barcodeNotFoundModal = {
+            isOpen: true,
+            code: (code || "").trim()
+        };
+    }
+
+    closeBarcodeNotFoundModal() {
+        this.state.barcodeNotFoundModal = {
+            isOpen: false,
+            code: ""
+        };
+        setTimeout(() => {
+            const inputEl = document.querySelector(".virtus-barcode-input");
             if (inputEl) {
                 inputEl.focus();
                 inputEl.select();
             }
-        }
+        }, 60);
     }
 
     get posCategories() {

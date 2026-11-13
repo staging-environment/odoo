@@ -488,6 +488,42 @@
             </div>
 
             <!-- ======================================================== -->
+            <!-- MODAL FLOTANTE: CÓDIGO DE BARRAS NO ENCONTRADO EN ESTACIÓN -->
+            <!-- ======================================================== -->
+            <t t-if="state.barcodeNotFoundModal.isOpen">
+                <div class="utrecar-modal-backdrop barcode-notfound-backdrop" t-on-click="() => this.closeBarcodeNotFoundModal()">
+                    <div class="barcode-notfound-card shadow-lg" t-on-click.stop="">
+                        <div class="barcode-notfound-header">
+                            <div class="barcode-notfound-icon-wrap">
+                                <i class="fa fa-exclamation-triangle"></i>
+                            </div>
+                            <button class="barcode-notfound-close-btn" t-on-click="() => this.closeBarcodeNotFoundModal()" title="Cerrar (Esc)">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="barcode-notfound-body">
+                            <h3 class="barcode-notfound-title">Artículo no encontrado</h3>
+                            <p class="barcode-notfound-desc">
+                                No existe ningún artículo asociado a este código en el inventario de esta estación de servicio:
+                            </p>
+                            <div class="barcode-notfound-badge">
+                                <span class="barcode-badge-icon">▌▌█║▌</span>
+                                <span class="barcode-badge-code" t-esc="state.barcodeNotFoundModal.code"/>
+                            </div>
+                            <p class="barcode-notfound-hint">
+                                Compruebe que el código esté correctamente introducido o que el producto esté dado de alta para esta estación.
+                            </p>
+                        </div>
+                        <div class="barcode-notfound-footer">
+                            <button type="button" class="btn-barcode-notfound-action" t-on-click="() => this.closeBarcodeNotFoundModal()">
+                                <i class="fa fa-check me-2"></i>Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- ======================================================== -->
             <!-- MODAL FLOTANTE: PERSONALIZAR CUADRÍCULA DE PRODUCTOS (TPV) -->
             <!-- ======================================================== -->
             <t t-if="state.isGridConfigModalOpen">
