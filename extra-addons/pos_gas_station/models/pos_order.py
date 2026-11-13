@@ -138,11 +138,21 @@ class PosOrder(models.Model):
         for order in self:
             if order.is_ticket_annulled and order.annulment_ref:
                 continue
-            ref = order.annulment_ref or order._generate_annulment_ref()
+            if getattr(order, 'is_albaran', False):
+                ref = order.annulment_ref or f"{order.name}_"
+                order_reason = reason or f"Anulado por Albarán Negativo {ref}"
+            elif order.account_move:
+                inv_name = order.account_move.name or order.name
+                ref = order.annulment_ref or f"{inv_name}_"
+                order_reason = reason or f"Anulación de Factura {inv_name}"
+            else:
+                ref = order.annulment_ref or order._generate_annulment_ref()
+                order_reason = reason or 'Anulación de ticket'
+
             order.write({
                 'is_ticket_annulled': True,
                 'annulment_ref': ref,
-                'annulment_reason': reason or 'Anulación de ticket',
+                'annulment_reason': order_reason,
                 'annulment_date': fields.Datetime.now(),
             })
         return True

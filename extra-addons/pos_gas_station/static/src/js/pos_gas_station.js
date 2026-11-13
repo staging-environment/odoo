@@ -1519,7 +1519,7 @@ export class UtrecarMainScreen extends Component {
         }
 
         // Si la calle estaba en modalidad PREPAGO ya cobrado y se cancela antes de dispensar,
-        // generar de forma automática el ticket de anulación oficial sobre esa operación
+        // generar de forma automática el ticket/albarán negativo/factura de anulación oficial sobre esa operación
         if (autoAnnulPrepay && isPrepay && dispensedLts <= 0.05) {
             try {
                 const res = await jsonrpc("/pos_gas_station/annul_order", {
@@ -1528,6 +1528,8 @@ export class UtrecarMainScreen extends Component {
                     order_id: orderId,
                     order_ref: orderRef,
                     pos_reference: posRef,
+                    is_albaran: Boolean(preset && preset.isAlbaran),
+                    is_invoice: Boolean(preset && preset.isInvoice),
                     reason: `Cancelación de pista en prepago (Calle ${pumpId})`
                 });
                 if (res && res.status === "success") {
@@ -1535,10 +1537,10 @@ export class UtrecarMainScreen extends Component {
                         this.loadShiftOrders();
                     }
                 } else if (res && res.status === "error") {
-                    console.warn("Aviso al anular automáticamente ticket de prepago cancelado:", res.message);
+                    console.warn("Aviso al anular automáticamente documento de prepago cancelado:", res.message);
                 }
             } catch (err) {
-                console.error("Error al anular automáticamente ticket de prepago cancelado:", err);
+                console.error("Error al anular automáticamente documento de prepago cancelado:", err);
             }
         }
 
@@ -1825,9 +1827,15 @@ export class UtrecarMainScreen extends Component {
             return;
         }
 
+        const isAlbaran = order.is_albaran || (historyItem && historyItem.type_label && historyItem.type_label.includes('Albarán'));
+        const isInvoice = order.is_invoiced || (historyItem && historyItem.type_label && historyItem.type_label.includes('Factura'));
+        const docTitle = isAlbaran ? 'ALBARÁN NEGATIVO' : (isInvoice ? 'FACTURA DE ANULACIÓN' : 'JUSTIFICANTE DE ANULACIÓN');
+        const docRefLabel = isAlbaran ? 'Nº ALBARÁN NEGATIVO' : (isInvoice ? 'Nº FACTURA ANULACIÓN' : 'Nº ANULACIÓN');
+        const origDocLabel = isAlbaran ? 'ALBARÁN ORIGINAL' : (isInvoice ? 'FACTURA ORIGINAL' : 'TICKET ORIGINAL ANULADO');
+
         const topToolbar = autoPrint ? '' : `
             <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -10px -10px 12px -10px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -10px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
-                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: Justificante Anulación</span>
+                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${docTitle}</span>
                 <div>
                     <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; margin-right: 6px;">🖨️ Imprimir</button>
                     <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">✖ Cerrar</button>
@@ -1849,7 +1857,7 @@ export class UtrecarMainScreen extends Component {
             <html>
             <head>
                 <meta charset="utf-8">
-                <title>Justificante Anulación ${refAnnul}</title>
+                <title>${docTitle} ${refAnnul}</title>
                 <style>
                     @media print { .no-print { display: none !important; } }
                     body { font-family: monospace, sans-serif; font-size: 12px; margin: 0; padding: 10px; color: #000; }
@@ -1878,14 +1886,14 @@ export class UtrecarMainScreen extends Component {
                 <div class="divider"></div>
                 
                 <div class="annul-box">
-                    <div style="font-size: 13px; letter-spacing: 1px;">*** JUSTIFICANTE DE ANULACIÓN ***</div>
-                    <div style="font-size: 15px; margin-top: 3px;">Nº ANULACIÓN: ${refAnnul}</div>
+                    <div style="font-size: 13px; letter-spacing: 1px;">*** ${docTitle} ***</div>
+                    <div style="font-size: 15px; margin-top: 3px;">${docRefLabel}: ${refAnnul}</div>
                     <div style="font-size: 11px; margin-top: 2px;">FECHA: ${dateAnnul}</div>
                 </div>
 
                 <div style="font-size: 11px; margin-bottom: 6px;">
-                    <div><strong>TICKET ORIGINAL ANULADO:</strong> ${order.name}</div>
-                    <div><strong>FECHA EMISIÓN TICKET:</strong> ${order.date_order}</div>
+                    <div><strong>${origDocLabel}:</strong> ${order.name}</div>
+                    <div><strong>FECHA EMISIÓN:</strong> ${order.date_order}</div>
                     ${order.pump_name ? `<div><strong>CALLE / SURTIDOR:</strong> ${order.pump_name}</div>` : (order.pump_id ? `<div><strong>CALLE:</strong> Calle ${order.pump_id}</div>` : '')}
                     ${order.partner_name ? `<div><strong>CLIENTE:</strong> ${order.partner_name}</div>` : ''}
                     <div style="margin-top: 4px; font-style: italic;"><strong>MOTIVO:</strong> ${reasonAnnul}</div>
@@ -3746,7 +3754,13 @@ export class UtrecarMainScreen extends Component {
 
         if (isPrepay) {
             const amtStr = amt > 0 ? ` de ${amt.toFixed(2)} €` : "";
-            if (!confirm(`¿Confirma que desea cerrar la Calle ${pumpId} y anular el suministro cobrado${amtStr}?`)) {
+            let docType = "el ticket de anulación";
+            if (preset && preset.isAlbaran) {
+                docType = "el albarán de crédito negativo";
+            } else if (preset && preset.isInvoice) {
+                docType = "la factura de anulación";
+            }
+            if (!confirm(`¿Confirma que desea cerrar la Calle ${pumpId} y anular el suministro cobrado${amtStr}?\n(Se generará automáticamente ${docType}).`)) {
                 return;
             }
         }
@@ -5165,14 +5179,17 @@ patch(PaymentScreen.prototype, {
     get isCreditCustomer() {
         const partner = this.currentPartner;
         if (!partner) return false;
-        const hasCredit = partner.customer_type === 'credit' || partner.customer_type === 'monthly' || partner.customer_payment_mode === 'credit';
-        return hasCredit && !partner.credit_blocked;
+        if (partner.customer_type === 'credit') return !partner.credit_blocked;
+        if (partner.customer_type === 'monthly') return false;
+        return (partner.customer_payment_mode === 'credit') && !partner.credit_blocked;
     },
 
     get isMonthlyCustomer() {
         const partner = this.currentPartner;
         if (!partner) return false;
-        return partner.customer_type === 'monthly' || partner.invoice_periodicity === 'monthly';
+        if (partner.customer_type === 'monthly') return true;
+        if (partner.customer_type === 'credit') return false;
+        return partner.invoice_periodicity === 'monthly';
     },
 
     get isOrdinaryCustomer() {
@@ -5459,6 +5476,8 @@ patch(PaymentScreen.prototype, {
                     isMoney: prepay.isMoney,
                     hasPrepay: true,
                     isLleno: false,
+                    isAlbaran: Boolean(order.is_albaran),
+                    isInvoice: Boolean(order.is_to_invoice && order.is_to_invoice()),
                     orderRef: order.name,
                     orderPosRef: order.get_name ? order.get_name() : (order.pos_reference || order.name),
                     orderTicketName: order.backend_name || order.ticket_series_name || order.name,

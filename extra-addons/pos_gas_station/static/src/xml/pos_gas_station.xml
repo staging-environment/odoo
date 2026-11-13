@@ -1395,7 +1395,7 @@
                                     <div class="warning-text">
                                         <strong>¿Desea cancelar la autorización?</strong>
                                         <p t-if="state.cancelModalPump.has_prepay || getPumpPresetAmount(state.cancelModalPump) > 0">
-                                            Al cancelar, el surtidor se bloqueará de inmediato y se generará automáticamente el ticket de anulación sobre la operación cobrada.
+                                            Al cancelar, el surtidor se bloqueará de inmediato y se generará automáticamente el documento de anulación correspondiente (Albarán Negativo, Factura o Ticket de anulación).
                                         </p>
                                         <p t-else="">
                                             Al cancelar, el surtidor se bloqueará de inmediato y volverá a estar disponible.
@@ -3042,41 +3042,50 @@
     </t>
 
     <!-- SUSTITUCIÓN COMPLETA DEL BOTÓN VALIDATE DE PAYMENTSCREEN -->
+    <!-- SUSTITUCIÓN COMPLETA DEL BOTÓN VALIDATE DE PAYMENTSCREEN -->
     <t t-name="pos_gas_station.PaymentScreenValidate" t-inherit="point_of_sale.PaymentScreenValidate" t-inherit-mode="extension" owl="1">
         <xpath expr="//div[hasclass('validation')]" position="replace">
             <div class="utrecar-payment-actions-wrapper p-2 bg-light border-top">
                 <!-- Indicador visual informativo según el cliente -->
                 <div class="payment-customer-rule-info mb-2 text-center" t-if="currentPartner">
-                    <t t-if="isCreditCustomer">
+                    <t t-if="isOrdinaryCustomer">
+                        <span class="badge bg-primary text-white px-3 py-1 fw-bold" style="font-size: 11px;">
+                            <i class="fa fa-file-text me-1"/> Facturación Ordinaria: Factura Oficial Obligatoria
+                        </span>
+                    </t>
+                    <t t-elif="isCreditCustomer">
                         <span class="badge bg-warning text-dark px-3 py-1 fw-bold" style="font-size: 11px;">
-                            <i class="fa fa-info-circle me-1"/> Cliente de Crédito: Ticket, Factura o Albarán a crédito
+                            <i class="fa fa-credit-card me-1"/> Cliente de Crédito: Factura o Albarán a crédito
                         </span>
                     </t>
                     <t t-elif="isMonthlyCustomer">
                         <span class="badge bg-info text-dark px-3 py-1 fw-bold" style="font-size: 11px;">
-                            <i class="fa fa-info-circle me-1"/> Cliente Mensual: Ticket o Factura
-                        </span>
-                    </t>
-                    <t t-else="">
-                        <span class="badge bg-secondary text-white px-3 py-1 fw-bold" style="font-size: 11px;">
-                            <i class="fa fa-info-circle me-1"/> Cliente Ordinario: Ticket o Factura
+                            <i class="fa fa-calendar me-1"/> Cliente Mensual: Ticket, Factura o Guardar sin cambios
                         </span>
                     </t>
                 </div>
+                <div class="payment-customer-rule-info mb-2 text-center" t-else="">
+                    <span class="badge bg-secondary text-white px-3 py-1 fw-bold" style="font-size: 11px;">
+                        <i class="fa fa-user-times me-1"/> Sin cliente seleccionado (Venta directa de contado)
+                    </span>
+                </div>
 
                 <div class="utrecar-payment-actions-grid mb-2">
-                    <!-- 1. SI ES CLIENTE DE CRÉDITO: TICKET, FACTURA O ALBARÁN A CRÉDITO -->
-                    <t t-if="isCreditCustomer">
-                        <button class="btn-virtus-pay btn-pay-ticket" 
-                                t-on-click="() => this.validateVirtusTicket()"
-                                title="Cobrar e imprimir ticket">
-                            <div class="pay-icon">🖨</div>
+                    <!-- 1. SI ES CLIENTE DE FACTURACIÓN ORDINARIA: ÚNICAMENTE IMPRIMIR FACTURA -->
+                    <t t-if="isOrdinaryCustomer">
+                        <button class="btn-virtus-pay btn-pay-invoice w-100 py-3" 
+                                t-on-click="() => this.validateVirtusInvoice()"
+                                title="Cobrar y emitir Factura Oficial con NIF/CIF">
+                            <div class="pay-icon" style="font-size: 26px;">📄</div>
                             <div class="pay-details">
-                                <strong>TICKET</strong>
-                                <span>Imprimir</span>
+                                <strong style="font-size: 17px;">IMPRIMIR FACTURA</strong>
+                                <span>Factura Oficial con NIF/CIF (Papel o Email)</span>
                             </div>
                         </button>
+                    </t>
 
+                    <!-- 2. SI ES CLIENTE A CRÉDITO: FACTURA O ALBARÁN DE CRÉDITO -->
+                    <t t-elif="isCreditCustomer">
                         <button class="btn-virtus-pay btn-pay-invoice" 
                                 t-on-click="() => this.validateVirtusInvoice()"
                                 title="Cobrar y emitir Factura con NIF/CIF">
@@ -3089,16 +3098,16 @@
 
                         <button class="btn-virtus-pay btn-pay-albaran" 
                                 t-on-click="() => this.validateVirtusAlbaran()"
-                                title="Cobrar a crédito y emitir Albarán firmado">
+                                title="Cobrar a crédito y registrar Albarán de crédito firmado">
                             <div class="pay-icon">📋</div>
                             <div class="pay-details">
-                                <strong>ALBARÁN</strong>
+                                <strong>ALBARÁN DE CRÉDITO</strong>
                                 <span>Crédito</span>
                             </div>
                         </button>
                     </t>
 
-                    <!-- 2. CLIENTE ORDINARIO, MENSUAL SIN CRÉDITO O VENTA GENERAL: TICKET, FACTURA O GUARDAR (ALBARÁN SOLO A CRÉDITO) -->
+                    <!-- 3. SI ES CLIENTE MENSUAL O NO HAY CLIENTE: TICKET, FACTURA O GUARDAR SIN CAMBIOS -->
                     <t t-else="">
                         <button class="btn-virtus-pay btn-pay-ticket" 
                                 t-on-click="() => this.validateVirtusTicket()"
@@ -3125,7 +3134,7 @@
                                 title="Guardar venta sin imprimir ticket">
                             <div class="pay-icon">💾</div>
                             <div class="pay-details">
-                                <strong>GUARDAR</strong>
+                                <strong>GUARDAR SIN CAMBIOS</strong>
                                 <span>Sin Ticket</span>
                             </div>
                         </button>

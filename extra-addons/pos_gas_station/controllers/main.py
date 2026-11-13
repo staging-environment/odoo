@@ -2076,7 +2076,7 @@ class PosGasStationController(http.Controller):
 
             payments = env['pos.payment'].sudo().search([('session_id', '=', session.id)])
             non_ext_orders = [o for o in orders if not getattr(o, 'is_extraction', False)]
-            active_sales_orders = [o for o in non_ext_orders if not getattr(o, 'is_ticket_annulled', False) and o.state != 'cancel']
+            active_sales_orders = [o for o in non_ext_orders if not getattr(o, 'is_ticket_annulled', False) and o.state != 'cancel' and o.amount_total > 0]
             total_sales = round(sum(o.amount_total for o in active_sales_orders), 2)
             extractions_list = [o for o in orders if getattr(o, 'is_extraction', False)]
             total_extraction_liters = round(sum(float(getattr(o, 'extraction_liters', 0.0) or 0.0) for o in extractions_list), 2)
@@ -2193,14 +2193,27 @@ class PosGasStationController(http.Controller):
                     inv_date_str = date_str
 
                 order_history = []
-                # 1. Ticket de Anulación si fue anulado (directo o por factura)
+                # 1. Documento de Anulación si fue anulado (directo o por factura)
                 if has_annulment:
                     annul_reason = getattr(o, 'annulment_reason', '') or ('Anulado por canje a factura' if is_inv else 'Anulación de ticket')
+                    if is_albaran:
+                        type_label = 'Albarán Negativo'
+                        badge_cls = 'badge-history-albaran'
+                        icon_cls = 'fa-file-text'
+                    elif is_inv:
+                        type_label = 'Factura Anulación'
+                        badge_cls = 'badge-history-invoice'
+                        icon_cls = 'fa-ban'
+                    else:
+                        type_label = 'Ticket Anulación'
+                        badge_cls = 'badge-history-annulment'
+                        icon_cls = 'fa-ban'
+
                     order_history.append({
                         'type': 'annulment',
-                        'type_label': 'Ticket Anulación',
-                        'icon': 'fa-ban',
-                        'badge_class': 'badge-history-annulment',
+                        'type_label': type_label,
+                        'icon': icon_cls,
+                        'badge_class': badge_cls,
                         'ref': annul_ref_val,
                         'date': annul_date_str,
                         'description': annul_reason,
@@ -2453,16 +2466,114 @@ class PosGasStationController(http.Controller):
             if not order or not order.exists():
                 return {'status': 'error', 'message': 'Pedido no encontrado para anular'}
 
-            if hasattr(order, 'action_annul_ticket'):
-                order.action_annul_ticket(reason=reason)
-            else:
-                ref = order._generate_annulment_ref() if hasattr(order, '_generate_annulment_ref') else f"TTTR_{(''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id))[-4:].zfill(4)}"
+            if order.is_ticket_annulled and order.annulment_ref:
+                return {
+                    'status': 'success',
+                    'annulment_ref': order.annulment_ref,
+                    'annulment_reason': order.annulment_reason,
+                    'order': {'id': order.id, 'name': order.name, 'annulment_ref': order.annulment_ref}
+                }
+
+            order_is_albaran = bool(getattr(order, 'is_albaran', False) or kw.get('is_albaran'))
+            order_is_invoice = bool(order.account_move or order.state == 'invoiced' or kw.get('is_invoice'))
+
+            # 1. CLIENTE DE CRÉDITO -> ALBARÁN DE CRÉDITO NEGATIVO
+            if order_is_albaran:
+                negative_name = f"{order.name}_"
+                existing_neg = env['pos.order'].sudo().search([('name', '=', negative_name)], limit=1)
+                if not existing_neg:
+                    neg_vals = {
+                        'name': negative_name,
+                        'pos_reference': f"{(order.pos_reference or order.name)}_",
+                        'session_id': order.session_id.id,
+                        'config_id': order.config_id.id,
+                        'company_id': order.company_id.id,
+                        'partner_id': order.partner_id.id if order.partner_id else False,
+                        'pricelist_id': order.pricelist_id.id if order.pricelist_id else False,
+                        'date_order': fields.Datetime.now(),
+                        'state': 'paid',
+                        'amount_total': -order.amount_total,
+                        'amount_tax': -order.amount_tax,
+                        'amount_paid': -order.amount_paid,
+                        'amount_return': 0.0,
+                        'is_albaran': True,
+                        'is_ticket_annulled': True,
+                        'annulment_ref': negative_name,
+                        'vehicle_id': order.vehicle_id.id if order.vehicle_id else False,
+                        'vehicle_plate': getattr(order, 'vehicle_plate', '') or '',
+                        'vehicle_driver': getattr(order, 'vehicle_driver', '') or '',
+                        'pump_id': getattr(order, 'pump_id', 0) or 0,
+                        'note': f"Albarán de crédito negativo por cancelación de prepago (Ref: {order.name})",
+                    }
+                    negative_order = env['pos.order'].sudo().create(neg_vals)
+                    for l in order.lines:
+                        tax_ids = [(6, 0, l.tax_ids_after_fiscal_position.ids)] if hasattr(l, 'tax_ids_after_fiscal_position') and l.tax_ids_after_fiscal_position else []
+                        env['pos.order.line'].sudo().create({
+                            'order_id': negative_order.id,
+                            'product_id': l.product_id.id,
+                            'name': f"{l.name} (Anulación)",
+                            'qty': -l.qty,
+                            'price_unit': l.price_unit,
+                            'price_subtotal': -l.price_subtotal,
+                            'price_subtotal_incl': -l.price_subtotal_incl,
+                            'discount': l.discount,
+                            'tax_ids_after_fiscal_position': tax_ids,
+                        })
+                    for p in order.payment_ids:
+                        env['pos.payment'].sudo().create({
+                            'pos_order_id': negative_order.id,
+                            'payment_method_id': p.payment_method_id.id,
+                            'session_id': order.session_id.id,
+                            'company_id': order.company_id.id,
+                            'amount': -p.amount,
+                            'payment_date': fields.Datetime.now(),
+                            'name': f"Anulación {order.name}",
+                        })
+
                 order.write({
                     'is_ticket_annulled': True,
-                    'annulment_ref': ref,
-                    'annulment_reason': reason or 'Anulación manual de ticket',
+                    'annulment_ref': negative_name,
+                    'annulment_reason': reason or f"Anulado por Albarán Negativo {negative_name}",
                     'annulment_date': fields.Datetime.now(),
                 })
+
+            # 2. FACTURA -> ANULACIÓN / RECTIFICATIVA CON MISMA NUMERACIÓN Y GUIÓN BAJO AL FINAL
+            elif order_is_invoice:
+                inv_name = (order.account_move.name if order.account_move else '') or order.name
+                annul_ref = f"{inv_name}_"
+                order.write({
+                    'is_ticket_annulled': True,
+                    'annulment_ref': annul_ref,
+                    'annulment_reason': reason or f"Anulación de Factura {inv_name}",
+                    'annulment_date': fields.Datetime.now(),
+                })
+                if order.account_move and order.account_move.state == 'posted':
+                    try:
+                        rev = order.account_move._reverse_moves(default_values_list=[{
+                            'ref': annul_ref,
+                            'date': fields.Date.context_today(order),
+                            'invoice_date': fields.Date.context_today(order),
+                        }])
+                        if rev:
+                            try:
+                                rev.action_post()
+                            except Exception:
+                                pass
+                    except Exception as e:
+                        _logger.warning("Aviso al revertir factura %s: %s", inv_name, e)
+
+            # 3. TICKET ESTÁNDAR -> TICKET DE ANULACIÓN
+            else:
+                if hasattr(order, 'action_annul_ticket'):
+                    order.action_annul_ticket(reason=reason)
+                else:
+                    ref = order._generate_annulment_ref() if hasattr(order, '_generate_annulment_ref') else f"TTTR_{(''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id))[-4:].zfill(4)}"
+                    order.write({
+                        'is_ticket_annulled': True,
+                        'annulment_ref': ref,
+                        'annulment_reason': reason or 'Anulación manual de ticket',
+                        'annulment_date': fields.Datetime.now(),
+                    })
 
             order_date_str = ""
             if order.date_order:
