@@ -1872,9 +1872,11 @@
                                                         <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false, true)" title="Imprimir ticket">
                                                             🖨️ Imprimir
                                                         </button>
-                                                        <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
-                                                            📄 Facturar
-                                                        </button>
+                                                        <t t-if="!ord.is_ticket_annulled &amp;&amp; !ord.has_annulment &amp;&amp; !ord.is_invoiced &amp;&amp; ord.amount_total > 0">
+                                                            <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
+                                                                📄 Facturar
+                                                            </button>
+                                                        </t>
                                                     </td>
                                                 </tr>
                                                 <!-- SUB-FILA DESPLEGABLE: HISTORIAL DEL PEDIDO (ANULACIÓN, FACTURA, ALBARÁN) -->
@@ -1988,9 +1990,11 @@
                                     <button class="btn-action-primary btn-action-albaran" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, false)" style="background: #eef2ff; color: #4338ca; border-color: #a5b4fc;">
                                         <i class="fa fa-print me-1"/> 📋 Imprimir Albarán
                                     </button>
-                                    <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">
-                                        <i class="fa fa-file-text-o me-1"/> 📄 Facturar Albarán (NIF/CIF)
-                                    </button>
+                                    <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; !state.selectedShiftOrder.is_invoiced &amp;&amp; state.selectedShiftOrder.amount_total > 0">
+                                        <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">
+                                            <i class="fa fa-file-text-o me-1"/> 📄 Facturar Albarán (NIF/CIF)
+                                        </button>
+                                    </t>
                                 </t>
                                 <t t-else="">
                                     <button class="btn-action-primary" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, false)">
@@ -2004,16 +2008,18 @@
                                             <i class="fa fa-envelope me-1"/> 📧 Enviar Factura por E-mail
                                         </button>
                                     </t>
-                                    <t t-else="">
+                                    <t t-elif="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; state.selectedShiftOrder.amount_total > 0">
                                         <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">
                                             <i class="fa fa-file-text-o me-1"/> 📄 Generar Factura (NIF/CIF)
                                         </button>
                                     </t>
                                     <!-- BOTÓN CONVERTIR EN ALBARÁN DE CRÉDITO (SOLO PARA CLIENTES PREVIAMENTE AUTORIZADOS CON CRÉDITO) -->
-                                    <button class="btn-action-primary btn-action-convert-albaran" t-on-click="() => this.openConvertAlbaranModal(state.selectedShiftOrder)" style="background: #2563eb; border-color: #1d4ed8; color: white;">
-                                        <i class="fa fa-file-text me-1"/> 📋 Convertir a Albarán de Crédito
-                                    </button>
-                                    <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.is_invoiced">
+                                    <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; !state.selectedShiftOrder.is_invoiced &amp;&amp; state.selectedShiftOrder.amount_total > 0">
+                                        <button class="btn-action-primary btn-action-convert-albaran" t-on-click="() => this.openConvertAlbaranModal(state.selectedShiftOrder)" style="background: #2563eb; border-color: #1d4ed8; color: white;">
+                                            <i class="fa fa-file-text me-1"/> 📋 Convertir a Albarán de Crédito
+                                        </button>
+                                    </t>
+                                    <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; !state.selectedShiftOrder.is_invoiced &amp;&amp; state.selectedShiftOrder.amount_total > 0">
                                         <button class="btn-action-primary btn-action-annul" t-on-click="() => this.openAnnulOrderModal(state.selectedShiftOrder)">
                                             <i class="fa fa-ban me-1"/> ❌ Anular Ticket
                                         </button>
@@ -2110,7 +2116,9 @@
                                                     </t>
                                                     <t t-else="">
                                                         <span class="text-muted">Cliente no asignado</span>
-                                                        <button class="btn-link ms-2" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">Asignar</button>
+                                                        <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; !state.selectedShiftOrder.is_invoiced &amp;&amp; state.selectedShiftOrder.amount_total > 0">
+                                                            <button class="btn-link ms-2" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">Asignar</button>
+                                                        </t>
                                                     </t>
                                                 </span>
                                             </div>

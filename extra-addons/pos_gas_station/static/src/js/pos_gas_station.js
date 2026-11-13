@@ -2067,6 +2067,15 @@ export class UtrecarMainScreen extends Component {
     }
 
     openInvoiceModal(order) {
+        if (!order) return;
+        if (order.is_ticket_annulled || order.has_annulment || order.state === 'cancel' || (order.amount_total || 0) <= 0) {
+            alert("⚠️ Un ticket que ha sido anulado o un ticket de anulación no se puede facturar.");
+            return;
+        }
+        if (order.is_invoiced) {
+            alert("⚠️ Este ticket ya ha sido facturado.");
+            return;
+        }
         this.state.isInvoiceModalOpen = true;
         this.state.invoicePartnerSearch = "";
         this.state.invoicePartnerResults = [];

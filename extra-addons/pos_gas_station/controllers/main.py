@@ -2341,6 +2341,11 @@ class PosGasStationController(http.Controller):
             if not order.exists():
                 return {'status': 'error', 'message': 'Pedido no encontrado'}
 
+            if order.state == 'cancel' or getattr(order, 'is_ticket_annulled', False) or getattr(order, 'annulment_ref', False):
+                return {'status': 'error', 'message': 'Un ticket que ha sido anulado no se puede facturar.'}
+            if order.amount_total <= 0:
+                return {'status': 'error', 'message': 'Un ticket de anulación o con importe no positivo no se puede facturar.'}
+
             if order.account_move:
                 return {
                     'status': 'success',
