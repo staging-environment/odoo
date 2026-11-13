@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 
@@ -259,7 +260,16 @@ class PosOrder(models.Model):
         fields['is_albaran'] = ui_order.get('is_albaran', False)
         fields['vehicle_plate'] = ui_order.get('vehicle_plate', False)
         fields['vehicle_driver'] = ui_order.get('vehicle_driver', False)
-        fields['pump_id'] = ui_order.get('pump_id', 0)
+        pump_id = ui_order.get('pump_id', 0)
+        if not pump_id:
+            for l in ui_order.get('lines', []):
+                line_dict = l[2] if isinstance(l, (list, tuple)) and len(l) == 3 else (l if isinstance(l, dict) else {})
+                c_note = line_dict.get('customer_note', '') or ''
+                m = re.search(r'(?:Calle|Surtidor)\s*[:#]?\s*(\d+)', c_note, re.IGNORECASE)
+                if m:
+                    pump_id = int(m.group(1))
+                    break
+        fields['pump_id'] = pump_id
         return fields
 
     @api.model

@@ -1867,8 +1867,18 @@
                                                         </t>
                                                     </td>
                                                     <td class="cell-date"><t t-esc="ord.date_order"/></td>
-                                                    <td class="cell-name" t-att-title="ord.is_ticket_annulled ? ('Ticket Anulado' + (ord.annulment_ref ? ' [' + ord.annulment_ref + ']' : '')) : ''">
-                                                        <strong><t t-esc="ord.name"/></strong>
+                                                    <td class="cell-name" t-att-title="ord.is_ticket_annulled ? ('Documento Anulado' + (ord.annulment_ref ? ' [' + ord.annulment_ref + ']' : '')) : ''">
+                                                        <t t-if="ord.doc_type === 'albaran'">
+                                                            <span class="badge bg-warning text-dark fw-bold me-1" style="font-size: 10px; padding: 2px 5px; border-radius: 3px;">ALBARÁN</span>
+                                                            <strong><t t-esc="ord.serie_code || ord.name"/></strong>
+                                                        </t>
+                                                        <t t-elif="ord.doc_type === 'invoice'">
+                                                            <span class="badge bg-primary text-white fw-bold me-1" style="font-size: 10px; padding: 2px 5px; border-radius: 3px;">FACTURA</span>
+                                                            <strong class="text-primary"><t t-esc="ord.serie_code || ord.account_move_name || ord.name"/></strong>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <strong><t t-esc="ord.name"/></strong>
+                                                        </t>
                                                     </td>
                                                     <td class="cell-pump" style="text-align: center;">
                                                         <t t-if="ord.pump_id">
@@ -1905,7 +1915,7 @@
                                                         <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false, true)" title="Imprimir ticket">
                                                             🖨️ Imprimir
                                                         </button>
-                                                        <t t-if="!ord.is_ticket_annulled &amp;&amp; !ord.has_annulment &amp;&amp; !ord.is_invoiced &amp;&amp; ord.amount_total > 0">
+                                                        <t t-if="!ord.is_ticket_annulled &amp;&amp; !ord.has_annulment &amp;&amp; !ord.is_invoiced &amp;&amp; ord.amount_total > 0 &amp;&amp; ord.doc_type !== 'invoice'">
                                                             <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
                                                                 📄 Facturar
                                                             </button>

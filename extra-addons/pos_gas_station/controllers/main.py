@@ -2192,15 +2192,29 @@ class PosGasStationController(http.Controller):
                 if not inv_date_str and is_inv:
                     inv_date_str = date_str
 
+                is_inv_exchanged = is_inv and (
+                    'canje' in (getattr(o, 'annulment_reason', '') or '').lower() or
+                    (has_annulment and str(getattr(o, 'annulment_ref', '')).startswith('TTTR_'))
+                )
+                if is_albaran:
+                    doc_type = 'albaran'
+                    serie_code = o.name
+                elif is_inv and not is_inv_exchanged:
+                    doc_type = 'invoice'
+                    serie_code = o.account_move.name or o.name
+                else:
+                    doc_type = 'ticket'
+                    serie_code = o.name
+
                 order_history = []
-                # 1. Documento de Anulación si fue anulado (directo o por factura)
-                if has_annulment:
-                    annul_reason = getattr(o, 'annulment_reason', '') or ('Anulado por canje a factura' if is_inv else 'Anulación de ticket')
-                    if is_albaran:
+                # 1. Documento de Anulación si fue anulado
+                if has_annulment and not is_inv_exchanged:
+                    annul_reason = getattr(o, 'annulment_reason', '') or 'Anulación de documento'
+                    if doc_type == 'albaran':
                         type_label = 'Albarán Negativo'
                         badge_cls = 'badge-history-albaran'
                         icon_cls = 'fa-file-text'
-                    elif is_inv:
+                    elif doc_type == 'invoice':
                         type_label = 'Factura Anulación'
                         badge_cls = 'badge-history-invoice'
                         icon_cls = 'fa-ban'
@@ -2220,9 +2234,20 @@ class PosGasStationController(http.Controller):
                         'amount': f"-{o.amount_total:.2f}",
                         'amount_raw': -o.amount_total,
                     })
-
-                # 2. Factura oficial emitida
-                if is_inv:
+                elif is_inv_exchanged:
+                    # El ticket original fue canjeado a factura posteriormente
+                    annul_reason = getattr(o, 'annulment_reason', '') or 'Anulado por canje a factura'
+                    order_history.append({
+                        'type': 'annulment',
+                        'type_label': 'Ticket Anulación',
+                        'icon': 'fa-ban',
+                        'badge_class': 'badge-history-annulment',
+                        'ref': annul_ref_val,
+                        'date': annul_date_str,
+                        'description': annul_reason,
+                        'amount': f"-{o.amount_total:.2f}",
+                        'amount_raw': -o.amount_total,
+                    })
                     partner_desc = o.partner_id.name if o.partner_id else 'Cliente'
                     if o.partner_id and o.partner_id.vat:
                         partner_desc += f" ({o.partner_id.vat})"
@@ -2240,31 +2265,13 @@ class PosGasStationController(http.Controller):
                         'invoice_url': inv_url,
                     })
 
-                # 3. Cliente de crédito / Albarán
-                if is_albaran:
-                    plate_driver = []
-                    if getattr(o, 'vehicle_plate', ''):
-                        plate_driver.append(f"Matrícula: {o.vehicle_plate}")
-                    if getattr(o, 'vehicle_driver', ''):
-                        plate_driver.append(f"Conductor: {o.vehicle_driver}")
-                    extra_info = f" ({' | '.join(plate_driver)})" if plate_driver else ""
-                    order_history.append({
-                        'type': 'albaran',
-                        'type_label': 'Cliente Crédito',
-                        'icon': 'fa-credit-card',
-                        'badge_class': 'badge-history-albaran',
-                        'ref': f"Albarán Crédito ({o.name})",
-                        'date': date_str,
-                        'description': f"Suministro a crédito: {o.partner_id.name if o.partner_id else 'Cliente'}{extra_info}",
-                        'amount': f"{o.amount_total:.2f}",
-                        'amount_raw': o.amount_total,
-                    })
-
                 has_history = len(order_history) > 0
 
                 orders_list.append({
                     'id': o.id,
                     'name': o.name,
+                    'doc_type': doc_type,
+                    'serie_code': serie_code,
                     'pos_reference': o.pos_reference or o.name,
                     'date_order': date_str,
                     'date_order_raw': o.date_order.isoformat() if o.date_order else '',
@@ -2454,14 +2461,26 @@ class PosGasStationController(http.Controller):
                     '|', ('pos_reference', '=', ref), ('name', '=', ref)
                 ], limit=1)
             if (not order or not order.exists()) and pump_id:
-                domain = [
-                    '|', ('pump_id', '=', int(pump_id)), ('note', 'ilike', f"Calle {pump_id}"),
-                    ('is_ticket_annulled', '=', False),
-                    ('state', 'in', ['paid', 'done', 'invoiced'])
-                ]
+                matching_lines = env['pos.order.line'].sudo().search([
+                    '|', ('customer_note', 'ilike', f"Calle {pump_id}"),
+                    ('notice', 'ilike', f"Calle {pump_id}")
+                ], order='id desc', limit=20)
+                candidate_orders = matching_lines.mapped('order_id').filtered(
+                    lambda o: not o.is_ticket_annulled and o.state in ['paid', 'done', 'invoiced']
+                )
                 if config_id:
-                    domain.append(('config_id', '=', int(config_id)))
-                order = env['pos.order'].sudo().search(domain, order='id desc', limit=1)
+                    candidate_orders = candidate_orders.filtered(lambda o: o.config_id.id == int(config_id))
+                if candidate_orders:
+                    order = candidate_orders[0]
+                else:
+                    domain = [
+                        '|', ('pump_id', '=', int(pump_id)), ('note', 'ilike', f"Calle {pump_id}"),
+                        ('is_ticket_annulled', '=', False),
+                        ('state', 'in', ['paid', 'done', 'invoiced'])
+                    ]
+                    if config_id:
+                        domain.append(('config_id', '=', int(config_id)))
+                    order = env['pos.order'].sudo().search(domain, order='id desc', limit=1)
 
             if not order or not order.exists():
                 return {'status': 'error', 'message': 'Pedido no encontrado para anular'}

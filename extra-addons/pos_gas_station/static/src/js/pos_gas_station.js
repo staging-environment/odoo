@@ -5284,6 +5284,7 @@ patch(PaymentScreen.prototype, {
             if (syncOrderResult && syncOrderResult.length > 0 && syncOrderResult[0]?.name) {
                 this.currentOrder.backend_name = syncOrderResult[0].name;
                 this.currentOrder.name = syncOrderResult[0].name;
+                this.currentOrder.server_id = syncOrderResult[0].id;
             }
 
             // 2. Factura oficial si aplica
