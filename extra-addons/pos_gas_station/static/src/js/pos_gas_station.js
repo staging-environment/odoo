@@ -1505,12 +1505,20 @@ export class UtrecarMainScreen extends Component {
 
     async deleteSelectedLine() {
         const currentOrder = this.pos.get_order();
-        const line = currentOrder ? currentOrder.get_selected_orderline() : null;
+        let line = null;
+        if (this.state.selectedLineId && this.currentOrderLines) {
+            line = this.currentOrderLines.find(l => l.id === this.state.selectedLineId);
+        }
+        if (!line && currentOrder) {
+            line = currentOrder.get_selected_orderline();
+        }
+        if (!line && this.currentOrderLines && this.currentOrderLines.length > 0) {
+            line = this.currentOrderLines[this.currentOrderLines.length - 1];
+        }
+
         if (line) {
             await this.deleteSpecificLine(line);
-            return;
-        } else if (this.currentOrderLines && this.currentOrderLines.length > 0) {
-            await this.deleteSpecificLine(this.currentOrderLines[this.currentOrderLines.length - 1]);
+            this.state.selectedLineId = null;
             return;
         }
 
@@ -1565,10 +1573,10 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
-        let confirmMsg = "¿Desea cancelar y vaciar el ticket actual?";
+        let confirmMsg = "¿Desea cancelar el pedido actual?";
         if (pumpsToClear.size > 0) {
             const listStr = Array.from(pumpsToClear).join(", ");
-            confirmMsg = `¿Desea cancelar y bloquear la Calle ${listStr}?`;
+            confirmMsg = `¿Desea cancelar el pedido y bloquear la Calle ${listStr}?`;
         }
 
         if (confirm(confirmMsg)) {
@@ -1590,6 +1598,9 @@ export class UtrecarMainScreen extends Component {
                     console.debug("Error al vaciar orden:", e);
                 }
             }
+            // 3. Quitar cliente asignado si existiera previamente
+            this.removeClient();
+
             this.state.vehiclePlate = "";
             this.state.selectedLineId = null;
             this.state.selectedPumpId = null;
