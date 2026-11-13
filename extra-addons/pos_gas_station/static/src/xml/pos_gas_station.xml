@@ -1801,8 +1801,8 @@
                                                 <th class="th-sortable" style="width: 135px;" t-on-click="() => this.sortShiftOrders('date')" title="Ordenar por Fecha y Hora">
                                                     FECHA / HORA <i t-attf-class="fa #{getSortIcon('date')}"/>
                                                 </th>
-                                                <th class="th-sortable" style="width: 85px;" t-on-click="() => this.sortShiftOrders('ticket')" title="Ordenar por Nº de Ticket">
-                                                    Nº TICKET <i t-attf-class="fa #{getSortIcon('ticket')}"/>
+                                                <th class="th-sortable" style="width: 85px;" t-on-click="() => this.sortShiftOrders('ticket')" title="Ordenar por Serie">
+                                                    SERIE <i t-attf-class="fa #{getSortIcon('ticket')}"/>
                                                 </th>
                                                 <th class="th-sortable" style="width: 80px; text-align: center;" t-on-click="() => this.sortShiftOrders('pump')" title="Ordenar por Calle de Suministro">
                                                     CALLE <i t-attf-class="fa #{getSortIcon('pump')}"/>
