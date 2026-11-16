@@ -2268,6 +2268,7 @@ class PosGasStationController(http.Controller):
                     lot_str = l.pack_lot_ids[0].lot_name if l.pack_lot_ids else ''
                     lines_data.append({
                         'id': l.id,
+                        'product_id': l.product_id.id,
                         'product_name': l.product_id.display_name or l.product_id.name or 'Producto',
                         'lot_name': lot_str,
                         'qty': round(l.qty, 3),
@@ -2281,6 +2282,7 @@ class PosGasStationController(http.Controller):
                         'price_subtotal_str': f"{l.price_subtotal:.2f}",
                         'price_subtotal_incl': round(l.price_subtotal_incl, 2),
                         'price_subtotal_incl_str': f"{l.price_subtotal_incl:.2f}",
+                        'pump_id': pump_val,
                     })
 
                 payments_data = []
@@ -3577,9 +3579,58 @@ class PosGasStationController(http.Controller):
         return self.update_station(config_id=config_id, name=name)
 
     @http.route('/pos_gas_station/register_extraction', type='json', auth='user', methods=['POST'], csrf=False)
-    def register_extraction(self, session_id=None, order_lines=None, reason=None, pump_id=None, notes=None):
+    def register_extraction(self, session_id=None, order_lines=None, reason=None, pump_id=None, notes=None, order_id=None):
         try:
             env = request.env
+
+            # CASO 1: Extracción realizada sobre un ticket existente del historial
+            if order_id:
+                order = env['pos.order'].sudo().browse(int(order_id))
+                if not order.exists():
+                    return {'status': 'error', 'message': 'Pedido no encontrado.'}
+
+                if order.account_move or order.state == 'invoiced':
+                    return {'status': 'error', 'message': 'No se puede registrar como extracción una factura emitida.'}
+                if getattr(order, 'is_albaran', False):
+                    return {'status': 'error', 'message': 'No se puede registrar como extracción un albarán de crédito.'}
+                if getattr(order, 'is_ticket_annulled', False) or getattr(order, 'annulment_ref', False) or order.state == 'cancel':
+                    return {'status': 'error', 'message': 'No se puede registrar como extracción un documento anulado.'}
+                if getattr(order, 'is_extraction', False):
+                    return {'status': 'error', 'message': 'Este pedido ya está registrado como extracción.'}
+
+                reason_str = (reason or 'Prueba de probeta / Calibración metrológica').strip()
+                if notes:
+                    reason_str += f" - {notes.strip()}"
+
+                total_liters = sum(float(l.qty) for l in order.lines)
+                pump_val = pump_id or getattr(order, 'pump_id', 0) or getattr(order, 'extraction_pump_id', 0) or 0
+
+                # Desvincular líneas de pago para que no compute como dinero cobrado en efectivo/banco en la caja
+                order.payment_ids.unlink()
+
+                order.write({
+                    'is_extraction': True,
+                    'amount_paid': 0.0,
+                    'extraction_reason': reason_str,
+                    'extraction_liters': total_liters,
+                    'extraction_date': fields.Datetime.now(),
+                    'extraction_pump_id': int(pump_val or 0),
+                    'state': 'done',
+                    'note': f"Registrado como Extracción / Retorno a Depósito: {reason_str}",
+                })
+
+                order.message_post(body=f"⛽ <strong>Convertido en Extracción / Retorno a Depósito:</strong> {total_liters:.2f} Litros devueltos al depósito.<br/>Motivo: <em>{reason_str}</em>.<br/><strong>No descuenta existencias de inventario ni se resta al cajero en el turno.</strong>")
+
+                return {
+                    'status': 'success',
+                    'order_id': order.id,
+                    'order_name': order.name,
+                    'liters': total_liters,
+                    'amount': order.amount_total,
+                    'message': f"Ticket {order.name} registrado con éxito como Extracción / Retorno a Depósito ({total_liters:.2f} L)."
+                }
+
+            # CASO 2: Extracción desde el ticket activo del TPV
             session = None
             if session_id:
                 session = env['pos.session'].sudo().browse(int(session_id))
@@ -3613,12 +3664,16 @@ class PosGasStationController(http.Controller):
                     is_fuel = any('carburante' in c.name.lower() or 'fuel' in c.name.lower() for c in prod.pos_categ_ids)
                 total_liters += qty
 
+                taxes = prod.taxes_id
+                tax_ids = [(6, 0, taxes.ids)] if taxes else []
+
                 lines_vals.append((0, 0, {
                     'product_id': p_id,
                     'qty': qty,
                     'price_unit': price,
                     'price_subtotal': subtotal,
                     'price_subtotal_incl': subtotal,
+                    'tax_ids': tax_ids,
                 }))
 
             ext_seq = int(time.time()) % 10000

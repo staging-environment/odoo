@@ -1842,7 +1842,7 @@
                                                 <th class="th-sortable" style="width: 80px; text-align: right;" t-on-click="() => this.sortShiftOrders('total')" title="Ordenar por Importe Total">
                                                     TOTAL <i t-attf-class="fa #{getSortIcon('total')}"/>
                                                 </th>
-                                                <th style="width: 200px; text-align: center;">ACCIONES</th>
+                                                <th style="width: 290px; text-align: center;">ACCIONES</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1911,6 +1911,11 @@
                                                         <t t-if="!ord.is_ticket_annulled &amp;&amp; !ord.has_annulment &amp;&amp; !ord.is_invoiced &amp;&amp; ord.amount_total > 0 &amp;&amp; ord.doc_type !== 'invoice'">
                                                             <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
                                                                 📄 Facturar
+                                                            </button>
+                                                        </t>
+                                                        <t t-if="canOrderBeExtracted(ord)">
+                                                            <button class="btn-tbl-action btn-tbl-extraction" t-on-click="() => this.openShiftOrderExtractionModal(ord)" title="Registrar ticket como Extracción / Retorno a depósito">
+                                                                ⛽ Extracción
                                                             </button>
                                                         </t>
                                                     </td>
@@ -2058,6 +2063,11 @@
                                     <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; !state.selectedShiftOrder.is_invoiced &amp;&amp; state.selectedShiftOrder.amount_total > 0">
                                         <button class="btn-action-primary btn-action-annul" t-on-click="() => this.openAnnulOrderModal(state.selectedShiftOrder)">
                                             <i class="fa fa-ban me-1"/> ❌ Anular Ticket
+                                        </button>
+                                    </t>
+                                    <t t-if="canOrderBeExtracted(state.selectedShiftOrder)">
+                                        <button class="btn-action-primary btn-action-extraction" t-on-click="() => this.openShiftOrderExtractionModal(state.selectedShiftOrder)" style="background: #d97706; border-color: #b45309; color: white;">
+                                            <i class="fa fa-tint me-1"/> ⛽ Extracción / Retorno
                                         </button>
                                     </t>
                                 </t>
@@ -2854,7 +2864,7 @@
 
             <!-- ================= MODAL DE EXTRACCIONES / RETORNO A DEPÓSITO ================= -->
             <t t-if="state.isExtractionModalOpen">
-                <div class="utrecar-modal-backdrop" t-on-click="() => this.closeExtractionModal()">
+                <div class="utrecar-modal-backdrop extraction-modal-backdrop" style="z-index: 11000 !important;" t-on-click="() => this.closeExtractionModal()">
                     <div class="utrecar-auth-modal" style="width: 530px; max-width: 95vw;" t-on-click.stop="">
                         <div class="auth-modal-header" style="background: #0284c7; color: white;">
                             <div class="auth-header-left">
@@ -2879,14 +2889,14 @@
                                 </div>
                             </div>
 
-                            <!-- DETALLE DE LAS LÍNEAS DEL TICKET ACTUAL -->
+                            <!-- DETALLE DE LAS LÍNEAS DEL TICKET ACTUAL O HISTORIAL -->
                             <div>
                                 <label class="fw-bold mb-1 text-dark d-block">Líneas y combustible a retornar:</label>
                                 <div class="border rounded p-2 bg-light" style="max-height: 140px; overflow-y: auto;">
-                                    <t t-foreach="currentOrderLines" t-as="l" t-key="l.id">
+                                    <t t-foreach="extractionDisplayLines" t-as="l" t-key="l.id">
                                         <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
                                             <div>
-                                                <strong><t t-esc="l.product_id ? (l.product_id.display_name || l.product_id.name) : 'Producto'"/></strong>
+                                                <strong><t t-esc="l.product_id ? (l.product_id.display_name || l.product_id.name || l.product_name) : (l.product_name || 'Producto')"/></strong>
                                                 <small class="text-muted d-block" t-if="l.pump_id">Surtidor Calle <t t-esc="l.pump_id"/></small>
                                             </div>
                                             <div class="text-end">
@@ -2898,7 +2908,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mt-2 px-1 fw-bold" style="font-size: 14px;">
                                     <span>Total Litros a Devolver:</span>
-                                    <span class="text-primary" style="font-size: 16px;"><t t-esc="currentOrderTotalLiters.toFixed(2)"/> Litros</span>
+                                    <span class="text-primary" style="font-size: 16px;"><t t-esc="extractionDisplayTotalLiters.toFixed(2)"/> Litros</span>
                                 </div>
                             </div>
 

@@ -453,6 +453,7 @@ export class UtrecarMainScreen extends Component {
             emailInvoiceSuccessMessage: "",
             emailInvoiceErrorMessage: "",
             isExtractionModalOpen: false,
+            extractionTargetOrder: null,
             extractionReason: "Prueba de probeta / Calibración metrológica",
             extractionNotes: "",
             isSavingExtraction: false,
@@ -464,6 +465,11 @@ export class UtrecarMainScreen extends Component {
 
         this.onGlobalKeyDown = (ev) => {
             if (ev.key === 'Escape') {
+                if (this.state.isExtractionModalOpen) {
+                    this.closeExtractionModal();
+                    ev.preventDefault();
+                    return;
+                }
                 if (this.state.isAnnulOrderModalOpen) {
                     this.closeAnnulOrderModal();
                     ev.preventDefault();
@@ -2784,6 +2790,42 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
+    canOrderBeExtracted(ord) {
+        if (!ord) return false;
+        if (ord.is_albaran || ord.doc_type === 'albaran') return false;
+        if (ord.is_invoiced || ord.doc_type === 'invoice') return false;
+        if (ord.is_ticket_annulled || ord.has_annulment || ord.annulment_ref) return false;
+        if (ord.is_extraction) return false;
+        if ((ord.amount_total || 0) <= 0) return false;
+        return true;
+    }
+
+    openShiftOrderExtractionModal(order) {
+        if (!order) return;
+        this.state.extractionTargetOrder = order;
+        this.state.extractionReason = "Prueba de probeta / Calibración metrológica";
+        this.state.extractionNotes = "";
+        this.state.isSavingExtraction = false;
+        this.state.isExtractionModalOpen = true;
+    }
+
+    get extractionDisplayLines() {
+        if (this.state.extractionTargetOrder && this.state.extractionTargetOrder.lines) {
+            return this.state.extractionTargetOrder.lines;
+        }
+        return this.currentOrderLines || [];
+    }
+
+    get extractionDisplayTotalLiters() {
+        if (this.state.extractionTargetOrder) {
+            if (this.state.extractionTargetOrder.lines) {
+                return this.state.extractionTargetOrder.lines.reduce((tot, l) => tot + (l.quantity || l.qty || 0), 0.0);
+            }
+            return 0.0;
+        }
+        return this.currentOrderTotalLiters;
+    }
+
     get currentOrderTotalLiters() {
         const lines = this.currentOrderLines;
         if (!lines) return 0.0;
@@ -2799,6 +2841,7 @@ export class UtrecarMainScreen extends Component {
             alert("⚠️ No hay ningún suministro o producto en el ticket actual para registrar como extracción.");
             return;
         }
+        this.state.extractionTargetOrder = null;
         this.state.extractionReason = "Prueba de probeta / Calibración metrológica";
         this.state.extractionNotes = "";
         this.state.isSavingExtraction = false;
@@ -2808,14 +2851,43 @@ export class UtrecarMainScreen extends Component {
     closeExtractionModal() {
         this.state.isExtractionModalOpen = false;
         this.state.isSavingExtraction = false;
+        this.state.extractionTargetOrder = null;
     }
 
     async confirmExtraction() {
-        const lines = this.currentOrderLines;
-        if (!lines || lines.length === 0) return;
-
         this.state.isSavingExtraction = true;
         try {
+            // CASO 1: Extracción realizada sobre un ticket existente en el historial
+            if (this.state.extractionTargetOrder) {
+                const targetOrder = this.state.extractionTargetOrder;
+                const pumpVal = targetOrder.pump_id || (targetOrder.lines && targetOrder.lines[0] ? targetOrder.lines[0].pump_id : 0) || 0;
+                const res = await this.env.services.rpc("/pos_gas_station/register_extraction", {
+                    order_id: targetOrder.id,
+                    reason: this.state.extractionReason,
+                    notes: this.state.extractionNotes,
+                    pump_id: pumpVal
+                });
+
+                if (res && res.status === "success") {
+                    this.closeExtractionModal();
+                    alert(`✅ Extracción registrada con éxito.\n${(res.liters || 0).toFixed(2)} Litros retornados al depósito.\nNo se descuenta de existencias ni se le resta al empleado.`);
+                    await this.loadShiftOrders();
+                    if (this.state.selectedShiftOrder && this.state.selectedShiftOrder.id === targetOrder.id) {
+                        const updatedOrder = (this.state.shiftOrders || []).find(o => o.id === targetOrder.id);
+                        if (updatedOrder) {
+                            this.state.selectedShiftOrder = updatedOrder;
+                        }
+                    }
+                } else {
+                    alert("Error al registrar extracción: " + (res ? res.message : "Error desconocido"));
+                }
+                return;
+            }
+
+            // CASO 2: Extracción desde el ticket activo del TPV
+            const lines = this.currentOrderLines;
+            if (!lines || lines.length === 0) return;
+
             const orderLinesData = lines.map(l => ({
                 product_id: l.product_id ? l.product_id.id : null,
                 qty: l.quantity || l.qty || 0,
