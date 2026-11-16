@@ -208,10 +208,10 @@ class PurePythonSdesClient:
                         self.pending_responses[pkt_id]["event"].set()
                 else:
                     if msg_type == self.MSG_NUEVA_OP:
-                        # Enviar inmediatamente el ACK requerido por SDES para liberar la cola
+                        # Enviar inmediatamente el ACK requerido por SDES para liberar la cola (1 = Aceptado/True)
                         try:
                             ack_hdr = struct.pack(">HHHBB I", self.VERSION, pkt_id, self.MSG_NUEVA_OP, 1, 1, 3)
-                            ack_pay = struct.pack(">HB", self.PARAM_BYTE, 0)
+                            ack_pay = struct.pack(">HB", self.PARAM_BYTE, 1)
                             with self.lock:
                                 if self.sock and self.running:
                                     self.sock.sendall(ack_hdr + ack_pay)
@@ -222,10 +222,17 @@ class PurePythonSdesClient:
                         try:
                             if len(payload) >= 24 and self.on_operacion_cb:
                                 op_id = struct.unpack_from(">I", payload, 2)[0]
+                                fecha_raw = payload[6:20].decode("ascii", errors="ignore").strip() if len(payload) >= 20 else ""
+                                op_ts = None
+                                if fecha_raw:
+                                    try:
+                                        op_ts = datetime.strptime(fecha_raw, "%Y%m%d%H%M%S").timestamp()
+                                    except Exception:
+                                        op_ts = None
                                 rest = payload[20:]
                                 calle, manguera, prod, precio, tanque = struct.unpack_from(">HHHHH", rest, 0)
                                 lts, imp, imp_pref = struct.unpack_from(">III", rest, 10)
-                                self.on_operacion_cb(calle, lts / 100.0, imp / 100.0, precio / 1000.0, prod)
+                                self.on_operacion_cb(calle, lts / 100.0, imp / 100.0, precio / 1000.0, prod, op_ts)
                         except Exception as e:
                             logging.error(f"Error decodificando MSG_NUEVA_OP: {e}")
 
@@ -321,6 +328,7 @@ class PurePythonSdesClient:
 
 class AgentePistaRepsol:
     def __init__(self):
+        self.start_time = time.time()
         self.uid = None
         self.models = None
         self.pumps = []
@@ -413,8 +421,14 @@ class AgentePistaRepsol:
         if hubo_cambio:
             self.enviar_estado_a_odoo(forzar=True)
 
-    def _on_nueva_operacion_socket(self, calle, litros, importe, precio, cod_producto):
+    def _on_nueva_operacion_socket(self, calle, litros, importe, precio, cod_producto, op_ts=None):
         """Procesa evento instantáneo de nueva operación finalizada recibido por el socket"""
+        now = time.time()
+        # Si la operación tiene una fecha/hora antigua (más de 60s antes de ahora o anterior al arranque del agente),
+        # es un replay de la cola histórica interna de SDES que ya fue ACKed. No debe ensuciar la pantalla en vivo.
+        if op_ts and (now - op_ts > 60.0):
+            logging.info(f"⏭️ [OP HISTÓRICA SDES DESCARTADA] Calle {calle}: {litros:.2f}L | {importe:.2f}€ con antigüedad de {now - op_ts:.0f}s. ACK confirmado a SDES, no se aplica a pantalla en vivo.")
+            return
         self.marcar_calle_completada(calle, litros, importe, precio, cod_producto)
 
     def conectar_odoo(self):
