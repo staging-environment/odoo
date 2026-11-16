@@ -2760,7 +2760,10 @@ export class UtrecarMainScreen extends Component {
         if (!this.state.annulModalOrder || this.state.isAnnulingOrder) return;
         this.state.isAnnulingOrder = true;
         const order = this.state.annulModalOrder;
-        const reason = "Anulación de ticket";
+        const isInv = Boolean(order.is_invoiced || order.doc_type === 'invoice');
+        const isAlb = Boolean(order.is_albaran || order.doc_type === 'albaran');
+        const docLabel = isInv ? "Factura" : (isAlb ? "Albarán" : "Ticket");
+        const reason = `Anulación de ${docLabel.toLowerCase()}`;
 
         try {
             const res = await this.env.services.rpc("/pos_gas_station/annul_order", {
@@ -2781,7 +2784,7 @@ export class UtrecarMainScreen extends Component {
                 this.closeAnnulOrderModal();
                 await this.loadShiftOrders();
             } else {
-                alert("Error al anular el ticket: " + (res ? res.message : "Error desconocido"));
+                alert(`Error al anular ${docLabel.toLowerCase()}: ` + (res ? res.message : "Error desconocido"));
             }
         } catch (e) {
             console.error("Error executeAnnulOrder:", e);

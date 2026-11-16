@@ -1910,14 +1910,28 @@
                                                                 <i class="fa fa-envelope me-1"/> Email
                                                             </button>
                                                         </t>
+                                                        <t t-elif="ord.doc_type === 'albaran' || ord.is_albaran">
+                                                            <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderTicket(ord, false, false)" title="Visualizar Albarán en pantalla">
+                                                                👁
+                                                            </button>
+                                                            <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false, true)" title="Imprimir Albarán firmado">
+                                                                📋 Imprimir
+                                                            </button>
+                                                            <t t-if="!ord.is_invoiced &amp;&amp; ord.amount_total > 0">
+                                                                <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Facturar Albarán">
+                                                                    📄 Facturar
+                                                                </button>
+                                                            </t>
+                                                        </t>
                                                         <t t-else="">
+                                                            <!-- TICKETS EXCLUSIVAMENTE PARA PERSONAS QUE NO SON CLIENTES (VENTA CONTADO / PREFIJADO): 3 BOTONES -->
                                                             <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderTicket(ord, false, false)" title="Visualizar ticket en pantalla">
                                                                 👁
                                                             </button>
                                                             <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false, true)" title="Imprimir ticket">
                                                                 🖨️ Imprimir
                                                             </button>
-                                                            <t t-if="!ord.is_ticket_annulled &amp;&amp; !ord.has_annulment &amp;&amp; !ord.is_invoiced &amp;&amp; ord.amount_total > 0 &amp;&amp; ord.doc_type !== 'invoice'">
+                                                            <t t-if="!ord.is_ticket_annulled &amp;&amp; !ord.has_annulment &amp;&amp; !ord.is_invoiced &amp;&amp; ord.amount_total > 0">
                                                                 <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
                                                                     📄 Facturar
                                                                 </button>
@@ -3094,19 +3108,39 @@
                             <i class="fa fa-ban"/>
                         </div>
                         <div class="annul-header-titles">
-                            <h3>Confirmar Anulación de Ticket</h3>
-                            <span>Se generará serie oficial de anulación rectificativa</span>
+                            <t t-if="state.annulModalOrder &amp;&amp; (state.annulModalOrder.is_invoiced || state.annulModalOrder.doc_type === 'invoice')">
+                                <h3>Confirmar Anulación de Factura</h3>
+                                <span>Se emitirá Factura Rectificativa correlativa oficial</span>
+                            </t>
+                            <t t-elif="state.annulModalOrder &amp;&amp; (state.annulModalOrder.is_albaran || state.annulModalOrder.doc_type === 'albaran')">
+                                <h3>Confirmar Anulación de Albarán</h3>
+                                <span>Se generará Albarán Negativo correlativo de compensación</span>
+                            </t>
+                            <t t-else="">
+                                <h3>Confirmar Anulación de Ticket</h3>
+                                <span>Se generará serie oficial de anulación rectificativa</span>
+                            </t>
                         </div>
                         <button type="button" class="btn-modal-close" t-on-click="() => this.closeAnnulOrderModal()">✖</button>
                     </div>
 
                     <!-- Cuerpo -->
                     <div class="annul-modal-body">
-                        <!-- Resumen del Ticket -->
+                        <!-- Resumen del Documento -->
                         <div class="annul-order-summary-box">
                             <div class="summary-line">
-                                <span class="summary-label">Nº Ticket:</span>
-                                <strong class="summary-value-name"><t t-esc="state.annulModalOrder.name"/></strong>
+                                <t t-if="state.annulModalOrder &amp;&amp; (state.annulModalOrder.is_invoiced || state.annulModalOrder.doc_type === 'invoice')">
+                                    <span class="summary-label">Nº Factura:</span>
+                                    <strong class="summary-value-name"><t t-esc="state.annulModalOrder.account_move_name || state.annulModalOrder.serie_code || state.annulModalOrder.name"/></strong>
+                                </t>
+                                <t t-elif="state.annulModalOrder &amp;&amp; (state.annulModalOrder.is_albaran || state.annulModalOrder.doc_type === 'albaran')">
+                                    <span class="summary-label">Nº Albarán:</span>
+                                    <strong class="summary-value-name"><t t-esc="state.annulModalOrder.serie_code || state.annulModalOrder.name"/></strong>
+                                </t>
+                                <t t-else="">
+                                    <span class="summary-label">Nº Ticket:</span>
+                                    <strong class="summary-value-name"><t t-esc="state.annulModalOrder.name"/></strong>
+                                </t>
                             </div>
                             <div class="summary-line">
                                 <span class="summary-label">Fecha / Cajero:</span>
@@ -3124,11 +3158,11 @@
 
                         <div class="annul-legal-notice">
                             <i class="fa fa-info-circle me-1"/>
-                            <t t-if="state.annulModalOrder and state.annulModalOrder.is_albaran">
-                                Se generará un <strong>Albarán Negativo correlativo</strong> de anulación (serie oficial <strong>AVTR_</strong>) para compensar la deuda con total trazabilidad contable.
-                            </t>
-                            <t t-elif="state.annulModalOrder and state.annulModalOrder.is_invoiced">
+                            <t t-if="state.annulModalOrder &amp;&amp; (state.annulModalOrder.is_invoiced || state.annulModalOrder.doc_type === 'invoice')">
                                 Se emitirá una <strong>Factura Rectificativa correlativa</strong> de anulación (serie oficial <strong>FTTR_</strong>) registrada en contabilidad.
+                            </t>
+                            <t t-elif="state.annulModalOrder &amp;&amp; (state.annulModalOrder.is_albaran || state.annulModalOrder.doc_type === 'albaran')">
+                                Se generará un <strong>Albarán Negativo correlativo</strong> de anulación (serie oficial <strong>AVTR_</strong>) para compensar la deuda con total trazabilidad contable.
                             </t>
                             <t t-else="">
                                 El ticket quedará marcado como <strong>ANULADO</strong> y se le asignará una referencia de anulación correlativa única (serie oficial <strong>TTTR_</strong>).
@@ -3144,7 +3178,15 @@
                         <button type="button" class="btn-annul-confirm" t-att-disabled="state.isAnnulingOrder" t-on-click="() => this.executeAnnulOrder()">
                             <i t-if="state.isAnnulingOrder" class="fa fa-circle-o-notch fa-spin me-1"/>
                             <i t-else="" class="fa fa-ban me-1"/>
-                            <span>Confirmar Anulación</span>
+                            <t t-if="state.annulModalOrder &amp;&amp; (state.annulModalOrder.is_invoiced || state.annulModalOrder.doc_type === 'invoice')">
+                                <span>Confirmar Factura Rectificativa</span>
+                            </t>
+                            <t t-elif="state.annulModalOrder &amp;&amp; (state.annulModalOrder.is_albaran || state.annulModalOrder.doc_type === 'albaran')">
+                                <span>Confirmar Anulación de Albarán</span>
+                            </t>
+                            <t t-else="">
+                                <span>Confirmar Anulación de Ticket</span>
+                            </t>
                         </button>
                     </div>
                 </div>
