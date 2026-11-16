@@ -2942,13 +2942,13 @@
                         <div class="annul-legal-notice">
                             <i class="fa fa-info-circle me-1"/>
                             <t t-if="state.annulModalOrder and state.annulModalOrder.is_albaran">
-                                El albarán se conservará en el sistema con serie oficial <strong><t t-esc="state.annulModalOrder.name"/>_</strong> para trazabilidad.
+                                Se generará un <strong>Albarán Negativo correlativo</strong> de anulación (serie oficial <strong>AVTR_</strong>) para compensar la deuda con total trazabilidad contable.
                             </t>
                             <t t-elif="state.annulModalOrder and state.annulModalOrder.is_invoiced">
-                                La factura rectificativa se registrará en el sistema con serie oficial <strong><t t-esc="state.annulModalOrder.account_move_name || state.annulModalOrder.name"/>_</strong>.
+                                Se emitirá una <strong>Factura Rectificativa correlativa</strong> de anulación (serie oficial <strong>FTTR_</strong>) registrada en contabilidad.
                             </t>
                             <t t-else="">
-                                El ticket se conservará en el sistema con serie oficial <strong>TTTR_</strong> para trazabilidad legal.
+                                El ticket quedará marcado como <strong>ANULADO</strong> y se le asignará una referencia de anulación correlativa única (serie oficial <strong>TTTR_</strong>).
                             </t>
                         </div>
                     </div>

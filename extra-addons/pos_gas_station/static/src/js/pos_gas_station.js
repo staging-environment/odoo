@@ -4944,19 +4944,20 @@ patch(Order.prototype, {
         }
 
         let ticketName = this.backend_name;
-        if (!ticketName && this.name && (this.name.startsWith("TTTR") || this.name.startsWith("AVTR"))) {
+        if (!ticketName && this.name && (/^TT[A-Z]+/.test(this.name) || /^AV[A-Z]+/.test(this.name))) {
             ticketName = this.name;
         }
         if (!ticketName) {
             const seq = this.sequence_number || 1;
+            const currentYear = new Date().getFullYear();
             const prefix = this.is_albaran ? "AVTR" : "TTTR";
-            ticketName = `${prefix}${String(seq).padStart(4, "0")}`;
+            ticketName = `${prefix}${currentYear}${String(seq).padStart(5, "0")}`;
         }
-        if (this.is_albaran && ticketName && ticketName.startsWith("TTTR")) {
-            ticketName = ticketName.replace(/^TTTR/, "AVTR");
+        if (this.is_albaran && ticketName && /^TT[A-Z]+/.test(ticketName)) {
+            ticketName = ticketName.replace(/^TT/, "AV");
         }
-        if (!this.is_albaran && ticketName && ticketName.startsWith("AVTR")) {
-            ticketName = ticketName.replace(/^AVTR/, "TTTR");
+        if (!this.is_albaran && ticketName && /^AV[A-Z]+/.test(ticketName)) {
+            ticketName = ticketName.replace(/^AV/, "TT");
         }
 
         res.ticket_series_name = ticketName;
@@ -5340,11 +5341,11 @@ patch(PaymentScreen.prototype, {
         }
 
         this.currentOrder.is_albaran = true;
-        if (this.currentOrder.name && this.currentOrder.name.startsWith("TTTR")) {
-            this.currentOrder.name = this.currentOrder.name.replace(/^TTTR/, "AVTR");
+        if (this.currentOrder.name && /^TT[A-Z]+/.test(this.currentOrder.name)) {
+            this.currentOrder.name = this.currentOrder.name.replace(/^TT/, "AV");
         }
-        if (this.currentOrder.backend_name && this.currentOrder.backend_name.startsWith("TTTR")) {
-            this.currentOrder.backend_name = this.currentOrder.backend_name.replace(/^TTTR/, "AVTR");
+        if (this.currentOrder.backend_name && /^TT[A-Z]+/.test(this.currentOrder.backend_name)) {
+            this.currentOrder.backend_name = this.currentOrder.backend_name.replace(/^TT/, "AV");
         }
         this.currentOrder.set_to_invoice(false);
         this._virtusPrintTicket = true;

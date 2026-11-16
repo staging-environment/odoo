@@ -2502,17 +2502,15 @@ class PosGasStationController(http.Controller):
             order_is_albaran = bool(getattr(order, 'is_albaran', False) or kw.get('is_albaran'))
             order_is_invoice = bool(order.account_move or order.state == 'invoiced' or kw.get('is_invoice'))
 
-            # 1. CLIENTE DE CRÉDITO -> ALBARÁN DE CRÉDITO NEGATIVO
+            # 1. CLIENTE DE CRÉDITO -> ALBARÁN DE CRÉDITO NEGATIVO CON NUMERACIÓN INDEPENDIENTE AVTR_2026XXXXX
             if order_is_albaran:
-                alb_name = order.name.replace('TTTR', 'AVTR', 1) if (order.name and order.name.startswith('TTTR')) else order.name
-                if order.name != alb_name:
-                    order.write({'name': alb_name})
-                negative_name = f"{alb_name}_"
+                annul_ref = order.annulment_ref or order._generate_annulment_sequence('albaran')
+                negative_name = annul_ref
                 existing_neg = env['pos.order'].sudo().search([('name', '=', negative_name)], limit=1)
                 if not existing_neg:
                     neg_vals = {
                         'name': negative_name,
-                        'pos_reference': f"{(order.pos_reference or order.name)}_",
+                        'pos_reference': negative_name,
                         'session_id': order.session_id.id,
                         'config_id': order.config_id.id,
                         'company_id': order.company_id.id,
@@ -2560,15 +2558,15 @@ class PosGasStationController(http.Controller):
 
                 order.write({
                     'is_ticket_annulled': True,
-                    'annulment_ref': negative_name,
-                    'annulment_reason': reason or f"Anulado por Albarán Negativo {negative_name}",
+                    'annulment_ref': annul_ref,
+                    'annulment_reason': reason or f"Anulado por Albarán Negativo {annul_ref}",
                     'annulment_date': fields.Datetime.now(),
                 })
 
-            # 2. FACTURA -> ANULACIÓN / RECTIFICATIVA CON MISMA NUMERACIÓN Y GUIÓN BAJO AL FINAL
+            # 2. FACTURA -> ANULACIÓN / RECTIFICATIVA CON NUMERACIÓN INDEPENDIENTE FTTR_2026XXXXX
             elif order_is_invoice:
                 inv_name = (order.account_move.name if order.account_move else '') or order.name
-                annul_ref = f"{inv_name}_"
+                annul_ref = order.annulment_ref or order._generate_annulment_sequence('invoice')
                 order.write({
                     'is_ticket_annulled': True,
                     'annulment_ref': annul_ref,
@@ -2578,24 +2576,26 @@ class PosGasStationController(http.Controller):
                 if order.account_move and order.account_move.state == 'posted':
                     try:
                         rev = order.account_move._reverse_moves(default_values_list=[{
+                            'name': annul_ref,
                             'ref': annul_ref,
                             'date': fields.Date.context_today(order),
                             'invoice_date': fields.Date.context_today(order),
                         }])
                         if rev:
                             try:
+                                rev.write({'name': annul_ref, 'ref': annul_ref})
                                 rev.action_post()
                             except Exception:
                                 pass
                     except Exception as e:
                         _logger.warning("Aviso al revertir factura %s: %s", inv_name, e)
 
-            # 3. TICKET ESTÁNDAR -> TICKET DE ANULACIÓN
+            # 3. TICKET ESTÁNDAR -> TICKET DE ANULACIÓN CON NUMERACIÓN INDEPENDIENTE TTTR_2026XXXXX
             else:
                 if hasattr(order, 'action_annul_ticket'):
                     order.action_annul_ticket(reason=reason)
                 else:
-                    ref = order._generate_annulment_ref() if hasattr(order, '_generate_annulment_ref') else f"TTTR_{(''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id))[-4:].zfill(4)}"
+                    ref = order._generate_annulment_sequence('ticket') if hasattr(order, '_generate_annulment_sequence') else f"TTTR_{(''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id))[-4:].zfill(4)}"
                     order.write({
                         'is_ticket_annulled': True,
                         'annulment_ref': ref,

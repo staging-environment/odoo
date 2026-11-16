@@ -96,38 +96,89 @@ class PosOrder(models.Model):
             return
         return super()._create_order_picking()
 
-    def _generate_annulment_ref(self):
+    def _get_station_prefixes(self, config_id=None):
+        STATION_PREFIX_MAP = {
+            7: {'ticket': 'TTTR', 'albaran': 'AVTR', 'invoice': 'FTTR'},
+            5: {'ticket': 'TTRN', 'albaran': 'AVRN', 'invoice': 'FTRN'},
+            2: {'ticket': 'TTRO', 'albaran': 'AVRO', 'invoice': 'FTRO'},
+            3: {'ticket': 'TTUTR', 'albaran': 'AVUTR', 'invoice': 'FTUTR'},
+            6: {'ticket': 'TTAT', 'albaran': 'AVAT', 'invoice': 'FTAT'},
+        }
+        cfg = None
+        if config_id:
+            cfg = self.env['pos.config'].sudo().browse(int(config_id))
+        elif hasattr(self, 'config_id') and self.config_id:
+            cfg = self.config_id
+        elif hasattr(self, 'session_id') and self.session_id and self.session_id.config_id:
+            cfg = self.session_id.config_id
+
+        if cfg and cfg.id in STATION_PREFIX_MAP:
+            return STATION_PREFIX_MAP[cfg.id]
+
+        if cfg and cfg.sequence_id and cfg.sequence_id.prefix:
+            clean_p = cfg.sequence_id.prefix.strip().rstrip('/')
+            if clean_p.startswith('TT'):
+                suffix = clean_p[2:]
+                return {'ticket': clean_p, 'albaran': f"AV{suffix}", 'invoice': f"FT{suffix}"}
+
+        return {'ticket': 'TTTR', 'albaran': 'AVTR', 'invoice': 'FTTR'}
+
+    def _generate_annulment_sequence(self, doc_type='ticket', year=None):
+        """
+        Genera la referencia correlativa de anulación para el tipo indicado ('ticket', 'albaran', 'invoice').
+        Formato: NOMENCLATURA_AÑONUMERO (ej: TTTR_202600001, AVTR_202600001, FTTR_202600001)
+        Cada tipo de documento tiene su propio contador independiente y correlativo.
+        """
         self.ensure_one()
         config = self.session_id.config_id or self.config_id
-        base_prefix = "TTTR"
-        if config and config.sequence_id and config.sequence_id.prefix:
-            clean_p = config.sequence_id.prefix.strip().rstrip('/')
-            if clean_p:
-                base_prefix = clean_p
+        config_id = config.id if config else 7
+        prefixes = self._get_station_prefixes(config_id)
+        base_pfx = prefixes.get(doc_type, 'TTTR')
 
-        seq_code = f"pos.order.annulment.{config.id}" if config else "pos.order.annulment"
-        sequence = self.env['ir.sequence'].sudo().search([('code', '=', seq_code)], limit=1)
+        current_year = year or fields.Date.today().year
+        seq_code = f"pos.order.annulment.{doc_type}.{config_id}"
+        prefix_pattern = f"{base_pfx}_{current_year}"
+
+        sequence = self.env['ir.sequence'].sudo().search([
+            ('code', '=', seq_code),
+            ('company_id', 'in', [self.company_id.id if self.company_id else False, False])
+        ], limit=1)
+
         if not sequence:
-            # Buscar el mayor correlativo existente con este prefijo para continuar la serie
-            self.env.cr.execute("""
-                SELECT annulment_ref FROM pos_order 
-                WHERE annulment_ref IS NOT NULL AND annulment_ref LIKE %s
-            """, (f"{base_prefix}_%",))
+            domain_like = f"{prefix_pattern}%"
+            if doc_type == 'albaran':
+                self.env.cr.execute("""
+                    SELECT annulment_ref FROM pos_order 
+                    WHERE is_albaran = true AND annulment_ref IS NOT NULL AND annulment_ref LIKE %s
+                """, (domain_like,))
+            elif doc_type == 'invoice':
+                self.env.cr.execute("""
+                    SELECT annulment_ref FROM pos_order 
+                    WHERE account_move IS NOT NULL AND annulment_ref IS NOT NULL AND annulment_ref LIKE %s
+                """, (domain_like,))
+            else:
+                self.env.cr.execute("""
+                    SELECT annulment_ref FROM pos_order 
+                    WHERE (is_albaran IS NOT TRUE) AND (account_move IS NULL) 
+                      AND annulment_ref IS NOT NULL AND annulment_ref LIKE %s
+                """, (domain_like,))
+
             existing_refs = [r[0] for r in self.env.cr.fetchall() if r[0]]
             max_num = 0
             for ref_str in existing_refs:
-                parts = ref_str.split('_')
-                if len(parts) >= 2 and parts[-1].isdigit():
-                    num = int(parts[-1])
+                m = re.search(r'_' + str(current_year) + r'(\d+)$', ref_str)
+                if m:
+                    num = int(m.group(1))
                     if num > max_num:
                         max_num = num
 
             next_num = max_num + 1
+            type_label = {'ticket': 'Ticket', 'albaran': 'Albarán', 'invoice': 'Factura'}.get(doc_type, 'Doc')
             sequence = self.env['ir.sequence'].sudo().create({
-                'name': f"Secuencia de Anulación TPV {config.name if config else ''}",
+                'name': f"Secuencia de Anulación {type_label} TPV {config.name if config else ''}",
                 'code': seq_code,
-                'prefix': f"{base_prefix}_",
-                'padding': 4,
+                'prefix': f"{base_pfx}_%(year)s",
+                'padding': 5,
                 'number_next': next_num,
                 'number_increment': 1,
                 'company_id': self.company_id.id if self.company_id else False,
@@ -135,20 +186,23 @@ class PosOrder(models.Model):
 
         return sequence.next_by_id()
 
+    def _generate_annulment_ref(self):
+        self.ensure_one()
+        return self._generate_annulment_sequence('ticket')
+
     def action_annul_ticket(self, reason=None):
         for order in self:
             if order.is_ticket_annulled and order.annulment_ref:
                 continue
             if getattr(order, 'is_albaran', False):
-                alb_name = order.name.replace('TTTR', 'AVTR', 1) if (order.name and order.name.startswith('TTTR')) else order.name
-                ref = order.annulment_ref or f"{alb_name}_"
+                ref = order.annulment_ref or order._generate_annulment_sequence('albaran')
                 order_reason = reason or f"Anulado por Albarán Negativo {ref}"
             elif order.account_move:
                 inv_name = order.account_move.name or order.name
-                ref = order.annulment_ref or f"{inv_name}_"
+                ref = order.annulment_ref or order._generate_annulment_sequence('invoice')
                 order_reason = reason or f"Anulación de Factura {inv_name}"
             else:
-                ref = order.annulment_ref or order._generate_annulment_ref()
+                ref = order.annulment_ref or order._generate_annulment_sequence('ticket')
                 order_reason = reason or 'Anulación de ticket'
 
             order.write({
@@ -217,8 +271,8 @@ class PosOrder(models.Model):
             'vehicle_plate': clean_plate,
             'vehicle_driver': clean_driver,
         }
-        if self.name and self.name.startswith('TTTR'):
-            vals_to_write['name'] = self.name.replace('TTTR', 'AVTR', 1)
+        if self.name and re.match(r'^TT[A-Z]+', self.name):
+            vals_to_write['name'] = re.sub(r'^TT', 'AV', self.name, count=1)
 
         if clean_plate:
             existing_veh = self.env['res.partner.vehicle'].search([
@@ -262,18 +316,18 @@ class PosOrder(models.Model):
         for vals in vals_list:
             if vals.get('is_albaran'):
                 curr_name = vals.get('name')
-                if curr_name and curr_name.startswith('TTTR'):
-                    vals['name'] = curr_name.replace('TTTR', 'AVTR', 1)
+                if curr_name and re.match(r'^TT[A-Z]+', curr_name):
+                    vals['name'] = re.sub(r'^TT', 'AV', curr_name, count=1)
         orders = super().create(vals_list)
         for order in orders:
-            if order.is_albaran and order.name and order.name.startswith('TTTR'):
-                order.write({'name': order.name.replace('TTTR', 'AVTR', 1)})
+            if order.is_albaran and order.name and re.match(r'^TT[A-Z]+', order.name):
+                order.write({'name': re.sub(r'^TT', 'AV', order.name, count=1)})
         return orders
 
     def _compute_order_name(self):
         name = super()._compute_order_name()
-        if self.is_albaran and name and name.startswith('TTTR'):
-            return name.replace('TTTR', 'AVTR', 1)
+        if self.is_albaran and name and re.match(r'^TT[A-Z]+', name):
+            return re.sub(r'^TT', 'AV', name, count=1)
         return name
 
     @api.model
@@ -282,8 +336,8 @@ class PosOrder(models.Model):
         fields['is_albaran'] = ui_order.get('is_albaran', False)
         fields['vehicle_plate'] = ui_order.get('vehicle_plate', False)
         fields['vehicle_driver'] = ui_order.get('vehicle_driver', False)
-        if ui_order.get('is_albaran') and ui_order.get('name') and ui_order['name'].startswith('TTTR'):
-            fields['name'] = ui_order['name'].replace('TTTR', 'AVTR', 1)
+        if ui_order.get('is_albaran') and ui_order.get('name') and re.match(r'^TT[A-Z]+', ui_order['name']):
+            fields['name'] = re.sub(r'^TT', 'AV', ui_order['name'], count=1)
         pump_id = ui_order.get('pump_id', 0)
         if not pump_id:
             for l in ui_order.get('lines', []):
