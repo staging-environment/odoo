@@ -394,8 +394,8 @@ class AgentePistaRepsol:
                 local["updated_at"] = time.time()
                 hubo_cambio = True
                 logging.info(f"⛽ [SUMINISTRO EN VIVO] Calle {calle}: {litros:.2f}L | {importe:.2f}€")
-        elif local["status"] == "dispensing" and not is_pte_cobro and not local.get("has_prepay"):
-            # Si el hardware ya no está suministrando activamente ni pendiente de cobro, resetear a estado seguro
+        elif local["status"] == "dispensing" and not is_pte_cobro and not local.get("has_prepay") and is_colgado:
+            # Si el hardware ya no está suministrando activamente ni pendiente de cobro y la manguera está colgada, resetear a estado seguro
             status = self.modo_estacion_global
             status_txt = "ATENDIDO" if status == "atendido" else "PREPAGO"
             local["status"] = status
@@ -639,9 +639,14 @@ class AgentePistaRepsol:
                 logging.info(f"🧪 [SIMULACIÓN LOCAL] Recibida simulación para Calle {calle}: {estado} ({importe}€ / {litros}L)")
                 if estado == "dispensing":
                     self._on_cambio_estado_socket(calle, True, False, False, litros, importe, prod)
+                elif estado == "unhook":
+                    self.pumps[calle - 1]["status"] = "dispensing"
+                    self.pumps[calle - 1]["statusText"] = "SUMINISTRO 0.00L"
+                    self.pumps[calle - 1]["amount"] = 0.0
+                    self.pumps[calle - 1]["liters"] = 0.0
+                    self.pumps[calle - 1]["fuel"] = "Sin Plomo 95"
+                    self._on_cambio_estado_socket(calle, False, False, False, 0.0, 0.0, prod)
                 else:
-                    self.pumps[calle - 1]["has_prepay"] = False
-                    self.pumps[calle - 1]["preset_amount"] = 0.0
                     self.marcar_calle_completada(calle, litros, importe, precio, prod)
             except Exception as e:
                 logging.error(f"Error procesando simulación: {e}")
