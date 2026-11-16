@@ -1230,6 +1230,58 @@ export class UtrecarMainScreen extends Component {
         this.state.storeSearch = "";
     }
 
+    playFuelSound(type = "tick") {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!this.audioCtx) {
+                this.audioCtx = new AudioCtx();
+            }
+            if (this.audioCtx.state === "suspended") {
+                this.audioCtx.resume();
+            }
+            const now = this.audioCtx.currentTime;
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+
+            if (type === "start") {
+                // Doble bip suave y nítido al descolgar/iniciar repostaje
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(587.33, now); // D5
+                osc.frequency.setValueAtTime(880.00, now + 0.08); // A5
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+                osc.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.28);
+            } else if (type === "tick") {
+                // Pulso sutil de advertencia mientras fluye combustible en pista
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                gain.gain.setValueAtTime(0.06, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                osc.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } else if (type === "done") {
+                // Ding agradable cuando se cuelga la manguera y finaliza el repostaje
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(659.25, now); // E5
+                osc.frequency.setValueAtTime(880.00, now + 0.09); // A5
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            }
+        } catch (e) {
+            console.debug("Audio pista:", e);
+        }
+    }
+
     async fetchPumpsStatus() {
         try {
             const data = await jsonrpc("/pos_gas_station/status", {
@@ -1246,7 +1298,36 @@ export class UtrecarMainScreen extends Component {
                     }
                 }
                 if (data.pumps && Array.isArray(data.pumps)) {
+                    if (!this.prevPumpsStatus) this.prevPumpsStatus = {};
+                    if (!this.prevPumpsLiters) this.prevPumpsLiters = {};
+                    let anyDispensingActive = false;
+
                     data.pumps.forEach(p => {
+                        p.amount = Number(p.amount || 0);
+                        p.liters = Number(p.liters || 0);
+
+                        const prevStatus = this.prevPumpsStatus[p.id] || "unknown";
+                        const curStatus = p.status;
+                        const curLts = p.liters;
+
+                        // Detección de inicio de repostaje (pasa a dispensing o empieza a despachar litros)
+                        if ((curStatus === "dispensing" && prevStatus !== "dispensing") ||
+                            (curStatus === "dispensing" && curLts > 0.05 && (this.prevPumpsLiters[p.id] || 0) <= 0.02)) {
+                            this.playFuelSound("start");
+                        }
+
+                        // Detección de fin de repostaje (cuelga la manguera y pasa a ready)
+                        if (curStatus === "ready" && prevStatus === "dispensing") {
+                            this.playFuelSound("done");
+                        }
+
+                        if (curStatus === "dispensing") {
+                            anyDispensingActive = true;
+                        }
+
+                        this.prevPumpsStatus[p.id] = curStatus;
+                        this.prevPumpsLiters[p.id] = curLts;
+
                         const presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
                         if (presetInfo && presetInfo.hasPrepay) {
                             // Rastrear el máximo suministrado en pista durante el repostaje
@@ -1256,6 +1337,8 @@ export class UtrecarMainScreen extends Component {
                             // Detectar si el prepago ha finalizado en hardware/servidor
                             const isDone = (p.status === "ready") || 
                                            (!p.has_prepay && (!p.preset_amount || p.preset_amount === 0) && p.status !== "dispensing") ||
+                                           (p.status === "blocked" && (p.amount > 0 || (presetInfo.maxDispensedAmount || 0) > 0)) ||
+                                           (p.status === "idle" && (p.amount > 0 || (presetInfo.maxDispensedAmount || 0) > 0)) ||
                                            (p.amount > 0 && p.status !== "dispensing" && Math.abs(p.amount - presetInfo.amount) > 0.05);
 
                             if (isDone) {
@@ -1274,9 +1357,13 @@ export class UtrecarMainScreen extends Component {
                                     this.savePumpPresets();
                                 }
                             } else {
-                                // MANTENER EN PANTALLA EL SURTIDOR AUTORIZADO HASTA QUE SE REPONGA
+                                // MANTENER EN PANTALLA EL SURTIDOR SUMINISTRANDO CON LITROS EN TIEMPO REAL
                                 p.status = "dispensing";
-                                p.statusText = `AUTORIZADO ${presetInfo.amount.toFixed(2)} €`;
+                                if (p.liters > 0 || p.amount > 0) {
+                                    p.statusText = `SUMINISTRO ${p.liters.toFixed(2)}L`;
+                                } else {
+                                    p.statusText = `AUTORIZADO ${presetInfo.amount.toFixed(2)} €`;
+                                }
                                 p.preset_amount = presetInfo.amount;
                                 p.has_prepay = true;
                                 if (!p.fuel || p.fuel === "N/A" || p.fuel.includes("/")) {
@@ -1284,16 +1371,19 @@ export class UtrecarMainScreen extends Component {
                                 }
                             }
                         } else if (presetInfo) {
-                            if (p.status === "dispensing" || p.status === "ready") {
-                                p.preset_amount = presetInfo.amount;
-                                p.has_prepay = Boolean(presetInfo.hasPrepay);
-                                if (!p.fuel || p.fuel === "N/A") {
-                                    p.fuel = presetInfo.fuel;
-                                }
-                            } else if (p.status === "idle" || p.status === "blocked") {
+                            if (p.status === "ready" || p.status === "blocked" || p.status === "idle") {
                                 if (this.state.pumpPresets) delete this.state.pumpPresets[p.id];
                                 if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
                                 this.savePumpPresets();
+                            } else if (p.status === "dispensing") {
+                                p.preset_amount = presetInfo.amount;
+                                p.has_prepay = false;
+                                if (p.liters > 0 || p.amount > 0) {
+                                    p.statusText = `SUMINISTRO ${p.liters.toFixed(2)}L`;
+                                }
+                                if (!p.fuel || p.fuel === "N/A") {
+                                    p.fuel = presetInfo.fuel;
+                                }
                             }
                         }
 
@@ -1348,6 +1438,14 @@ export class UtrecarMainScreen extends Component {
                             p.liters = 0;
                         }
                     });
+
+                    // Sonido periódico suave mientras haya alguna manguera echando combustible
+                    const nowTs = Date.now();
+                    if (anyDispensingActive && (nowTs - (this.lastTickSoundTime || 0) > 3000)) {
+                        this.lastTickSoundTime = nowTs;
+                        this.playFuelSound("tick");
+                    }
+
                     this.state.pumps = data.pumps;
                     const attendedCount = data.pumps.filter(p => p.status === "atendido" || p.status === "postpago").length;
                     const blockedCount = data.pumps.filter(p => p.status === "blocked" || p.status === "prepago").length;
@@ -4834,7 +4932,8 @@ export class UtrecarMainScreen extends Component {
                 pump_id: pumpId,
                 fuel: fuelCode,
                 amount: isMoney ? presetVal : 0,
-                liters: !isMoney ? presetVal : 0
+                liters: !isMoney ? presetVal : 0,
+                has_prepay: Boolean(isPrepay)
             });
         } catch (e) {
             console.debug("Orden de autorización enviada:", e);
@@ -5941,7 +6040,8 @@ patch(PaymentScreen.prototype, {
                         pump_id: pumpId,
                         fuel: fuelCode,
                         amount: amt,
-                        liters: lts
+                        liters: lts,
+                        has_prepay: true
                     });
                 } catch (e) {
                     console.error("Error al autorizar surtidor tras cobro de prepago:", e);
