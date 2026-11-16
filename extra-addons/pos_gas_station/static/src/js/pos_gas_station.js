@@ -173,6 +173,16 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
+        // Cargar matriculas vinculadas a calles activas
+        if (!this.pos.pumpPendingPlates) {
+            try {
+                const savedPlates = localStorage.getItem(`pos_gas_station_pending_plates_${this.configId}`);
+                this.pos.pumpPendingPlates = savedPlates ? JSON.parse(savedPlates) : {};
+            } catch (e) {
+                this.pos.pumpPendingPlates = {};
+            }
+        }
+
         this.state = useState({
             isCashMoveModalOpen: false,
             cashMoveType: "ingreso_seguridad",
@@ -1184,6 +1194,11 @@ export class UtrecarMainScreen extends Component {
                                 productId: fuelProd ? fuelProd.id : null
                             };
                             const storeTotal = storeItems.reduce((acc, it) => acc + (it.amount || (it.price * it.qty)), 0);
+                            const pendingPlate = (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[p.id]) || p.vehiclePlate || this.state.vehiclePlate || "";
+                            if (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[p.id]) {
+                                delete this.pos.pumpPendingPlates[p.id];
+                                this.savePumpPendingPlates();
+                            }
                             const pendingSale = {
                                 id: "sale_" + p.id + "_" + Date.now(),
                                 pumpId: p.id,
@@ -1192,7 +1207,7 @@ export class UtrecarMainScreen extends Component {
                                 fuel: fuelInfo,
                                 storeLines: storeItems,
                                 totalAmount: (p.amount || 0) + storeTotal,
-                                vehiclePlate: p.vehiclePlate || this.state.vehiclePlate || ""
+                                vehiclePlate: pendingPlate
                             };
                             if (!this.pos.pendingSales) this.pos.pendingSales = {};
                             if (!this.pos.pendingSales[p.id]) this.pos.pendingSales[p.id] = [];
@@ -2033,7 +2048,11 @@ export class UtrecarMainScreen extends Component {
                 ${order.vehicle_plate ? `<strong>MATRÍCULA:</strong> ${order.vehicle_plate}<br/>` : ''}
                 ${order.vehicle_driver ? `<strong>CONDUCTOR / DNI:</strong> ${order.vehicle_driver}<br/>` : ''}
             </div>
-        ` : '';
+        ` : (order.vehicle_plate ? `
+            <div style="margin-top: 6px; font-size: 12px; border: 1.5px dashed #333; padding: 5px 8px; border-radius: 4px; text-align: center; background-color: #f8fafc;">
+                <strong>MATRÍCULA:</strong> <span style="font-size: 14px; font-weight: 900; letter-spacing: 1.5px; font-family: monospace;">${order.vehicle_plate}</span>
+            </div>
+        ` : '');
 
         const invoiceHtml = order.is_invoiced ? `
             <div style="margin-top: 6px; padding: 4px; background: #e8f5e9; border: 1px solid #81c784; text-align: center; font-weight: bold; font-size: 11px; border-radius: 4px;">
@@ -2728,6 +2747,9 @@ export class UtrecarMainScreen extends Component {
             alert("No hay artículos en el ticket para cobrar.");
             return;
         }
+        if (this.state.vehiclePlate) {
+            currentOrder.vehicle_plate = this.state.vehiclePlate;
+        }
         // Limpiar cualquier línea de pago residual previa para arrancar el cobro limpio a 0,00 €
         if (currentOrder.get_paymentlines) {
             for (const pl of [...currentOrder.get_paymentlines()]) {
@@ -3374,6 +3396,14 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
+    savePumpPendingPlates() {
+        try {
+            localStorage.setItem(`pos_gas_station_pending_plates_${this.configId}`, JSON.stringify(this.pos.pumpPendingPlates || {}));
+        } catch (e) {
+            console.debug("Error guardando pumpPendingPlates:", e);
+        }
+    }
+
     hasPumpPendingStoreItems(pumpId) {
         return Boolean(this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[pumpId] && this.pos.pumpPendingStoreItems[pumpId].length > 0);
     }
@@ -3474,6 +3504,12 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
+        const pPlate = (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[pumpId]) || this.state.vehiclePlate || (order && order.vehicle_plate) || "";
+        if (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[pumpId]) {
+            delete this.pos.pumpPendingPlates[pumpId];
+            this.savePumpPendingPlates();
+        }
+
         const pendingSale = {
             id: "sale_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
             pumpId: pumpId,
@@ -3482,7 +3518,7 @@ export class UtrecarMainScreen extends Component {
             fuel: fuelInfo,
             storeLines: storeItems,
             totalAmount: total,
-            vehiclePlate: this.state.vehiclePlate || ""
+            vehiclePlate: pPlate
         };
 
         if (!this.pos.pendingSales) {
@@ -3594,6 +3630,7 @@ export class UtrecarMainScreen extends Component {
 
         if (sale.vehiclePlate) {
             this.state.vehiclePlate = sale.vehiclePlate;
+            currentOrder.vehicle_plate = sale.vehiclePlate;
             if (currentOrder.set_note) currentOrder.set_note(`Matrícula: ${sale.vehiclePlate}`);
         }
 
@@ -3678,6 +3715,7 @@ export class UtrecarMainScreen extends Component {
         }
         if (sale.vehiclePlate) {
             this.state.vehiclePlate = sale.vehiclePlate;
+            currentOrder.vehicle_plate = sale.vehiclePlate;
             if (currentOrder.set_note) currentOrder.set_note(`Matrícula: ${sale.vehiclePlate} | ${descNota}`);
         } else if (currentOrder.set_note) {
             currentOrder.set_note(descNota);
@@ -3840,6 +3878,16 @@ export class UtrecarMainScreen extends Component {
         }
 
         this.closeCancelModal();
+
+        // Si la calle tenía matricula vinculada, restaurarla
+        if (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[pumpId]) {
+            const savedPlate = this.pos.pumpPendingPlates[pumpId];
+            delete this.pos.pumpPendingPlates[pumpId];
+            this.savePumpPendingPlates();
+            if (savedPlate && !this.state.vehiclePlate) {
+                this.setVehiclePlate(savedPlate);
+            }
+        }
 
         // Si la calle tenía productos de tienda vinculados, restaurarlos en el ticket actual para no perderlos
         if (this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[pumpId]) {
@@ -4441,8 +4489,8 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
-        // Si la orden actual contiene productos de tienda/inventario (ej. Coca-Cola, snacks),
-        // se vinculan a la calle que se acaba de autorizar para que pasen a la monedita con el combustible,
+        // Si la orden actual contiene productos de tienda/inventario (ej. Coca-Cola, snacks)
+        // o se ha especificado una matrícula, se vinculan a la calle autorizada para que pasen a la monedita con el combustible,
         // dejando el ticket actual en blanco para atender o autorizar a otro cliente de inmediato.
         if (!isPrepay) {
             const currentOrder = this.pos.get_order();
@@ -4462,12 +4510,22 @@ export class UtrecarMainScreen extends Component {
                         });
                     }
                 }
-                if (storeItems.length > 0) {
-                    if (!this.pos.pumpPendingStoreItems) {
-                        this.pos.pumpPendingStoreItems = {};
+                const pendingPlate = (this.state && this.state.vehiclePlate) || (currentOrder.vehicle_plate) || "";
+                if (pendingPlate) {
+                    if (!this.pos.pumpPendingPlates) {
+                        this.pos.pumpPendingPlates = {};
                     }
-                    this.pos.pumpPendingStoreItems[pumpId] = storeItems;
-                    this.savePumpPendingStoreItems();
+                    this.pos.pumpPendingPlates[pumpId] = pendingPlate;
+                    this.savePumpPendingPlates();
+                }
+                if (storeItems.length > 0 || pendingPlate) {
+                    if (storeItems.length > 0) {
+                        if (!this.pos.pumpPendingStoreItems) {
+                            this.pos.pumpPendingStoreItems = {};
+                        }
+                        this.pos.pumpPendingStoreItems[pumpId] = storeItems;
+                        this.savePumpPendingStoreItems();
+                    }
 
                     // Dejar el ticket activo en blanco de inmediato
                     this.pos.removeOrder(currentOrder);
@@ -4769,8 +4827,15 @@ export class UtrecarMainScreen extends Component {
                         activeLine.set_unit_price(activeLine.get_unit_price() + (diff / curQty));
                     }
                 }
-                if (this.state.vehiclePlate) {
-                    if (currentOrder.set_note) currentOrder.set_note(`Matrícula: ${this.state.vehiclePlate}`);
+                const savedPlate = (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[pump.id]) || this.state.vehiclePlate || "";
+                if (savedPlate) {
+                    this.state.vehiclePlate = savedPlate;
+                    currentOrder.vehicle_plate = savedPlate;
+                    if (currentOrder.set_note) currentOrder.set_note(`Matrícula: ${savedPlate}`);
+                    if (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[pump.id]) {
+                        delete this.pos.pumpPendingPlates[pump.id];
+                        this.savePumpPendingPlates();
+                    }
                 }
 
                 // Si la calle tenía productos de tienda vinculados, agregarlos al ticket junto con el combustible

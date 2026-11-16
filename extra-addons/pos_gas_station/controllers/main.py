@@ -2440,6 +2440,12 @@ class PosGasStationController(http.Controller):
             if not order.account_move:
                 return {'status': 'error', 'message': 'No se pudo generar el asiento contable de factura.'}
 
+            if order.vehicle_plate and order.account_move:
+                order.account_move.write({
+                    'vehicle_plate': order.vehicle_plate,
+                    'vehicle_driver': order.vehicle_driver or False,
+                })
+
             digits = ''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id)
             annul_ref = getattr(order, 'annulment_ref', '') or f"TTTR_{digits[-4:].zfill(4)}"
             

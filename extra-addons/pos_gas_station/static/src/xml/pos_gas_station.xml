@@ -3014,9 +3014,16 @@
                     </div>
                 </t>
                 <t t-else="">
-                    <div class="no-customer-box d-flex align-items-center justify-content-center px-3 py-2 shadow-sm text-secondary">
-                        <span class="me-2 fs-5">ℹ️</span>
-                        <span class="fw-bold" style="font-size: 14px; color: #475569;">No se ha seleccionado ningún cliente</span>
+                    <div class="no-customer-box d-flex align-items-center justify-content-between px-3 py-2 shadow-sm text-secondary">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2 fs-5">ℹ️</span>
+                            <span class="fw-bold" style="font-size: 14px; color: #475569;">Venta a Contado</span>
+                        </div>
+                        <t t-if="currentOrder &amp;&amp; currentOrder.vehicle_plate">
+                            <div class="badge bg-dark text-white font-monospace px-2 py-1" style="font-size: 13px; letter-spacing: 1px;">
+                                🚗 <t t-esc="currentOrder.vehicle_plate"/>
+                            </div>
+                        </t>
                     </div>
                 </t>
             </div>
@@ -3321,6 +3328,12 @@
                     </div>
                 </t>
             </div>
+            <!-- CUADRO DESTACADO DE MATRÍCULA (TANTO PARA VENTA ORDINARIA COMO CLIENTE) -->
+            <t t-if="props.data.vehicle_plate">
+                <div class="ticket-vehicle-plate-banner text-center my-1 py-1 px-2 border border-dark rounded font-monospace" style="font-size: 13px; font-weight: 900; letter-spacing: 1.5px; background: #fafafa; border: 1.5px dashed #000 !important; margin: 6px 0;">
+                    MATRÍCULA: <t t-esc="props.data.vehicle_plate"/>
+                </div>
+            </t>
             <t t-if="props.data.is_albaran &amp;&amp; props.data.partner">
                 <div class="albaran-client-box p-2 mb-2 border border-dark rounded text-start" style="font-size: 11px;">
                     <div><strong>CLIENTE:</strong> <t t-esc="props.data.partner.name"/></div>

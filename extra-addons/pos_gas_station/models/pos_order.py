@@ -353,7 +353,9 @@ class PosOrder(models.Model):
     def _order_fields(self, ui_order):
         fields = super()._order_fields(ui_order)
         fields['is_albaran'] = ui_order.get('is_albaran', False)
-        fields['vehicle_plate'] = ui_order.get('vehicle_plate', False)
+        raw_plate = ui_order.get('vehicle_plate')
+        clean_plate = str(raw_plate).strip().upper() if raw_plate else False
+        fields['vehicle_plate'] = clean_plate
         fields['vehicle_driver'] = ui_order.get('vehicle_driver', False)
         if ui_order.get('is_albaran') and ui_order.get('name') and re.match(r'^TT[A-Z]+', ui_order['name']):
             fields['name'] = re.sub(r'^TT', 'AV', ui_order['name'], count=1)
@@ -368,6 +370,16 @@ class PosOrder(models.Model):
                     break
         fields['pump_id'] = pump_id
         return fields
+
+    def _prepare_invoice_vals(self):
+        vals = super()._prepare_invoice_vals()
+        if self.vehicle_plate:
+            vals['vehicle_plate'] = self.vehicle_plate
+        if self.vehicle_id:
+            vals['vehicle_id'] = self.vehicle_id.id
+        if self.vehicle_driver:
+            vals['vehicle_driver'] = self.vehicle_driver
+        return vals
 
     @api.model
     def create_from_ui(self, orders, draft=False):
