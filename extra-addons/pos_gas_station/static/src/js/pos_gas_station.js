@@ -5960,10 +5960,18 @@ patch(PaymentScreen.prototype, {
         await this.validateOrder(false);
     },
 
+    get nextScreen() {
+        return "ProductScreen";
+    },
+
     async validateVirtusNoPrint() {
         this.ensureOrderPaid();
+        this.currentOrder.is_albaran = false;
         this.currentOrder.set_to_invoice(false);
         this._virtusPrintTicket = false;
+        if (this.currentOrder) {
+            this.currentOrder._printed = true;
+        }
         await this.validateOrder(false);
     },
 
@@ -6089,12 +6097,14 @@ patch(PaymentScreen.prototype, {
             }
         }
 
-        await super.afterOrderValidation(...arguments);
-        // Redirigir de inmediato al TPV de la gasolinera con un pedido nuevo en blanco
+        // Limpiar orden de la BD local y redirigir de inmediato al TPV principal sin pasar por ReceiptScreen
         if (order) {
+            this.pos.db.remove_unpaid_order(order);
             this.pos.removeOrder(order);
             this.pos.add_new_order();
-            if (this.pos.resetProductScreenSearch) { this.pos.resetProductScreenSearch(); };
+            if (this.pos.resetProductScreenSearch) {
+                this.pos.resetProductScreenSearch();
+            }
         }
         this.pos.showScreen("ProductScreen");
     }
