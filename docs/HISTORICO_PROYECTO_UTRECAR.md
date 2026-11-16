@@ -104,6 +104,13 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **13/11/2026** | TPV & Historial | Jerarquía limpia en Historial de Pedidos del Turno: la fila maestra es directamente el albarán o factura (sin tickets duplicados ficticios); desplegable solo para eventos derivados y exclusión de albaranes negativos duplicados | Desplegado y verificado en Cloud |
 | **13/11/2026** | Seguridad & ERP Multi-Compañía | Resolución de `AccessError` en `res.partner`: asignación de acceso total `[(1, '=', 1)]` a administradores en `pos_security_rules.xml`, normalización de contactos de empresas (`company_id = False`) y lectura segura con `sudo()` | Desplegado y verificado en Cloud |
 | **13/11/2026** | TPV & Albaranes | Nomenclatura oficial de Albaranes `AVTR`: migración de todos los albaranes existentes en base de datos de `TTTR` a `AVTR` (y sus anulaciones a `AVTR_`), y asignación automática de serie `AVTR` para todos los nuevos albaranes | Desplegado y verificado en Cloud |
+| **16/11/2026** | TPV & Turnos | Auditoría y corrección de Informe de Cierre de Turno en PDF: eliminación de OdooBot, fecha/lugar/hora/turno en cabecera, caja inicial 0€, integración de incidencias de caja en arqueo y auto-impresión previa a logout | Desplegado y verificado en Cloud |
+| **16/11/2026** | TPV & Pedidos | Botón y modal de 'Extracción / Retorno a Depósito' en historial de pedidos para tickets oficiales del turno | Desplegado y verificado en Cloud |
+| **16/11/2026** | TPV & Historial | Historial de turnos cerrados ordenable y descendente por fecha de apertura por defecto | Desplegado y verificado en Cloud |
+| **16/11/2026** | TPV & Cobro | Botón 'Guardar sin cambios Sin Ticket' en calculadora: genera el ticket oficial en backend sin imprimir ni abrir pantalla de recibo | Desplegado y verificado en Cloud |
+| **16/11/2026** | TPV & Hardware Pista | Telemetría en tiempo real: reducción de override a 4s, contador en vivo de litros y euros, y sonidos Web Audio API (inicio, flujo continuo y fin) | Desplegado en Cloud y en PC Repsol (`10.8.0.18`) |
+| **16/11/2026** | TPV & Hardware Pista | Transición y desbloqueo de colores en prefijados de albarán (pasa a amarillo COBRAR al colgar) y prepagos (sobrante o liberación), con soporte de `has_prepay` en agente hardware | Desplegado en Cloud y en PC Repsol (`10.8.0.18`) |
+| **16/11/2026** | Documentación & Arquitectura | Definición del Árbol de Navegación de Informes en Mermaid (`docs/ARBOL_NAVEGACION_INFORMES.md`) | Guardado en repositorio |
 
 ---
 

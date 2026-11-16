@@ -443,6 +443,38 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
   - **Cancelación de pedido**: Se elimina la posibilidad de cancelar pedido (botón `Cancelar pedido` retirado de la interfaz).
   - **Botón Pendiente**: Retirado temporalmente de la barra visual, preservando la funcionalidad interna `parkCurrentPumpSale()` intacta en el código por si se requiere reactivar en el futuro.
 
+#### H. Hitos de Auditoría de Cierre de Turno, Extracciones, Historiales y Telemetría Viva de Pista (Actualizado 16/11/2026):
+- **Informe Oficial de Cierre de Turno en PDF (`shift_report_template.xml` / `controllers/main.py`)**:
+  - *Eliminación de OdooBot*: Supresión total de la línea fantasma "ODOOBOT"; el informe lista exclusivamente los expendedores reales del turno.
+  - *Cabecera Fiscal y Operativa*: Incorporación de Lugar/Estación de Servicio, Fecha, Hora y Turno claramente destacados en la cabecera.
+  - *Caja Inicial a 0,00 €*: Fijado el importe de apertura de caja por defecto en 0,00 €.
+  - *Cuadre y Arqueo Riguroso*: Integración plena de incidencias de caja (extracciones/retiradas y entradas de efectivo) en las sumas y restas del arqueo final.
+  - *Renombrado de Cuenta de Clientes*: Etiqueta sustituida oficialmente por "Crédito".
+  - *Flujo de Auto-impresión Garantizado*: Al confirmar el cierre de turno, se abre directamente el cuadro de diálogo de impresión del PDF y, tras imprimir o cancelar (`onafterprint`), redirige automáticamente a la pantalla de selección de empleado.
+- **Botón y Modal de Extracción / Retorno a Depósito en Historial de Pedidos (`pos_gas_station.js`, `.xml`, `.css`, `main.py`)**:
+  - Incorporado en la columna 'Acciones' a la derecha del historial de pedidos del turno.
+  - Condicionado exclusivamente a pedidos que sean Tickets (excluidas facturas, albaranes y anulaciones).
+  - Abre la ventana modal con las mismas opciones que la botonera principal para registrar la prueba de probeta / calibración sobre el ticket seleccionado.
+- **Historial de Turnos Cerrados Ordenable y Descendente**:
+  - Orden por defecto por fecha de apertura (`start_at`) en sentido descendente.
+  - Cabeceras de columna interactivas con flechas para ordenación ascendente o descendente.
+- **Calculadora: "GUARDAR SIN CAMBIOS Sin Ticket"**:
+  - Genera y registra el ticket oficial en el backend sin abrir `ReceiptScreen` ni la orden de impresión, retornando de inmediato al TPV principal.
+- **Eliminación del doble confirm al cancelar surtidor**:
+  - Eliminado el `confirm()` nativo redundante del navegador; basta con pulsar el botón táctil "Cerrar y anular suministro".
+- **Telemetría en Vivo de Surtidores y Pista**:
+  - *Contador de litros y euros en tiempo real*: Eliminado el override rígido de 15 minutos en `controllers/main.py` (`STATION_PUMP_OVERRIDES`) que congelaba los surtidores en 0.00 L. Reducido a 4 segundos de gracia inicial, cediendo el control inmediato a la telemetría viva de pista (cada 200 ms).
+  - *Sonido de repostaje en pista (Web Audio API)*: Doble bip suave (880 Hz) al descolgar/iniciar repostaje, pulso continuo cada 3 segundos durante el flujo de combustible y tono de fin de servicio al colgar.
+  - *Transición y desbloqueo de colores en Prefijados y Albaranes*:
+    - Corregida regla CSS (`pos_gas_station.css`) que forzaba verde en gasolina incluso en estado `status-ready`.
+    - Integrado el parámetro `has_prepay` en el comando `pump_command_7` y en `agente_pista_odoo_bridge.py`:
+      - Si es Albarán prefijado o postpago (`has_prepay: False`): al colgar la manguera pasa a AMARILLO (`COBRAR / FIN REPOSTAJE`) para generar el albarán en 1 clic.
+      - Si es Prepago de contado completado (`has_prepay: True`): al colgar pasa a ROJO (`SIN PREFIJADO / PREPAGO`).
+      - Si es Prepago con sobrante: pasa a AMARILLO con la monedita y la devolución del sobrante calculada automáticamente.
+- **Árbol de Navegación de Informes**:
+  - Documentado en `docs/ARBOL_NAVEGACION_INFORMES.md` con diagrama Mermaid jerárquico (`INFORMES` -> `ALMACÉN` [`DOCUMENTOS`, `SUMINISTROS`], `COMPRAS` [`DOCUMENTOS`], `VENTAS`, `FICHEROS`, `TURNOS`, `COBROS`).
+
+
 
 
 
