@@ -212,6 +212,9 @@
                                 <i class="fa fa-shopping-cart" style="font-size: 16px;"/>
                             </button>
                         </div>
+                        <button class="btn-store-cat btn-closed-shifts-open" t-on-click="() => this.openClosedShiftsModal()" title="Historial de turnos" aria-label="Historial de turnos" alt="Historial de turnos">
+                            <i class="fa fa-history text-primary" style="font-size: 16px;" role="img" title="Historial de turnos"/>
+                        </button>
                     </div>
 
                     <!-- CUADRÍCULA DIRECTA DE PRODUCTOS VIRTUSTPV -->
@@ -2324,6 +2327,157 @@
                             </div>
                         </t>
 
+                    </div>
+                </div>
+            </t>
+
+            <!-- ================= MODAL HISTORIAL DE TURNOS CERRADOS ================= -->
+            <t t-if="state.isClosedShiftsModalOpen">
+                <div class="shift-orders-modal-backdrop" t-on-click.self="() => this.closeClosedShiftsModal()">
+                    <div class="shift-orders-modal-window" style="max-width: 1050px; width: 95vw;">
+                        <!-- HEADER DEL MODAL FLOTANTE -->
+                        <div class="shift-modal-header" style="background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 14px 20px;">
+                            <div class="shift-modal-header-left d-flex align-items-center gap-3">
+                                <div class="shift-modal-icon-badge" style="background: #3b82f6; font-size: 22px; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">🕒</div>
+                                <div class="shift-header-titles">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h2 class="shift-title m-0 text-white" style="font-size: 20px; font-weight: 800;">Historial de Turnos Cerrados</h2>
+                                        <span class="badge bg-primary text-white font-monospace" style="font-size: 11px; padding: 3px 8px;">
+                                            <t t-esc="pos.config ? pos.config.name : 'TPV'"/>
+                                        </span>
+                                    </div>
+                                    <span class="shift-subtitle text-slate-300" style="font-size: 12px; color: #94a3b8;">
+                                        Consulte o reimprima los informes oficiales de los turnos cerrados anteriormente
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-1 px-3 py-1 fw-bold"
+                                        t-on-click="() => this.loadClosedShifts()"
+                                        title="Actualizar listado">
+                                    <i class="fa fa-refresh me-1"/> Actualizar
+                                </button>
+                                <button class="shift-btn-close text-white" t-on-click="() => this.closeClosedShiftsModal()" title="Cerrar ventana flotante (Esc)" style="background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 4px 8px;">✖</button>
+                            </div>
+                        </div>
+
+                        <!-- BARRA DE BÚSQUEDA Y FILTRADO -->
+                        <div class="shift-search-bar" style="background: #f1f5f9; padding: 12px 20px; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                            <div class="search-input-wrapper" style="position: relative; flex: 1; max-width: 480px;">
+                                <i class="fa fa-search search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b;"/>
+                                <input type="text" 
+                                       class="shift-search-input form-control" 
+                                       style="padding-left: 36px; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1;"
+                                       placeholder="Buscar por Nº de turno, empleado o fecha..." 
+                                       t-model="state.closedShiftsSearch"/>
+                                <t t-if="state.closedShiftsSearch">
+                                    <button class="search-clear-btn" t-on-click="() => this.state.closedShiftsSearch = ''" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b;">✖</button>
+                                </t>
+                            </div>
+                            <div class="search-stats text-secondary fw-bold" style="font-size: 13px;">
+                                Mostrando <strong><t t-esc="filteredClosedShifts.length"/></strong> de <strong><t t-esc="state.closedShifts.length"/></strong> turnos
+                            </div>
+                        </div>
+
+                        <!-- TABLA DE TURNOS CERRADOS -->
+                        <div class="shift-table-wrapper" style="padding: 16px 20px; max-height: 60vh; overflow-y: auto;">
+                            <t t-if="state.closedShiftsLoading">
+                                <div class="shift-loading-box text-center py-5">
+                                    <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw text-primary mb-3"/>
+                                    <p class="text-secondary fw-bold">Cargando turnos cerrados...</p>
+                                </div>
+                            </t>
+                            <t t-elif="filteredClosedShifts.length === 0">
+                                <div class="shift-empty-box text-center py-5">
+                                    <p class="empty-icon fs-1 mb-2">📭</p>
+                                    <p class="empty-text text-secondary fw-bold">No se encontraron turnos cerrados registrados.</p>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <table class="table table-hover align-middle shadow-sm rounded" style="border: 1px solid #e2e8f0; background: white;">
+                                    <thead class="table-dark" style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        <tr>
+                                            <th style="padding: 10px 14px;">Turno / Sesión</th>
+                                            <th style="padding: 10px 14px;">Expendedor</th>
+                                            <th style="padding: 10px 14px;">Apertura</th>
+                                            <th style="padding: 10px 14px;">Cierre</th>
+                                            <th class="text-center" style="padding: 10px 14px;">Ventas</th>
+                                            <th class="text-end" style="padding: 10px 14px;">Total</th>
+                                            <th class="text-center" style="padding: 10px 14px;">Arqueo</th>
+                                            <th class="text-center" style="padding: 10px 14px; width: 220px;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody style="font-size: 13px;">
+                                        <tr t-foreach="filteredClosedShifts" t-as="shift" t-key="shift.id">
+                                            <td style="padding: 12px 14px;">
+                                                <strong class="text-primary font-monospace"><t t-esc="shift.name"/></strong>
+                                            </td>
+                                            <td style="padding: 12px 14px;">
+                                                <i class="fa fa-user-circle-o text-secondary me-1"/>
+                                                <strong><t t-esc="shift.employee_name"/></strong>
+                                            </td>
+                                            <td style="padding: 12px 14px; font-size: 12px; color: #475569;">
+                                                <t t-esc="shift.start_at"/>
+                                            </td>
+                                            <td style="padding: 12px 14px; font-size: 12px; color: #475569;">
+                                                <t t-esc="shift.stop_at"/>
+                                            </td>
+                                            <td class="text-center" style="padding: 12px 14px;">
+                                                <span class="badge bg-light text-dark border font-monospace">
+                                                    <t t-esc="shift.orders_count"/> ped.
+                                                </span>
+                                            </td>
+                                            <td class="text-end fw-bold text-dark" style="padding: 12px 14px; font-size: 14px;">
+                                                <t t-esc="shift.total_amount.toFixed(2)"/> €
+                                            </td>
+                                            <td class="text-center" style="padding: 12px 14px;">
+                                                <t t-if="Math.abs(shift.difference) &lt; 0.01">
+                                                    <span class="badge bg-success-subtle text-success border border-success fw-bold" style="font-size: 11px;">
+                                                        ✓ Cuadrado
+                                                    </span>
+                                                </t>
+                                                <t t-elif="shift.difference &gt; 0">
+                                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning fw-bold" style="font-size: 11px;">
+                                                        +<t t-esc="shift.difference.toFixed(2)"/> €
+                                                    </span>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="badge bg-danger-subtle text-danger border border-danger fw-bold" style="font-size: 11px;">
+                                                        <t t-esc="shift.difference.toFixed(2)"/> €
+                                                    </span>
+                                                </t>
+                                            </td>
+                                            <td class="text-center" style="padding: 12px 14px;">
+                                                <div class="d-flex justify-content-center gap-2">
+                                                    <button class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 px-2 py-1 fw-bold shadow-sm"
+                                                            t-on-click="() => this.viewClosedShiftReport(shift)"
+                                                            title="Ver informe oficial de cierre de turno (ojito)">
+                                                        👁️ Ver
+                                                    </button>
+                                                    <button class="btn btn-sm btn-dark text-white d-flex align-items-center gap-1 px-2 py-1 fw-bold shadow-sm"
+                                                            t-on-click="() => this.viewClosedShiftReport(shift)"
+                                                            title="Imprimir informe oficial de cierre de turno">
+                                                        🖨️ Imprimir
+                                                    </button>
+                                                    <button class="btn btn-sm btn-secondary text-white d-flex align-items-center gap-1 px-2 py-1 shadow-sm"
+                                                            t-on-click="() => this.downloadClosedShiftPdf(shift)"
+                                                            title="Descargar archivo PDF oficial">
+                                                        📥 PDF
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
+                        </div>
+
+                        <!-- FOOTER DE LA VENTANA FLOTANTE -->
+                        <div class="shift-modal-footer" style="background: #f8fafc; padding: 12px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+                            <button class="btn btn-secondary px-4 py-2 fw-bold" t-on-click="() => this.closeClosedShiftsModal()">
+                                Cerrar ventana
+                            </button>
+                        </div>
                     </div>
                 </div>
             </t>

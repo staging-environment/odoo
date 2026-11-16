@@ -2050,6 +2050,51 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error in /pos_gas_station/open_station: %s", e)
             return {'status': 'error', 'message': str(e)}
 
+    # ==================== HISTORIAL DE TURNOS CERRADOS ====================
+    @http.route('/pos_gas_station/get_closed_shifts', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_closed_shifts(self, config_id=None, limit=40):
+        """Devuelve el historial de turnos cerrados con sus totales para visualización o reimpresión."""
+        try:
+            env = request.env
+            domain = [('state', '=', 'closed')]
+            if config_id:
+                domain.append(('config_id', '=', int(config_id)))
+
+            sessions = env['pos.session'].sudo().search(domain, order='stop_at desc, id desc', limit=int(limit or 40))
+            user_tz = pytz.timezone((env.user.tz or 'Europe/Madrid'))
+
+            shifts_data = []
+            for s in sessions:
+                start_str = s.start_at.astimezone(user_tz).strftime('%d/%m/%Y %H:%M') if s.start_at else '-'
+                stop_str = s.stop_at.astimezone(user_tz).strftime('%d/%m/%Y %H:%M') if s.stop_at else '-'
+
+                orders = s.order_ids.filtered(lambda o: not getattr(o, 'is_extraction', False) and o.state in ['paid', 'done', 'invoiced'])
+                total_amount = round(sum(o.amount_total for o in orders), 2)
+                orders_count = len(orders)
+
+                cash_real = float(s.cash_register_balance_end_real or 0.0)
+                diff = float(s.cash_register_difference or 0.0)
+
+                shifts_data.append({
+                    'id': s.id,
+                    'name': s.name or f"Turno #{s.id}",
+                    'config_name': s.config_id.name if s.config_id else '',
+                    'employee_name': s.user_id.name if s.user_id else 'Cajero',
+                    'start_at': start_str,
+                    'stop_at': stop_str,
+                    'orders_count': orders_count,
+                    'total_amount': total_amount,
+                    'cash_real': cash_real,
+                    'difference': diff,
+                    'print_url': f'/pos_gas_station/shift_report_print/{s.id}',
+                    'pdf_url': f'/pos_gas_station/shift_report_pdf/{s.id}',
+                })
+
+            return {'status': 'success', 'shifts': shifts_data}
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/get_closed_shifts: %s", e)
+            return {'status': 'error', 'message': str(e), 'shifts': []}
+
     # ==================== GESTIÓN DE PEDIDOS DEL TURNO ACTIVO ====================
     @http.route('/pos_gas_station/get_shift_orders', type='json', auth='user', methods=['POST'], csrf=False)
     def get_shift_orders(self, session_id=None, config_id=None):

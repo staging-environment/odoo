@@ -339,6 +339,10 @@ export class UtrecarMainScreen extends Component {
             isSearchingSuppliers: false,
             isPendingSalesModalOpen: false,
             pendingModalPump: null,
+            isClosedShiftsModalOpen: false,
+            closedShiftsLoading: false,
+            closedShifts: [],
+            closedShiftsSearch: "",
             stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
             vehiclePlate: "",
             manualBarcode: "",
@@ -1866,6 +1870,59 @@ export class UtrecarMainScreen extends Component {
             this.state.selectedPumpId = null;
             this.state.orderVersion = Date.now();
         }
+    }
+
+    async openClosedShiftsModal() {
+        this.state.isClosedShiftsModalOpen = true;
+        this.state.closedShiftsSearch = "";
+        await this.loadClosedShifts();
+    }
+
+    closeClosedShiftsModal() {
+        this.state.isClosedShiftsModalOpen = false;
+        this.state.closedShifts = [];
+        this.state.closedShiftsSearch = "";
+    }
+
+    async loadClosedShifts() {
+        this.state.closedShiftsLoading = true;
+        try {
+            const configId = this.pos.config ? this.pos.config.id : null;
+            const res = await jsonrpc("/pos_gas_station/get_closed_shifts", {
+                config_id: configId
+            });
+            if (res && res.status === "success") {
+                this.state.closedShifts = res.shifts || [];
+            } else {
+                this.state.closedShifts = [];
+            }
+        } catch (e) {
+            console.error("Error al cargar historial de turnos cerrados:", e);
+            this.state.closedShifts = [];
+        } finally {
+            this.state.closedShiftsLoading = false;
+        }
+    }
+
+    get filteredClosedShifts() {
+        const query = (this.state.closedShiftsSearch || "").trim().toLowerCase();
+        if (!query) return this.state.closedShifts || [];
+        return (this.state.closedShifts || []).filter(s => 
+            (s.name && s.name.toLowerCase().includes(query)) ||
+            (s.employee_name && s.employee_name.toLowerCase().includes(query)) ||
+            (s.start_at && s.start_at.toLowerCase().includes(query)) ||
+            (s.stop_at && s.stop_at.toLowerCase().includes(query))
+        );
+    }
+
+    viewClosedShiftReport(shift) {
+        if (!shift || !shift.id) return;
+        window.open(`/pos_gas_station/shift_report_print/${shift.id}`, '_blank');
+    }
+
+    downloadClosedShiftPdf(shift) {
+        if (!shift || !shift.id) return;
+        window.open(`/pos_gas_station/shift_report_pdf/${shift.id}`, '_blank');
     }
 
     openRefundScreen() {

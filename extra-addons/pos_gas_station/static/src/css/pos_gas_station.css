@@ -639,7 +639,7 @@
     background: #e2e8f0 !important;
     border-bottom: 1px solid #94a3b8 !important;
     display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(4, 1fr) !important;
     gap: 3px !important;
     padding: 2px 4px !important;
 }
