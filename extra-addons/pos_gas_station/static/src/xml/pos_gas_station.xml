@@ -1902,21 +1902,31 @@
                                                         <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
                                                     </td>
                                                     <td class="cell-actions" style="text-align: center;" t-on-click.stop="">
-                                                        <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderTicket(ord, false, false)" title="Visualizar ticket en pantalla">
-                                                            👁
-                                                        </button>
-                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false, true)" title="Imprimir ticket">
-                                                            🖨️ Imprimir
-                                                        </button>
-                                                        <t t-if="!ord.is_ticket_annulled &amp;&amp; !ord.has_annulment &amp;&amp; !ord.is_invoiced &amp;&amp; ord.amount_total > 0 &amp;&amp; ord.doc_type !== 'invoice'">
-                                                            <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
-                                                                📄 Facturar
+                                                        <t t-if="ord.doc_type === 'invoice' || ord.is_invoiced">
+                                                            <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Imprimir Factura PDF oficial">
+                                                                <i class="fa fa-print me-1"/> Imprimir
+                                                            </button>
+                                                            <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
+                                                                <i class="fa fa-envelope me-1"/> Email
                                                             </button>
                                                         </t>
-                                                        <t t-if="canOrderBeExtracted(ord)">
-                                                            <button class="btn-tbl-action btn-tbl-extraction" t-on-click="() => this.openShiftOrderExtractionModal(ord)" title="Registrar ticket como Extracción / Retorno a depósito">
-                                                                ⛽ Extracción
+                                                        <t t-else="">
+                                                            <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderTicket(ord, false, false)" title="Visualizar ticket en pantalla">
+                                                                👁
                                                             </button>
+                                                            <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(ord, false, true)" title="Imprimir ticket">
+                                                                🖨️ Imprimir
+                                                            </button>
+                                                            <t t-if="!ord.is_ticket_annulled &amp;&amp; !ord.has_annulment &amp;&amp; !ord.is_invoiced &amp;&amp; ord.amount_total > 0 &amp;&amp; ord.doc_type !== 'invoice'">
+                                                                <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => { this.selectShiftOrder(ord); this.openInvoiceModal(ord); }" title="Emitir Factura con NIF/CIF">
+                                                                    📄 Facturar
+                                                                </button>
+                                                            </t>
+                                                            <t t-if="canOrderBeExtracted(ord)">
+                                                                <button class="btn-tbl-action btn-tbl-extraction" t-on-click="() => this.openShiftOrderExtractionModal(ord)" title="Registrar ticket como Extracción / Retorno a depósito">
+                                                                    ⛽ Extracción
+                                                                </button>
+                                                            </t>
                                                         </t>
                                                     </td>
                                                 </tr>
@@ -2017,7 +2027,7 @@
                                     </button>
                                     <div class="breadcrumb-text">
                                         <span class="text-muted">Historial / </span>
-                                        <strong><t t-esc="state.selectedShiftOrder.name"/></strong>
+                                        <strong><t t-esc="(state.selectedShiftOrder.doc_type === 'invoice' || state.selectedShiftOrder.is_invoiced) ? (state.selectedShiftOrder.account_move_name || state.selectedShiftOrder.serie_code || state.selectedShiftOrder.name) : state.selectedShiftOrder.name"/></strong>
                                     </div>
                                 </div>
                                 <div class="shift-detail-header-right">
@@ -2027,7 +2037,20 @@
 
                             <!-- BARRA DE ACCIONES SUPERIORES (TICKET, COPIA, FACTURA, ALBARÁN, ANULAR) -->
                             <div class="shift-detail-actions-bar">
-                                <t t-if="state.selectedShiftOrder.is_albaran">
+                                <t t-if="state.selectedShiftOrder.is_invoiced || state.selectedShiftOrder.doc_type === 'invoice'">
+                                    <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder)">
+                                        <i class="fa fa-file-pdf-o me-1"/> 🖨️ Imprimir Factura PDF (<t t-esc="state.selectedShiftOrder.account_move_name || state.selectedShiftOrder.serie_code || state.selectedShiftOrder.name"/>)
+                                    </button>
+                                    <button class="btn-action-primary" t-on-click="() => this.emailShiftOrderInvoice(state.selectedShiftOrder)" style="background: #059669; border-color: #047857;">
+                                        <i class="fa fa-envelope me-1"/> 📧 Enviar Factura por E-mail
+                                    </button>
+                                    <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; state.selectedShiftOrder.amount_total > 0">
+                                        <button class="btn-action-primary btn-action-annul" t-on-click="() => this.openAnnulOrderModal(state.selectedShiftOrder)">
+                                            <i class="fa fa-ban me-1"/> ❌ Anular Factura
+                                        </button>
+                                    </t>
+                                </t>
+                                <t t-elif="state.selectedShiftOrder.is_albaran">
                                     <button class="btn-action-primary btn-action-albaran" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, false)" style="background: #eef2ff; color: #4338ca; border-color: #a5b4fc;">
                                         <i class="fa fa-print me-1"/> 📋 Imprimir Albarán
                                     </button>
@@ -2041,15 +2064,7 @@
                                     <button class="btn-action-primary" t-on-click="() => this.printShiftOrderTicket(state.selectedShiftOrder, false)">
                                         <i class="fa fa-print me-1"/> 🖨️ Imprimir Ticket
                                     </button>
-                                    <t t-if="state.selectedShiftOrder.is_invoiced">
-                                        <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder)">
-                                            <i class="fa fa-file-pdf-o me-1"/> 🖨️ Imprimir Factura PDF (<t t-esc="state.selectedShiftOrder.account_move_name"/>)
-                                        </button>
-                                        <button class="btn-action-primary" t-on-click="() => this.emailShiftOrderInvoice(state.selectedShiftOrder)" style="background: #059669; border-color: #047857;">
-                                            <i class="fa fa-envelope me-1"/> 📧 Enviar Factura por E-mail
-                                        </button>
-                                    </t>
-                                    <t t-elif="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; state.selectedShiftOrder.amount_total > 0">
+                                    <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; state.selectedShiftOrder.amount_total > 0">
                                         <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.openInvoiceModal(state.selectedShiftOrder)">
                                             <i class="fa fa-file-text-o me-1"/> 📄 Generar Factura (NIF/CIF)
                                         </button>
@@ -2116,7 +2131,7 @@
                                         <div class="meta-field-group">
                                             <div class="meta-row">
                                                 <span class="meta-label">Ref. del pedido</span>
-                                                <span class="meta-value"><strong><t t-esc="state.selectedShiftOrder.name"/></strong></span>
+                                                <span class="meta-value"><strong><t t-esc="(state.selectedShiftOrder.doc_type === 'invoice' || state.selectedShiftOrder.is_invoiced) ? (state.selectedShiftOrder.account_move_name || state.selectedShiftOrder.serie_code || state.selectedShiftOrder.name) : state.selectedShiftOrder.name"/></strong></span>
                                             </div>
                                             <div class="meta-row">
                                                 <span class="meta-label">Fecha</span>
@@ -2183,8 +2198,8 @@
                                             <div class="meta-row">
                                                 <span class="meta-label">Factura</span>
                                                 <span class="meta-value">
-                                                    <t t-if="state.selectedShiftOrder.is_invoiced">
-                                                        <strong class="text-success"><t t-esc="state.selectedShiftOrder.account_move_name"/></strong>
+                                                    <t t-if="state.selectedShiftOrder.is_invoiced || state.selectedShiftOrder.doc_type === 'invoice'">
+                                                        <strong class="text-success"><t t-esc="state.selectedShiftOrder.account_move_name || state.selectedShiftOrder.serie_code || state.selectedShiftOrder.name"/></strong>
                                                     </t>
                                                     <t t-else="">
                                                         <span class="text-muted">No emitida</span>

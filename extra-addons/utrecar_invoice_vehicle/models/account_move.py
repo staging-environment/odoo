@@ -1,3 +1,4 @@
+import re
 import logging
 from odoo import models, fields, api, _
 
@@ -5,6 +6,25 @@ _logger = logging.getLogger(__name__)
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
+
+    def _get_starting_sequence(self):
+        self.ensure_one()
+        if self.journal_id and self.journal_id.code and self.journal_id.code.startswith('FT'):
+            year = self.date.year if self.date else fields.Date.today().year
+            return f"{self.journal_id.code}{year}00000"
+        return super()._get_starting_sequence()
+
+    def _set_next_sequence(self):
+        super()._set_next_sequence()
+        for move in self:
+            if move.journal_id and move.journal_id.code and move.journal_id.code.startswith('FT') and move.name:
+                clean_name = re.sub(r'[/_\-\s]', '', move.name)
+                if move.name != clean_name:
+                    move.name = clean_name
+                    move.sequence_prefix = move.journal_id.code
+                    digits_match = re.search(r'\d+$', clean_name)
+                    if digits_match:
+                        move.sequence_number = int(digits_match.group(0))
 
     vehicle_id = fields.Many2one(
         'res.partner.vehicle',

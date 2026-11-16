@@ -2350,19 +2350,23 @@ class PosGasStationController(http.Controller):
                         yr = date_val.year if (date_val and hasattr(date_val, 'year')) else (o.date_order.year if o.date_order else fields.Date.today().year)
                         target_t = 'AV' if alb else t
                         return f"{target_t}{st}{yr}{int(num):05d}"
-                    return raw_name
+                    return re.sub(r'[/_\-\s]', '', raw_name)
 
+                clean_inv_name = re.sub(r'[/_\-\s]', '', o.account_move.name) if (is_inv and o.account_move and o.account_move.name) else ''
                 if is_albaran:
                     doc_type = 'albaran'
                     serie_code = _format_pos_doc_name(o.name, o.date_order, alb=True)
                 elif is_inv and not is_inv_exchanged:
                     doc_type = 'invoice'
-                    serie_code = o.account_move.name or o.name
+                    serie_code = clean_inv_name or _format_pos_doc_name(o.name, o.date_order, alb=False)
                 else:
                     doc_type = 'ticket'
                     serie_code = _format_pos_doc_name(o.name, o.date_order, alb=False)
 
-                order_doc_name = _format_pos_doc_name(o.name, o.date_order, alb=is_albaran)
+                if doc_type == 'invoice':
+                    order_doc_name = clean_inv_name or serie_code
+                else:
+                    order_doc_name = _format_pos_doc_name(o.name, o.date_order, alb=is_albaran)
 
                 order_history = []
                 # 1. Documento de Anulación si fue anulado
@@ -2467,7 +2471,7 @@ class PosGasStationController(http.Controller):
                     'annulment_reason': getattr(o, 'annulment_reason', False) or ('Anulación de ticket' if has_annulment else ''),
                     'annulment_date': annul_date_str,
                     'account_move_id': o.account_move.id if is_inv else False,
-                    'account_move_name': o.account_move.name if is_inv else '',
+                    'account_move_name': clean_inv_name if is_inv else '',
                     'invoice_url': inv_url,
                     'has_history': has_history,
                     'history': order_history,
@@ -2529,11 +2533,12 @@ class PosGasStationController(http.Controller):
                 return {'status': 'error', 'message': 'Un ticket de anulación o con importe no positivo no se puede facturar.'}
 
             if order.account_move:
+                clean_inv_m = re.sub(r'[/_\-\s]', '', order.account_move.name or '')
                 return {
                     'status': 'success',
                     'already_invoiced': True,
                     'account_move_id': order.account_move.id,
-                    'account_move_name': order.account_move.name,
+                    'account_move_name': clean_inv_m or order.account_move.name,
                     'invoice_url': f'/report/pdf/account.report_invoice_with_payments/{order.account_move.id}'
                 }
 
@@ -2594,10 +2599,11 @@ class PosGasStationController(http.Controller):
                 if client_email:
                     email_result = _send_invoice_email(env, order.account_move, target_email=client_email)
 
+            clean_inv_ret = re.sub(r'[/_\-\s]', '', order.account_move.name or '')
             return {
                 'status': 'success',
                 'account_move_id': order.account_move.id,
-                'account_move_name': order.account_move.name,
+                'account_move_name': clean_inv_ret or order.account_move.name,
                 'is_ticket_annulled': True,
                 'annulment_ref': annul_ref,
                 'invoice_url': f'/report/pdf/account.report_invoice_with_payments/{order.account_move.id}',

@@ -2369,6 +2369,9 @@ export class UtrecarMainScreen extends Component {
 
     printShiftOrderTicket(order, isCopy = false, autoPrint = true) {
         if (!order) return;
+        if (order.doc_type === 'invoice' || order.is_invoiced) {
+            return this.printShiftOrderInvoice(order);
+        }
         const comp = order.company || {};
         const linesHtml = (order.lines || []).map(l => `
             <tr>

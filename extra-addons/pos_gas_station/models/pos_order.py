@@ -217,14 +217,27 @@ class PosOrder(models.Model):
         res = super().action_pos_order_invoice()
         for order in self:
             if order.account_move:
-                ref = order.annulment_ref or order._generate_annulment_ref()
-                inv_name = order.account_move.name or 'Factura emitida'
-                order.write({
-                    'is_ticket_annulled': True,
-                    'annulment_ref': ref,
-                    'annulment_reason': f"Anulado por canje y emisión de Factura {inv_name}",
-                    'annulment_date': fields.Datetime.now(),
-                })
+                clean_inv = re.sub(r'[/_\-\s]', '', order.account_move.name or '')
+                was_direct_invoice = order.to_invoice or order.state == 'invoiced'
+                vals = {}
+                if clean_inv:
+                    vals['name'] = clean_inv
+                if was_direct_invoice and not ('canje' in (getattr(order, 'annulment_reason', '') or '').lower()):
+                    vals.update({
+                        'is_ticket_annulled': False,
+                        'annulment_ref': False,
+                        'annulment_reason': False,
+                    })
+                elif not was_direct_invoice:
+                    ref = order.annulment_ref or order._generate_annulment_ref()
+                    vals.update({
+                        'is_ticket_annulled': True,
+                        'annulment_ref': ref,
+                        'annulment_reason': f"Anulado por canje y emisión de Factura {clean_inv or order.account_move.name}",
+                        'annulment_date': fields.Datetime.now(),
+                    })
+                if vals:
+                    order.write(vals)
         return res
 
     def action_convert_to_albaran(self, partner_id, vehicle_plate=None, vehicle_driver=None):
@@ -392,6 +405,15 @@ class PosOrder(models.Model):
                 for r in order_sync_results:
                     if isinstance(r, dict) and r.get('id') in order_map:
                         o = order_map[r['id']]
+                        if o.account_move and o.account_move.name:
+                            clean_inv = re.sub(r'[/_\-\s]', '', o.account_move.name)
+                            if clean_inv and o.name != clean_inv:
+                                o.write({
+                                    'name': clean_inv,
+                                    'is_ticket_annulled': False,
+                                    'annulment_ref': False,
+                                    'annulment_reason': False,
+                                })
                         r['name'] = o.name
                         r['ticket_name'] = o.name
                         r['is_ticket_annulled'] = o.is_ticket_annulled

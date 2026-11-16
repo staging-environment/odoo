@@ -3,18 +3,30 @@ import psycopg2
 def main():
     conn = psycopg2.connect("host=db port=5432 dbname=odoo user=db password=db")
     cur = conn.cursor()
-    
-    # Ver los últimos 10 pos_order en pos_order con su nuevo nombre
     cur.execute("""
-        SELECT id, name, is_albaran, is_ticket_annulled, annulment_ref, amount_total
-        FROM pos_order
-        WHERE config_id = 7
-        ORDER BY id DESC
-        LIMIT 10;
+        SELECT po.id, po.name, po.account_move, am.name as move_name, po.is_ticket_annulled, po.to_invoice
+        FROM pos_order po
+        LEFT JOIN account_move am ON am.id = po.account_move
+        WHERE po.session_id = 51
+        ORDER BY po.id DESC;
     """)
-    print("Últimos 10 pedidos en E.S. Repsol:")
+    print("Orders in session 51:")
     for r in cur.fetchall():
         print(r)
 
 if __name__ == '__main__':
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
