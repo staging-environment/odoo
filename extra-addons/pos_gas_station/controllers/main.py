@@ -992,6 +992,7 @@ class PosGasStationController(http.Controller):
             'fuel': fuel_name,
             'amount': amt,
             'liters': lts,
+            'has_prepay': is_prepay,
             'timestamp': time.time()
         }
         try:

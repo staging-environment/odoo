@@ -437,7 +437,7 @@ class AgentePistaRepsol:
         except Exception as e:
             logging.warning(f"Error enviando estado a Odoo: {e}")
 
-    def autorizar_surtidor_hardware(self, calle, importe=0.0, litros=0.0, combustible=""):
+    def autorizar_surtidor_hardware(self, calle, importe=0.0, litros=0.0, combustible="", has_prepay=False):
         if not (1 <= calle <= TOTAL_CALLES):
             return
 
@@ -460,7 +460,7 @@ class AgentePistaRepsol:
         try:
             if importe and float(importe) > 0:
                 imp = float(importe)
-                logging.info(f"🎯 [HARDWARE PREFIJADO NATIVO] Fijando límite de {imp:.2f} € en Calle {calle} (Productos hardware: {prods_pref})...")
+                logging.info(f"🎯 [HARDWARE PREFIJADO NATIVO] Fijando límite de {imp:.2f} € en Calle {calle} (Productos hardware: {prods_pref}) | Prepago previo: {has_prepay}...")
                 
                 # Para prefijar con corte de válvula exacto, modo PREPAGO (Modo 2)
                 self.sdes_client.cambiar_modo_trabajo(calle, 2)
@@ -475,7 +475,7 @@ class AgentePistaRepsol:
 
                 self.cambiar_modo_calle(calle, "dispensing", f"PREFIJADO {imp:.2f}€")
                 self.pumps[calle - 1]["preset_amount"] = imp
-                self.pumps[calle - 1]["has_prepay"] = True
+                self.pumps[calle - 1]["has_prepay"] = bool(has_prepay)
             else:
                 # Suministro LIBRE (LLENO)
                 logging.info(f"⛽ [HARDWARE LIBRE NATIVO] Enviando DESBLOQUEO LIBRE (LLENO) a Calle {calle}...")
@@ -547,7 +547,8 @@ class AgentePistaRepsol:
                         fuel = cmd.get("fuel", "GA")
                         amount = cmd.get("amount", 0.0)
                         liters = cmd.get("liters", 0.0)
-                        self.autorizar_surtidor_hardware(pid, importe=amount, litros=liters, combustible=fuel)
+                        has_prepay = bool(cmd.get("has_prepay", False))
+                        self.autorizar_surtidor_hardware(pid, importe=amount, litros=liters, combustible=fuel, has_prepay=has_prepay)
                     elif action == "lock":
                         self.bloquear_surtidor_hardware(pid)
                         self.cambiar_modo_calle(pid, "blocked", "PREPAGO")
@@ -675,12 +676,12 @@ class AgentePistaRepsol:
 
             logging.info(f"🎉 [VENTA LISTA] Calle {calle} completó {litros:.2f}L de {prod['name']} por {importe:.2f}€")
 
-            # Si era prepago (prefijado pagado de antemano)
-            is_prepay = p.get("has_prepay") or p.get("preset_amount", 0) > 0
+            # Solo es prepago si fue cobrado previamente en caja (has_prepay == True)
+            is_prepay = bool(p.get("has_prepay", False))
             preset_amt = p.get("preset_amount", 0.0)
 
-            # Si no echó todo el combustible prefijado (falta por suministrar > 0.05€)
-            if is_prepay and importe < (preset_amt - 0.05):
+            # Si era prepago cobrado y no echó todo el combustible prefijado (falta por suministrar > 0.05€)
+            if is_prepay and preset_amt > 0 and importe < (preset_amt - 0.05):
                 logging.info(f"⚠️ [SOBRANTE PREPAGO] Calle {calle}: prefijado {preset_amt:.2f}€ vs repostado {importe:.2f}€. Bloqueando pista pero manteniendo saldo para Odoo.")
                 p["status"] = "ready"
                 p["statusText"] = f"SOBRANTE {(preset_amt - importe):.2f}€"
@@ -694,6 +695,7 @@ class AgentePistaRepsol:
                 logging.info(f"Calle {calle} era prepago completado íntegramente. Liberando y bloqueando pista...")
                 self.liberar_calle_local(calle)
             else:
+                # Suministro libre, postpago o ALBARÁN con prefijado: pasa a COBRAR/ALBARANAR
                 p["status"] = "ready"
                 p["statusText"] = "COBRAR"
                 if self.sdes_client and self.sdes_client.is_connected():

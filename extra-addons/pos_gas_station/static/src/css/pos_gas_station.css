@@ -2378,8 +2378,7 @@
    ========================================================================== */
 
 /* 1. GASOLINA (VERDE BRILLANTE ASEPRODA #16a34a) */
-.aseproda-dispenser-box.fuel-type-gasolina.status-dispensing,
-.aseproda-dispenser-box.fuel-type-gasolina.status-ready {
+.aseproda-dispenser-box.fuel-type-gasolina.status-dispensing {
     border: 3px solid #16a34a !important;
     background: #f0fdf4 !important;
     animation: pulse-gasolina 1.2s infinite alternate !important;
@@ -2492,21 +2491,20 @@
 
 /* 1. GASOLINA - VERDE VIBRANTE (#16a34a) */
 .aseproda-dispenser-box.fuel-type-gasolina.status-dispensing,
-.aseproda-dispenser-box.fuel-type-gasolina.status-ready,
 .aseproda-dispenser-box.fuel-type-dispensing-active.status-dispensing {
     border: 3px solid #16a34a !important;
     background: #f0fdf4 !important;
     animation: pulse-gasolina 1.2s infinite alternate !important;
 }
 
-.aseproda-dispenser-box.fuel-type-gasolina .dispenser-corner-tab,
-.aseproda-dispenser-box.fuel-type-dispensing-active .dispenser-corner-tab {
+.aseproda-dispenser-box.status-dispensing.fuel-type-gasolina .dispenser-corner-tab,
+.aseproda-dispenser-box.status-dispensing.fuel-type-dispensing-active .dispenser-corner-tab {
     background: #16a34a !important;
     color: #ffffff !important;
 }
 
-.aseproda-dispenser-box.fuel-type-gasolina .dispenser-lower-body,
-.aseproda-dispenser-box.fuel-type-dispensing-active .dispenser-lower-body {
+.aseproda-dispenser-box.status-dispensing.fuel-type-gasolina .dispenser-lower-body,
+.aseproda-dispenser-box.status-dispensing.fuel-type-dispensing-active .dispenser-lower-body {
     background: #15803d !important;
 }
 
@@ -4014,6 +4012,13 @@
     border-color: #ca8a04 !important;
     background: #fefce8 !important;
     box-shadow: 0 0 14px rgba(234, 179, 8, 0.55) !important;
+}
+
+.aseproda-dispenser-box.status-ready,
+.aseproda-dispenser-box.has-uncollected-coin {
+    border: 3px solid #eab308 !important;
+    background: #fefce8 !important;
+    box-shadow: 0 0 12px rgba(234, 179, 8, 0.7) !important;
 }
 
 .aseproda-dispenser-box.status-ready .dispenser-corner-tab,
