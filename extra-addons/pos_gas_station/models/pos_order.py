@@ -144,27 +144,41 @@ class PosOrder(models.Model):
             ('company_id', 'in', [self.company_id.id if self.company_id else False, False])
         ], limit=1)
 
-        if not sequence:
-            domain_like = f"{prefix_pattern}%"
-            if doc_type == 'albaran':
-                self.env.cr.execute("""
-                    SELECT annulment_ref FROM pos_order 
-                    WHERE is_albaran = true AND annulment_ref IS NOT NULL AND annulment_ref LIKE %s
-                """, (domain_like,))
-            elif doc_type == 'invoice':
-                self.env.cr.execute("""
-                    SELECT annulment_ref FROM pos_order 
-                    WHERE account_move IS NOT NULL AND annulment_ref IS NOT NULL AND annulment_ref LIKE %s
-                """, (domain_like,))
-            else:
-                self.env.cr.execute("""
-                    SELECT annulment_ref FROM pos_order 
-                    WHERE (is_albaran IS NOT TRUE) AND (account_move IS NULL) 
-                      AND annulment_ref IS NOT NULL AND annulment_ref LIKE %s
-                """, (domain_like,))
-
+        domain_like = f"{prefix_pattern}%"
+        max_num = 0
+        if doc_type == 'invoice':
+            self.env.cr.execute("""
+                SELECT name FROM account_move WHERE name LIKE %s
+                UNION
+                SELECT annulment_ref FROM pos_order WHERE annulment_ref LIKE %s
+            """, (domain_like, domain_like))
             existing_refs = [r[0] for r in self.env.cr.fetchall() if r[0]]
-            max_num = 0
+            for ref_str in existing_refs:
+                m = re.search(r'_' + str(current_year) + r'(\d+)$', ref_str)
+                if m:
+                    num = int(m.group(1))
+                    if num > max_num:
+                        max_num = num
+        elif doc_type == 'albaran':
+            self.env.cr.execute("""
+                SELECT name FROM pos_order WHERE name LIKE %s
+                UNION
+                SELECT annulment_ref FROM pos_order WHERE is_albaran = true AND annulment_ref IS NOT NULL AND annulment_ref LIKE %s
+            """, (domain_like, domain_like))
+            existing_refs = [r[0] for r in self.env.cr.fetchall() if r[0]]
+            for ref_str in existing_refs:
+                m = re.search(r'_' + str(current_year) + r'(\d+)$', ref_str)
+                if m:
+                    num = int(m.group(1))
+                    if num > max_num:
+                        max_num = num
+        else:
+            self.env.cr.execute("""
+                SELECT annulment_ref FROM pos_order 
+                WHERE (is_albaran IS NOT TRUE) AND (account_move IS NULL) 
+                  AND annulment_ref IS NOT NULL AND annulment_ref LIKE %s
+            """, (domain_like,))
+            existing_refs = [r[0] for r in self.env.cr.fetchall() if r[0]]
             for ref_str in existing_refs:
                 m = re.search(r'_' + str(current_year) + r'(\d+)$', ref_str)
                 if m:
@@ -172,7 +186,9 @@ class PosOrder(models.Model):
                     if num > max_num:
                         max_num = num
 
-            next_num = max_num + 1
+        next_num = max_num + 1
+
+        if not sequence:
             type_label = {'ticket': 'Ticket', 'albaran': 'Albarán', 'invoice': 'Factura'}.get(doc_type, 'Doc')
             sequence = self.env['ir.sequence'].sudo().create({
                 'name': f"Secuencia de Anulación {type_label} TPV {config.name if config else ''}",
@@ -183,6 +199,9 @@ class PosOrder(models.Model):
                 'number_increment': 1,
                 'company_id': self.company_id.id if self.company_id else False,
             })
+        else:
+            if sequence.number_next <= max_num:
+                sequence.sudo().write({'number_next': next_num})
 
         return sequence.next_by_id()
 

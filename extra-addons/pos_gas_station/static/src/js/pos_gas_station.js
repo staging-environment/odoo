@@ -1751,11 +1751,11 @@ export class UtrecarMainScreen extends Component {
         this.state.orderVersion = Date.now();
     }
 
-    async resetAndLockPump(pumpId, autoAnnulPrepay = true) {
+    async resetAndLockPump(pumpId, autoAnnulPrepay = true, forceAnnul = false) {
         const target = this.state.pumps.find(p => p.id === pumpId);
         const preset = (this.state.pumpPresets && this.state.pumpPresets[pumpId]) || 
                        (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[pumpId]);
-        const isPrepay = Boolean((target && target.has_prepay) || (preset && preset.hasPrepay));
+        const isPrepay = Boolean((target && (target.has_prepay || (target.amount > 0 && target.statusText !== 'SIN PREFIJADO'))) || (preset && (preset.hasPrepay || preset.amount > 0)));
         const orderRef = (preset && (preset.orderRef || preset.orderPosRef || preset.orderTicketName)) || null;
         const orderId = (preset && preset.orderBackendId) || null;
         const posRef = preset ? preset.pos_reference : null;
@@ -1811,9 +1811,9 @@ export class UtrecarMainScreen extends Component {
             console.debug("Error al resetear y bloquear bomba:", e);
         }
 
-        // Si la calle estaba en modalidad PREPAGO ya cobrado y se cancela antes de dispensar,
-        // generar de forma automática el ticket/albarán negativo/factura de anulación oficial sobre esa operación
-        if (autoAnnulPrepay && isPrepay && dispensedLts <= 0.05) {
+        // Si la calle estaba en modalidad PREPAGO ya cobrado y se cancela antes de dispensar (o forceAnnul desde confirmación de cancelación),
+        // generar de forma automática el ticket/albarán negativo/factura rectificativa sobre esa operación
+        if (autoAnnulPrepay && (forceAnnul || (isPrepay && dispensedLts <= 0.05))) {
             try {
                 const res = await jsonrpc("/pos_gas_station/annul_order", {
                     config_id: this.configId,
@@ -1827,7 +1827,7 @@ export class UtrecarMainScreen extends Component {
                 });
                 if (res && res.status === "success") {
                     if (typeof this.loadShiftOrders === "function") {
-                        this.loadShiftOrders();
+                        await this.loadShiftOrders();
                     }
                 } else if (res && res.status === "error") {
                     console.warn("Aviso al anular automáticamente documento de prepago cancelado:", res.message);
@@ -3081,6 +3081,15 @@ export class UtrecarMainScreen extends Component {
         window.open(order.invoice_url, "_blank");
     }
 
+    printShiftOrderRefundInvoice(order, historyItem) {
+        const invUrl = (historyItem && historyItem.invoice_url) || (order && order.invoice_url);
+        if (!invUrl) {
+            alert("No se ha encontrado el documento PDF de la Factura Rectificativa.");
+            return;
+        }
+        window.open(invUrl, "_blank");
+    }
+
     emailShiftOrderInvoice(order) {
         if (!order) return;
         this.state.emailInvoiceOrder = order;
@@ -3094,6 +3103,19 @@ export class UtrecarMainScreen extends Component {
         // Cerrar la ventana flotante actual (pedidos) para que la de email quede sola y activa en primer plano
         this.state.isShiftOrdersModalOpen = false;
         this.state.isEmailInvoiceModalOpen = true;
+    }
+
+    emailShiftOrderRefundInvoice(order, historyItem) {
+        if (!order) return;
+        const refundMoveId = (historyItem && historyItem.account_move_id) || order.account_move_id;
+        const refundRef = (historyItem && historyItem.ref) || order.annulment_ref;
+        const refundOrder = Object.assign({}, order, {
+            account_move_id: refundMoveId,
+            name: refundRef,
+            account_move_name: refundRef,
+            invoice_url: (historyItem && historyItem.invoice_url) || order.invoice_url
+        });
+        this.emailShiftOrderInvoice(refundOrder);
     }
 
     closeEmailInvoiceModal() {
@@ -4319,7 +4341,7 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
-        await this.resetAndLockPump(pumpId);
+        await this.resetAndLockPump(pumpId, true, true);
         this.state.orderVersion = Date.now();
     }
 

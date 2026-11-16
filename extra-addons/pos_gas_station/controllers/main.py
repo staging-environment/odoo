@@ -2372,29 +2372,41 @@ class PosGasStationController(http.Controller):
                 # 1. Documento de Anulación si fue anulado
                 if has_annulment and not is_inv_exchanged:
                     annul_reason = getattr(o, 'annulment_reason', '') or 'Anulación de documento'
+                    refund_move = None
+                    refund_url = False
                     if doc_type == 'albaran':
                         type_label = 'Albarán Negativo'
                         badge_cls = 'badge-history-albaran'
                         icon_cls = 'fa-file-text'
                     elif doc_type == 'invoice':
-                        type_label = 'Factura Anulación'
+                        type_label = 'Factura Rectificativa'
                         badge_cls = 'badge-history-invoice'
                         icon_cls = 'fa-ban'
+                        if o.account_move:
+                            refund_move = env['account.move'].sudo().search([
+                                ('reversed_entry_id', '=', o.account_move.id),
+                                ('move_type', '=', 'out_refund')
+                            ], order='id desc', limit=1)
+                            if refund_move:
+                                refund_url = f'/report/pdf/account.report_invoice_with_payments/{refund_move.id}'
                     else:
                         type_label = 'Ticket Anulación'
                         badge_cls = 'badge-history-annulment'
                         icon_cls = 'fa-ban'
 
+                    hist_ref = refund_move.name if (refund_move and refund_move.name) else annul_ref_val
                     order_history.append({
                         'type': 'annulment',
                         'type_label': type_label,
                         'icon': icon_cls,
                         'badge_class': badge_cls,
-                        'ref': annul_ref_val,
+                        'ref': hist_ref,
                         'date': annul_date_str,
                         'description': annul_reason,
                         'amount': f"-{o.amount_total:.2f}",
                         'amount_raw': -o.amount_total,
+                        'account_move_id': refund_move.id if refund_move else (o.account_move.id if o.account_move else False),
+                        'invoice_url': refund_url or inv_url,
                     })
                 elif is_inv_exchanged:
                     # El ticket original fue canjeado a factura posteriormente

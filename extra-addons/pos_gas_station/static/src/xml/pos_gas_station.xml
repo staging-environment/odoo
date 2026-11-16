@@ -1973,7 +1973,18 @@
                                                                                     </strong>
                                                                                 </td>
                                                                                 <td style="width: 200px; text-align: center;" t-on-click.stop="">
-                                                                                    <t t-if="item.type === 'annulment'">
+                                                                                    <t t-if="item.type === 'annulment' &amp;&amp; (ord.doc_type === 'invoice' || (item.type_label &amp;&amp; item.type_label.includes('Factura')))">
+                                                                                        <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderRefundInvoice(ord, item)" title="Visualizar Factura Rectificativa oficial en pantalla (PDF)">
+                                                                                            👁
+                                                                                        </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderRefundInvoice(ord, item)" title="Descargar o imprimir Factura Rectificativa oficial">
+                                                                                            📄 Imprimir
+                                                                                        </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderRefundInvoice(ord, item)" title="Enviar Factura Rectificativa PDF por correo" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
+                                                                                            📧 Email
+                                                                                        </button>
+                                                                                    </t>
+                                                                                    <t t-elif="item.type === 'annulment'">
                                                                                         <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printAnnulmentReceipt(ord, item, false)" title="Visualizar justificante de anulación en pantalla">
                                                                                             👁
                                                                                         </button>
