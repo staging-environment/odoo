@@ -926,17 +926,20 @@ class PosGasStationController(http.Controller):
             hw_status = pump.get('status')
             hw_liters = float(pump.get('liters') or 0.0)
             hw_amount = float(pump.get('amount') or 0.0)
+            hw_is_descolgada = bool(pump.get('is_descolgada'))
 
             # Si el hardware físico ya está suministrando en vivo (litros/euros corriendo)
+            # o la manguera física ya se ha descolgado en pista
             # o ya finalizó repostaje ('ready') o pasaron más de 4s:
             # la telemetría viva del hardware es la prioridad absoluta y el override se descarta.
             if pid in overrides:
                 ov = overrides[pid]
                 ov_age = now - ov.get('_timestamp', now)
-                if hw_status in ('dispensing', 'ready') or hw_liters > 0.02 or hw_amount > 0.02 or ov_age > OVERRIDE_TIMEOUT_SECONDS:
+                if hw_is_descolgada or hw_status in ('dispensing', 'ready') or hw_liters > 0.02 or hw_amount > 0.02 or ov_age > OVERRIDE_TIMEOUT_SECONDS:
                     del overrides[pid]
                 else:
                     ov_clean = {k: v for k, v in ov.items() if not k.startswith('_')}
+                    ov_clean['is_descolgada'] = hw_is_descolgada
                     pumps[i] = ov_clean
 
         return {
@@ -977,6 +980,7 @@ class PosGasStationController(http.Controller):
             'preset_amount': 0.0 if is_lleno else amt,
             'has_prepay': is_prepay,
             'is_lleno': is_lleno,
+            'is_descolgada': False,
             'price': 1.45 if 'Gasóleo A' in fuel_name else 1.55,
             '_timestamp': time.time()
         }

@@ -110,6 +110,7 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **16/11/2026** | TPV & Cobro | Botón 'Guardar sin cambios Sin Ticket' en calculadora: genera el ticket oficial en backend sin imprimir ni abrir pantalla de recibo | Desplegado y verificado en Cloud |
 | **16/11/2026** | TPV & Hardware Pista | Telemetría en tiempo real: reducción de override a 4s, contador en vivo de litros y euros, y sonidos Web Audio API (inicio, flujo continuo y fin) | Desplegado en Cloud y en PC Repsol (`10.8.0.18`) |
 | **16/11/2026** | TPV & Hardware Pista | Transición y desbloqueo de colores en prefijados de albarán (pasa a amarillo COBRAR al colgar) y prepagos (sobrante o liberación), con soporte de `has_prepay` en agente hardware | Desplegado en Cloud y en PC Repsol (`10.8.0.18`) |
+| **16/11/2026** | TPV & Hardware Pista | Control acústico estricto por microswitch: sonido de pista activo única y exclusivamente cuando exista alguna manguera descolgada (ni antes al autorizar ni después al colgar) | Desplegado en Cloud y en PC Repsol (`10.8.0.18`) |
 | **16/11/2026** | Documentación & Arquitectura | Definición del Árbol de Navegación de Informes en Mermaid (`docs/ARBOL_NAVEGACION_INFORMES.md`) | Guardado en repositorio |
 
 ---

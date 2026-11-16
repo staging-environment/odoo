@@ -29,6 +29,15 @@ if sys.stderr and hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
+# Conexión nativa opcional con API ClienteSDES2 para consulta directa de microswitch
+try:
+    import clr
+    clr.AddReference(r"C:\Program Files\Aseproda\VirtusTPV Net\ClienteSDESNet.dll")
+    from aseproda.ClienteSDES2 import ClienteSDES2
+    SDES_DLL_DISPONIBLE = True
+except Exception:
+    SDES_DLL_DISPONIBLE = False
+
 # ==================== CONFIGURACIÓN ODOO CLOUD ====================
 ODOO_URL = "https://odoo.utrecar.com"
 DB_NAME = "odoo"
@@ -320,8 +329,15 @@ class AgentePistaRepsol:
         self.ultimo_dibujo = 0
         self.modo_estacion_global = "blocked"  # Modo por defecto para control Odoo
         self.sdes_client = None
+        self.sdes_api = None
         self.last_sdes_check = 0
         self.last_command_ts = 0.0
+        if SDES_DLL_DISPONIBLE:
+            try:
+                self.sdes_api = ClienteSDES2(None)
+                logging.info("[OK] Interfaz SDES API inicializada para lectura directa de estado.")
+            except Exception as e:
+                logging.warning(f"Aviso inicializando ClienteSDES2: {e}")
         self.asegurar_conexion_hardware()
         self.inicializar_calles()
 
@@ -341,6 +357,7 @@ class AgentePistaRepsol:
                 "status": status,
                 "statusText": status_txt,
                 "has_prepay": False,
+                "is_descolgada": False,
                 "updated_at": time.time()
             })
 
@@ -362,6 +379,12 @@ class AgentePistaRepsol:
         local = self.pumps[calle - 1]
         hubo_cambio = False
 
+        is_des = not is_colgado
+        if local.get("is_descolgada") != is_des:
+            local["is_descolgada"] = is_des
+            hubo_cambio = True
+            logging.info(f"🔌 [SOCKET 8777] Calle {calle}: manguera {'DESCOLGADA' if is_des else 'COLGADA'}")
+
         if is_suministrando:
             if local["status"] != "dispensing" or abs(local["liters"] - litros) > 0.05 or abs(local["amount"] - importe) > 0.05:
                 local["status"] = "dispensing"
@@ -382,6 +405,7 @@ class AgentePistaRepsol:
             local["preset_amount"] = 0.0
             local["has_prepay"] = False
             local["is_lleno"] = False
+            local["is_descolgada"] = False
             local["updated_at"] = time.time()
             hubo_cambio = True
             logging.info(f"🔒 Calle {calle} finalizó suministro/bloqueada -> {status_txt}")
@@ -501,6 +525,7 @@ class AgentePistaRepsol:
                 self.cambiar_modo_calle(calle, "atendido", "LIBRE")
                 self.pumps[calle - 1]["has_prepay"] = False
                 self.pumps[calle - 1]["is_lleno"] = False
+                self.pumps[calle - 1]["is_descolgada"] = False
                 self.pumps[calle - 1]["amount"] = 0.0
                 self.pumps[calle - 1]["liters"] = 0.0
                 logging.info(f"⛽ [HARDWARE NATIVO] Desbloquear(calle={calle}) -> {res_desb}")
@@ -520,6 +545,7 @@ class AgentePistaRepsol:
                 self.cambiar_modo_calle(calle, "blocked", "PREPAGO")
                 self.pumps[calle - 1]["has_prepay"] = False
                 self.pumps[calle - 1]["is_lleno"] = False
+                self.pumps[calle - 1]["is_descolgada"] = False
                 self.pumps[calle - 1]["amount"] = 0.0
                 self.pumps[calle - 1]["liters"] = 0.0
                 logging.info(f"🔒 [HARDWARE NATIVO] Bloquear(calle={calle}) -> {res_bloq}")
@@ -634,6 +660,7 @@ class AgentePistaRepsol:
             local["liters"] = 0.0
             local["preset_amount"] = 0.0
             local["has_prepay"] = False
+            local["is_descolgada"] = False
             local["fuel"] = "Gasóleo A / Sin Plomo 95"
             local["updated_at"] = time.time()
             if self.sdes_client and self.sdes_client.is_connected():
@@ -659,8 +686,37 @@ class AgentePistaRepsol:
                     self.enviar_estado_a_odoo(forzar=True)
 
     def sincronizar_estados_hardware_sdes(self):
-        """Los cambios de estado se gestionan de forma limpia por eventos asíncronos push (MSG_CAMBIO_INFO) sin lecturas ciegas de bytes"""
-        pass
+        """Consulta el estado del hardware para asegurar sincronización de mangueras colgadas/descolgadas y suministro en vivo"""
+        now = time.time()
+        if now - getattr(self, "_last_sdes_sync", 0) < 0.6:
+            return
+        self._last_sdes_sync = now
+
+        if getattr(self, "sdes_api", None):
+            try:
+                res = self.sdes_api.ObtenerEstado()
+                if res and res.estados:
+                    hubo_cambio = False
+                    for ec in res.estados:
+                        calle = ec.numero
+                        if 1 <= calle <= TOTAL_CALLES:
+                            local = self.pumps[calle - 1]
+                            is_des = not ec.estaColgada
+                            if local.get("is_descolgada") != is_des:
+                                local["is_descolgada"] = is_des
+                                hubo_cambio = True
+                                logging.info(f"🔌 [SDES ESTADO] Calle {calle}: manguera {'DESCOLGADA' if is_des else 'COLGADA'}")
+                            if ec.estaSuministrando and local["status"] != "ready":
+                                if local["status"] != "dispensing" or abs(local["liters"] - ec.litrosEnServicio) > 0.05:
+                                    local["status"] = "dispensing"
+                                    local["liters"] = round(ec.litrosEnServicio, 2)
+                                    local["amount"] = round(ec.importeEnServicio, 2)
+                                    local["statusText"] = f"SUMINISTRO {ec.litrosEnServicio:.2f}L" if ec.litrosEnServicio > 0 else "SUMINISTRO"
+                                    hubo_cambio = True
+                    if hubo_cambio:
+                        self.enviar_estado_a_odoo(forzar=True)
+            except Exception as e:
+                logging.debug(f"Aviso sync SDES API: {e}")
 
     def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto):
         if 1 <= calle <= TOTAL_CALLES:
@@ -672,6 +728,7 @@ class AgentePistaRepsol:
             p["liters"] = round(litros, 3)
             p["price"] = precio if precio > 0 else prod["price"]
             p["product_id"] = prod["id"]
+            p["is_descolgada"] = False
             p["updated_at"] = time.time()
 
             logging.info(f"🎉 [VENTA LISTA] Calle {calle} completó {litros:.2f}L de {prod['name']} por {importe:.2f}€")

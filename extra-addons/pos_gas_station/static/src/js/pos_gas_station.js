@@ -1300,7 +1300,8 @@ export class UtrecarMainScreen extends Component {
                 if (data.pumps && Array.isArray(data.pumps)) {
                     if (!this.prevPumpsStatus) this.prevPumpsStatus = {};
                     if (!this.prevPumpsLiters) this.prevPumpsLiters = {};
-                    let anyDispensingActive = false;
+                    if (!this.prevPumpsUnhooked) this.prevPumpsUnhooked = {};
+                    let anyHoseUnhooked = false;
 
                     data.pumps.forEach(p => {
                         p.amount = Number(p.amount || 0);
@@ -1310,21 +1311,24 @@ export class UtrecarMainScreen extends Component {
                         const curStatus = p.status;
                         const curLts = p.liters;
 
-                        // Detección de inicio de repostaje (pasa a dispensing o empieza a despachar litros)
-                        if ((curStatus === "dispensing" && prevStatus !== "dispensing") ||
-                            (curStatus === "dispensing" && curLts > 0.05 && (this.prevPumpsLiters[p.id] || 0) <= 0.02)) {
+                        const isUnhookedNow = this.isNozzleUnhooked(p);
+                        const wasUnhookedPrev = Boolean(this.prevPumpsUnhooked[p.id]);
+
+                        // 1. Manguera se descuelga en este instante -> Sonido suave de inicio/descolgado
+                        if (isUnhookedNow && !wasUnhookedPrev) {
                             this.playFuelSound("start");
                         }
 
-                        // Detección de fin de repostaje (cuelga la manguera y pasa a ready)
-                        if (curStatus === "ready" && prevStatus === "dispensing") {
+                        // 2. Manguera se cuelga tras haber estado descolgada -> Sonido agradable de fin de repostaje
+                        if (!isUnhookedNow && wasUnhookedPrev) {
                             this.playFuelSound("done");
                         }
 
-                        if (curStatus === "dispensing") {
-                            anyDispensingActive = true;
+                        if (isUnhookedNow) {
+                            anyHoseUnhooked = true;
                         }
 
+                        this.prevPumpsUnhooked[p.id] = isUnhookedNow;
                         this.prevPumpsStatus[p.id] = curStatus;
                         this.prevPumpsLiters[p.id] = curLts;
 
@@ -1439,9 +1443,9 @@ export class UtrecarMainScreen extends Component {
                         }
                     });
 
-                    // Sonido periódico suave mientras haya alguna manguera echando combustible
+                    // Sonido periódico suave ÚNICA Y EXCLUSIVAMENTE mientras haya alguna manguera descolgada en alguna de las 8 calles
                     const nowTs = Date.now();
-                    if (anyDispensingActive && (nowTs - (this.lastTickSoundTime || 0) > 3000)) {
+                    if (anyHoseUnhooked && (nowTs - (this.lastTickSoundTime || 0) > 2500)) {
                         this.lastTickSoundTime = nowTs;
                         this.playFuelSound("tick");
                     }
@@ -4205,12 +4209,25 @@ export class UtrecarMainScreen extends Component {
         return (line.get_display_price() / qty).toFixed(3);
     }
 
-    isPumpDispensing(pump) {
+    isNozzleUnhooked(pump) {
         if (!pump) return false;
-        if (pump.status === "blocked" || (pump.statusText || "").includes("SIN PREFIJADO") || pump.status === "idle") {
+        // Si está bloqueada, en reposo o ya lista para cobro con manguera colgada
+        if (pump.status === "blocked" || pump.status === "idle" || pump.status === "ready") {
             return false;
         }
-        return pump.status === "dispensing" || pump.statusText === "AUTORIZADO" || (pump.statusText || "").includes("LLENO") || Boolean(pump.is_lleno);
+        // Estado físico reportado directamente por el microswitch del surtidor (SDES)
+        if (pump.is_descolgada === true) {
+            return true;
+        }
+        // Si no hay telemetría explícita de microswitch pero el medidor físico ya está suministrando litros activamente (>0.02L)
+        if (pump.status === "dispensing" && Number(pump.liters || 0) > 0.02) {
+            return true;
+        }
+        return false;
+    }
+
+    isPumpDispensing(pump) {
+        return this.isNozzleUnhooked(pump);
     }
 
     getPumpPresetAmount(pump) {

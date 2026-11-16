@@ -464,7 +464,11 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
   - Eliminado el `confirm()` nativo redundante del navegador; basta con pulsar el botón táctil "Cerrar y anular suministro".
 - **Telemetría en Vivo de Surtidores y Pista**:
   - *Contador de litros y euros en tiempo real*: Eliminado el override rígido de 15 minutos en `controllers/main.py` (`STATION_PUMP_OVERRIDES`) que congelaba los surtidores en 0.00 L. Reducido a 4 segundos de gracia inicial, cediendo el control inmediato a la telemetría viva de pista (cada 200 ms).
-  - *Sonido de repostaje en pista (Web Audio API)*: Doble bip suave (880 Hz) al descolgar/iniciar repostaje, pulso continuo cada 3 segundos durante el flujo de combustible y tono de fin de servicio al colgar.
+  - *Sonido de repostaje en pista y Control Acústico por Microswitch*:
+    - Supresión de falsos positivos acústicos: el audio ya no se activa al autorizar en el TPV ni mientras la manguera permanezca colgada en su alojamiento.
+    - El sonido suena **única y exclusivamente cuando exista alguna manguera físicamente descolgada** (`is_descolgada: True` / `estaColgada: False` obtenido por microswitch vía SDES) en cualquiera de las 8 calles.
+    - Cesa de forma inmediata en el instante en que se cuelga la manguera y todas las pistas están colgadas ("ni antes ni después").
+    - La silueta visual de manguera descolgada en la tarjeta LCD se sincroniza con este mismo estado físico.
   - *Transición y desbloqueo de colores en Prefijados y Albaranes*:
     - Corregida regla CSS (`pos_gas_station.css`) que forzaba verde en gasolina incluso en estado `status-ready`.
     - Integrado el parámetro `has_prepay` en el comando `pump_command_7` y en `agente_pista_odoo_bridge.py`:
