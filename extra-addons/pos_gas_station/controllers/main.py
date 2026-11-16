@@ -3508,6 +3508,98 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error in /pos_gas_station/register_extraction: %s", e)
             return {'status': 'error', 'message': str(e)}
 
+    @http.route(['/pos_gas_station/shift_report_print/<int:session_id>', '/pos_gas_station/shift_report_print'], type='http', auth='public', methods=['GET'], csrf=False)
+    def shift_report_print(self, session_id=None, config_id=None, **kw):
+        """Impresión directa del cierre de turno con diálogo de impresión y barra de control (solo disponible con turno cerrado)."""
+        try:
+            env = request.env
+            session = None
+            if session_id:
+                session = env['pos.session'].sudo().browse(int(session_id))
+            elif config_id:
+                cfg = env['pos.config'].sudo().browse(int(config_id))
+                session = cfg.current_session_id
+            
+            if not session or not session.exists():
+                session = env['pos.session'].sudo().search([('state', '=', 'closed')], order='id desc', limit=1)
+
+            if not session or not session.exists():
+                return request.not_found()
+
+            # REGLA ESTRICTA: El informe de cierre de turno NO se puede imprimir antes del cierre de turno.
+            if session.state != 'closed':
+                return request.make_response(
+                    """<!DOCTYPE html>
+                    <html><head><meta charset='utf-8'><title>Cierre de Turno No Disponible</title></head>
+                    <body style='font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 50px 20px; background: #f8fafc; color: #1e293b;'>
+                        <div style='max-width: 520px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #fee2e2;'>
+                            <div style='font-size: 40px; margin-bottom: 12px;'>⚠️</div>
+                            <h2 style='color: #b91c1c; margin: 0 0 10px 0;'>Impresión No Disponible</h2>
+                            <p style='font-size: 15px; color: #475569; line-height: 1.5;'>
+                                El informe oficial de Cierre de Turno solo puede imprimirse <strong>una vez que el empleado haya cerrado formalmente el turno</strong>.
+                            </p>
+                            <button onclick='window.close()' style='margin-top: 16px; background: #0f172a; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; cursor: pointer;'>Cerrar Ventana</button>
+                        </div>
+                    </body></html>""",
+                    headers=[('Content-Type', 'text/html; charset=utf-8')]
+                )
+
+            html_content = _generate_shift_report_html(env, session)
+
+            toolbar_html = f"""
+            <div class="no-print" style="position: sticky; top: 0; left: 0; right: 0; z-index: 9999; background: #0f172a; color: white; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.25); font-family: system-ui, -apple-system, sans-serif;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 18px;">📋</span>
+                    <strong style="font-size: 14px; letter-spacing: 0.5px;">CIERRE DE TURNO: {session.name}</strong>
+                    <span style="background: #16a34a; color: white; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 4px;">TURNO CERRADO</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 7px 16px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                        🖨️ Imprimir
+                    </button>
+                    <a href="/pos_gas_station/shift_report_pdf/{session.id}" target="_blank" style="background: #334155; color: white; text-decoration: none; padding: 7px 14px; border-radius: 6px; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                        📥 Descargar PDF
+                    </a>
+                    <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 7px 12px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer;">
+                        ✖ Cerrar
+                    </button>
+                </div>
+            </div>
+            <style>
+                @media print {{
+                    .no-print {{ display: none !important; }}
+                    body {{ padding-top: 0 !important; }}
+                }}
+                @media screen {{
+                    body {{ background: #e2e8f0 !important; padding-top: 0 !important; }}
+                    .page {{ background: white !important; box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; margin: 20px auto !important; padding: 20mm !important; }}
+                }}
+            </style>
+            <script>
+                window.onload = function() {{
+                    setTimeout(function() {{
+                        window.print();
+                    }}, 400);
+                }};
+            </script>
+            """
+
+            if '<body>' in html_content:
+                final_html = html_content.replace('<body>', '<body>' + toolbar_html, 1)
+            elif '<body' in html_content:
+                parts = html_content.split('>', 1)
+                final_html = parts[0] + '>' + toolbar_html + parts[1]
+            else:
+                final_html = toolbar_html + html_content
+
+            return request.make_response(
+                final_html,
+                headers=[('Content-Type', 'text/html; charset=utf-8')]
+            )
+        except Exception as e:
+            _logger.exception("Error in shift_report_print: %s", e)
+            return request.make_response(f"Error: {e}", headers=[('Content-Type', 'text/plain; charset=utf-8')])
+
     @http.route(['/pos_gas_station/shift_report_pdf/<int:session_id>', '/pos_gas_station/shift_report_pdf'], type='http', auth='public', methods=['GET'], csrf=False)
     def shift_report_pdf(self, session_id=None, config_id=None, **kw):
         try:
@@ -3520,10 +3612,17 @@ class PosGasStationController(http.Controller):
                 session = cfg.current_session_id
             
             if not session or not session.exists():
-                session = env['pos.session'].sudo().search([], order='id desc', limit=1)
+                session = env['pos.session'].sudo().search([('state', '=', 'closed')], order='id desc', limit=1)
 
             if not session or not session.exists():
                 return request.not_found()
+
+            # REGLA ESTRICTA: El informe de cierre de turno NO se puede imprimir antes del cierre de turno.
+            if session.state != 'closed':
+                return request.make_response(
+                    "El informe oficial de Cierre de Turno solo puede imprimirse una vez que el empleado haya cerrado formalmente el turno.",
+                    headers=[('Content-Type', 'text/plain; charset=utf-8')]
+                )
 
             html_content = _generate_shift_report_html(env, session)
             pdf_bytes = _render_shift_pdf(html_content)

@@ -1802,12 +1802,6 @@
                                 </div>
                                 <div class="search-stats d-flex align-items-center gap-3">
                                     <span>Mostrando <strong><t t-esc="filteredShiftOrders.length"/></strong> de <strong><t t-esc="state.shiftOrders.length"/></strong> pedidos</span>
-                                    <button class="btn btn-dark fw-bold d-flex align-items-center gap-2 py-1 px-3" 
-                                            style="font-size: 13px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"
-                                            t-on-click="() => this.printShiftReport()"
-                                            title="Ver e imprimir informe oficial de cierre de turno en PDF (formato Aseproda)">
-                                        <i class="fa fa-print text-warning"/> 🖨️ Imprimir Cierre de Turno (PDF)
-                                    </button>
                                 </div>
                             </div>
 
@@ -3176,15 +3170,7 @@
     <t t-name="pos_gas_station.ClosePosPopup">
         <div class="popup close-pos-popup">
             <div class="modal-header d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    <h4 class="modal-title m-0 fw-bold"><i class="fa fa-sign-out text-danger me-2"/>Cierre de Turno</h4>
-                    <button class="button icon btn btn-sm btn-dark text-white fw-bold shadow-sm d-flex align-items-center gap-1 px-3 py-1"
-                        t-on-click="downloadSalesReport"
-                        title="Imprimir informe oficial de Cierre de Turno en PDF">
-                            <i class="fa fa-print text-warning me-1" role="img"/>
-                            Imprimir Cierre de Turno
-                    </button>
-                </div>
+                <h4 class="modal-title m-0 fw-bold"><i class="fa fa-sign-out text-danger me-2"/>Cierre de Turno</h4>
                 <div class="total-orders fw-bolder">
                     Total <t t-esc="props.orders_details.quantity"/> pedidos:
                     <span class="amount text-primary" t-esc="env.utils.formatCurrency(props.orders_details.amount)"/>
@@ -3240,37 +3226,17 @@
             <footer class="footer modal-footer justify-content-between align-items-center">
                 <div class="modal-footer-left d-flex gap-2">
                     <button class="button highlight btn btn-lg btn-primary fw-bold" t-att-disabled="!canConfirm()" t-on-click="confirm">
-                        <i class="fa fa-check-circle me-1"/> Cerrar sesión
+                        <i class="fa fa-check-circle me-1"/> Cerrar Turno
                     </button>
                     <button class="button btn btn-lg btn-secondary" t-att-disabled="!canCancel()" t-on-click="cancel">Descartar</button>
-                </div>
-                <!-- Download Sale Details -->
-                <div class="modal-footer-right d-flex gap-2 align-items-center">
-                    <button class="button icon btn btn-lg btn-dark text-white fw-bold shadow-sm d-flex align-items-center gap-2 px-3"
-                        t-on-click="downloadSalesReport"
-                        title="Imprimir informe oficial de Cierre de Turno en PDF">
-                            <i class="fa fa-print text-warning fs-5" role="img"/>
-                            <span>Imprimir Cierre de Turno</span>
-                    </button>
-                    <!-- Print Sale Details -->
-                    <button t-if="hardwareProxy.printer" class="button icon btn btn-lg btn-outline-secondary">
-                        <SaleDetailsButton/>
-                    </button>
                 </div>
             </footer>
         </div>
     </t>
 
-    <!-- SOBRESCRIBIR CLOSEPOSPOPUP BASE: BOTÓN PROMINENTE DE IMPRIMIR CIERRE DE TURNO -->
+    <!-- SOBRESCRIBIR CLOSEPOSPOPUP BASE DE ODOO: ELIMINAR IMPRESIÓN PREVIA AL CIERRE -->
     <t t-name="pos_gas_station.ClosePosPopupInherit" t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension" owl="1">
-        <xpath expr="//button[@t-on-click='downloadSalesReport']" position="replace">
-            <button class="button icon btn btn-lg btn-dark text-white fw-bold shadow-sm d-flex align-items-center gap-2 px-3"
-                t-on-click="downloadSalesReport"
-                title="Imprimir informe oficial de Cierre de Turno en PDF">
-                    <i class="fa fa-print text-warning fs-5" role="img"/>
-                    <span>Imprimir Cierre de Turno</span>
-            </button>
-        </xpath>
+        <xpath expr="//button[@t-on-click='downloadSalesReport']" position="replace"/>
     </t>
 
 

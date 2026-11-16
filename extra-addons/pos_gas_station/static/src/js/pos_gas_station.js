@@ -12,25 +12,25 @@ import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { jsonrpc } from "@web/core/network/rpc_service";
 import { useService } from "@web/core/utils/hooks";
 import { ClosePosPopup } from "@point_of_sale/app/navbar/closing_popup/closing_popup";
+import { ConfirmPopup } from "@point_of_sale/app/utils/confirm_popup/confirm_popup";
+import { ErrorPopup } from "@point_of_sale/app/errors/popups/error_popup";
+import { ConnectionLostError } from "@web/core/network/rpc_service";
+import { _t } from "@web/core/l10n/translation";
+import { parseFloat } from "@web/views/fields/parsers";
 import { NumberPopup } from "@point_of_sale/app/utils/input_popups/number_popup";
 import { SelectionPopup } from "@point_of_sale/app/utils/input_popups/selection_popup";
 
 export class GasStationClosePosPopup extends ClosePosPopup {
+    static template = "pos_gas_station.ClosePosPopup";
+    static components = { ...ClosePosPopup.components };
+
     async downloadSalesReport() {
-        const sessionId = (this.pos && this.pos.pos_session) ? this.pos.pos_session.id : (this.pos && this.pos.config ? this.pos.config.current_session_id?.[0] : null);
-        if (sessionId) {
-            window.open(`/pos_gas_station/shift_report_pdf/${sessionId}`, '_blank');
-        } else {
-            window.open(`/pos_gas_station/shift_report_pdf`, '_blank');
-        }
+        alert("El informe de cierre de turno solo se puede imprimir una vez que el turno haya sido formalmente cerrado.");
     }
 
     async printShiftReport() {
-        return this.downloadSalesReport();
+        alert("El informe de cierre de turno solo se puede imprimir una vez que el turno haya sido formalmente cerrado.");
     }
-
-    static template = "pos_gas_station.ClosePosPopup";
-    static components = { ...ClosePosPopup.components };
 
     getInitialState() {
         const initialState = { notes: "", payments: {} };
@@ -56,6 +56,151 @@ export class GasStationClosePosPopup extends ClosePosPopup {
             };
         });
         return initialState;
+    }
+
+    //@override
+    async confirm() {
+        if (!this.pos.config.cash_control || this.env.utils.floatIsZero(this.getMaxDifference())) {
+            await this.closeSession();
+            return;
+        }
+        if (this.hasUserAuthority()) {
+            const { confirmed } = await this.popup.add(ConfirmPopup, {
+                title: _t("Diferencia de Cuadre"),
+                body: _t(
+                    "¿Desea aceptar la diferencia de importes y cerrar el turno registrando el descuadre?"
+                ),
+            });
+            if (confirmed) {
+                await this.closeSession();
+            }
+            return;
+        }
+        await this.popup.add(ConfirmPopup, {
+            title: _t("Diferencia No Autorizada"),
+            body: _t(
+                "La diferencia máxima autorizada es de %s.\nPor favor, contacte con el encargado para autorizar el cierre.",
+                this.env.utils.formatCurrency(this.props.amount_authorized_diff)
+            ),
+            confirmText: _t("Aceptar"),
+        });
+    }
+
+    //@override
+    async closeSession() {
+        this.customerDisplay?.update({ closeUI: true });
+
+        // Abrir pestaña emergente inmediatamente en el contexto del click para evitar bloqueos del navegador
+        let printWindow = null;
+        try {
+            printWindow = window.open("", "_blank");
+            if (printWindow) {
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <title>Cierre de Turno</title>
+                        <style>
+                            body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #1e293b; }
+                            .box { text-align: center; background: white; padding: 32px 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
+                            .spinner { font-size: 32px; margin-bottom: 12px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="box">
+                            <div class="spinner">⏳</div>
+                            <h3 style="margin: 0 0 8px 0;">Cerrando Turno en el Sistema...</h3>
+                            <p style="margin: 0; color: #64748b; font-size: 14px;">Consolidando datos y preparando informe oficial de cierre...</p>
+                        </div>
+                    </body>
+                    </html>
+                `);
+            }
+        } catch (e) {
+            console.debug("Popup pre-opening caught:", e);
+        }
+
+        const syncSuccess = await this.pos.push_orders_with_closing_popup();
+        if (!syncSuccess) {
+            if (printWindow) printWindow.close();
+            return;
+        }
+
+        const sessionId = (this.pos && this.pos.pos_session) ? this.pos.pos_session.id : (this.pos && this.pos.config ? this.pos.config.current_session_id?.[0] : null);
+        const configId = this.pos && this.pos.config ? this.pos.config.id : null;
+
+        if (this.pos.config.cash_control) {
+            const response = await this.orm.call(
+                "pos.session",
+                "post_closing_cash_details",
+                [this.pos.pos_session.id],
+                {
+                    counted_cash: parseFloat(
+                        this.state.payments[this.props.default_cash_details.id].counted
+                    ),
+                }
+            );
+
+            if (!response.successful) {
+                if (printWindow) printWindow.close();
+                return this.handleClosingError(response);
+            }
+        }
+
+        try {
+            await this.orm.call("pos.session", "update_closing_control_state_session", [
+                this.pos.pos_session.id,
+                this.state.notes,
+            ]);
+        } catch (error) {
+            if (!error.data && error.data.message !== "This session is already closed.") {
+                if (printWindow) printWindow.close();
+                throw error;
+            }
+        }
+
+        try {
+            const bankPaymentMethodDiffPairs = this.props.other_payment_methods
+                .filter((pm) => pm.type == "bank")
+                .map((pm) => [pm.id, this.getDifference(pm.id)]);
+            const response = await this.orm.call("pos.session", "close_session_from_ui", [
+                this.pos.pos_session.id,
+                bankPaymentMethodDiffPairs,
+            ]);
+            if (!response.successful) {
+                if (printWindow) printWindow.close();
+                return this.handleClosingError(response);
+            }
+
+            // =========================================================================
+            // TURNO CERRADO CON ÉXITO: DISPARAR DIRECTAMENTE LA IMPRESIÓN DEL CIERRE
+            // =========================================================================
+            const printUrl = sessionId ? `/pos_gas_station/shift_report_print/${sessionId}` : '/pos_gas_station/shift_report_print';
+            if (printWindow && !printWindow.closed) {
+                printWindow.location.href = printUrl;
+            } else {
+                window.open(printUrl, '_blank');
+            }
+
+            // Redirigir a selección de empleado de la estación
+            const targetUrl = configId ? `/pos_gas_station/select_employee?station_id=${configId}` : '/pos_gas_station/select_employee';
+            window.location.href = targetUrl;
+        } catch (error) {
+            if (printWindow) printWindow.close();
+            if (error instanceof ConnectionLostError) {
+                throw error;
+            } else {
+                await this.popup.add(ErrorPopup, {
+                    title: _t("Error al cerrar turno"),
+                    body: _t(
+                        "Ocurrió un error al cerrar el turno en el servidor.\n" +
+                        "Será redirigido para verificar el estado de la sesión."
+                    ),
+                });
+                this.pos.redirectToBackend();
+            }
+        }
     }
 
     getDifference(paymentId) {
@@ -2647,12 +2792,7 @@ export class UtrecarMainScreen extends Component {
     }
 
     printShiftReport() {
-        const sessionId = this.state.shiftViewSessionId || (this.pos && this.pos.pos_session ? this.pos.pos_session.id : null);
-        if (sessionId) {
-            window.open(`/pos_gas_station/shift_report_pdf/${sessionId}`, '_blank');
-        } else {
-            window.open(`/pos_gas_station/shift_report_pdf`, '_blank');
-        }
+        alert("El informe de cierre de turno solo se puede imprimir una vez que el turno haya sido formalmente cerrado.");
     }
 
     printShiftOrderInvoice(order) {
@@ -5751,14 +5891,9 @@ patch(PaymentScreen.prototype, {
 
 patch(ClosePosPopup.prototype, {
     async downloadSalesReport() {
-        const sessionId = (this.pos && this.pos.pos_session) ? this.pos.pos_session.id : (this.pos && this.pos.config ? this.pos.config.current_session_id?.[0] : null);
-        if (sessionId) {
-            window.open(`/pos_gas_station/shift_report_pdf/${sessionId}`, '_blank');
-        } else {
-            window.open(`/pos_gas_station/shift_report_pdf`, '_blank');
-        }
+        alert("El informe de cierre de turno solo se puede imprimir una vez que el turno haya sido formalmente cerrado.");
     },
     async printShiftReport() {
-        return this.downloadSalesReport();
+        alert("El informe de cierre de turno solo se puede imprimir una vez que el turno haya sido formalmente cerrado.");
     }
 });
