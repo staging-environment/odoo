@@ -3753,6 +3753,14 @@ class PosGasStationController(http.Controller):
 
             html_content = _generate_shift_report_html(env, session)
 
+            return_url = kw.get('return_url')
+            if not return_url:
+                station_id = kw.get('station_id') or (session.config_id.id if session and session.config_id else None)
+                if station_id:
+                    return_url = f'/pos_gas_station/select_employee?station_id={station_id}'
+                else:
+                    return_url = '/pos_gas_station/select_employee'
+
             toolbar_html = f"""
             <div class="no-print" style="position: sticky; top: 0; left: 0; right: 0; z-index: 9999; background: #0f172a; color: white; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.25); font-family: system-ui, -apple-system, sans-serif;">
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -3767,9 +3775,9 @@ class PosGasStationController(http.Controller):
                     <a href="/pos_gas_station/shift_report_pdf/{session.id}" target="_blank" style="background: #334155; color: white; text-decoration: none; padding: 7px 14px; border-radius: 6px; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 6px;">
                         📥 Descargar PDF
                     </a>
-                    <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 7px 12px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer;">
-                        ✖ Cerrar
-                    </button>
+                    <a href="{return_url}" style="background: #059669; color: white; text-decoration: none; padding: 7px 16px; border-radius: 6px; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                        ⬅ Volver al Inicio / Cambiar Empleado
+                    </a>
                 </div>
             </div>
             <style>
@@ -3783,10 +3791,17 @@ class PosGasStationController(http.Controller):
                 }}
             </style>
             <script>
+                var returnUrl = "{return_url}";
                 window.onload = function() {{
                     setTimeout(function() {{
                         window.print();
                     }}, 400);
+                }};
+
+                window.onafterprint = function() {{
+                    setTimeout(function() {{
+                        window.location.href = returnUrl;
+                    }}, 1000);
                 }};
             </script>
             """

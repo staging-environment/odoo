@@ -92,40 +92,8 @@ export class GasStationClosePosPopup extends ClosePosPopup {
     async closeSession() {
         this.customerDisplay?.update({ closeUI: true });
 
-        // Abrir pestaña emergente inmediatamente en el contexto del click para evitar bloqueos del navegador
-        let printWindow = null;
-        try {
-            printWindow = window.open("", "_blank");
-            if (printWindow) {
-                printWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="utf-8">
-                        <title>Cierre de Turno</title>
-                        <style>
-                            body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #1e293b; }
-                            .box { text-align: center; background: white; padding: 32px 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
-                            .spinner { font-size: 32px; margin-bottom: 12px; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="box">
-                            <div class="spinner">⏳</div>
-                            <h3 style="margin: 0 0 8px 0;">Cerrando Turno en el Sistema...</h3>
-                            <p style="margin: 0; color: #64748b; font-size: 14px;">Consolidando datos y preparando informe oficial de cierre...</p>
-                        </div>
-                    </body>
-                    </html>
-                `);
-            }
-        } catch (e) {
-            console.debug("Popup pre-opening caught:", e);
-        }
-
         const syncSuccess = await this.pos.push_orders_with_closing_popup();
         if (!syncSuccess) {
-            if (printWindow) printWindow.close();
             return;
         }
 
@@ -145,7 +113,6 @@ export class GasStationClosePosPopup extends ClosePosPopup {
             );
 
             if (!response.successful) {
-                if (printWindow) printWindow.close();
                 return this.handleClosingError(response);
             }
         }
@@ -157,7 +124,6 @@ export class GasStationClosePosPopup extends ClosePosPopup {
             ]);
         } catch (error) {
             if (!error.data && error.data.message !== "This session is already closed.") {
-                if (printWindow) printWindow.close();
                 throw error;
             }
         }
@@ -171,25 +137,20 @@ export class GasStationClosePosPopup extends ClosePosPopup {
                 bankPaymentMethodDiffPairs,
             ]);
             if (!response.successful) {
-                if (printWindow) printWindow.close();
                 return this.handleClosingError(response);
             }
 
             // =========================================================================
             // TURNO CERRADO CON ÉXITO: DISPARAR DIRECTAMENTE LA IMPRESIÓN DEL CIERRE
+            // UNA VEZ IMPRESO (O AL PULSAR EL BOTÓN), RETORNA A LA PANTALLA INICIAL
             // =========================================================================
-            const printUrl = sessionId ? `/pos_gas_station/shift_report_print/${sessionId}` : '/pos_gas_station/shift_report_print';
-            if (printWindow && !printWindow.closed) {
-                printWindow.location.href = printUrl;
-            } else {
-                window.open(printUrl, '_blank');
-            }
-
-            // Redirigir a selección de empleado de la estación
-            const targetUrl = configId ? `/pos_gas_station/select_employee?station_id=${configId}` : '/pos_gas_station/select_employee';
-            window.location.href = targetUrl;
+            const returnUrl = configId ? `/pos_gas_station/select_employee?station_id=${configId}` : '/pos_gas_station/select_employee';
+            const printUrl = sessionId 
+                ? `/pos_gas_station/shift_report_print/${sessionId}?station_id=${configId || ''}&return_url=${encodeURIComponent(returnUrl)}` 
+                : `/pos_gas_station/shift_report_print?station_id=${configId || ''}&return_url=${encodeURIComponent(returnUrl)}`;
+            
+            window.location.href = printUrl;
         } catch (error) {
-            if (printWindow) printWindow.close();
             if (error instanceof ConnectionLostError) {
                 throw error;
             } else {
