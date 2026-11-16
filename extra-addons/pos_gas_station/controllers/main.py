@@ -2264,6 +2264,20 @@ class PosGasStationController(http.Controller):
                 else:
                     date_str = ''
 
+                pump_val = getattr(o, 'pump_id', 0) or getattr(o, 'extraction_pump_id', 0) or 0
+                if not pump_val and o.note:
+                    m = re.search(r'(?:Calle|Surtidor)\s*[:#]?\s*(\d+)', o.note, re.IGNORECASE)
+                    if m:
+                        pump_val = int(m.group(1))
+                if not pump_val:
+                    for l in o.lines:
+                        c_note = getattr(l, 'customer_note', '') or ''
+                        if c_note:
+                            m = re.search(r'(?:Calle|Surtidor)\s*[:#]?\s*(\d+)', c_note, re.IGNORECASE)
+                            if m:
+                                pump_val = int(m.group(1))
+                                break
+
                 lines_data = []
                 for l in o.lines:
                     taxes_str = ', '.join(l.tax_ids_after_fiscal_position.mapped('name')) if l.tax_ids_after_fiscal_position else ''
@@ -2310,20 +2324,6 @@ class PosGasStationController(http.Controller):
                 is_albaran = bool(getattr(o, 'is_albaran', False))
                 is_annulled_only = has_annulment and not is_inv
                 order_state = 'extraction' if getattr(o, 'is_extraction', False) else ('annulled' if is_annulled_only else ('invoiced' if is_inv else ('albaran' if is_albaran else o.state)))
-
-                pump_val = getattr(o, 'pump_id', 0) or getattr(o, 'extraction_pump_id', 0) or 0
-                if not pump_val and o.note:
-                    m = re.search(r'(?:Calle|Surtidor)\s*[:#]?\s*(\d+)', o.note, re.IGNORECASE)
-                    if m:
-                        pump_val = int(m.group(1))
-                if not pump_val:
-                    for l in o.lines:
-                        c_note = getattr(l, 'customer_note', '') or ''
-                        if c_note:
-                            m = re.search(r'(?:Calle|Surtidor)\s*[:#]?\s*(\d+)', c_note, re.IGNORECASE)
-                            if m:
-                                pump_val = int(m.group(1))
-                                break
 
                 annul_ref_val = getattr(o, 'annulment_ref', False) or ''
                 if not annul_ref_val and has_annulment:
