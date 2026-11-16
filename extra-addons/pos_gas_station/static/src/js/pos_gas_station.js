@@ -49,6 +49,8 @@ export class GasStationClosePosPopup extends ClosePosPopup {
                     pm.name = "Tarjeta";
                 } else if (lower.includes("efectivo")) {
                     pm.name = "Efectivo";
+                } else if (lower.includes("cuenta") || lower.includes("cliente") || lower.includes("customer account") || lower.includes("crédito") || lower.includes("credito")) {
+                    pm.name = "Crédito";
                 }
             }
             initialState.payments[pm.id] = {
@@ -5115,6 +5117,8 @@ patch(ProductScreen.prototype, {
                     pm.name = "Tarjeta";
                 } else if (lower.includes("efectivo")) {
                     pm.name = "Efectivo";
+                } else if (lower.includes("cuenta") || lower.includes("cliente") || lower.includes("customer account") || lower.includes("crédito") || lower.includes("credito")) {
+                    pm.name = "Crédito";
                 }
             }
         }

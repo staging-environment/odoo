@@ -128,14 +128,28 @@ def _generate_shift_report_html(env, session):
     session = session.sudo()
     user_tz = pytz.timezone((session.user_id.tz or env.user.tz or 'Europe/Madrid'))
 
-    id_turno = f"{session.id}786" if session.id < 100 else str(session.id)
-    estacion = (session.config_id.name or 'E.S. RONDA NORTE').upper()
-    if 'CONTROL' not in estacion and 'E.S.' not in estacion:
-        estacion = f"E.S. {estacion}"
+    id_turno = str(session.name or session.id)
+    estacion = (session.config_id.name or 'E.S. REPSOL').strip()
+    lugar = estacion
+    if session.config_id.city:
+        lugar = f"{estacion} ({session.config_id.city})"
+    elif session.config_id.street:
+        lugar = f"{estacion} - {session.config_id.street}"
 
-    start_str = session.start_at.astimezone(user_tz).strftime('%d/%m/%Y, %H:%M:%S') if session.start_at else fields.Datetime.now().astimezone(user_tz).strftime('%d/%m/%Y, 08:00:00')
-    stop_str = session.stop_at.astimezone(user_tz).strftime('%d/%m/%Y, %H:%M:%S') if session.stop_at else fields.Datetime.now().astimezone(user_tz).strftime('%d/%m/%Y, %H:%M:%S')
-    caja = f"{session.name} - Turno" if session.name else "A Tarde"
+    start_dt = session.start_at.astimezone(user_tz) if session.start_at else fields.Datetime.now().astimezone(user_tz)
+    stop_dt = session.stop_at.astimezone(user_tz) if session.stop_at else fields.Datetime.now().astimezone(user_tz)
+
+    start_str = start_dt.strftime('%d/%m/%Y, %H:%M:%S')
+    stop_str = stop_dt.strftime('%d/%m/%Y, %H:%M:%S')
+
+    if start_dt.date() == stop_dt.date():
+        fecha_display = start_dt.strftime('%d/%m/%Y')
+        hora_display = f"{start_dt.strftime('%H:%M:%S')} - {stop_dt.strftime('%H:%M:%S')}"
+    else:
+        fecha_display = f"{start_dt.strftime('%d/%m/%Y')} - {stop_dt.strftime('%d/%m/%Y')}"
+        hora_display = f"{start_dt.strftime('%H:%M:%S')} - {stop_dt.strftime('%H:%M:%S')}"
+
+    turno_str = session.name or f"Turno #{session.id}"
 
     extractions = session.order_ids.filtered(lambda o: getattr(o, 'is_extraction', False))
     orders = session.order_ids.filtered(lambda o: not getattr(o, 'is_extraction', False) and o.state in ['paid', 'done', 'invoiced'])
@@ -201,6 +215,8 @@ def _generate_shift_report_html(env, session):
             m_key = 'Efectivo'
         elif any(k in m_name.lower() for k in ['tarjeta', 'banco', 'datáfono', 'tpv']):
             m_key = 'Tarjeta'
+        elif any(k in m_name.lower() for k in ['cuenta', 'cliente', 'customer account', 'credito', 'crédito']):
+            m_key = 'Crédito'
         else:
             m_key = m_name
 
@@ -216,27 +232,75 @@ def _generate_shift_report_html(env, session):
         total_cobrado = total_fuel_importe + total_other_importe
         payments_summary['Efectivo'] = total_cobrado
 
-    # Cash moves / Incidencias
-    st_lines = env['account.bank.statement.line'].sudo().search([('pos_session_id', '=', session.id)])
-    entradas_incidencias = sum(float(l.amount) for l in st_lines if float(l.amount) > 0)
-    ingresos_seguridad = abs(sum(float(l.amount) for l in st_lines if float(l.amount) < 0 and any(k in (l.payment_ref or '').lower() for k in ['seguridad', 'buzon'])))
-    salidas_otras = abs(sum(float(l.amount) for l in st_lines if float(l.amount) < 0 and not any(k in (l.payment_ref or '').lower() for k in ['seguridad', 'buzon'])))
+    # Cash moves / Incidencias de caja (Entradas, Salidas / Retiradas, Buzón de seguridad)
+    st_lines = env['account.bank.statement.line'].sudo().search([('pos_session_id', '=', session.id)], order='id asc')
+    incidencias_detalle = []
+    entradas_incidencias = 0.0
+    salidas_otras = 0.0
+    ingresos_seguridad = 0.0
 
-    caja_inicial = max(0.0, float(session.cash_register_balance_start or 0.0))
-    entradas_caja = payments_summary.get('Efectivo', 0.0) + entradas_incidencias
-    saldo_esperado = caja_inicial + entradas_caja - salidas_otras - ingresos_seguridad
+    for l in st_lines:
+        amt = float(l.amount or 0.0)
+        ref = (l.payment_ref or '').strip()
+        partner_str = f" ({l.partner_id.name})" if l.partner_id else ""
+        if amt > 0:
+            entradas_incidencias += amt
+            concepto = ref if ref else "Entrada de efectivo"
+            tipo_label = "Entrada"
+        else:
+            abs_amt = abs(amt)
+            if any(k in ref.lower() for k in ['seguridad', 'buzon']):
+                ingresos_seguridad += abs_amt
+                concepto = ref if ref else "Ingreso de seguridad (Caja Fuerte)"
+                tipo_label = "Buzón Seguridad"
+            else:
+                salidas_otras += abs_amt
+                concepto = ref if ref else f"Salida de efectivo{partner_str}"
+                tipo_label = "Salida / Pago"
+
+        incidencias_detalle.append({
+            'concepto': concepto,
+            'tipo': tipo_label,
+            'importe': amt,
+        })
+
+    # Caja Inicial: en gasolineras siempre es 0,00 € por turno de expendedor
+    caja_inicial = 0.0
+    ventas_efectivo = payments_summary.get('Efectivo', 0.0)
+    entradas_caja = entradas_incidencias
+    salidas_caja = salidas_otras
+    seguridad_caja = ingresos_seguridad
+
+    saldo_esperado = caja_inicial + ventas_efectivo + entradas_caja - salidas_caja - seguridad_caja
     saldo_real = float(session.cash_register_balance_end_real or 0.0) if session.state == 'closed' else saldo_esperado
     diferencia = saldo_real - saldo_esperado
     dif_label = "Sobran" if diferencia >= 0 else "Faltan"
 
-    # Expendedores
+    # Expendedores (Excluir estrictamente OdooBot / cuentas del sistema)
     expendedores = []
-    users = list(set([session.user_id] + [o.user_id for o in orders if o.user_id]))
-    for u in users:
-        if u and u.name:
-            expendedores.append({'nombre': u.name.upper(), 'horas': '8,00'})
+    raw_users = [session.user_id] + [o.user_id for o in orders if o.user_id]
+    seen_user_ids = set()
+    real_users = []
+    for u in raw_users:
+        if not u or not u.name or u.id in seen_user_ids:
+            continue
+        u_name = (u.name or '').strip()
+        u_login = (u.login or '').strip().lower()
+        if u.id == 1 or 'odoobot' in u_login or 'odoobot' in u_name.lower() or u_name.lower() == 'odoobot' or 'bot' in u_login:
+            continue
+        seen_user_ids.add(u.id)
+        real_users.append(u)
+
+    for u in real_users:
+        expendedores.append({'nombre': u.name.upper(), 'horas': '8,00'})
+
     if not expendedores:
-        expendedores = [{'nombre': 'CAJERO DE TURNO', 'horas': '8,00'}]
+        emp_name = None
+        if hasattr(session, 'employee_id') and session.employee_id:
+            emp_name = session.employee_id.name
+        elif session.user_id and 'bot' not in session.user_id.name.lower():
+            emp_name = session.user_id.name
+        expendedores = [{'nombre': (emp_name or 'EXPENDEDOR DE TURNO').upper(), 'horas': '8,00'}]
 
     # Nozzles & Contadores
     cfg_id = session.config_id.id if session.config_id else 5
@@ -396,13 +460,18 @@ def _generate_shift_report_html(env, session):
 
     <!-- PÁGINA 1 -->
     <div class="page">
-        <div>
-            <div class="header-badge">Impresión de turno</div>
-            <div class="header-meta">
-                <div>IdTurno: {id_turno}</div>
-                <div>Estacion: {estacion}</div>
-                <div>Fechas de Apertura y cierre: {start_str} - {stop_str}</div>
-                <div>Caja: {caja}</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 8px;">
+            <div>
+                <div class="header-badge">Impresión de turno</div>
+                <div class="header-meta" style="margin-top: 6px; font-size: 11px; line-height: 1.4;">
+                    <div><strong>Lugar:</strong> {lugar}</div>
+                    <div><strong>Turno:</strong> {turno_str}</div>
+                </div>
+            </div>
+            <div style="text-align: right; font-size: 11px; line-height: 1.4; padding-top: 4px;">
+                <div><strong>Fecha:</strong> {fecha_display}</div>
+                <div><strong>Hora:</strong> {hora_display}</div>
+                <div style="color: #64748b; font-size: 10px; margin-top: 2px;">(Apertura: {start_str} | Cierre: {stop_str})</div>
             </div>
         </div>
 
@@ -486,20 +555,48 @@ def _generate_shift_report_html(env, session):
         </table>
 
         <!-- INCIDENCIAS DE CAJA -->
-        <div class="section-title">Incidencias de caja</div>
+        <div class="section-title">Incidencias de caja (Entradas, Salidas y Retiradas a Buzón)</div>
         <table class="tbl">
             <thead>
                 <tr>
-                    <th style="width: 75%;">Tipo</th>
+                    <th style="width: 50%;">Concepto / Motivo</th>
+                    <th style="width: 25%;">Tipo</th>
                     <th class="text-right" style="width: 25%;">Importe</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr>
-                    <td>Entradas</td>
-                    <td class="text-right">{_format_currency_es(entradas_incidencias)}</td>
+            <tbody>'''
+
+    if incidencias_detalle:
+        for inc in incidencias_detalle:
+            color = "#15803d" if inc['importe'] > 0 else "#b91c1c"
+            sign = "+" if inc['importe'] > 0 else ""
+            html += f'''                <tr>
+                    <td>{inc['concepto']}</td>
+                    <td>{inc['tipo']}</td>
+                    <td class="text-right fw-bold" style="color: {color};">{sign}{_format_currency_es(inc['importe'])}</td>
+                </tr>'''
+        html += f'''                <tr class="fw-bold border-top-bold">
+                    <td colspan="2">Total Entradas a caja (+):</td>
+                    <td class="text-right" style="color: #15803d;">+{_format_currency_es(entradas_incidencias)}</td>
                 </tr>
-            </tbody>
+                <tr class="fw-bold">
+                    <td colspan="2">Total Salidas / Pagos proveedor (-):</td>
+                    <td class="text-right" style="color: #b91c1c;">-{_format_currency_es(salidas_otras)}</td>
+                </tr>
+                <tr class="fw-bold">
+                    <td colspan="2">Total Retiradas a Buzón / Seguridad (-):</td>
+                    <td class="text-right" style="color: #b91c1c;">-{_format_currency_es(ingresos_seguridad)}</td>
+                </tr>
+                <tr class="fw-bold border-top-bold">
+                    <td colspan="2">Total Neto Incidencias:</td>
+                    <td class="text-right">{_format_currency_es(entradas_incidencias - salidas_otras - ingresos_seguridad)}</td>
+                </tr>'''
+    else:
+        html += '''                <tr>
+                    <td colspan="3" style="color: #71717a; font-style: italic;">Sin incidencias ni movimientos de caja en este turno</td>
+                </tr>'''
+
+    html += f'''            </tbody>
         </table>
 
         <!-- EXTRACCIONES Y RETORNOS A DEPÓSITO -->
@@ -570,26 +667,28 @@ def _generate_shift_report_html(env, session):
             <thead>
                 <tr>
                     <th class="text-center">Caja Inicial</th>
-                    <th class="text-center">Entradas</th>
-                    <th class="text-center">Salidas</th>
-                    <th class="text-center">Ingresos Seguridad</th>
+                    <th class="text-center">Ventas Efectivo</th>
+                    <th class="text-center">Entradas Caja</th>
+                    <th class="text-center">Salidas / Pagos</th>
+                    <th class="text-center">Buzón Seguridad</th>
                     <th class="text-center">Saldo esperado</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td class="text-center">{_format_currency_es(caja_inicial)}</td>
+                    <td class="text-center">0,00 €</td>
+                    <td class="text-center">{_format_currency_es(ventas_efectivo)}</td>
                     <td class="text-center">{_format_currency_es(entradas_caja)}</td>
-                    <td class="text-center">{_format_currency_es(salidas_otras)}</td>
-                    <td class="text-center">{_format_currency_es(ingresos_seguridad)}</td>
-                    <td class="text-center">{_format_currency_es(saldo_esperado)}</td>
+                    <td class="text-center">{_format_currency_es(salidas_caja)}</td>
+                    <td class="text-center">{_format_currency_es(seguridad_caja)}</td>
+                    <td class="text-center fw-bold">{_format_currency_es(saldo_esperado)}</td>
                 </tr>
             </tbody>
         </table>
 
         <div style="text-align: right; margin-bottom: 12px; font-size: 11px;">
-            <div><strong>Saldo real:</strong> <span style="display: inline-block; width: 90px; text-align: right; font-weight: bold;">{_format_currency_es(saldo_real)}</span></div>
-            <div style="margin-top: 3px;"><strong>{dif_label}</strong> <span style="display: inline-block; width: 90px; text-align: right; font-weight: bold;">{_format_currency_es(abs(diferencia))}</span></div>
+            <div><strong>Saldo real contado:</strong> <span style="display: inline-block; width: 90px; text-align: right; font-weight: bold;">{_format_currency_es(saldo_real)}</span></div>
+            <div style="margin-top: 3px;"><strong>{dif_label}:</strong> <span style="display: inline-block; width: 90px; text-align: right; font-weight: bold;">{_format_currency_es(abs(diferencia))}</span></div>
         </div>
 
         <!-- EXPENDEDORES -->
@@ -614,19 +713,24 @@ def _generate_shift_report_html(env, session):
     html += f'''            </tbody>
         </table>
 
-        <div class="footer-branding">Diseñado por Aseproda Informática SL</div>
+        <div class="footer-branding">UTRECAR ERP - Gestión de Estaciones de Servicio</div>
         <div class="footer-page">Página 1/2</div>
     </div>
 
     <!-- PÁGINA 2 -->
     <div class="page page-break">
-        <div>
-            <div class="header-badge">Impresión de turno</div>
-            <div class="header-meta">
-                <div>IdTurno: {id_turno}</div>
-                <div>Estacion: {estacion}</div>
-                <div>Fechas de Apertura y cierre: {start_str} - {stop_str}</div>
-                <div>Caja: {caja}</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 8px;">
+            <div>
+                <div class="header-badge">Impresión de turno</div>
+                <div class="header-meta" style="margin-top: 6px; font-size: 11px; line-height: 1.4;">
+                    <div><strong>Lugar:</strong> {lugar}</div>
+                    <div><strong>Turno:</strong> {turno_str}</div>
+                </div>
+            </div>
+            <div style="text-align: right; font-size: 11px; line-height: 1.4; padding-top: 4px;">
+                <div><strong>Fecha:</strong> {fecha_display}</div>
+                <div><strong>Hora:</strong> {hora_display}</div>
+                <div style="color: #64748b; font-size: 10px; margin-top: 2px;">(Apertura: {start_str} | Cierre: {stop_str})</div>
             </div>
         </div>
 
@@ -682,7 +786,7 @@ def _generate_shift_report_html(env, session):
             </tbody>
         </table>
 
-        <div class="footer-branding">Diseñado por Aseproda Informática SL</div>
+        <div class="footer-branding">UTRECAR ERP - Gestión de Estaciones de Servicio</div>
         <div class="footer-page">Página 2/2</div>
     </div>
 

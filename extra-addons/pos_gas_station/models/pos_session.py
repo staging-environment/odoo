@@ -243,6 +243,7 @@ class PosSession(models.Model):
     def action_pos_session_open(self):
         res = super().action_pos_session_open()
         for session in self:
+            session.write({'cash_register_balance_start': 0.0})
             if not session.admin_platform_fichaje_id and not self.env.context.get('skip_admin_platform_checkin') and session.user_id:
                 session.register_admin_platform_checkin()
         return res
@@ -311,5 +312,45 @@ class PosSession(models.Model):
                 p['name'] = 'Tarjeta'
             elif name_lower.startswith('efectivo'):
                 p['name'] = 'Efectivo'
+            elif any(k in name_lower for k in ['cuenta', 'cliente', 'customer account', 'credito', 'crédito']):
+                p['name'] = 'Crédito'
 
         return pms
+
+    @api.depends('payment_method_ids', 'order_ids', 'statement_line_ids')
+    def _compute_cash_balance(self):
+        super()._compute_cash_balance()
+        for session in self:
+            # En gasolineras la caja inicial es siempre 0.0 € para cada turno/expendedor
+            session.cash_register_balance_start = 0.0
+            session.cash_register_balance_end = session.cash_register_total_entry_encoding
+            session.cash_register_difference = (session.cash_register_balance_end_real or 0.0) - session.cash_register_balance_end
+
+    def get_closing_control_data(self):
+        res = super().get_closing_control_data()
+        # 1. Caja inicial siempre a 0.0 € y desglose limpio de efectivo
+        if res.get('default_cash_details'):
+            cash_details = res['default_cash_details']
+            cash_details['opening'] = 0.0
+            total_moves = sum(m['amount'] for m in cash_details.get('moves', []))
+            cash_details['amount'] = cash_details.get('payment_amount', 0.0) + total_moves
+            if cash_details.get('name') and cash_details['name'].lower().startswith('efectivo'):
+                cash_details['name'] = 'Efectivo'
+
+        # 2. Renombrar cuenta de cliente a 'Crédito'
+        for pm in res.get('other_payment_methods', []):
+            name_lower = (pm.get('name') or '').lower()
+            if 'banco' in name_lower:
+                pm['name'] = 'Tarjeta'
+            elif name_lower.startswith('efectivo'):
+                pm['name'] = 'Efectivo'
+            elif any(k in name_lower for k in ['cuenta', 'cliente', 'customer account', 'credito', 'crédito']):
+                pm['name'] = 'Crédito'
+
+        # 3. Excluir extracciones de orders_details para no distorsionar pedidos ni importes de venta
+        orders = self._get_closed_orders().filtered(lambda o: not getattr(o, 'is_extraction', False))
+        if res.get('orders_details'):
+            res['orders_details']['quantity'] = len(orders)
+            res['orders_details']['amount'] = sum(orders.mapped('amount_total'))
+
+        return res
