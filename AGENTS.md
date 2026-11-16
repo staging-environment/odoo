@@ -428,5 +428,21 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 - **Automatización en Nuevos Albaranes**:
   - Al generar o validar un pedido como albarán desde el TPV (`is_albaran = True`), en backend (`create`, `_compute_order_name`, `_order_fields`) o al convertir un ticket a albarán (`action_convert_to_albaran`), el sistema asigna y garantiza automáticamente la nomenclatura `AVTR`.
 
+#### G. Estandarización de Nomenclatura Fiscal y Orden de Botones en TPV (Actualizado 16/11/2026):
+- **Formato Oficial de Documentos Normales**: `NOMENCLATURAAÑONUMERO` (sin guiones en medio, padding de 5 dígitos).
+  - *Tickets*: `TTTR202600001` (Repsol), `TTRN202600001` (Ronda Norte), etc.
+  - *Albaranes*: `AVTR202600001` (Repsol), `AVRN202600001` (Ronda Norte), etc.
+  - *Facturas*: `FTTR202600001` (Repsol), `FTRN202600001` (Ronda Norte), etc.
+- **Formato Oficial de Anulaciones**: `NOMENCLATURA_AÑONUMERO` (el guión bajo va inmediatamente tras las letras, nunca tras los números).
+  - *Tickets anulados*: `TTTR_202600001`...
+  - *Albaranes anulados*: `AVTR_202600001`...
+  - *Facturas rectificativas/anuladas*: `FTTR_202600001`...
+  - *Contadores independientes*: Cada tipo de anulación (Ticket, Albarán, Factura) sigue su propia secuencia y contador correlativo individual e independiente en `ir.sequence`.
+- **Botonera Inferior del Ticket en Pantalla TPV**:
+  - **Orden estricto de botones**: `Borrar línea`, `Historial` y `Extracción` (a la derecha de todos).
+  - **Cancelación de pedido**: Se elimina la posibilidad de cancelar pedido (botón `Cancelar pedido` retirado de la interfaz).
+  - **Botón Pendiente**: Retirado temporalmente de la barra visual, preservando la funcionalidad interna `parkCurrentPumpSale()` intacta en el código por si se requiere reactivar en el futuro.
+
+
 
 
