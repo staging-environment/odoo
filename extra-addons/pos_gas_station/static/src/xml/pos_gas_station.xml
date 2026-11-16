@@ -201,14 +201,11 @@
                 <div class="virtus-quadrant-store">
                     <!-- BARRA DE ACCIONES Y PÁGINAS SUPERIOR -->
                     <div class="virtus-store-topbar">
-                        <button class="btn-store-cat" t-on-click="() => this.openCashMoveModal()" title="Salidas de caja (Ingreso de seguridad, Salidas varias, Factura a proveedores)">
-                            ⏱
+                        <button class="btn-store-cat" t-on-click="() => this.openCashMoveModal()" title="Incidencias de caja" aria-label="Incidencias de caja" alt="Incidencias de caja">
+                            <i class="fa fa-money text-success" style="font-size: 18px;" role="img" title="Incidencias de caja"/>
                         </button>
                         <button class="btn-store-cat btn-catalog-open" t-on-click="() => this.openStoreModal()" title="Catálogo Completo y Búsqueda (Nombre, Código o Código de Barras)">
                             📦
-                        </button>
-                        <button t-attf-class="btn-store-cat btn-cart-toggle #{!state.isStoreModalOpen ? 'active-grid' : ''}" t-on-click="() => this.onCartButtonClick()" title="Parrilla Rápida de Tienda (Clic para avanzar de página)">
-                            🛒 <span class="page-indicator"><t t-esc="'P' + state.currentStorePage"/></span>
                         </button>
                         <div class="btn-dropdown-wrapper">
                             <button class="btn-store-cat btn-cat-nav btn-open-grid-config" t-on-click="() => this.openGridConfigModal()" title="Personalizar Cuadrícula del TPV (Quitar / Añadir productos)">
@@ -1436,8 +1433,8 @@
                                     💰
                                 </div>
                                 <div class="auth-header-titles">
-                                    <h3 class="auth-title">Salida / Movimiento de Caja</h3>
-                                    <span class="auth-subtitle">Registre la retirada de efectivo para que quede constancia en el turno</span>
+                                    <h3 class="auth-title">Incidencias de Caja</h3>
+                                    <span class="auth-subtitle">Registre movimientos de efectivo, retiradas o ingresos de caja</span>
                                 </div>
                             </div>
                             <button class="btn-modal-close" t-on-click="() => this.closeCashMoveModal()">✖</button>
