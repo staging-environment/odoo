@@ -249,6 +249,12 @@ class PosSession(models.Model):
         return res
 
     def _validate_session(self, balancing_account=False, amount_to_balance=0, bank_payment_method_diffs=None):
+        # Auto-reparar cualquier línea de pedido con tax_ids vacío para garantizar cuadre contable perfecto
+        for session in self:
+            for order in session.order_ids:
+                for line in order.lines:
+                    if not line.tax_ids and line.product_id.taxes_id:
+                        line.write({'tax_ids': [(6, 0, line.product_id.taxes_id.ids)]})
         res = super()._validate_session(balancing_account=balancing_account, amount_to_balance=amount_to_balance, bank_payment_method_diffs=bank_payment_method_diffs)
         for session in self:
             if session.state == 'closed' and not session.admin_platform_checkout_done:

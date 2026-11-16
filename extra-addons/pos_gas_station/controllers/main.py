@@ -2701,7 +2701,8 @@ class PosGasStationController(http.Controller):
                     }
                     negative_order = env['pos.order'].sudo().create(neg_vals)
                     for l in order.lines:
-                        tax_ids = [(6, 0, l.tax_ids_after_fiscal_position.ids)] if hasattr(l, 'tax_ids_after_fiscal_position') and l.tax_ids_after_fiscal_position else []
+                        taxes = l.tax_ids or (l.tax_ids_after_fiscal_position if hasattr(l, 'tax_ids_after_fiscal_position') else None) or l.product_id.taxes_id
+                        tax_ids = [(6, 0, taxes.ids)] if taxes else []
                         env['pos.order.line'].sudo().create({
                             'order_id': negative_order.id,
                             'product_id': l.product_id.id,
@@ -2711,7 +2712,7 @@ class PosGasStationController(http.Controller):
                             'price_subtotal': -l.price_subtotal,
                             'price_subtotal_incl': -l.price_subtotal_incl,
                             'discount': l.discount,
-                            'tax_ids_after_fiscal_position': tax_ids,
+                            'tax_ids': tax_ids,
                         })
                     for p in order.payment_ids:
                         env['pos.payment'].sudo().create({
