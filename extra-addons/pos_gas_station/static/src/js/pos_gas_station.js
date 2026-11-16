@@ -4207,25 +4207,6 @@ export class UtrecarMainScreen extends Component {
         const pumpId = pump ? pump.id : this.state.selectedPumpId;
         if (!pumpId) return;
 
-        const target = pump || this.state.pumps.find(p => p.id === pumpId);
-        const preset = (this.state.pumpPresets && this.state.pumpPresets[pumpId]) || 
-                       (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[pumpId]);
-        const isPrepay = Boolean((target && target.has_prepay) || (preset && preset.hasPrepay));
-        const amt = (preset && preset.amount) || (target && target.preset_amount) || 0;
-
-        if (isPrepay) {
-            const amtStr = amt > 0 ? ` de ${amt.toFixed(2)} €` : "";
-            let docType = "el ticket de anulación";
-            if (preset && preset.isAlbaran) {
-                docType = "el albarán de crédito negativo";
-            } else if (preset && preset.isInvoice) {
-                docType = "la factura de anulación";
-            }
-            if (!confirm(`¿Confirma que desea cerrar la Calle ${pumpId} y anular el suministro cobrado${amtStr}?\n(Se generará automáticamente ${docType}).`)) {
-                return;
-            }
-        }
-
         this.closeCancelModal();
 
         // Si la calle tenía matricula vinculada, restaurarla
