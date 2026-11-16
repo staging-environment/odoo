@@ -320,13 +320,32 @@ class PosOrder(models.Model):
                     vals['name'] = re.sub(r'^TT', 'AV', curr_name, count=1)
         orders = super().create(vals_list)
         for order in orders:
+            curr = order.name
+            if curr:
+                m = re.match(r'^(TT|AV)([A-Z]+)(\d+)$', curr)
+                if m:
+                    t, st, num = m.groups()
+                    if len(num) <= 5:
+                        year = order.date_order.year if order.date_order else fields.Date.today().year
+                        target_t = 'AV' if order.is_albaran else t
+                        order.write({'name': f"{target_t}{st}{year}{int(num):05d}"})
+                        continue
             if order.is_albaran and order.name and re.match(r'^TT[A-Z]+', order.name):
                 order.write({'name': re.sub(r'^TT', 'AV', order.name, count=1)})
         return orders
 
     def _compute_order_name(self):
         name = super()._compute_order_name()
-        if self.is_albaran and name and re.match(r'^TT[A-Z]+', name):
+        if not name:
+            return name
+        m = re.match(r'^(TT|AV)([A-Z]+)(\d+)$', name)
+        if m:
+            t, st, num = m.groups()
+            if len(num) <= 5:
+                year = fields.Date.today().year
+                target_t = 'AV' if self.is_albaran else t
+                return f"{target_t}{st}{year}{int(num):05d}"
+        if self.is_albaran and re.match(r'^TT[A-Z]+', name):
             return re.sub(r'^TT', 'AV', name, count=1)
         return name
 

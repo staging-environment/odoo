@@ -4953,6 +4953,14 @@ patch(Order.prototype, {
             const prefix = this.is_albaran ? "AVTR" : "TTTR";
             ticketName = `${prefix}${currentYear}${String(seq).padStart(5, "0")}`;
         }
+        if (ticketName) {
+            const m = ticketName.match(/^(TT|AV)([A-Z]+)(\d{1,5})$/);
+            if (m) {
+                const [_, t, st, num] = m;
+                const currentYear = new Date().getFullYear();
+                ticketName = `${t}${st}${currentYear}${String(num).padStart(5, "0")}`;
+            }
+        }
         if (this.is_albaran && ticketName && /^TT[A-Z]+/.test(ticketName)) {
             ticketName = ticketName.replace(/^TT/, "AV");
         }

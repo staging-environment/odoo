@@ -2202,15 +2202,28 @@ class PosGasStationController(http.Controller):
                     'canje' in (getattr(o, 'annulment_reason', '') or '').lower() or
                     (has_annulment and str(getattr(o, 'annulment_ref', '')).startswith('TTTR_'))
                 )
+                def _format_pos_doc_name(raw_name, date_val=None, alb=False):
+                    if not raw_name:
+                        return raw_name
+                    m_short = re.match(r'^(TT|AV|FT)([A-Z]+)(\d{1,5})$', raw_name)
+                    if m_short:
+                        t, st, num = m_short.groups()
+                        yr = date_val.year if (date_val and hasattr(date_val, 'year')) else (o.date_order.year if o.date_order else fields.Date.today().year)
+                        target_t = 'AV' if alb else t
+                        return f"{target_t}{st}{yr}{int(num):05d}"
+                    return raw_name
+
                 if is_albaran:
                     doc_type = 'albaran'
-                    serie_code = o.name
+                    serie_code = _format_pos_doc_name(o.name, o.date_order, alb=True)
                 elif is_inv and not is_inv_exchanged:
                     doc_type = 'invoice'
                     serie_code = o.account_move.name or o.name
                 else:
                     doc_type = 'ticket'
-                    serie_code = o.name
+                    serie_code = _format_pos_doc_name(o.name, o.date_order, alb=False)
+
+                order_doc_name = _format_pos_doc_name(o.name, o.date_order, alb=is_albaran)
 
                 order_history = []
                 # 1. Documento de Anulación si fue anulado
@@ -2275,7 +2288,7 @@ class PosGasStationController(http.Controller):
 
                 orders_list.append({
                     'id': o.id,
-                    'name': o.name,
+                    'name': order_doc_name,
                     'doc_type': doc_type,
                     'serie_code': serie_code,
                     'pos_reference': o.pos_reference or o.name,
