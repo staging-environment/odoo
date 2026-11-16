@@ -469,6 +469,7 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
     - El sonido suena **única y exclusivamente cuando exista alguna manguera físicamente descolgada** (`is_descolgada: True` / `estaColgada: False` obtenido por microswitch vía SDES) en cualquiera de las 8 calles.
     - Cesa de forma inmediata en el instante en que se cuelga la manguera y todas las pistas están colgadas ("ni antes ni después").
     - La silueta visual de manguera descolgada en la tarjeta LCD se sincroniza con este mismo estado físico.
+    - *Purga de colas históricas de SDES*: Al reconectar el socket nativo, SDES retransmitía 4 operaciones antiguas de prueba de las 13:25. Se ha corregido el ACK de confirmación (`PARAM_BYTE: 1`) para que SDES las elimine de su buffer interno y se filtran replays históricos con más de 60 segundos de antigüedad.
   - *Transición y desbloqueo de colores en Prefijados y Albaranes*:
     - Corregida regla CSS (`pos_gas_station.css`) que forzaba verde en gasolina incluso en estado `status-ready`.
     - Integrado el parámetro `has_prepay` en el comando `pump_command_7` y en `agente_pista_odoo_bridge.py`:
