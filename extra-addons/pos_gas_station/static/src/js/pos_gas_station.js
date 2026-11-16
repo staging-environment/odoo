@@ -163,6 +163,16 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
+        // Cargar productos de tienda vinculados a calles activas
+        if (!this.pos.pumpPendingStoreItems) {
+            try {
+                const savedStore = localStorage.getItem(`pos_gas_station_pending_store_${this.configId}`);
+                this.pos.pumpPendingStoreItems = savedStore ? JSON.parse(savedStore) : {};
+            } catch (e) {
+                this.pos.pumpPendingStoreItems = {};
+            }
+        }
+
         this.state = useState({
             isCashMoveModalOpen: false,
             cashMoveType: "ingreso_seguridad",
@@ -1155,6 +1165,52 @@ export class UtrecarMainScreen extends Component {
                                 if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
                                 this.savePumpPresets();
                             }
+                        }
+
+                        // Si la calle finalizó repostaje ('ready' o con importe > 0 sin estar echando)
+                        // y tiene productos de tienda vinculados, pasarlos de inmediato a la monedita con el combustible
+                        if ((p.status === "ready" || (p.amount > 0 && p.status !== "dispensing")) && 
+                            this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[p.id] && this.pos.pumpPendingStoreItems[p.id].length > 0) {
+                            const storeItems = this.pos.pumpPendingStoreItems[p.id];
+                            delete this.pos.pumpPendingStoreItems[p.id];
+                            this.savePumpPendingStoreItems();
+
+                            const fuelProd = (p.product_id && this.pos.db.product_by_id[p.product_id]) || this.findFuelProduct(p.fuel || "GA");
+                            const fuelInfo = {
+                                name: (fuelProd && fuelProd.display_name) || p.fuel || "Combustible",
+                                liters: p.liters || 0,
+                                price: p.price || (p.liters > 0 ? (p.amount / p.liters) : 1.45),
+                                amount: p.amount || 0,
+                                productId: fuelProd ? fuelProd.id : null
+                            };
+                            const storeTotal = storeItems.reduce((acc, it) => acc + (it.amount || (it.price * it.qty)), 0);
+                            const pendingSale = {
+                                id: "sale_" + p.id + "_" + Date.now(),
+                                pumpId: p.id,
+                                timestamp: Date.now(),
+                                timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                fuel: fuelInfo,
+                                storeLines: storeItems,
+                                totalAmount: (p.amount || 0) + storeTotal,
+                                vehiclePlate: p.vehiclePlate || this.state.vehiclePlate || ""
+                            };
+                            if (!this.pos.pendingSales) this.pos.pendingSales = {};
+                            if (!this.pos.pendingSales[p.id]) this.pos.pendingSales[p.id] = [];
+                            this.pos.pendingSales[p.id].push(pendingSale);
+                            this.savePendingSales();
+
+                            // Liberar surtidor en pista para el siguiente vehículo
+                            try {
+                                jsonrpc("/pos_gas_station/clear_pump", {
+                                    config_id: this.configId,
+                                    pump_id: p.id
+                                }).catch(e => console.debug("Liberar bomba tras pasar a monedita:", e));
+                            } catch (e) {}
+
+                            p.status = "atendido";
+                            p.statusText = "LLENO (LIBRE)";
+                            p.amount = 0;
+                            p.liters = 0;
                         }
                     });
                     this.state.pumps = data.pumps;
@@ -3139,6 +3195,11 @@ export class UtrecarMainScreen extends Component {
             return true;
         }
 
+        // Si la calle tiene productos de tienda vinculados a la espera de cobro, mostrar la monedita
+        if (this.hasPumpPendingStoreItems(pump.id)) {
+            return true;
+        }
+
         // 1. En modo lleno postpago sin aparcar, solo cuando la manguera se cuelga (ready)
         if (pump.status !== "ready") {
             return false;
@@ -3303,6 +3364,18 @@ export class UtrecarMainScreen extends Component {
         } catch (e) {
             console.debug("Error guardando pumpPresets:", e);
         }
+    }
+
+    savePumpPendingStoreItems() {
+        try {
+            localStorage.setItem(`pos_gas_station_pending_store_${this.configId}`, JSON.stringify(this.pos.pumpPendingStoreItems || {}));
+        } catch (e) {
+            console.debug("Error guardando pumpPendingStoreItems:", e);
+        }
+    }
+
+    hasPumpPendingStoreItems(pumpId) {
+        return Boolean(this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[pumpId] && this.pos.pumpPendingStoreItems[pumpId].length > 0);
     }
 
     hasPumpPendingRefund(pump) {
@@ -3767,6 +3840,25 @@ export class UtrecarMainScreen extends Component {
         }
 
         this.closeCancelModal();
+
+        // Si la calle tenía productos de tienda vinculados, restaurarlos en el ticket actual para no perderlos
+        if (this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[pumpId]) {
+            const storeItems = this.pos.pumpPendingStoreItems[pumpId];
+            delete this.pos.pumpPendingStoreItems[pumpId];
+            this.savePumpPendingStoreItems();
+            const currentOrder = this.getOrCreateOrder();
+            for (const item of storeItems) {
+                const prod = this.pos.db.get_product_by_id(item.productId);
+                if (prod) {
+                    await currentOrder.add_product(prod, {
+                        quantity: item.qty,
+                        price: item.price,
+                        extras: { price_manually_set: true }
+                    });
+                }
+            }
+        }
+
         await this.resetAndLockPump(pumpId);
         this.state.orderVersion = Date.now();
     }
@@ -4349,6 +4441,44 @@ export class UtrecarMainScreen extends Component {
             }
         }
 
+        // Si la orden actual contiene productos de tienda/inventario (ej. Coca-Cola, snacks),
+        // se vinculan a la calle que se acaba de autorizar para que pasen a la monedita con el combustible,
+        // dejando el ticket actual en blanco para atender o autorizar a otro cliente de inmediato.
+        if (!isPrepay) {
+            const currentOrder = this.pos.get_order();
+            if (currentOrder) {
+                const lines = (currentOrder.get_orderlines ? currentOrder.get_orderlines() : []).slice();
+                const storeItems = [];
+                for (const l of lines) {
+                    if (!this.isFuelProduct(l.product)) {
+                        storeItems.push({
+                            productId: l.product.id,
+                            name: l.product.display_name,
+                            qty: l.get_quantity ? l.get_quantity() : 1,
+                            price: l.get_unit_price ? l.get_unit_price() : l.price,
+                            discount: l.get_discount ? l.get_discount() : 0,
+                            amount: l.get_display_price ? l.get_display_price() : (l.price * l.quantity),
+                            customerNote: l.get_customer_note ? l.get_customer_note() : ""
+                        });
+                    }
+                }
+                if (storeItems.length > 0) {
+                    if (!this.pos.pumpPendingStoreItems) {
+                        this.pos.pumpPendingStoreItems = {};
+                    }
+                    this.pos.pumpPendingStoreItems[pumpId] = storeItems;
+                    this.savePumpPendingStoreItems();
+
+                    // Dejar el ticket activo en blanco de inmediato
+                    this.pos.removeOrder(currentOrder);
+                    this.pos.add_new_order();
+                    this.state.selectedLineId = null;
+                    this.state.vehiclePlate = "";
+                    this.state.orderVersion = Date.now();
+                }
+            }
+        }
+
         try {
             await jsonrpc("/pos_gas_station/authorize", {
                 config_id: this.configId,
@@ -4558,8 +4688,12 @@ export class UtrecarMainScreen extends Component {
 
     async onPumpClick(pump) {
         if (pump.amount > 0 && pump.liters > 0) {
-            const currentOrder = this.getOrCreateOrder();
-            if (!currentOrder) return;
+            let currentOrder = this.pos.get_order();
+            const orderLines = currentOrder && currentOrder.get_orderlines ? currentOrder.get_orderlines() : [];
+            // Si el ticket actual ya contiene productos de otro cliente, abrir un nuevo ticket para este repostaje
+            if (!currentOrder || orderLines.length > 0) {
+                currentOrder = this.pos.add_new_order();
+            }
 
             let product = null;
             if (pump.product_id && this.pos.db.product_by_id[pump.product_id]) {
@@ -4637,6 +4771,26 @@ export class UtrecarMainScreen extends Component {
                 }
                 if (this.state.vehiclePlate) {
                     if (currentOrder.set_note) currentOrder.set_note(`Matrícula: ${this.state.vehiclePlate}`);
+                }
+
+                // Si la calle tenía productos de tienda vinculados, agregarlos al ticket junto con el combustible
+                if (this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[pump.id] && this.pos.pumpPendingStoreItems[pump.id].length > 0) {
+                    const storeItems = this.pos.pumpPendingStoreItems[pump.id];
+                    delete this.pos.pumpPendingStoreItems[pump.id];
+                    this.savePumpPendingStoreItems();
+                    for (const item of storeItems) {
+                        const prod = this.pos.db.get_product_by_id(item.productId);
+                        if (prod) {
+                            await currentOrder.add_product(prod, {
+                                quantity: item.qty,
+                                price: item.price,
+                                extras: { price_manually_set: true }
+                            });
+                            const lastLine = currentOrder.get_last_orderline();
+                            if (lastLine && item.discount) lastLine.set_discount(item.discount);
+                            if (lastLine && item.customerNote && lastLine.set_customer_note) lastLine.set_customer_note(item.customerNote);
+                        }
+                    }
                 }
 
                 pump.status = "idle";
