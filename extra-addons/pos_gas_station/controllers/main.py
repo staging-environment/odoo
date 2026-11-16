@@ -2164,7 +2164,7 @@ class PosGasStationController(http.Controller):
             if config_id:
                 domain.append(('config_id', '=', int(config_id)))
 
-            sessions = env['pos.session'].sudo().search(domain, order='stop_at desc, id desc', limit=int(limit or 40))
+            sessions = env['pos.session'].sudo().search(domain, order='start_at desc, id desc', limit=int(limit or 40))
             user_tz = pytz.timezone((env.user.tz or 'Europe/Madrid'))
 
             shifts_data = []
@@ -2185,7 +2185,9 @@ class PosGasStationController(http.Controller):
                     'config_name': s.config_id.name if s.config_id else '',
                     'employee_name': s.user_id.name if s.user_id else 'Cajero',
                     'start_at': start_str,
+                    'start_at_raw': s.start_at.isoformat() if s.start_at else '',
                     'stop_at': stop_str,
+                    'stop_at_raw': s.stop_at.isoformat() if s.stop_at else '',
                     'orders_count': orders_count,
                     'total_amount': total_amount,
                     'cash_real': cash_real,

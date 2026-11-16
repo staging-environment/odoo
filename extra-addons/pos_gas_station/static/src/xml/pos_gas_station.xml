@@ -2405,15 +2405,29 @@
                             </t>
                             <t t-else="">
                                 <table class="table table-hover align-middle shadow-sm rounded" style="border: 1px solid #e2e8f0; background: white;">
-                                    <thead class="table-dark" style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    <thead class="table-dark" style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; user-select: none;">
                                         <tr>
-                                            <th style="padding: 10px 14px;">Turno / Sesión</th>
-                                            <th style="padding: 10px 14px;">Expendedor</th>
-                                            <th style="padding: 10px 14px;">Apertura</th>
-                                            <th style="padding: 10px 14px;">Cierre</th>
-                                            <th class="text-center" style="padding: 10px 14px;">Ventas</th>
-                                            <th class="text-end" style="padding: 10px 14px;">Total</th>
-                                            <th class="text-center" style="padding: 10px 14px;">Arqueo</th>
+                                            <th class="th-sortable" style="padding: 10px 14px; cursor: pointer;" t-on-click="() => this.sortClosedShifts('name')" title="Ordenar por Turno / Sesión">
+                                                Turno / Sesión <i t-attf-class="fa #{getClosedShiftSortIcon('name')} ms-1"/>
+                                            </th>
+                                            <th class="th-sortable" style="padding: 10px 14px; cursor: pointer;" t-on-click="() => this.sortClosedShifts('employee')" title="Ordenar por Expendedor">
+                                                Expendedor <i t-attf-class="fa #{getClosedShiftSortIcon('employee')} ms-1"/>
+                                            </th>
+                                            <th class="th-sortable" style="padding: 10px 14px; cursor: pointer;" t-on-click="() => this.sortClosedShifts('start_at')" title="Ordenar por Fecha y Hora de Apertura">
+                                                Apertura <i t-attf-class="fa #{getClosedShiftSortIcon('start_at')} ms-1"/>
+                                            </th>
+                                            <th class="th-sortable" style="padding: 10px 14px; cursor: pointer;" t-on-click="() => this.sortClosedShifts('stop_at')" title="Ordenar por Fecha y Hora de Cierre">
+                                                Cierre <i t-attf-class="fa #{getClosedShiftSortIcon('stop_at')} ms-1"/>
+                                            </th>
+                                            <th class="th-sortable text-center" style="padding: 10px 14px; cursor: pointer;" t-on-click="() => this.sortClosedShifts('orders')" title="Ordenar por Número de Ventas">
+                                                Ventas <i t-attf-class="fa #{getClosedShiftSortIcon('orders')} ms-1"/>
+                                            </th>
+                                            <th class="th-sortable text-end" style="padding: 10px 14px; cursor: pointer;" t-on-click="() => this.sortClosedShifts('total')" title="Ordenar por Importe Total">
+                                                Total <i t-attf-class="fa #{getClosedShiftSortIcon('total')} ms-1"/>
+                                            </th>
+                                            <th class="th-sortable text-center" style="padding: 10px 14px; cursor: pointer;" t-on-click="() => this.sortClosedShifts('arqueo')" title="Ordenar por Descuadre de Arqueo">
+                                                Arqueo <i t-attf-class="fa #{getClosedShiftSortIcon('arqueo')} ms-1"/>
+                                            </th>
                                             <th class="text-center" style="padding: 10px 14px; width: 220px;">Acciones</th>
                                         </tr>
                                     </thead>

@@ -345,6 +345,8 @@ export class UtrecarMainScreen extends Component {
             closedShiftsLoading: false,
             closedShifts: [],
             closedShiftsSearch: "",
+            closedShiftSortField: "start_at",
+            closedShiftSortDirection: "desc",
             stationName: (this.pos.config && this.pos.config.name) ? `CONTROL DE PISTA - ${this.pos.config.name.toUpperCase()}` : "CONTROL DE PISTA",
             vehiclePlate: "",
             manualBarcode: "",
@@ -1883,6 +1885,8 @@ export class UtrecarMainScreen extends Component {
     async openClosedShiftsModal() {
         this.state.isClosedShiftsModalOpen = true;
         this.state.closedShiftsSearch = "";
+        this.state.closedShiftSortField = "start_at";
+        this.state.closedShiftSortDirection = "desc";
         await this.loadClosedShifts();
     }
 
@@ -1890,6 +1894,26 @@ export class UtrecarMainScreen extends Component {
         this.state.isClosedShiftsModalOpen = false;
         this.state.closedShifts = [];
         this.state.closedShiftsSearch = "";
+    }
+
+    sortClosedShifts(field) {
+        if (this.state.closedShiftSortField === field) {
+            this.state.closedShiftSortDirection = this.state.closedShiftSortDirection === "asc" ? "desc" : "asc";
+        } else {
+            this.state.closedShiftSortField = field;
+            if (field === "start_at" || field === "stop_at" || field === "total" || field === "orders" || field === "arqueo") {
+                this.state.closedShiftSortDirection = "desc";
+            } else {
+                this.state.closedShiftSortDirection = "asc";
+            }
+        }
+    }
+
+    getClosedShiftSortIcon(field) {
+        if (this.state.closedShiftSortField === field) {
+            return this.state.closedShiftSortDirection === "asc" ? "fa-sort-asc sort-icon active" : "fa-sort-desc sort-icon active";
+        }
+        return "fa-sort sort-icon inactive";
     }
 
     async loadClosedShifts() {
@@ -1914,13 +1938,67 @@ export class UtrecarMainScreen extends Component {
 
     get filteredClosedShifts() {
         const query = (this.state.closedShiftsSearch || "").trim().toLowerCase();
-        if (!query) return this.state.closedShifts || [];
-        return (this.state.closedShifts || []).filter(s => 
-            (s.name && s.name.toLowerCase().includes(query)) ||
-            (s.employee_name && s.employee_name.toLowerCase().includes(query)) ||
-            (s.start_at && s.start_at.toLowerCase().includes(query)) ||
-            (s.stop_at && s.stop_at.toLowerCase().includes(query))
-        );
+        let list = (this.state.closedShifts || []);
+        if (query) {
+            list = list.filter(s => 
+                (s.name && s.name.toLowerCase().includes(query)) ||
+                (s.employee_name && s.employee_name.toLowerCase().includes(query)) ||
+                (s.start_at && s.start_at.toLowerCase().includes(query)) ||
+                (s.stop_at && s.stop_at.toLowerCase().includes(query))
+            );
+        }
+
+        const field = this.state.closedShiftSortField || "start_at";
+        const direction = this.state.closedShiftSortDirection || "desc";
+        const modifier = direction === "desc" ? -1 : 1;
+
+        return [...list].sort((a, b) => {
+            let diff = 0;
+            switch (field) {
+                case "name": {
+                    const valA = a.name || "";
+                    const valB = b.name || "";
+                    diff = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: "base" });
+                    break;
+                }
+                case "employee": {
+                    const valA = a.employee_name || "";
+                    const valB = b.employee_name || "";
+                    diff = valA.localeCompare(valB, undefined, { sensitivity: "base" });
+                    break;
+                }
+                case "start_at": {
+                    const valA = a.start_at_raw || a.start_at || "";
+                    const valB = b.start_at_raw || b.start_at || "";
+                    diff = valA.localeCompare(valB);
+                    break;
+                }
+                case "stop_at": {
+                    const valA = a.stop_at_raw || a.stop_at || "";
+                    const valB = b.stop_at_raw || b.stop_at || "";
+                    diff = valA.localeCompare(valB);
+                    break;
+                }
+                case "orders": {
+                    diff = (Number(a.orders_count) || 0) - (Number(b.orders_count) || 0);
+                    break;
+                }
+                case "total": {
+                    diff = (Number(a.total_amount) || 0) - (Number(b.total_amount) || 0);
+                    break;
+                }
+                case "arqueo": {
+                    diff = (Number(a.difference) || 0) - (Number(b.difference) || 0);
+                    break;
+                }
+                default:
+                    diff = (a.id || 0) - (b.id || 0);
+            }
+            if (diff === 0) {
+                diff = (a.id || 0) - (b.id || 0);
+            }
+            return diff * modifier;
+        });
     }
 
     viewClosedShiftReport(shift) {
