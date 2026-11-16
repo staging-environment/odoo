@@ -111,6 +111,8 @@ Este documento recopila de manera cronológica y técnica todas las personalizac
 | **16/11/2026** | TPV & Hardware Pista | Telemetría en tiempo real: reducción de override a 4s, contador en vivo de litros y euros, y sonidos Web Audio API (inicio, flujo continuo y fin) | Desplegado en Cloud y en PC Repsol (`10.8.0.18`) |
 | **16/11/2026** | TPV & Hardware Pista | Transición y desbloqueo de colores en prefijados de albarán (pasa a amarillo COBRAR al colgar) y prepagos (sobrante o liberación), con soporte de `has_prepay` en agente hardware | Desplegado en Cloud y en PC Repsol (`10.8.0.18`) |
 | **16/11/2026** | TPV & Hardware Pista | Control acústico estricto por microswitch: sonido de pista activo única y exclusivamente cuando exista alguna manguera descolgada (ni antes al autorizar ni después al colgar) | Desplegado en Cloud y en PC Repsol (`10.8.0.18`) |
+| **16/11/2026** | Hardware Pista & Protocolo SDES | Solución a retransmisión de ventas antiguas (calles amarillas 5, 7, 8): corrección de ACK booleano a `1` en protocolo TCP 8777, discriminador temporal (>60s) y purga de cola SDES | Desplegado en Cloud y en PC Repsol (`10.8.0.18`) |
+| **16/11/2026** | Arquitectura & Hardware de Pista | Documentación de topología directa (sin concentrador/DOMS externo, cable USB a RS485 en `COM3`) y hoja de ruta para driver nativo Python Wayne DART para desinstalación 100% de Aseproda | Documentado en AGENTS.md y ACCESO_REMOTO |
 | **16/11/2026** | Documentación & Arquitectura | Definición del Árbol de Navegación de Informes en Mermaid (`docs/ARBOL_NAVEGACION_INFORMES.md`) | Guardado en repositorio |
 
 ---

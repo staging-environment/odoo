@@ -128,6 +128,22 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 - **Desarrollo 100% Propio**: Toda la lógica, drivers, interfaces de comunicación TCP/Serial, protocolos de pista y pantallas de TPV deben ser código nativo propio dentro del repositorio de Odoo (Python, JavaScript OWL y sockets estándar).
 - **Transición**: Cualquier protocolo o estructura de datos que se use temporalmente para hablar con el hardware debe ser internalizado mediante drivers nativos en Python puro para que cuando se desinstale Aseproda del equipo de pista, el sistema continúe funcionando de forma autónoma.
 
+### 🔌 Topología Física y Hoja de Ruta para Reemplazo de SDES.exe (Independencia Total de Hardware)
+- **Topología Física Real (E.S. Repsol):**
+  - La gasolinera **NO tiene concentrador de hardware externo ni DOMS PSS 5000**.
+  - Los 8 surtidores Wayne Dresser conectan directamente mediante el cable bus RS-485 / bucle de corriente a un conversor USB enchufado al PC de caja del TPV, asignado en Windows como el puerto serie `COM3` (9600 bps).
+- **Rol actual de `SDES.exe` (Aseproda):**
+  - `SDES.exe` actúa únicamente como concentrador por software: abre `COM3`, sondea el protocolo Wayne DART a 9600 baudios y expone un socket TCP en `127.0.0.1:8777`.
+  - El puente actual (`PurePythonSdesClient` en `scripts/agente_pista_odoo_bridge.py`) ya prescinde de librerías `.dll` y habla el protocolo socket TCP propio con `SDES.exe`.
+- **Estrategia de Eliminación Definitiva de Aseproda (Fase 3):**
+  - **Desarrollo del Driver Nativo Wayne DART en Python:**
+    1. Módulo Python con `pyserial` que abra directamente el puerto serie `COM3` a 9600 bps.
+    2. Implementación nativa del bucle de interrogación (polling) de estados (direcciones 1-8), detección de descolgado de microswitch, pulsos de conteo en tiempo real (litros/euros), comandos de desbloqueo/autorización y bloqueo/corte de suministro.
+    3. Conexión directa del driver en Python con Odoo POS (WebSockets / JSON-RPC), eliminando intermediarios y puertos auxiliares.
+  - **Desinstalación y Limpieza Final:**
+    - Eliminar la tarea programada `RunSDES`, eliminar la carpeta `C:\SDES`, desinstalar cualquier componente residual de Aseproda.
+    - El puesto de pista queda 100% limpio y autónomo (Windows + Python nativo + Odoo POS en navegador).
+
 ## 🛠️ Scripts y Herramientas del Proyecto
 
 - `scripts/agente_pista_odoo_bridge.py`: Agente puente resiliente 24/7 con integración nativa `ClienteSDES2` y watchdog de reconexión.

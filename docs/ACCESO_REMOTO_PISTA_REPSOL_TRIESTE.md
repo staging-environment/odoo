@@ -21,9 +21,11 @@ Este documento detalla la infraestructura completa, parámetros de acceso remoto
 
 ## ⛽ Arquitectura de Pista (Surtidores Dresser Wayne DART)
 
+> **Nota Crítica de Topología Física:** La estación **NO dispone de concentrador de hardware externo ni DOMS PSS 5000**. El bus de comunicaciones de los surtidores conecta directamente a través de un convertidor USB/Serie (RS-485 / Bucle de corriente) pinchado al puerto USB del TPV, mapeado por Windows como `COM3`. `SDES.exe` no es hardware sino un concentrador por software propietario que se reemplazará por un driver nativo Python `COM3` directo.
+
 - **Protocolo de Surtidores:** Dresser Wayne DART a 9600 baudios.
-- **Puerto Serie Físico:** `COM3` (conversor USB/RS485 conectado a los surtidores).
-- **Concentrador Local:** `C:\SDES\SDES.exe` (Sistema de Dispositivos Electrónicos de Surtidores).
+- **Puerto Serie Físico:** `COM3` (conversor directo USB a RS485/bucle de corriente conectado a los surtidores).
+- **Concentrador Local Temporal:** `C:\SDES\SDES.exe` (Sistema de Dispositivos Electrónicos de Surtidores).
 - **API Nativa de Aseproda:** `.NET Assembly` `C:\Program Files\Aseproda\VirtusTPV Net\ClienteSDESNet.dll`
   - Clase principal: `aseproda.ClienteSDES2.ClienteSDES2`
   - Puerto de comunicación local: `TCP 127.0.0.1:8777`
