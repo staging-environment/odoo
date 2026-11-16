@@ -3451,7 +3451,8 @@ export class UtrecarMainScreen extends Component {
     async checkoutPendingSale(sale) {
         this.closePendingSalesModal();
         let currentOrder = this.pos.get_order();
-        if (!currentOrder || (this.currentOrderLines && this.currentOrderLines.length > 0)) {
+        const hasOtherFuel = currentOrder && currentOrder.get_orderlines && currentOrder.get_orderlines().some(l => this.isFuelProduct(l.product));
+        if (!currentOrder || hasOtherFuel) {
             currentOrder = this.pos.add_new_order();
         }
 
@@ -3951,119 +3952,61 @@ export class UtrecarMainScreen extends Component {
             return;
         }
 
-        // Detectar si la orden actual ya contiene una línea de combustible o importe previo
-        const currentOrder = this.getOrCreateOrder();
+        // El importe prefijado ÚNICAMENTE proviene del valor tecleado en el teclado numérico / billetes de pista.
+        // JAMÁS se toma como referencia el total del carrito ni productos del inventario/tienda.
         let presetVal = this.state.presetValue || 0;
         let fuelCode = this.state.selectedFuel;
 
-        if (currentOrder && (!presetVal || presetVal <= 0)) {
-            const lines = currentOrder.get_orderlines();
-            const fuelLine = lines.slice().reverse().find(l => {
-                if (!l.product) return false;
-                const c = (l.product.default_code || "").toUpperCase();
-                const n = (l.product.display_name || l.product.name || "").toLowerCase();
-                return c.includes("GAS_A") || c.includes("SP95") || c.includes("GAS_PLUS") || c.includes("GAS_B") ||
-                       n.includes("gasóleo") || n.includes("gasoleo") || n.includes("sin plomo") || n.includes("diesel");
-            });
-            if (fuelLine && fuelLine.get_price_with_tax() > 0) {
-                presetVal = fuelLine.get_price_with_tax();
-                this.state.mode = "money";
-                const c = (fuelLine.product.default_code || "").toUpperCase();
-                const n = (fuelLine.product.display_name || fuelLine.product.name || "").toLowerCase();
-                if (c.includes("SP95") || n.includes("sin plomo") || n.includes("95")) {
-                    fuelCode = "95";
-                } else if (c.includes("GAS_PLUS") || n.includes("plus") || n.includes("g+")) {
-                    fuelCode = "G+";
-                } else if (c.includes("GAS_B") || n.includes("gasóleo b") || n.includes("diesel b")) {
-                    fuelCode = "GB";
-                } else {
-                    fuelCode = "GA";
-                }
-                this.state.selectedFuel = fuelCode;
-            } else if (currentOrder.get_total_with_tax && currentOrder.get_total_with_tax() > 0) {
-                presetVal = currentOrder.get_total_with_tax();
-                this.state.presetValue = presetVal;
-                this.state.mode = "money";
-            }
+        // Solo si la orden actual ya contiene un prepago pendiente específico de ESTA MISMA calle
+        const currentOrder = this.getOrCreateOrder();
+        if (currentOrder && (!presetVal || presetVal <= 0) && currentOrder.pending_prepay && currentOrder.pending_prepay.pump_id === pump.id) {
+            presetVal = currentOrder.pending_prepay.presetVal || currentOrder.pending_prepay.amount || 0;
+            fuelCode = currentOrder.pending_prepay.fuel || fuelCode;
+            this.state.selectedFuel = fuelCode;
         }
 
         const isMoney = this.state.mode === "money";
         const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
         const isPrepay = Boolean(presetVal > 0 && !isLleno);
 
-        // VALIDACIÓN DE SEGURIDAD ESTRICTA: EL COMBUSTIBLE ES OBLIGATORIO SIEMPRE (PROHIBIDO MULTIPRODUCTO)
-        if (!this.state.selectedFuel) {
-            const infoTxt = presetVal > 0 ? ` (con importe prefijado de ${presetVal.toFixed(2)} ${isMoney ? '€' : 'L'})` : "";
-            
-            // RESETEAR EL CONTADOR ECONÓMICO A 0 Y LIMPIAR CUALQUIER LÍNEA DE COMBUSTIBLE PREVIA NO FINALIZADA
-            this.state.presetValue = 0;
-            this.state.selectedFuel = null;
-            this.removePendingFuelLinesFromOrder(currentOrder);
-
-            alert(`⚠️ ¡ATENCIÓN! Debe seleccionar obligatoriamente el tipo de combustible (Gasóleo A, Sin Plomo 95...) antes de autorizar la Calle ${pump.id}${infoTxt}.\n\nPor seguridad del vehículo NO está permitido el suministro multiproducto.\n\nEl contador se ha reiniciado a 0. Vuelva a marcar el importe, el combustible y la calle.`);
-            return;
-        }
-
+        // === CASO PRE-PAGO (El cajero tecleó un importe > 0 expresamente para prepago) ===
         if (isPrepay) {
-            // === FLUJO EXCLUSIVO PRE-PAGO ===
-            // Validar que la calle no esté ocupada
+            if (!this.state.selectedFuel) {
+                // Abrir modal de confirmación para que seleccione el combustible del prepago
+                this.openAuthorizeModal(pump);
+                return;
+            }
+
             if (pump.status === "dispensing" || pump.status === "ready" || pump.amount > 0 || pump.statusText === "AUTORIZADO") {
                 alert(`⚠️ La Calle ${pump.id} ya está ocupada (${pump.statusText}).\nDebe cobrarse o liberarse antes de una nueva autorización.`);
                 return;
             }
 
-            // Preparar y añadir la línea de combustible al ticket
             await this.preparePrepayOrderLine(pump.id, this.state.selectedFuel, presetVal, isMoney);
-
-            // Limpiar importe prefijado en teclado y resetear combustible seleccionado
             this.state.presetValue = 0;
             this.state.selectedFuel = null;
-
-            // Abrir DIRECTAMENTE la pantalla/ventana de pago (PaymentScreen)
             this.goToPayment();
             return;
         }
 
-        // === CASO AUTORIZADOS (Suministro libre / Lleno / Modo Atendido) ===
-        // Sigue apareciendo la ventana flotante para confirmar el importe y combustible
-        this.openAuthorizeModal(pump);
+        // === CASO SUMINISTRO LIBRE / POSTPAGO / LLENO (presetVal === 0) ===
+        // Si el cajero no ha seleccionado combustible todavía, abrir la ventana modal para seleccionarlo
+        if (!this.state.selectedFuel) {
+            this.openAuthorizeModal(pump);
+            return;
+        }
+
+        // Si ya seleccionó el combustible, autorizar directamente la calle en pista:
+        // No salta la calculadora de pago, no se añade combustible ficticio a la orden,
+        // y los productos de tienda (ej. Coca-Cola) permanecen en el ticket hasta el cobro final.
+        await this.executeAuthorizePump(pump.id);
+        this.state.selectedFuel = null;
     }
 
     openAuthorizeModal(pump) {
         if (!pump) return;
         this.state.selectedPumpId = pump.id;
         this.state.authModalPump = pump;
-
-        // Si la orden actual ya contiene una linea de combustible, sincronizar selectedFuel con ese producto unico
-        const currentOrder = this.pos.get_order();
-        if (currentOrder) {
-            const lines = currentOrder.get_orderlines();
-            const fuelLine = lines.slice().reverse().find(l => {
-                if (!l.product) return false;
-                const c = (l.product.default_code || "").toUpperCase();
-                const n = (l.product.display_name || l.product.name || "").toLowerCase();
-                return c.includes("GAS_A") || c.includes("SP95") || c.includes("GAS_PLUS") || c.includes("GAS_B") ||
-                       n.includes("gasóleo") || n.includes("gasoleo") || n.includes("sin plomo") || n.includes("diesel");
-            });
-            if (fuelLine && fuelLine.product) {
-                const c = (fuelLine.product.default_code || "").toUpperCase();
-                const n = (fuelLine.product.display_name || fuelLine.product.name || "").toLowerCase();
-                if (c.includes("SP95") || n.includes("sin plomo") || n.includes("95")) {
-                    this.state.selectedFuel = "95";
-                } else if (c.includes("GAS_PLUS") || n.includes("plus") || n.includes("g+")) {
-                    this.state.selectedFuel = "G+";
-                } else if (c.includes("GAS_B") || n.includes("gasóleo b") || n.includes("diesel b")) {
-                    this.state.selectedFuel = "GB";
-                } else {
-                    this.state.selectedFuel = "GA";
-                }
-
-                if ((!this.state.presetValue || this.state.presetValue <= 0) && fuelLine.get_price_with_tax() > 0) {
-                    this.state.presetValue = fuelLine.get_price_with_tax();
-                    this.state.mode = "money";
-                }
-            }
-        }
 
         // Si la calle ya tiene un preset o combustible previo en curso, fijarlo a ese combustible
         if (this.state.pumpPresets && this.state.pumpPresets[pump.id] && this.state.pumpPresets[pump.id].code) {
@@ -4082,7 +4025,7 @@ export class UtrecarMainScreen extends Component {
         const pump = this.state.authModalPump || this.state.pumps.find(p => p.id === this.state.selectedPumpId);
         if (pump) {
             const isMoney = this.state.mode === "money";
-            const presetVal = this.state.presetValue;
+            const presetVal = this.state.presetValue || 0;
             const isLleno = (presetVal === 0 || (!isMoney && presetVal >= 999));
             const isPrepay = Boolean(presetVal > 0 && !isLleno);
 
@@ -4102,6 +4045,7 @@ export class UtrecarMainScreen extends Component {
                 this.goToPayment();
             } else {
                 await this.executeAuthorizePump(pump.id);
+                this.state.selectedFuel = null;
             }
         }
     }
@@ -4418,6 +4362,7 @@ export class UtrecarMainScreen extends Component {
         }
 
         this.state.presetValue = 0;
+        this.state.selectedFuel = null;
         this.state.selectedPumpId = pumpId;
     }
 
