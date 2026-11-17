@@ -916,8 +916,13 @@ class PosGasStationController(http.Controller):
 
         now = time.time()
         overrides = STATION_PUMP_OVERRIDES.get(config_id, {})
-        # Limpieza de overrides expirados (máximo 4 segundos de gracia para respuesta inmediata del clic)
-        expired_pids = [pid for pid, o in overrides.items() if (now - o.get('_timestamp', now)) > OVERRIDE_TIMEOUT_SECONDS]
+        # Limpieza de overrides expirados (para autorizaciones/prepagos hasta 600s mientras el cliente llega al coche)
+        expired_pids = []
+        for pid, o in overrides.items():
+            is_auth = bool(o.get('has_prepay') or o.get('preset_amount', 0) > 0 or o.get('is_lleno'))
+            timeout = 600.0 if is_auth else OVERRIDE_TIMEOUT_SECONDS
+            if (now - o.get('_timestamp', now)) > timeout:
+                expired_pids.append(pid)
         for pid in expired_pids:
             del overrides[pid]
 
@@ -928,16 +933,30 @@ class PosGasStationController(http.Controller):
             hw_amount = float(pump.get('amount') or 0.0)
             hw_is_descolgada = bool(pump.get('is_descolgada'))
 
-            # Si el hardware físico ya está suministrando en vivo (litros/euros corriendo)
-            # o la manguera física ya se ha descolgado en pista
-            # o ya finalizó repostaje ('ready') o pasaron más de 4s:
-            # la telemetría viva del hardware es la prioridad absoluta y el override se descarta.
             if pid in overrides:
                 ov = overrides[pid]
+                is_auth = bool(ov.get('has_prepay') or ov.get('preset_amount', 0) > 0 or ov.get('is_lleno'))
+                timeout = 600.0 if is_auth else OVERRIDE_TIMEOUT_SECONDS
                 ov_age = now - ov.get('_timestamp', now)
-                if hw_is_descolgada or hw_status in ('dispensing', 'ready') or hw_liters > 0.02 or hw_amount > 0.02 or ov_age > OVERRIDE_TIMEOUT_SECONDS:
+
+                if hw_status == 'ready' or ov_age > timeout:
+                    # Finalizó el repostaje en hardware o expiró
                     del overrides[pid]
+                elif hw_is_descolgada or hw_status == 'dispensing' or hw_liters > 0.02 or hw_amount > 0.02:
+                    # El cliente ya está suministrando en vivo: usar telemetría viva pero preservar metadatos de autorización
+                    pump['status'] = 'dispensing'
+                    pump['statusText'] = f'SUMINISTRO {hw_liters:.2f}L' if hw_liters > 0 else 'SUMINISTRO'
+                    pump['liters'] = hw_liters
+                    pump['amount'] = hw_amount
+                    pump['is_descolgada'] = hw_is_descolgada
+                    if is_auth:
+                        pump['has_prepay'] = ov.get('has_prepay', False)
+                        pump['preset_amount'] = ov.get('preset_amount', 0.0)
+                        pump['is_lleno'] = ov.get('is_lleno', False)
+                        if ov.get('fuel'):
+                            pump['fuel'] = ov.get('fuel')
                 else:
+                    # Esperando a que el cliente llegue al coche y descuelgue: mantener activo en verde
                     ov_clean = {k: v for k, v in ov.items() if not k.startswith('_')}
                     ov_clean['is_descolgada'] = hw_is_descolgada
                     pumps[i] = ov_clean
@@ -1003,6 +1022,30 @@ class PosGasStationController(http.Controller):
             request.env['ir.config_parameter'].sudo().set_param(cmd_key, json.dumps(cmd_payload))
         except Exception as e:
             _logger.error(f'Error guardando comando {cmd_key}: {e}')
+
+        # Actualizar directamente pumps_state_{cfg} en BD para persistencia inmediata (incluso ante cortes temporales de red/luz en pista)
+        param_key = f'pos_gas_station.pumps_state_{cfg}'
+        try:
+            status_raw = request.env['ir.config_parameter'].sudo().get_param(param_key)
+            if status_raw:
+                data = json.loads(status_raw)
+                p_list = data.get('pumps', []) if isinstance(data, dict) else data
+                for p in p_list:
+                    if p.get('id') == pid:
+                        p['status'] = 'dispensing'
+                        p['statusText'] = status_txt
+                        p['fuel'] = fuel_name
+                        p['amount'] = 0.0 if is_lleno else amt
+                        p['liters'] = 0.0 if is_lleno else lts
+                        p['preset_amount'] = 0.0 if is_lleno else amt
+                        p['has_prepay'] = is_prepay
+                        p['is_lleno'] = is_lleno
+                        p['updated_at'] = time.time()
+                if isinstance(data, dict):
+                    data['pumps'] = p_list
+                request.env['ir.config_parameter'].sudo().set_param(param_key, json.dumps(data))
+        except Exception as e:
+            _logger.debug(f'Aviso actualizando pumps_state_{cfg} en autorizacion: {e}')
 
         return {'status': 'authorized', 'pump_id': pid}
 

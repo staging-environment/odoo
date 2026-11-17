@@ -256,6 +256,26 @@ export class UtrecarMainScreen extends Component {
                 this.pos.pendingSales = {};
             }
         }
+        // Purgar posibles reembolsos espurios con 0 litros y 0 euros generados por errores de temporización previos
+        if (this.pos && this.pos.pendingSales) {
+            let cleanedPending = false;
+            for (const pid in this.pos.pendingSales) {
+                if (Array.isArray(this.pos.pendingSales[pid])) {
+                    const origLen = this.pos.pendingSales[pid].length;
+                    this.pos.pendingSales[pid] = this.pos.pendingSales[pid].filter(s => 
+                        !(s.isPrepayRefund && (s.dispensedAmount || 0) <= 0.02 && (s.dispensedLiters || 0) <= 0.02)
+                    );
+                    if (this.pos.pendingSales[pid].length !== origLen) {
+                        cleanedPending = true;
+                    }
+                }
+            }
+            if (cleanedPending) {
+                try {
+                    localStorage.setItem(`pos_gas_station_pending_sales_${this.configId}`, JSON.stringify(this.pos.pendingSales));
+                } catch (e) {}
+            }
+        }
 
         // Cargar presets/prepagos activos desde almacenamiento persistente
         if (!this.pos.pumpPresets) {
@@ -357,7 +377,7 @@ export class UtrecarMainScreen extends Component {
             authModalPump: null,
             isCancelModalOpen: false,
             cancelModalPump: null,
-            pumpPresets: {},
+            pumpPresets: Object.assign({}, (this.pos && this.pos.pumpPresets) || {}),
             isPageDropdownOpen: false,
             currentStorePage: 1,
             selectedModalCategory: null,
@@ -1334,30 +1354,45 @@ export class UtrecarMainScreen extends Component {
                             if (p.amount > 0) presetInfo.maxDispensedAmount = Math.max(presetInfo.maxDispensedAmount || 0, p.amount);
                             if (p.liters > 0) presetInfo.maxDispensedLiters = Math.max(presetInfo.maxDispensedLiters || 0, p.liters);
 
+                            // Detectar si el cliente ha iniciado realmente el repostaje (descolgado o litros/euros > 0)
+                            const hasStartedDispensing = Boolean(
+                                presetInfo.hasStartedDispensing ||
+                                p.amount > 0.05 ||
+                                p.liters > 0.05 ||
+                                (presetInfo.maxDispensedAmount || 0) > 0.05 ||
+                                (presetInfo.maxDispensedLiters || 0) > 0.05 ||
+                                isUnhookedNow ||
+                                wasUnhookedPrev
+                            );
+                            if (hasStartedDispensing) {
+                                presetInfo.hasStartedDispensing = true;
+                            }
+
                             // Detectar si el prepago ha finalizado en hardware/servidor
-                            const isDone = (p.status === "ready") || 
-                                           (!p.has_prepay && (!p.preset_amount || p.preset_amount === 0) && p.status !== "dispensing") ||
-                                           (p.status === "blocked" && (p.amount > 0 || (presetInfo.maxDispensedAmount || 0) > 0)) ||
-                                           (p.status === "idle" && (p.amount > 0 || (presetInfo.maxDispensedAmount || 0) > 0)) ||
-                                           (p.amount > 0 && p.status !== "dispensing" && Math.abs(p.amount - presetInfo.amount) > 0.05);
+                            // REGLA CRÍTICA: Un prepago NUNCA finaliza si no ha empezado a suministrar en pista
+                            const finalAmt = (p.amount > 0 ? p.amount : (presetInfo.maxDispensedAmount || 0));
+                            const finalLts = (p.liters > 0 ? p.liters : (presetInfo.maxDispensedLiters || 0));
+                            const presetAmt = presetInfo.amount || 0;
+                            const diffAmt = Math.round((presetAmt - finalAmt) * 100) / 100;
+
+                            const isDone = hasStartedDispensing && (
+                                (p.status === "ready") || 
+                                (!isUnhookedNow && (p.status === "blocked" || p.status === "idle" || p.status === "atendido")) ||
+                                (p.status !== "dispensing" && Math.abs(finalAmt - presetAmt) <= 0.05)
+                            );
 
                             if (isDone) {
-                                const finalAmt = (p.amount > 0 ? p.amount : (presetInfo.maxDispensedAmount || 0));
-                                const finalLts = (p.liters > 0 ? p.liters : (presetInfo.maxDispensedLiters || 0));
-                                const presetAmt = presetInfo.amount || 0;
-                                const diffAmt = Math.round((presetAmt - finalAmt) * 100) / 100;
-
-                                if (diffAmt > 0.05) {
-                                    // SOBRANTE DE PREPAGO DETECTADO: El cliente no echó la cantidad completa
+                                if (diffAmt > 0.05 && finalAmt > 0) {
+                                    // SOBRANTE DE PREPAGO DETECTADO: El cliente echó parte del combustible, pero sobró dinero
                                     this.registerPrepayRefund(p, presetInfo, finalAmt, finalLts);
                                 } else {
-                                    // Prepago completado al 100%
+                                    // Prepago completado al 100% (o sin sobrante)
                                     if (this.state.pumpPresets) delete this.state.pumpPresets[p.id];
                                     if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
                                     this.savePumpPresets();
                                 }
                             } else {
-                                // MANTENER EN PANTALLA EL SURTIDOR SUMINISTRANDO CON LITROS EN TIEMPO REAL
+                                // MANTENER EN PANTALLA EL SURTIDOR EN VERDE (AUTORIZADO O SUMINISTRANDO)
                                 p.status = "dispensing";
                                 if (p.liters > 0 || p.amount > 0) {
                                     p.statusText = `SUMINISTRO ${p.liters.toFixed(2)}L`;
@@ -1371,17 +1406,35 @@ export class UtrecarMainScreen extends Component {
                                 }
                             }
                         } else if (presetInfo) {
-                            if (p.status === "ready" || p.status === "blocked" || p.status === "idle") {
+                            const hasStartedDispensing = Boolean(
+                                presetInfo.hasStartedDispensing ||
+                                p.amount > 0.05 ||
+                                p.liters > 0.05 ||
+                                isUnhookedNow ||
+                                wasUnhookedPrev
+                            );
+                            if (hasStartedDispensing) {
+                                presetInfo.hasStartedDispensing = true;
+                            }
+
+                            const isNonPrepayDone = (p.status === "ready") || 
+                                                    (hasStartedDispensing && !isUnhookedNow && (p.status === "blocked" || p.status === "idle"));
+
+                            if (isNonPrepayDone) {
                                 if (this.state.pumpPresets) delete this.state.pumpPresets[p.id];
                                 if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[p.id];
                                 this.savePumpPresets();
-                            } else if (p.status === "dispensing") {
+                            } else {
+                                // Mantener activo mientras espera al cliente o suministra
+                                p.status = "dispensing";
                                 p.preset_amount = presetInfo.amount;
                                 p.has_prepay = false;
                                 if (p.liters > 0 || p.amount > 0) {
                                     p.statusText = `SUMINISTRO ${p.liters.toFixed(2)}L`;
+                                } else {
+                                    p.statusText = presetInfo.isLleno ? "LLENO (POSTPAGO)" : (presetInfo.amount > 0 ? `AUTORIZADO ${presetInfo.amount.toFixed(2)} €` : "AUTORIZADO");
                                 }
-                                if (!p.fuel || p.fuel === "N/A") {
+                                if (!p.fuel || p.fuel === "N/A" || p.fuel.includes("/")) {
                                     p.fuel = presetInfo.fuel;
                                 }
                             }
@@ -3688,6 +3741,10 @@ export class UtrecarMainScreen extends Component {
     }
 
     registerPrepayRefund(pump, presetInfo, finalAmt, finalLts) {
+        if ((finalAmt || 0) <= 0.02 && (finalLts || 0) <= 0.02) {
+            // Protección: No se suministró combustible en pista; no generar falso sobrante de prepago
+            return;
+        }
         const isMoney = Boolean(presetInfo.isMoney);
         const unitPrice = presetInfo.unitPrice || pump.price || 1.45;
         let diffAmt = 0;
@@ -3815,7 +3872,10 @@ export class UtrecarMainScreen extends Component {
 
     savePumpPresets() {
         try {
-            localStorage.setItem(`pos_gas_station_pump_presets_${this.configId}`, JSON.stringify(this.pos.pumpPresets || {}));
+            if (this.state && this.state.pumpPresets && this.pos) {
+                this.pos.pumpPresets = Object.assign({}, this.state.pumpPresets);
+            }
+            localStorage.setItem(`pos_gas_station_pump_presets_${this.configId}`, JSON.stringify((this.pos && this.pos.pumpPresets) || {}));
         } catch (e) {
             console.debug("Error guardando pumpPresets:", e);
         }
