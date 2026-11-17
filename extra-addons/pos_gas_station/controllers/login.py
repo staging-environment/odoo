@@ -415,11 +415,6 @@ class UtrecarLogin(Home):
             request.session.session_token = security.compute_session_token(request.session, request.env)
             request.session.rotate = True
 
-            # Si el usuario es Administrador del sistema, redirige directamente a la administración /web
-            if self._is_admin_user(user):
-                _logger.info("Usuario Administrador %s autenticado desde pantalla de estación %s -> /web", user.name, station.name)
-                return request.redirect('/web')
-
             # Para acceder al TPV debe estar activo en la empresa de esta estación
             if not user.is_employee_for_company(station.company_id.id):
                 _logger.warning("Usuario %s no tiene acceso activo para %s", user.name, station.company_id.name)

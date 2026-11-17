@@ -3473,13 +3473,22 @@
                     </button>
                     <button class="button btn btn-lg btn-secondary" t-att-disabled="!canCancel()" t-on-click="cancel">Descartar</button>
                 </div>
+                <div class="modal-footer-right d-flex gap-2">
+                    <button class="button icon btn btn-lg btn-dark fw-bold text-white shadow-sm"
+                        t-on-click="() => this.printShiftReport()"
+                        title="Imprimir o previsualizar el informe de ventas y cierre del turno actual antes de cerrar">
+                        <i class="fa fa-print me-1"/> Imprimir Informe de Turno
+                    </button>
+                </div>
             </footer>
         </div>
     </t>
 
-    <!-- SOBRESCRIBIR CLOSEPOSPOPUP BASE DE ODOO: ELIMINAR IMPRESIÓN PREVIA AL CIERRE -->
+    <!-- SOBRESCRIBIR CLOSEPOSPOPUP BASE DE ODOO: HABILITAR IMPRESIÓN DIRECTA DE CIERRE DE TURNO -->
     <t t-name="pos_gas_station.ClosePosPopupInherit" t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension" owl="1">
-        <xpath expr="//button[@t-on-click='downloadSalesReport']" position="replace"/>
+        <xpath expr="//button[@t-on-click='downloadSalesReport']" position="attributes">
+            <attribute name="title">Imprimir informe de ventas y cierre del turno actual</attribute>
+        </xpath>
     </t>
 
 

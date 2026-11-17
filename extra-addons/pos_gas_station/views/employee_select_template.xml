@@ -593,6 +593,15 @@
 
             <script type="text/javascript"><![CDATA[
             (function() {
+                // Limpiar cualquier hash residual (#action=...) de redirecciones previas del WebClient
+                if (window.location.hash) {
+                    try {
+                        history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                    } catch (e) {
+                        window.location.hash = '';
+                    }
+                }
+
                 // Lista de empleados con rol Empleado
                 var EMPLOYEES = [];
                 try {
@@ -647,12 +656,28 @@
                     document.getElementById('selectedEmployeeId').value = empId;
                     document.getElementById('loadingOverlay').style.display = 'flex';
 
+                    // Limpiar hash antes del POST para evitar que el navegador lo arrastre tras la redirección
+                    if (window.location.hash) {
+                        try {
+                            history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                        } catch (e) {
+                            window.location.hash = '';
+                        }
+                    }
+
+                    var form = document.getElementById('employeeLoginForm');
+                    if (form) {
+                        form.action = window.location.origin + '/pos_gas_station/station_login';
+                    }
+
                     function submitForm() {
                         var latInput = document.getElementById('employeeLat');
                         var lngInput = document.getElementById('employeeLng');
                         if (latInput && userCoords.lat) latInput.value = userCoords.lat;
                         if (lngInput && userCoords.lng) lngInput.value = userCoords.lng;
-                        document.getElementById('employeeLoginForm').submit();
+                        if (form) {
+                            form.submit();
+                        }
                     }
 
                     if (!userCoords.lat && navigator.geolocation) {
@@ -662,7 +687,7 @@
                                 submitted = true;
                                 submitForm();
                             }
-                        }, 1200);
+                        }, 800);
 
                         navigator.geolocation.getCurrentPosition(
                             function(position) {
@@ -681,7 +706,7 @@
                                     submitForm();
                                 }
                             },
-                            { enableHighAccuracy: true, timeout: 1200, maximumAge: 60000 }
+                            { enableHighAccuracy: true, timeout: 800, maximumAge: 60000 }
                         );
                     } else {
                         submitForm();
@@ -791,6 +816,15 @@
                 function handleCodeSubmit() {
                     var code = searchCodeInput.value.trim();
                     if (!code) {
+                        // Si solo hay 1 único empleado autorizado en la estación, seleccionarlo directamente
+                        if (EMPLOYEES && EMPLOYEES.length === 1) {
+                            selectEmployeeById(EMPLOYEES[0].id);
+                            return;
+                        }
+                        if (currentFiltered.length === 1) {
+                            selectEmployeeById(currentFiltered[0].id);
+                            return;
+                        }
                         searchCodeInput.focus();
                         return;
                     }
