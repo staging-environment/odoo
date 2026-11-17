@@ -390,14 +390,12 @@ class PosConfig(models.Model):
 
         session = Session.search([
             ('config_id', '=', self.id),
-            ('state', 'in', ['opened', 'opening_control'])
+            ('state', '!=', 'closed')
         ], limit=1)
 
         if session:
-            if session.state == 'opening_control':
-                session.action_pos_session_open()
-                if session.state == 'opening_control':
-                    session.write({'state': 'opened'})
+            if session.state in ['opening_control', 'closing_control']:
+                session.write({'state': 'opened'})
             if session.user_id != user:
                 # El usuario anterior entrega el turno al nuevo usuario
                 prev_user = session.user_id

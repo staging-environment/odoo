@@ -70,7 +70,7 @@ class UtrecarPosController(PosController):
 
             active_session = request.env['pos.session'].sudo().search([
                 ('config_id', '=', config.id),
-                ('state', '=', 'opened')
+                ('state', 'in', ['opened', 'opening_control'])
             ], limit=1)
 
             if not active_session or k.get('select_employee'):
@@ -263,7 +263,7 @@ class UtrecarLogin(Home):
         if station:
             active_session = request.env['pos.session'].sudo().search([
                 ('config_id', '=', station.id),
-                ('state', '=', 'opened')
+                ('state', 'in', ['opened', 'opening_control'])
             ], limit=1)
             if active_session:
                 return request.redirect(f'/pos/ui?config_id={station.id}')
