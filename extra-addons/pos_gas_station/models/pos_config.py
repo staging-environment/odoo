@@ -63,6 +63,22 @@ class PosConfig(models.Model):
             return False
         clean_ip = str(ip).strip()
         
+        # 0. Comprobación de acceso temporal autorizado (3 horas) para administradores en soporte
+        try:
+            import time
+            ICP = self.env['ir.config_parameter'].sudo()
+            temp_until = float(ICP.get_param('pos_gas_station.temp_repsol_until', '0') or '0')
+            if temp_until and time.time() < temp_until:
+                temp_ips = [x.strip() for x in (ICP.get_param('pos_gas_station.temp_repsol_ip', '') or '').split(',') if x.strip()]
+                if clean_ip in temp_ips:
+                    repsol_cfg = self.sudo().browse(7)
+                    if repsol_cfg.exists():
+                        if not repsol_cfg.active:
+                            repsol_cfg.sudo().write({'active': True})
+                        return repsol_cfg
+        except Exception:
+            pass
+
         # 1. Búsqueda en base de datos en pos.config con vpn_ip configurada
         configs = self.sudo().search([('active', 'in', [True, False])])
         for cfg in configs:

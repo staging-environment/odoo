@@ -139,11 +139,29 @@ class UtrecarLogin(Home):
             return forwarded_for.split(',')[0].strip()
         return (request.httprequest.remote_addr or '').strip()
 
+    def _is_temp_repsol_active(self, ip, token=None):
+        """Comprueba si hay una autorización temporal activa (3 horas) para acceder al TPV de Repsol desde esta IP o token."""
+        try:
+            import time
+            ICP = request.env['ir.config_parameter'].sudo()
+            temp_until = float(ICP.get_param('pos_gas_station.temp_repsol_until', '0') or '0')
+            if temp_until and time.time() < temp_until:
+                temp_ips = [x.strip() for x in (ICP.get_param('pos_gas_station.temp_repsol_ip', '') or '').split(',') if x.strip()]
+                temp_token = (ICP.get_param('pos_gas_station.temp_repsol_token', '') or '').strip()
+                clean_ip = str(ip or '').strip()
+                if (clean_ip and clean_ip in temp_ips) or (token and str(token).strip() == temp_token):
+                    return True
+        except Exception as e:
+            _logger.warning("Error comprobando temp_repsol_active: %s", e)
+        return False
+
     def _is_station_vpn_ip(self, ip):
         """Comprueba si la IP corresponde a un puesto de gasolinera en pos.config."""
         if not ip:
             return False
         clean_ip = str(ip).strip()
+        if self._is_temp_repsol_active(clean_ip):
+            return True
         if self._is_admin_vpn_ip(clean_ip):
             return False
         PosConfig = request.env['pos.config'].sudo()
@@ -155,6 +173,10 @@ class UtrecarLogin(Home):
         if not ip:
             return False
         clean_ip = str(ip).strip()
+        if self._is_temp_repsol_active(clean_ip):
+            station = request.env['pos.config'].sudo().browse(7)
+            if station.exists():
+                return station
         PosConfig = request.env['pos.config'].sudo()
         station = PosConfig.get_station_by_vpn_ip(clean_ip)
         if station and station.exists():
@@ -426,21 +448,25 @@ class UtrecarLogin(Home):
             target += f'?station_id={config_id}'
         return request.redirect(target)
 
-    @http.route(['/pos_gas_station/admin_tpv', '/pos_gas_station/repsol_tpv'], type='http', auth='none', sitemap=False)
-    def admin_tpv(self, station_id=7, **kw):
-        """Acceso excepcional de Administrador al TPV de la estación (por defecto Repsol ID 7)."""
+    @http.route(['/pos_gas_station/admin_tpv', '/pos_gas_station/repsol_tpv', '/pos_gas_station/temp_repsol'], type='http', auth='none', sitemap=False)
+    def admin_tpv(self, station_id=7, token=None, **kw):
+        """Acceso temporal y excepcional de Administrador al TPV de la estación (por defecto Repsol ID 7)."""
+        import time
         ip = self._get_client_ip()
+        is_temp = self._is_temp_repsol_active(ip, token=token)
         is_admin_ip = self._is_admin_vpn_ip(ip)
         current_uid = request.session.uid
         user = request.env['res.users'].sudo().browse(current_uid) if current_uid else None
         is_admin = is_admin_ip or bool(user and self._is_admin_user(user))
 
-        if not is_admin:
-            _logger.warning("Intento no autorizado a admin_tpv desde IP %s", ip)
+        if not is_temp and not is_admin:
+            _logger.warning("Intento no autorizado a repsol_tpv desde IP %s (temp=%s, admin=%s)", ip, is_temp, is_admin)
             return request.redirect('/pos_gas_station/select_employee')
 
-        if not user or not self._is_admin_user(user):
-            user = self._auto_login_super_admin()
+        # Auto-login como Administrador / Jose (Bonilla) para la compañía A.R. Trieste (ID 4 - Repsol)
+        vpn_admin = self._get_vpn_admin(ip)
+        target_user = vpn_admin.user_id if vpn_admin and vpn_admin.user_id else None
+        user = self._auto_login_super_admin(user=target_user, company_id=4)
 
         PosConfig = request.env['pos.config'].sudo()
         station = PosConfig.browse(int(station_id or 7))
@@ -449,4 +475,4 @@ class UtrecarLogin(Home):
 
         # Abrir o activar turno para el administrador
         station.open_shift_for_user(user)
-        return request.redirect(f'/pos/ui?config_id={station.id}')
+        return request.redirect(f'/pos/ui?config_id={station.id}#cids=4')
