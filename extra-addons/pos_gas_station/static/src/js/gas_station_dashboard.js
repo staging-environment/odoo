@@ -40,6 +40,24 @@ export class GasStationDashboard extends Component {
             customerSortField: "name",
             customerSortDir: "asc",
             customerLoading: false,
+            // Pestaña de Productos
+            productSearchTerm: "",
+            productCategoryFilter: "all", // 'all' | 'fuel' | 'store'
+            productPage: 1,
+            productPageSize: 30,
+            productTotalCount: 0,
+            productSortField: "code",
+            productSortDir: "asc",
+            productLoading: false,
+            editingProductId: null,
+            editingProductPrice: "",
+            isSavingPrice: false,
+            // Pestaña de Tanques y Ajustes
+            isAdjustTankModalOpen: false,
+            selectedAdjustTank: null,
+            adjustTankLiters: 0,
+            adjustTankReason: "Aforo físico periódico",
+            isSavingTankAdjust: false,
             canManageStaff: false,
             allAuthorizedCompanies: [],
             selectedCompanyId: null,
@@ -609,6 +627,12 @@ export class GasStationDashboard extends Component {
         this.state.customerTotalCount = 0;
         this.state.customerSortField = "name";
         this.state.customerSortDir = "asc";
+        this.state.productSearchTerm = "";
+        this.state.productCategoryFilter = "all";
+        this.state.productPage = 1;
+        this.state.productTotalCount = 0;
+        this.state.editingProductId = null;
+        this.state.editingProductPrice = "";
         await this.loadCompanyDetailData(comp.id);
     }
 
@@ -623,6 +647,9 @@ export class GasStationDashboard extends Component {
                 this.state.customerTotalCount = (data.customer_stats && typeof data.customer_stats.total === "number")
                     ? data.customer_stats.total
                     : (data.customers ? data.customers.length : 0);
+                this.state.productTotalCount = (data.product_stats && typeof data.product_stats.total === "number")
+                    ? data.product_stats.total
+                    : (data.products ? data.products.length : 0);
             } else {
                 this.notification.add(data.message || "Error al cargar detalle de empresa", { type: "danger" });
             }
@@ -816,6 +843,177 @@ export class GasStationDashboard extends Component {
             },
             target: "current"
         });
+    }
+
+    // ==================== GESTIÓN DE PRODUCTOS Y TARIFAS ====================
+    get productTotalPages() {
+        if (!this.state.productTotalCount || this.state.productTotalCount <= 0) return 1;
+        return Math.ceil(this.state.productTotalCount / this.state.productPageSize);
+    }
+
+    async setProductCategoryFilter(cat) {
+        if (this.state.productCategoryFilter === cat) return;
+        this.state.productCategoryFilter = cat;
+        this.state.productPage = 1;
+        await this.searchCompanyProducts();
+    }
+
+    async onProductSearchInput(ev) {
+        this.state.productSearchTerm = ev.target.value;
+        this.state.productPage = 1;
+        if (this._productSearchTimeout) clearTimeout(this._productSearchTimeout);
+        this._productSearchTimeout = setTimeout(() => {
+            this.searchCompanyProducts();
+        }, 350);
+    }
+
+    async goToProductPage(page) {
+        const target = Math.max(1, Math.min(page, this.productTotalPages));
+        if (target === this.state.productPage) return;
+        this.state.productPage = target;
+        await this.searchCompanyProducts();
+    }
+
+    async searchCompanyProducts() {
+        if (!this.state.selectedDetailCompany) return;
+        this.state.productLoading = true;
+        try {
+            const offset = (this.state.productPage - 1) * this.state.productPageSize;
+            const res = await jsonrpc("/pos_gas_station/company_products", {
+                company_id: this.state.selectedDetailCompany.id,
+                search_term: this.state.productSearchTerm,
+                category_type: this.state.productCategoryFilter,
+                limit: this.state.productPageSize,
+                offset: offset,
+                sort_field: this.state.productSortField,
+                sort_dir: this.state.productSortDir,
+            });
+            if (res && res.status === "success" && this.state.companyDetailData) {
+                this.state.companyDetailData.products = res.products || [];
+                this.state.productTotalCount = res.total || 0;
+            }
+        } catch (e) {
+            console.error("Error searching products:", e);
+        } finally {
+            this.state.productLoading = false;
+        }
+    }
+
+    startEditProductPrice(prod) {
+        this.state.editingProductId = prod.id;
+        this.state.editingProductPrice = String(prod.list_price || "0.000");
+    }
+
+    cancelEditProductPrice() {
+        this.state.editingProductId = null;
+        this.state.editingProductPrice = "";
+    }
+
+    async saveProductPrice(prod) {
+        if (!this.state.editingProductId || this.state.editingProductId !== prod.id) return;
+        this.state.isSavingPrice = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/update_product_price", {
+                product_id: prod.id,
+                new_price: this.state.editingProductPrice,
+            });
+            if (res && res.status === "success") {
+                prod.list_price = res.new_price;
+                this.notification.add(res.message, { type: "success" });
+                this.cancelEditProductPrice();
+            } else {
+                this.notification.add((res && res.message) || "Error al actualizar precio", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error updating price:", e);
+            this.notification.add("Error de conexión al actualizar precio", { type: "danger" });
+        } finally {
+            this.state.isSavingPrice = false;
+        }
+    }
+
+    openCreateProduct() {
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            res_model: "product.template",
+            views: [[false, "form"]],
+            context: {
+                default_company_id: compId,
+            },
+            target: "current"
+        });
+    }
+
+    openOdooProductsView() {
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: `Catálogo de Productos - ${this.state.selectedDetailCompany ? this.state.selectedDetailCompany.name : ''}`,
+            res_model: "product.template",
+            views: [[false, "kanban"], [false, "list"], [false, "form"]],
+            domain: compId ? ["|", ["company_id", "=", false], ["company_id", "=", compId]] : [],
+            context: {
+                default_company_id: compId,
+            },
+            target: "current"
+        });
+    }
+
+    openOdooStockPickingView() {
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: `Recepciones y Descargas - ${this.state.selectedDetailCompany ? this.state.selectedDetailCompany.name : ''}`,
+            res_model: "stock.picking",
+            views: [[false, "list"], [false, "form"]],
+            domain: compId ? [["company_id", "=", compId]] : [],
+            context: {
+                default_company_id: compId,
+            },
+            target: "current"
+        });
+    }
+
+    // ==================== GESTIÓN DE TANQUES Y AFOROS ====================
+    openAdjustTankModal(tank) {
+        this.state.selectedAdjustTank = tank;
+        this.state.adjustTankLiters = tank.current_liters || 0;
+        this.state.adjustTankReason = "Aforo físico periódico";
+        this.state.isAdjustTankModalOpen = true;
+    }
+
+    closeAdjustTankModal() {
+        this.state.isAdjustTankModalOpen = false;
+        this.state.selectedAdjustTank = null;
+    }
+
+    async saveTankAdjustment() {
+        if (!this.state.selectedAdjustTank) return;
+        this.state.isSavingTankAdjust = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/adjust_tank_stock", {
+                location_id: this.state.selectedAdjustTank.id,
+                new_liters: this.state.adjustTankLiters,
+                reason: this.state.adjustTankReason,
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                this.state.selectedAdjustTank.current_liters = res.new_liters;
+                if (this.state.selectedAdjustTank.capacity_liters > 0) {
+                    this.state.selectedAdjustTank.fill_pct = Math.min(100.0, Math.max(0.0, Math.round((res.new_liters / this.state.selectedAdjustTank.capacity_liters) * 1000) / 10));
+                    this.state.selectedAdjustTank.status = this.state.selectedAdjustTank.fill_pct < 15 ? 'Nivel crítico' : (this.state.selectedAdjustTank.fill_pct < 30 ? 'Nivel bajo' : 'Operativo');
+                }
+                this.closeAdjustTankModal();
+            } else {
+                this.notification.add((res && res.message) || "Error al ajustar nivel", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error adjusting tank:", e);
+            this.notification.add("Error de conexión al ajustar nivel de tanque", { type: "danger" });
+        } finally {
+            this.state.isSavingTankAdjust = false;
+        }
     }
 
     async switchDashboardCompany(companyId) {

@@ -1679,20 +1679,79 @@ class PosGasStationController(http.Controller):
 
         customers_data = self._serialize_company_customers(partners, company.name)
 
-        # 3. Inventario / Stock
+        # 3. Productos y Tarifas de la empresa
+        prod_domain = ['|', ('company_id', '=', False), ('company_id', '=', company.id)]
+        total_products = env['product.template'].sudo().search_count(prod_domain)
+        fuel_codes = ['GAS_A', 'SP95', 'GAS_PLUS', 'GAS_B', '1', '2']
+        fuels_count = env['product.template'].sudo().search_count(prod_domain + [
+            '|', ('default_code', 'in', fuel_codes),
+            '|', ('name', 'ilike', 'gasóleo'),
+            '|', ('name', 'ilike', 'gasoleo'),
+            '|', ('name', 'ilike', 'sin plomo'),
+            ('name', 'ilike', 'diesel')
+        ])
+        store_count = max(0, total_products - fuels_count)
+        initial_products = env['product.template'].sudo().search(
+            prod_domain,
+            order='default_code asc nulls last, name asc, id asc',
+            limit=30
+        )
+        products_data = self._serialize_company_products(initial_products)
+
+        # 4. Almacenes y Tanques físicos de combustible
         warehouses = env['stock.warehouse'].sudo().search([('company_id', '=', company.id)])
         warehouses_data = [{'id': w.id, 'name': w.name, 'code': w.code} for w in warehouses]
 
-        # Carburantes
-        fuels = [
-            {'code': 'GA', 'name': 'Gasóleo A', 'price': '1.389 €/L', 'status': 'En servicio'},
-            {'code': '95', 'name': 'Sin Plomo 95', 'price': '1.499 €/L', 'status': 'En servicio'},
-            {'code': 'G+', 'name': 'Gasóleo Plus', 'price': '1.489 €/L', 'status': 'En servicio'},
-        ]
-
-        total_products = env['product.template'].sudo().search_count([
-            '|', ('company_id', '=', False), ('company_id', '=', company.id)
+        # Tanques asociados a la empresa o a sus almacenes
+        all_tanks = env['stock.location'].sudo().search([
+            ('usage', '=', 'internal'),
+            ('name', 'ilike', 'tanque'),
         ])
+        company_tanks = []
+        for loc in all_tanks:
+            wh_match = None
+            for wh in warehouses:
+                if wh.code and loc.complete_name.startswith(wh.code):
+                    wh_match = wh
+                    break
+            if wh_match or loc.company_id.id == company.id:
+                quants = env['stock.quant'].sudo().search([('location_id', '=', loc.id)])
+                total_liters = sum(q.quantity for q in quants)
+                name_upper = (loc.name or '').upper()
+                fuel_code = 'GA'
+                fuel_name = 'Gasóleo A'
+                badge_class = 'bg-warning text-dark'
+                if 'SIN PLOMO' in name_upper or 'SP95' in name_upper or '95' in name_upper or 'GASOLINA' in name_upper:
+                    fuel_code = '95'
+                    fuel_name = 'Sin Plomo 95'
+                    badge_class = 'bg-success text-white'
+                elif 'PLUS' in name_upper or 'G+' in name_upper:
+                    fuel_code = 'G+'
+                    fuel_name = 'Gasóleo Plus'
+                    badge_class = 'bg-danger text-white'
+                elif 'GASÓLEO B' in name_upper or 'GASOLEO B' in name_upper or 'GB' in name_upper:
+                    fuel_code = 'GB'
+                    fuel_name = 'Gasóleo B'
+                    badge_class = 'bg-primary text-white'
+
+                capacity = 30000.0
+                if 'T1' in name_upper or 'T2' in name_upper:
+                    capacity = 20000.0
+                fill_pct = min(100.0, max(0.0, round((total_liters / capacity) * 100.0, 1))) if capacity > 0 else 0.0
+
+                company_tanks.append({
+                    'id': loc.id,
+                    'name': loc.name,
+                    'complete_name': loc.complete_name,
+                    'warehouse_name': wh_match.name if wh_match else company.name,
+                    'fuel_code': fuel_code,
+                    'fuel_name': fuel_name,
+                    'badge_class': badge_class,
+                    'current_liters': round(total_liters, 2),
+                    'capacity_liters': capacity,
+                    'fill_pct': fill_pct,
+                    'status': 'Nivel crítico' if fill_pct < 15 else ('Nivel bajo' if fill_pct < 30 else 'Operativo'),
+                })
 
         return {
             'status': 'success',
@@ -1716,12 +1775,44 @@ class PosGasStationController(http.Controller):
                 'monthly': monthly_count,
                 'ordinary': ordinary_count,
             },
+            'products': products_data,
+            'product_stats': {
+                'total': total_products,
+                'fuels_count': fuels_count,
+                'store_count': store_count,
+            },
             'inventory': {
                 'warehouses': warehouses_data,
-                'fuels': fuels,
+                'tanks': company_tanks,
                 'total_products': total_products,
             }
         }
+
+    def _serialize_company_products(self, products):
+        """Serializa registros de product.template para el panel de administración."""
+        res = []
+        fuel_codes = ['GAS_A', 'SP95', 'GAS_PLUS', 'GAS_B', '1', '2']
+        for p in products:
+            p_name = p.name or ''
+            if isinstance(p_name, dict):
+                p_name = p_name.get('es_ES') or p_name.get('en_US') or (list(p_name.values())[0] if p_name else '')
+            code = p.default_code or ''
+            is_fuel = (code in fuel_codes) or any(k in str(p_name).lower() for k in ['gasóleo', 'gasoleo', 'sin plomo', 'gasolina', 'diesel'])
+            res.append({
+                'id': p.id,
+                'name': p_name,
+                'default_code': code,
+                'barcode': p.barcode or '',
+                'list_price': round(float(p.list_price or 0.0), 3) if is_fuel else round(float(p.list_price or 0.0), 2),
+                'type': p.type or 'consu',
+                'type_label': 'Almacenable' if p.type == 'product' else ('Servicio' if p.type == 'service' else 'Consumible'),
+                'categ_name': p.categ_id.name if p.categ_id else 'General',
+                'is_fuel': is_fuel,
+                'qty_available': round(float(p.qty_available or 0.0), 2) if hasattr(p, 'qty_available') else 0.0,
+                'has_image': bool(p.image_128),
+                'image_url': f'/web/image?model=product.template&id={p.id}&field=image_128' if p.image_128 else None,
+            })
+        return res
 
     def _serialize_company_customers(self, partners, company_name):
         """Serializa registros de res.partner para la tabla de clientes del panel."""
@@ -1802,6 +1893,145 @@ class PosGasStationController(http.Controller):
         except Exception as e:
             _logger.exception("Error in /pos_gas_station/company_customers: %s", e)
             return {'status': 'error', 'message': str(e), 'customers': [], 'total': 0}
+
+    @http.route('/pos_gas_station/company_products', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_company_products(self, company_id=None, search_term=None, category_type='all', limit=30, offset=0, sort_field='name', sort_dir='asc', **kw):
+        try:
+            env = request.env
+            company = env['res.company'].sudo().browse(int(company_id)) if company_id else None
+            domain = ['|', ('company_id', '=', False), ('company_id', '=', company.id)] if company else []
+
+            fuel_codes = ['GAS_A', 'SP95', 'GAS_PLUS', 'GAS_B', '1', '2']
+            fuel_filter = [
+                '|', ('default_code', 'in', fuel_codes),
+                '|', ('name', 'ilike', 'gasóleo'),
+                '|', ('name', 'ilike', 'gasoleo'),
+                '|', ('name', 'ilike', 'sin plomo'),
+                ('name', 'ilike', 'diesel')
+            ]
+
+            if category_type == 'fuel':
+                domain.extend(fuel_filter)
+            elif category_type == 'store':
+                domain.append(('default_code', 'not in', fuel_codes))
+                domain.append(('name', 'not ilike', 'gasóleo'))
+                domain.append(('name', 'not ilike', 'gasoleo'))
+                domain.append(('name', 'not ilike', 'sin plomo'))
+
+            q = (search_term or '').strip()
+            if q:
+                domain.extend([
+                    '|', '|',
+                    ('name', 'ilike', q),
+                    ('default_code', 'ilike', q),
+                    ('barcode', 'ilike', q)
+                ])
+
+            direction = 'desc' if str(sort_dir or '').lower() == 'desc' else 'asc'
+            sort_columns = {
+                'code': f'default_code {direction} nulls last, name asc, id asc',
+                'name': f'name {direction} nulls last, id asc',
+                'price': f'list_price {direction} nulls last, name asc, id asc',
+                'type': f'type {direction} nulls last, name asc, id asc',
+            }
+            order_clause = sort_columns.get(sort_field, f'default_code asc nulls last, name {direction} nulls last, id asc')
+
+            total_count = env['product.template'].sudo().search_count(domain)
+            products = env['product.template'].sudo().search(domain, order=order_clause, limit=int(limit or 30), offset=int(offset or 0))
+            products_data = self._serialize_company_products(products)
+
+            return {
+                'status': 'success',
+                'products': products_data,
+                'total': total_count
+            }
+        except Exception as e:
+            _logger.exception("Error in /pos_gas_station/company_products: %s", e)
+            return {'status': 'error', 'message': str(e), 'products': [], 'total': 0}
+
+    @http.route('/pos_gas_station/update_product_price', type='json', auth='user', methods=['POST'], csrf=False)
+    def update_product_price(self, product_id=None, new_price=None, **kw):
+        try:
+            env = request.env
+            if not product_id or new_price is None:
+                return {'status': 'error', 'message': 'ID de producto y nuevo precio obligatorios'}
+
+            prod = env['product.template'].sudo().browse(int(product_id))
+            if not prod.exists():
+                return {'status': 'error', 'message': 'Producto no encontrado'}
+
+            parsed_price = float(str(new_price).replace(',', '.'))
+            if parsed_price < 0:
+                return {'status': 'error', 'message': 'El precio no puede ser negativo'}
+
+            prod.write({'list_price': parsed_price})
+            p_name = prod.name
+            if isinstance(p_name, dict):
+                p_name = p_name.get('es_ES') or p_name.get('en_US') or (list(p_name.values())[0] if p_name else '')
+
+            return {
+                'status': 'success',
+                'message': f'Precio actualizado a {parsed_price:.3f} € para {p_name}',
+                'new_price': parsed_price,
+            }
+        except Exception as e:
+            _logger.exception("Error en update_product_price: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/adjust_tank_stock', type='json', auth='user', methods=['POST'], csrf=False)
+    def adjust_tank_stock(self, location_id=None, new_liters=None, reason=None, **kw):
+        try:
+            env = request.env
+            if not location_id or new_liters is None:
+                return {'status': 'error', 'message': 'Ubicación y litros son obligatorios'}
+
+            loc = env['stock.location'].sudo().browse(int(location_id))
+            if not loc.exists():
+                return {'status': 'error', 'message': 'Ubicación/Tanque no encontrado'}
+
+            parsed_liters = float(str(new_liters).replace(',', '.'))
+            if parsed_liters < 0:
+                return {'status': 'error', 'message': 'Los litros no pueden ser negativos'}
+
+            quants = env['stock.quant'].sudo().search([('location_id', '=', loc.id)], limit=1)
+            if quants:
+                product = quants.product_id
+            else:
+                loc_name = (loc.name or '').upper()
+                if '95' in loc_name or 'SIN PLOMO' in loc_name:
+                    product = env['product.product'].sudo().search([('default_code', '=', 'SP95')], limit=1)
+                elif 'PLUS' in loc_name or 'G+' in loc_name:
+                    product = env['product.product'].sudo().search([('default_code', '=', 'GAS_PLUS')], limit=1)
+                else:
+                    product = env['product.product'].sudo().search([('default_code', '=', 'GAS_A')], limit=1)
+
+            if not product:
+                return {'status': 'error', 'message': 'No se pudo identificar el producto de carburante para este tanque'}
+
+            quant = env['stock.quant'].sudo().search([
+                ('location_id', '=', loc.id),
+                ('product_id', '=', product.id),
+            ], limit=1)
+
+            if not quant:
+                quant = env['stock.quant'].sudo().create({
+                    'location_id': loc.id,
+                    'product_id': product.id,
+                    'inventory_quantity': parsed_liters,
+                })
+            else:
+                quant.inventory_quantity = parsed_liters
+
+            quant.action_apply_inventory()
+
+            return {
+                'status': 'success',
+                'message': f'Nivel de {loc.name} ajustado correctamente a {parsed_liters:.2f} L',
+                'new_liters': parsed_liters,
+            }
+        except Exception as e:
+            _logger.exception("Error ajustando stock de tanque: %s", e)
+            return {'status': 'error', 'message': str(e)}
 
     # ==================== GESTIÓN DE ADMINISTRADORES POR EMPRESA (VPN) ====================
     @http.route('/pos_gas_station/vpn_company_admins/data', type='json', auth='user', methods=['POST'], csrf=False)

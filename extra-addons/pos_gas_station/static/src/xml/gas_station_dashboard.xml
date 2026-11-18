@@ -361,10 +361,23 @@
                             </button>
 
                             <button class="btn btn-sm company-tab-btn"
-                                    t-att-class="state.detailTab === 'inventory' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
-                                    t-on-click="() => this.setDetailTab('inventory')">
+                                    t-att-class="state.detailTab === 'products' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
+                                    t-on-click="() => this.setDetailTab('products')">
+                                <i class="fa fa-tags"/>
+                                <span>Productos y Precios</span>
+                                <span class="badge rounded-pill company-tab-badge" t-att-class="state.detailTab === 'products' ? 'bg-white text-primary' : 'bg-light text-dark border'">
+                                    <t t-esc="state.productTotalCount || (state.companyDetailData and state.companyDetailData.product_stats ? state.companyDetailData.product_stats.total : 0)"/>
+                                </span>
+                            </button>
+
+                            <button class="btn btn-sm company-tab-btn"
+                                    t-att-class="state.detailTab === 'stock' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
+                                    t-on-click="() => this.setDetailTab('stock')">
                                 <i class="fa fa-cubes"/>
-                                <span>Inventario y Stock</span>
+                                <span>Tanques y Stock</span>
+                                <span class="badge rounded-pill company-tab-badge" t-att-class="state.detailTab === 'stock' ? 'bg-white text-primary' : 'bg-light text-dark border'">
+                                    <t t-esc="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.tanks ? state.companyDetailData.inventory.tanks.length : 0"/>
+                                </span>
                             </button>
                         </div>
                     </div>
@@ -660,78 +673,306 @@
                             </div>
                         </div>
 
-                        <!-- PESTAÑA 3: INVENTARIO Y STOCK -->
-                        <div t-if="state.detailTab === 'inventory'">
-                            <div class="row g-4">
-                                <!-- ALMACENES -->
-                                <div class="col-md-6">
-                                    <div class="bg-white rounded-3 shadow-sm border p-4 h-100">
-                                        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-dark">
-                                            <i class="fa fa-building text-primary"/> Almacenes Registrados
-                                        </h5>
-                                        <t t-if="state.companyDetailData and state.companyDetailData.inventory.warehouses.length">
-                                            <div class="list-group">
-                                                <t t-foreach="state.companyDetailData.inventory.warehouses" t-as="wh" t-key="wh.id">
-                                                    <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                                                        <div>
-                                                            <span class="fw-bold text-dark d-block"><t t-esc="wh.name"/></span>
-                                                            <span class="badge bg-light text-muted border font-monospace mt-1">Código: <t t-esc="wh.code"/></span>
-                                                        </div>
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle">Operativo</span>
-                                                    </div>
-                                                </t>
-                                            </div>
-                                        </t>
-                                        <t t-else="">
-                                            <p class="text-muted small">No hay almacenes específicos registrados para esta empresa.</p>
-                                        </t>
+                        <!-- PESTAÑA 3: PRODUCTOS Y PRECIOS -->
+                        <div t-if="state.detailTab === 'products'">
+                            <div class="bg-white rounded-3 shadow-sm border p-4">
+                                <!-- BARRA SUPERIOR DE ACCIONES Y BÚSQUEDA -->
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                                    <!-- FILTROS POR CATEGORÍA -->
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm"
+                                                t-att-class="state.productCategoryFilter === 'all' ? 'btn-primary fw-bold' : 'btn-outline-secondary'"
+                                                t-on-click="() => this.setProductCategoryFilter('all')">
+                                            Todos (<t t-esc="state.productTotalCount || (state.companyDetailData and state.companyDetailData.product_stats ? state.companyDetailData.product_stats.total : 0)"/>)
+                                        </button>
+                                        <button type="button" class="btn btn-sm"
+                                                t-att-class="state.productCategoryFilter === 'fuel' ? 'btn-primary fw-bold' : 'btn-outline-secondary'"
+                                                t-on-click="() => this.setProductCategoryFilter('fuel')">
+                                            ⛽ Carburantes (<t t-esc="state.companyDetailData and state.companyDetailData.product_stats ? state.companyDetailData.product_stats.fuels_count : 0"/>)
+                                        </button>
+                                        <button type="button" class="btn btn-sm"
+                                                t-att-class="state.productCategoryFilter === 'store' ? 'btn-primary fw-bold' : 'btn-outline-secondary'"
+                                                t-on-click="() => this.setProductCategoryFilter('store')">
+                                            🛒 Tienda (<t t-esc="state.companyDetailData and state.companyDetailData.product_stats ? state.companyDetailData.product_stats.store_count : 0"/>)
+                                        </button>
                                     </div>
-                                </div>
 
-                                <!-- CARBURANTES / TANQUES -->
-                                <div class="col-md-6">
-                                    <div class="bg-white rounded-3 shadow-sm border p-4 h-100">
-                                        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-dark">
-                                            <i class="fa fa-tint text-danger"/> Carburantes en Pista
-                                        </h5>
-                                        <div class="list-group mb-3">
-                                            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="badge rounded-circle p-2 bg-warning text-dark fw-bold">GA</span>
-                                                    <div>
-                                                        <span class="fw-bold d-block">Gasóleo A</span>
-                                                        <small class="text-muted">Tanques diésel principales</small>
-                                                    </div>
-                                                </div>
-                                                <span class="badge bg-success-subtle text-success border">En servicio</span>
-                                            </div>
-                                            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="badge rounded-circle p-2 bg-success text-white fw-bold">95</span>
-                                                    <div>
-                                                        <span class="fw-bold d-block">Sin Plomo 95</span>
-                                                        <small class="text-muted">Tanques gasolina 95 octanos</small>
-                                                    </div>
-                                                </div>
-                                                <span class="badge bg-success-subtle text-success border">En servicio</span>
-                                            </div>
-                                            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="badge rounded-circle p-2 bg-danger text-white fw-bold">G+</span>
-                                                    <div>
-                                                        <span class="fw-bold d-block">Gasóleo Plus</span>
-                                                        <small class="text-muted">Aditivado premium</small>
-                                                    </div>
-                                                </div>
-                                                <span class="badge bg-success-subtle text-success border">En servicio</span>
-                                            </div>
+                                    <!-- BÚSQUEDA RÁPIDA -->
+                                    <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 380px;">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text bg-light"><i class="fa fa-search text-muted"/></span>
+                                            <input type="text"
+                                                   class="form-control"
+                                                   placeholder="Buscar producto, referencia o EAN..."
+                                                   t-att-value="state.productSearchTerm"
+                                                   t-on-input="(ev) => this.onProductSearchInput(ev)" />
+                                            <button t-if="state.productSearchTerm" class="btn btn-outline-secondary" type="button" t-on-click="() => { this.state.productSearchTerm = ''; this.searchCompanyProducts(); }">
+                                                <i class="fa fa-times"/>
+                                            </button>
                                         </div>
+                                    </div>
 
-                                        <button class="btn btn-outline-primary w-100 fw-bold" t-on-click="() => this.openOdooInventoryView()">
-                                            <i class="fa fa-cubes me-1"/> Consultar Stock y Valoración en Odoo
+                                    <!-- BOTONES NATIVOS DE ACCIÓN ODOO -->
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.openOdooProductsView()" title="Abrir catálogo completo en Odoo">
+                                            <i class="fa fa-th-large me-1"/> Catálogo Odoo
+                                        </button>
+                                        <button class="btn btn-sm btn-primary fw-bold" t-on-click="() => this.openCreateProduct()" title="Crear nuevo producto">
+                                            <i class="fa fa-plus me-1"/> Nuevo Producto
                                         </button>
                                     </div>
                                 </div>
+
+                                <!-- TABLA DE PRODUCTOS -->
+                                <t t-if="state.productLoading">
+                                    <div class="text-center py-5">
+                                        <i class="fa fa-circle-o-notch fa-spin fa-2x text-primary mb-2"/>
+                                        <p class="text-muted small">Cargando productos...</p>
+                                    </div>
+                                </t>
+                                <t t-elif="state.companyDetailData and state.companyDetailData.products and state.companyDetailData.products.length">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-3" style="font-size: 13px;">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 48px;"></th>
+                                                    <th style="width: 14%;">Código / EAN</th>
+                                                    <th style="width: 34%;">Artículo / Descripción</th>
+                                                    <th style="width: 16%;">Categoría</th>
+                                                    <th style="width: 12%;">Tipo</th>
+                                                    <th style="width: 14%; text-align: right;">Precio Venta (PVP)</th>
+                                                    <th style="width: 10%; text-align: right;">Stock</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="state.companyDetailData.products" t-as="p" t-key="p.id">
+                                                    <tr>
+                                                        <td>
+                                                            <t t-if="p.has_image">
+                                                                <img t-att-src="p.image_url" class="rounded border" style="width: 32px; height: 32px; object-fit: cover;" alt="Prod"/>
+                                                            </t>
+                                                            <t t-elif="p.is_fuel">
+                                                                <span class="badge bg-warning-subtle text-dark border p-2"><i class="fa fa-tint"/></span>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <span class="badge bg-light text-muted border p-2"><i class="fa fa-cube"/></span>
+                                                            </t>
+                                                        </td>
+                                                        <td>
+                                                            <strong class="font-monospace text-dark"><t t-esc="p.default_code || '---'"/></strong>
+                                                            <t t-if="p.barcode">
+                                                                <small class="text-muted d-block font-monospace"><t t-esc="p.barcode"/></small>
+                                                            </t>
+                                                        </td>
+                                                        <td>
+                                                            <span class="fw-bold text-dark d-block"><t t-esc="p.name"/></span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-light text-secondary border"><t t-esc="p.categ_name"/></span>
+                                                        </td>
+                                                        <td>
+                                                            <span t-attf-class="badge #{p.type === 'product' ? 'bg-primary-subtle text-primary border border-primary-subtle' : (p.type === 'consu' ? 'bg-info-subtle text-info border border-info-subtle' : 'bg-secondary-subtle text-secondary')}">
+                                                                <t t-esc="p.type_label"/>
+                                                            </span>
+                                                        </td>
+                                                        <td style="text-align: right;">
+                                                            <!-- MODO EDICIÓN DE PRECIO INLINE -->
+                                                            <t t-if="state.editingProductId === p.id">
+                                                                <div class="d-flex align-items-center justify-content-end gap-1">
+                                                                    <input type="text"
+                                                                           class="form-control form-control-sm text-end fw-bold"
+                                                                           style="width: 85px;"
+                                                                           t-att-value="state.editingProductPrice"
+                                                                           t-on-input="(ev) => this.state.editingProductPrice = ev.target.value"
+                                                                           t-on-keydown="(ev) => { if (ev.key === 'Enter') this.saveProductPrice(p); if (ev.key === 'Escape') this.cancelEditProductPrice(); }" />
+                                                                    <button class="btn btn-sm btn-success p-1 px-2"
+                                                                            t-att-disabled="state.isSavingPrice"
+                                                                            t-on-click="() => this.saveProductPrice(p)" title="Guardar precio">
+                                                                        <i class="fa fa-check"/>
+                                                                    </button>
+                                                                    <button class="btn btn-sm btn-secondary p-1 px-2"
+                                                                            t-on-click="() => this.cancelEditProductPrice()" title="Cancelar">
+                                                                        <i class="fa fa-times"/>
+                                                                    </button>
+                                                                </div>
+                                                            </t>
+                                                            <!-- MODO VISUALIZACIÓN DE PRECIO -->
+                                                            <t t-else="">
+                                                                <span class="fw-bold text-dark me-2" style="font-size: 14px;">
+                                                                    <t t-esc="p.list_price.toFixed(p.is_fuel ? 3 : 2)"/> €
+                                                                </span>
+                                                                <button class="btn btn-sm btn-light border p-1"
+                                                                        t-on-click="() => this.startEditProductPrice(p)" title="Modificar precio">
+                                                                    <i class="fa fa-pencil text-muted" style="font-size: 11px;"/>
+                                                                </button>
+                                                            </t>
+                                                        </td>
+                                                        <td style="text-align: right;">
+                                                            <t t-if="p.type === 'product'">
+                                                                <span t-attf-class="badge #{p.qty_available &gt; 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'}">
+                                                                    <t t-esc="p.qty_available"/>
+                                                                </span>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <span class="text-muted" style="font-size: 11px;">---</span>
+                                                            </t>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+
+                                        <!-- PAGINACIÓN DE PRODUCTOS -->
+                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
+                                            <span class="text-muted small">
+                                                Mostrando <strong class="text-dark"><t t-esc="state.companyDetailData.products.length"/></strong> de <strong class="text-dark"><t t-esc="state.productTotalCount"/></strong> productos
+                                            </span>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                        t-att-disabled="state.productPage &lt;= 1"
+                                                        t-on-click="() => this.goToProductPage(state.productPage - 1)">
+                                                    <i class="fa fa-chevron-left me-1"/> Anterior
+                                                </button>
+                                                <span class="px-2 text-muted small">
+                                                    Pág. <strong class="text-dark"><t t-esc="state.productPage"/></strong> / <t t-esc="productTotalPages"/>
+                                                </span>
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                        t-att-disabled="state.productPage &gt;= productTotalPages"
+                                                        t-on-click="() => this.goToProductPage(state.productPage + 1)">
+                                                    Siguiente <i class="fa fa-chevron-right ms-1"/>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="text-center py-5">
+                                        <i class="fa fa-info-circle fa-2x text-muted mb-2"/>
+                                        <p class="text-muted">No se encontraron productos para los filtros seleccionados.</p>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                        <!-- PESTAÑA 4: TANQUES Y STOCK -->
+                        <div t-if="state.detailTab === 'stock'">
+                            <!-- BOTONES DE ACCIÓN RÁPIDA -->
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                                <div>
+                                    <h5 class="fw-bold mb-1 text-dark">Control de Stock y Depósitos</h5>
+                                    <small class="text-muted">Nivel de llenado en tiempo real, capacidad nominal y aforos físicos de tanques de carburante.</small>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.openOdooInventoryView()">
+                                        <i class="fa fa-cubes me-1"/> Existencias y Mermas (Odoo)
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary fw-bold" t-on-click="() => this.openOdooStockPickingView()">
+                                        <i class="fa fa-truck me-1"/> Recepciones y Cisternas
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- PARRILLA DE TANQUES DE CARBURANTE -->
+                            <div class="mb-4">
+                                <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                                    <i class="fa fa-tint text-danger"/> Tanques de Combustible en Pista
+                                </h6>
+                                <t t-if="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.tanks and state.companyDetailData.inventory.tanks.length">
+                                    <div class="row g-3">
+                                        <t t-foreach="state.companyDetailData.inventory.tanks" t-as="tank" t-key="tank.id">
+                                            <div class="col-md-6 col-lg-4">
+                                                <div class="bg-white rounded-3 shadow-sm border p-3 h-100 d-flex flex-column justify-content-between">
+                                                    <div>
+                                                        <!-- Cabecera del Tanque -->
+                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <span t-attf-class="badge rounded-circle p-2 fw-bold #{tank.badge_class}" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 11px;">
+                                                                    <t t-esc="tank.fuel_code"/>
+                                                                </span>
+                                                                <div>
+                                                                    <strong class="d-block text-dark" style="font-size: 13px;"><t t-esc="tank.name"/></strong>
+                                                                    <small class="text-muted"><t t-esc="tank.fuel_name"/></small>
+                                                                </div>
+                                                            </div>
+                                                            <span t-attf-class="badge #{tank.fill_pct &lt; 15 ? 'bg-danger' : (tank.fill_pct &lt; 30 ? 'bg-warning text-dark' : 'bg-success-subtle text-success border border-success-subtle')}">
+                                                                <t t-esc="tank.status"/>
+                                                            </span>
+                                                        </div>
+
+                                                        <!-- Barra de Llenado / Nivel -->
+                                                        <div class="mb-3 mt-3">
+                                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                                <span class="text-muted small">Nivel de Llenado</span>
+                                                                <strong class="text-dark"><t t-esc="tank.fill_pct"/>%</strong>
+                                                            </div>
+                                                            <div class="progress" style="height: 10px; border-radius: 5px;">
+                                                                <div t-attf-class="progress-bar #{tank.fill_pct &lt; 15 ? 'bg-danger' : (tank.fill_pct &lt; 30 ? 'bg-warning' : 'bg-success')}"
+                                                                     role="progressbar"
+                                                                     t-att-style="'width: ' + tank.fill_pct + '%'"
+                                                                     t-att-aria-valuenow="tank.fill_pct"
+                                                                     aria-valuemin="0"
+                                                                     aria-valuemax="100">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Métricas numéricas -->
+                                                        <div class="bg-light rounded p-2 mb-3" style="font-size: 12px;">
+                                                            <div class="d-flex justify-content-between py-1 border-bottom">
+                                                                <span class="text-muted">Litros Actuales:</span>
+                                                                <strong class="text-dark font-monospace"><t t-esc="tank.current_liters.toLocaleString('es-ES')"/> L</strong>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between py-1 border-bottom">
+                                                                <span class="text-muted">Capacidad Nominal:</span>
+                                                                <span class="font-monospace"><t t-esc="tank.capacity_liters.toLocaleString('es-ES')"/> L</span>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between py-1">
+                                                                <span class="text-muted">Hueco para Descarga:</span>
+                                                                <span class="text-primary fw-bold font-monospace"><t t-esc="(tank.capacity_liters - tank.current_liters).toLocaleString('es-ES')"/> L</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <button class="btn btn-sm btn-outline-primary w-100 fw-bold"
+                                                            t-on-click="() => this.openAdjustTankModal(tank)">
+                                                        <i class="fa fa-sliders me-1"/> Registrar Aforo / Ajuste
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="bg-white rounded-3 shadow-sm border p-4 text-center">
+                                        <i class="fa fa-info-circle fa-2x text-muted mb-2"/>
+                                        <p class="text-muted mb-0">No se detectaron tanques específicos configurados en los almacenes de esta empresa.</p>
+                                    </div>
+                                </t>
+                            </div>
+
+                            <!-- ALMACENES DE LA EMPRESA -->
+                            <div class="bg-white rounded-3 shadow-sm border p-4">
+                                <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                                    <i class="fa fa-building text-primary"/> Almacenes Registrados en Odoo
+                                </h6>
+                                <t t-if="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.warehouses.length">
+                                    <div class="row g-3">
+                                        <t t-foreach="state.companyDetailData.inventory.warehouses" t-as="wh" t-key="wh.id">
+                                            <div class="col-md-6">
+                                                <div class="border rounded p-3 d-flex justify-content-between align-items-center bg-light">
+                                                    <div>
+                                                        <strong class="d-block text-dark"><t t-esc="wh.name"/></strong>
+                                                        <span class="badge bg-white text-muted border font-monospace mt-1">Cód: <t t-esc="wh.code"/></span>
+                                                    </div>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Operativo</span>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <p class="text-muted small mb-0">No hay almacenes específicos registrados para esta empresa.</p>
+                                </t>
                             </div>
                         </div>
                     </t>
@@ -1224,6 +1465,69 @@
                                         <i class="fa fa-check me-1"/> Guardar Cambios
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- MODAL PARA REGISTRAR AFORO / AJUSTE DE TANQUE -->
+            <t t-if="state.isAdjustTankModalOpen and state.selectedAdjustTank">
+                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1065;" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                                <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                                    <i class="fa fa-sliders text-warning me-1"/> Ajuste de Aforo / Nivel de Tanque
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeAdjustTankModal()" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 border mb-3">
+                                    <span t-attf-class="badge rounded-circle p-2 fw-bold #{state.selectedAdjustTank.badge_class}" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 13px;">
+                                        <t t-esc="state.selectedAdjustTank.fuel_code"/>
+                                    </span>
+                                    <div>
+                                        <strong class="d-block text-dark" style="font-size: 14px;"><t t-esc="state.selectedAdjustTank.name"/></strong>
+                                        <small class="text-muted"><t t-esc="state.selectedAdjustTank.fuel_name"/> | <t t-esc="state.selectedAdjustTank.warehouse_name"/></small>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-muted">Litros Registrados Actualmente en Odoo:</label>
+                                    <input type="text" class="form-control font-monospace bg-light fw-bold" t-att-value="state.selectedAdjustTank.current_liters.toLocaleString('es-ES') + ' L'" readonly="readonly"/>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-dark">Litros Físicos Medidos (Sonda / Varilla): <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="number" step="0.01" class="form-control fw-bold font-monospace text-primary" placeholder="Ej: 18500.50"
+                                               t-att-value="state.adjustTankLiters"
+                                               t-on-input="(ev) => this.state.adjustTankLiters = ev.target.value"/>
+                                        <span class="input-group-text fw-bold">Litros</span>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-dark small">Motivo del Ajuste:</label>
+                                    <select class="form-select form-select-sm" t-att-value="state.adjustTankReason" t-on-change="(ev) => this.state.adjustTankReason = ev.target.value">
+                                        <option value="Aforo físico periódico">Aforo físico periódico</option>
+                                        <option value="Ajuste por merma / evaporación">Ajuste por merma / evaporación</option>
+                                        <option value="Calibración metrológica">Calibración metrológica</option>
+                                        <option value="Regularización de inicio">Regularización de inicio</option>
+                                    </select>
+                                </div>
+
+                                <div class="alert alert-info py-2 px-3 small mb-0 rounded-2">
+                                    <i class="fa fa-info-circle me-1"/> Al guardar, Odoo generará un movimiento de regularización en <strong t-esc="state.selectedAdjustTank.complete_name"/>.
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end gap-2 border-top">
+                                <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.closeAdjustTankModal()">Cancelar</button>
+                                <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-att-disabled="state.isSavingTankAdjust" t-on-click="() => this.saveTankAdjustment()">
+                                    <i t-if="state.isSavingTankAdjust" class="fa fa-circle-o-notch fa-spin me-1"/>
+                                    <i t-else="" class="fa fa-check me-1"/> Guardar Ajuste en Odoo
+                                </button>
                             </div>
                         </div>
                     </div>
