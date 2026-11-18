@@ -714,6 +714,12 @@
 
                                     <!-- BOTONES NATIVOS DE ACCIÓN ODOO -->
                                     <div class="d-flex align-items-center gap-2">
+                                        <button class="btn btn-sm btn-outline-secondary fw-bold" t-on-click="() => this.openOdooCategoriesView()" title="Ver y gestionar categorías de productos">
+                                            <i class="fa fa-tags me-1"/> Categorías
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.openOdooInventoryAdjustView()" title="Ajustes y recuentos físicos de inventario">
+                                            <i class="fa fa-sliders me-1"/> Ajustar Stock
+                                        </button>
                                         <button class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.openOdooProductsView()" title="Abrir catálogo completo en Odoo">
                                             <i class="fa fa-th-large me-1"/> Catálogo Odoo
                                         </button>
@@ -765,10 +771,25 @@
                                                             </t>
                                                         </td>
                                                         <td>
-                                                            <span class="fw-bold text-dark d-block"><t t-esc="p.name"/></span>
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <span class="fw-bold text-dark d-block text-primary-hover cursor-pointer"
+                                                                      title="Haga clic para abrir y editar la ficha completa del producto en Odoo"
+                                                                      t-on-click="() => this.openProductForm(p)">
+                                                                    <t t-esc="p.name"/>
+                                                                </span>
+                                                                <button class="btn btn-sm btn-link text-muted p-0 ms-1 opacity-50 opacity-100-hover"
+                                                                        title="Editar ficha completa"
+                                                                        t-on-click="() => this.openProductForm(p)">
+                                                                    <i class="fa fa-pencil" style="font-size: 11px;"/>
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                         <td>
-                                                            <span class="badge bg-light text-secondary border"><t t-esc="p.categ_name"/></span>
+                                                            <span class="badge bg-light text-secondary border cursor-pointer"
+                                                                  title="Haga clic para ver o editar categorías en Odoo"
+                                                                  t-on-click="() => this.openOdooCategoriesView()">
+                                                                <t t-esc="p.categ_name"/>
+                                                            </span>
                                                         </td>
                                                         <td>
                                                             <span t-attf-class="badge #{p.type === 'product' ? 'bg-primary-subtle text-primary border border-primary-subtle' : (p.type === 'consu' ? 'bg-info-subtle text-info border border-info-subtle' : 'bg-secondary-subtle text-secondary')}">
@@ -802,14 +823,17 @@
                                                                     <t t-esc="p.list_price.toFixed(p.is_fuel ? 3 : 2)"/> €
                                                                 </span>
                                                                 <button class="btn btn-sm btn-light border p-1"
-                                                                        t-on-click="() => this.startEditProductPrice(p)" title="Modificar precio">
+                                                                        t-on-click="() => this.startEditProductPrice(p)" title="Modificar precio directamente">
                                                                     <i class="fa fa-pencil text-muted" style="font-size: 11px;"/>
                                                                 </button>
                                                             </t>
                                                         </td>
                                                         <td style="text-align: right;">
                                                             <t t-if="p.type === 'product'">
-                                                                <span t-attf-class="badge #{p.qty_available &gt; 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'}">
+                                                                <span t-attf-class="badge cursor-pointer #{p.qty_available &gt; 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'}"
+                                                                      title="Haga clic para ajustar el stock o registrar recuento físico de este producto"
+                                                                      t-on-click="() => this.openProductStockAdjust(p)">
+                                                                    <i class="fa fa-sliders me-1" style="font-size: 9px;"/>
                                                                     <t t-esc="p.qty_available"/>
                                                                 </span>
                                                             </t>

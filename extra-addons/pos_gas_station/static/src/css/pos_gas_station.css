@@ -7906,3 +7906,21 @@
     justify-content: space-between !important;
     align-items: center !important;
 }
+
+/* UTILIDADES PANEL DE PRODUCTOS Y EMPRESAS */
+.cursor-pointer {
+    cursor: pointer !important;
+}
+.text-primary-hover {
+    transition: color 0.15s ease-in-out;
+}
+.text-primary-hover:hover {
+    color: #0d6efd !important;
+    text-decoration: underline;
+}
+.opacity-100-hover {
+    transition: opacity 0.15s ease-in-out;
+}
+.opacity-100-hover:hover {
+    opacity: 1 !important;
+}

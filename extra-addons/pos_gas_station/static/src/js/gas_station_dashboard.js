@@ -996,6 +996,73 @@ export class GasStationDashboard extends Component {
         });
     }
 
+    openProductForm(prod) {
+        if (!prod || !prod.id) return;
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: `Ficha de Producto: ${prod.name}`,
+            res_model: "product.template",
+            res_id: prod.id,
+            views: [[false, "form"]],
+            context: {
+                default_company_id: compId,
+            },
+            target: "current"
+        });
+    }
+
+    openProductStockAdjust(prod) {
+        if (!prod || !prod.id) return;
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: `Recuento / Ajuste de Stock: ${prod.name}`,
+            res_model: "stock.quant",
+            views: [[false, "list"]],
+            view_mode: "list",
+            domain: [["product_id.product_tmpl_id", "=", prod.id]],
+            context: {
+                search_default_internal_loc: 1,
+                inventory_mode: true,
+                default_company_id: compId,
+            },
+            target: "current"
+        });
+    }
+
+    openOdooCategoriesView() {
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: `Categorías de Productos`,
+            res_model: "product.category",
+            views: [[false, "list"], [false, "form"]],
+            context: {
+                default_company_id: compId,
+            },
+            target: "current"
+        });
+    }
+
+    openOdooInventoryAdjustView() {
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
+        this.actionService.doAction({
+            type: "ir.actions.act_window",
+            name: `Ajustes de Inventario y Stock Físico`,
+            res_model: "stock.quant",
+            views: [[false, "list"]],
+            view_mode: "list",
+            domain: compId ? [["company_id", "=", compId]] : [],
+            context: {
+                search_default_internal_loc: 1,
+                inventory_mode: true,
+                default_company_id: compId,
+            },
+            target: "current"
+        });
+    }
+
     // ==================== GESTIÓN DE TANQUES Y AFOROS ====================
     openAdjustTankModal(tank) {
         this.state.selectedAdjustTank = tank;
