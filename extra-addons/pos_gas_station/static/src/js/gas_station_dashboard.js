@@ -58,6 +58,13 @@ export class GasStationDashboard extends Component {
             adjustTankLiters: 0,
             adjustTankReason: "Aforo físico periódico",
             isSavingTankAdjust: false,
+            isNewTankModalOpen: false,
+            newTankName: "",
+            newTankFuelCode: "GA",
+            newTankCapacity: 30000,
+            newTankInitialLiters: 0,
+            newTankWarehouseId: null,
+            isSavingNewTank: false,
             canManageStaff: false,
             allAuthorizedCompanies: [],
             selectedCompanyId: null,
@@ -1027,6 +1034,78 @@ export class GasStationDashboard extends Component {
             this.notification.add("Error de conexión al ajustar nivel de tanque", { type: "danger" });
         } finally {
             this.state.isSavingTankAdjust = false;
+        }
+    }
+
+    openNewTankModal() {
+        const whs = (this.state.companyDetailData && this.state.companyDetailData.inventory && this.state.companyDetailData.inventory.warehouses) || [];
+        this.state.newTankName = "";
+        this.state.newTankFuelCode = "GA";
+        this.state.newTankCapacity = 30000;
+        this.state.newTankInitialLiters = 0;
+        this.state.newTankWarehouseId = whs.length ? whs[0].id : null;
+        this.state.isNewTankModalOpen = true;
+    }
+
+    closeNewTankModal() {
+        this.state.isNewTankModalOpen = false;
+        this.state.newTankName = "";
+    }
+
+    async saveNewTank() {
+        if (!this.state.newTankName || !this.state.newTankName.trim()) {
+            this.notification.add("Debe introducir un nombre para el tanque.", { type: "warning" });
+            return;
+        }
+        const companyId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        if (!companyId) return;
+
+        this.state.isSavingNewTank = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/create_tank", {
+                company_id: companyId,
+                warehouse_id: this.state.newTankWarehouseId,
+                name: this.state.newTankName.trim(),
+                fuel_code: this.state.newTankFuelCode,
+                capacity_liters: parseFloat(this.state.newTankCapacity) || 30000,
+                initial_liters: parseFloat(this.state.newTankInitialLiters) || 0,
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                this.closeNewTankModal();
+                await this.loadCompanyDetailData(companyId);
+            } else {
+                this.notification.add((res && res.message) || "Error al crear tanque", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error creating tank:", e);
+            this.notification.add("Error de conexión al crear tanque", { type: "danger" });
+        } finally {
+            this.state.isSavingNewTank = false;
+        }
+    }
+
+    async deleteTank(tank) {
+        if (!tank) return;
+        if (!confirm(`¿Está seguro de que desea eliminar el tanque "${tank.name}"? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+        const companyId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        try {
+            const res = await jsonrpc("/pos_gas_station/delete_tank", {
+                tank_id: tank.id
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                if (companyId) {
+                    await this.loadCompanyDetailData(companyId);
+                }
+            } else {
+                this.notification.add((res && res.message) || "Error al eliminar tanque", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error deleting tank:", e);
+            this.notification.add("Error de conexión al eliminar tanque", { type: "danger" });
         }
     }
 

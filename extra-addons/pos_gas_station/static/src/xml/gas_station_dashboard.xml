@@ -863,6 +863,9 @@
                                     <small class="text-muted">Nivel de llenado en tiempo real, capacidad nominal y aforos físicos de tanques de carburante.</small>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-primary fw-bold shadow-sm" t-on-click="() => this.openNewTankModal()">
+                                        <i class="fa fa-plus me-1"/> Nuevo Tanque
+                                    </button>
                                     <button class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.openOdooInventoryView()">
                                         <i class="fa fa-cubes me-1"/> Existencias y Mermas (Odoo)
                                     </button>
@@ -874,9 +877,14 @@
 
                             <!-- PARRILLA DE TANQUES DE CARBURANTE -->
                             <div class="mb-4">
-                                <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                                    <i class="fa fa-tint text-danger"/> Tanques de Combustible en Pista
-                                </h6>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                        <i class="fa fa-tint text-danger"/> Tanques de Combustible en Pista
+                                    </h6>
+                                    <button class="btn btn-sm btn-outline-primary fw-semibold" t-on-click="() => this.openNewTankModal()">
+                                        <i class="fa fa-plus me-1"/> Añadir Tanque
+                                    </button>
+                                </div>
                                 <t t-if="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.tanks and state.companyDetailData.inventory.tanks.length">
                                     <div class="row g-3">
                                         <t t-foreach="state.companyDetailData.inventory.tanks" t-as="tank" t-key="tank.id">
@@ -933,10 +941,17 @@
                                                         </div>
                                                     </div>
 
-                                                    <button class="btn btn-sm btn-outline-primary w-100 fw-bold"
-                                                            t-on-click="() => this.openAdjustTankModal(tank)">
-                                                        <i class="fa fa-sliders me-1"/> Registrar Aforo / Ajuste
-                                                    </button>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <button class="btn btn-sm btn-outline-primary flex-grow-1 fw-bold"
+                                                                t-on-click="() => this.openAdjustTankModal(tank)">
+                                                            <i class="fa fa-sliders me-1"/> Registrar Aforo
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger"
+                                                                title="Eliminar este tanque"
+                                                                t-on-click="() => this.deleteTank(tank)">
+                                                            <i class="fa fa-trash"/>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </t>
@@ -945,7 +960,10 @@
                                 <t t-else="">
                                     <div class="bg-white rounded-3 shadow-sm border p-4 text-center">
                                         <i class="fa fa-info-circle fa-2x text-muted mb-2"/>
-                                        <p class="text-muted mb-0">No se detectaron tanques específicos configurados en los almacenes de esta empresa.</p>
+                                        <p class="text-muted mb-2">No se detectaron tanques específicos configurados en los almacenes de esta empresa.</p>
+                                        <button class="btn btn-sm btn-primary fw-bold" t-on-click="() => this.openNewTankModal()">
+                                            <i class="fa fa-plus me-1"/> Registrar Primer Tanque
+                                        </button>
                                     </div>
                                 </t>
                             </div>
@@ -1527,6 +1545,87 @@
                                 <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-att-disabled="state.isSavingTankAdjust" t-on-click="() => this.saveTankAdjustment()">
                                     <i t-if="state.isSavingTankAdjust" class="fa fa-circle-o-notch fa-spin me-1"/>
                                     <i t-else="" class="fa fa-check me-1"/> Guardar Ajuste en Odoo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- MODAL PARA REGISTRAR NUEVO TANQUE DE COMBUSTIBLE -->
+            <t t-if="state.isNewTankModalOpen">
+                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1065;" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                                <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                                    <i class="fa fa-tint text-primary me-1"/> Registrar Nuevo Tanque de Combustible
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeNewTankModal()" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-dark">Nombre del Tanque <span class="text-danger">*</span></label>
+                                    <input type="text"
+                                           class="form-control"
+                                           placeholder="Ej: Tanque Gasóleo A 1, Tanque Sin Plomo 95..."
+                                           t-model="state.newTankName"/>
+                                    <small class="text-muted">Nombre descriptivo o número del depósito en pista.</small>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-dark">Tipo de Carburante <span class="text-danger">*</span></label>
+                                        <select class="form-select" t-model="state.newTankFuelCode">
+                                            <option value="GA">Gasóleo A (Diésel)</option>
+                                            <option value="95">Sin Plomo 95 (Gasolina)</option>
+                                            <option value="G+">Gasóleo Plus (Premium)</option>
+                                            <option value="GB">Gasóleo B (Agrícola)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold text-dark">Capacidad Total (Litros) <span class="text-danger">*</span></label>
+                                        <input type="number"
+                                               class="form-control font-monospace"
+                                               placeholder="30000"
+                                               step="500"
+                                               min="1000"
+                                               t-model="state.newTankCapacity"/>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3" t-if="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.warehouses and state.companyDetailData.inventory.warehouses.length > 1">
+                                    <label class="form-label small fw-bold text-dark">Almacén de Pista</label>
+                                    <select class="form-select" t-model="state.newTankWarehouseId">
+                                        <t t-foreach="state.companyDetailData.inventory.warehouses" t-as="wh" t-key="wh.id">
+                                            <option t-att-value="wh.id"><t t-esc="wh.name"/> (<t t-esc="wh.code"/>)</option>
+                                        </t>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-dark">Litros Actuales Iniciales (Opcional)</label>
+                                    <div class="input-group">
+                                        <input type="number"
+                                               class="form-control font-monospace"
+                                               placeholder="0"
+                                               step="10"
+                                               min="0"
+                                               t-model="state.newTankInitialLiters"/>
+                                        <span class="input-group-text">Litros</span>
+                                    </div>
+                                    <small class="text-muted">Si introduce litros, Odoo generará el aforo inicial de entrada.</small>
+                                </div>
+
+                                <div class="alert alert-info py-2 px-3 small mb-0 rounded-2">
+                                    <i class="fa fa-info-circle me-1"/> El tanque se creará como ubicación de almacenamiento interno en Odoo vinculada a la pista de esta empresa.
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end gap-2 border-top">
+                                <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.closeNewTankModal()">Cancelar</button>
+                                <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-att-disabled="state.isSavingNewTank" t-on-click="() => this.saveNewTank()">
+                                    <i t-if="state.isSavingNewTank" class="fa fa-circle-o-notch fa-spin me-1"/>
+                                    <i t-else="" class="fa fa-check me-1"/> Registrar Tanque
                                 </button>
                             </div>
                         </div>

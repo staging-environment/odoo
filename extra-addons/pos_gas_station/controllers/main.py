@@ -1734,15 +1734,23 @@ class PosGasStationController(http.Controller):
                     fuel_name = 'Gasóleo B'
                     badge_class = 'bg-primary text-white'
 
-                capacity = 30000.0
-                if 'T1' in name_upper or 'T2' in name_upper:
-                    capacity = 20000.0
+                capacity_param = env['ir.config_parameter'].sudo().get_param(f'pos_gas_station.tank_capacity_{loc.id}')
+                if capacity_param:
+                    try:
+                        capacity = float(capacity_param)
+                    except (ValueError, TypeError):
+                        capacity = 30000.0
+                else:
+                    capacity = 30000.0
+                    if 'T1' in name_upper or 'T2' in name_upper:
+                        capacity = 20000.0
                 fill_pct = min(100.0, max(0.0, round((total_liters / capacity) * 100.0, 1))) if capacity > 0 else 0.0
 
                 company_tanks.append({
                     'id': loc.id,
                     'name': loc.name,
                     'complete_name': loc.complete_name,
+                    'warehouse_id': wh_match.id if wh_match else False,
                     'warehouse_name': wh_match.name if wh_match else company.name,
                     'fuel_code': fuel_code,
                     'fuel_name': fuel_name,
@@ -2031,6 +2039,119 @@ class PosGasStationController(http.Controller):
             }
         except Exception as e:
             _logger.exception("Error ajustando stock de tanque: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/create_tank', type='json', auth='user', methods=['POST'], csrf=False)
+    def create_tank(self, company_id=None, warehouse_id=None, name=None, fuel_code='GA', capacity_liters=30000.0, initial_liters=0.0, **kw):
+        """Crea un nuevo tanque de combustible (stock.location) en el almacén de la empresa."""
+        try:
+            env = request.env
+            if not company_id or not name:
+                return {'status': 'error', 'message': 'Empresa y nombre del tanque son obligatorios.'}
+
+            company = env['res.company'].sudo().browse(int(company_id))
+            if not company.exists():
+                return {'status': 'error', 'message': 'Empresa no encontrada.'}
+
+            warehouse = None
+            if warehouse_id:
+                warehouse = env['stock.warehouse'].sudo().browse(int(warehouse_id))
+            if not warehouse or not warehouse.exists():
+                warehouse = env['stock.warehouse'].sudo().search([('company_id', '=', company.id)], limit=1)
+
+            if not warehouse or not warehouse.lot_stock_id:
+                return {'status': 'error', 'message': f'No se encontró un almacén con ubicación de stock para {company.name}.'}
+
+            parent_loc = warehouse.lot_stock_id
+
+            # Crear ubicación de tipo interno para el tanque
+            tank_loc = env['stock.location'].sudo().create({
+                'name': name.strip(),
+                'location_id': parent_loc.id,
+                'usage': 'internal',
+                'company_id': company.id,
+            })
+
+            # Guardar capacidad en ir.config_parameter
+            cap = float(capacity_liters or 30000.0)
+            env['ir.config_parameter'].sudo().set_param(f'pos_gas_station.tank_capacity_{tank_loc.id}', str(cap))
+
+            # Si hay litros iniciales, crear quant para el producto correspondiente
+            init_l = float(initial_liters or 0.0)
+            if init_l > 0:
+                fuel_prod_map = {
+                    'GA': ['GAS_A', 'GA', 'Gasóleo A', 'Diesel'],
+                    '95': ['SP95', '95', 'Sin Plomo 95', 'Gasolina 95'],
+                    'G+': ['GAS_PLUS', 'G+', 'Gasóleo Plus'],
+                    'GB': ['GAS_B', 'GB', 'Gasóleo B'],
+                }
+                candidates = fuel_prod_map.get(fuel_code, ['GAS_A'])
+                prod = None
+                for c in candidates:
+                    prod = env['product.product'].sudo().search([
+                        '|', ('default_code', '=', c), ('name', 'ilike', c),
+                        '|', ('company_id', '=', False), ('company_id', '=', company.id)
+                    ], limit=1)
+                    if prod:
+                        break
+
+                if prod:
+                    quant = env['stock.quant'].sudo().create({
+                        'product_id': prod.id,
+                        'location_id': tank_loc.id,
+                        'inventory_quantity': init_l,
+                        'company_id': company.id,
+                    })
+                    quant.action_apply_inventory()
+
+            return {
+                'status': 'success',
+                'message': f'Tanque "{tank_loc.name}" ({cap:,.0f} L) registrado correctamente en {warehouse.name}.',
+                'tank_id': tank_loc.id
+            }
+        except Exception as e:
+            _logger.exception("Error al crear tanque: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/delete_tank', type='json', auth='user', methods=['POST'], csrf=False)
+    def delete_tank(self, tank_id=None, **kw):
+        """Elimina un tanque si no contiene combustible activo."""
+        try:
+            env = request.env
+            if not tank_id:
+                return {'status': 'error', 'message': 'ID de tanque obligatorio.'}
+
+            tank_loc = env['stock.location'].sudo().browse(int(tank_id))
+            if not tank_loc.exists():
+                return {'status': 'error', 'message': 'Tanque no encontrado.'}
+
+            # Verificar si tiene stock activo
+            quants = env['stock.quant'].sudo().search([('location_id', '=', tank_loc.id)])
+            total_qty = sum(q.quantity for q in quants)
+            if total_qty > 0.01:
+                return {
+                    'status': 'error',
+                    'message': f'No se puede eliminar el tanque "{tank_loc.name}" porque contiene {total_qty:,.1f} Litros. Realice un aforo a 0 antes de eliminarlo.'
+                }
+
+            # Eliminar quants con 0 litros si quedan
+            if quants:
+                quants.sudo().unlink()
+
+            # Eliminar parámetro de capacidad
+            env['ir.config_parameter'].sudo().search([
+                ('key', '=', f'pos_gas_station.tank_capacity_{tank_loc.id}')
+            ]).unlink()
+
+            name = tank_loc.name
+            tank_loc.sudo().unlink()
+
+            return {
+                'status': 'success',
+                'message': f'Tanque "{name}" eliminado correctamente.'
+            }
+        except Exception as e:
+            _logger.exception("Error al eliminar tanque: %s", e)
             return {'status': 'error', 'message': str(e)}
 
     # ==================== GESTIÓN DE ADMINISTRADORES POR EMPRESA (VPN) ====================
