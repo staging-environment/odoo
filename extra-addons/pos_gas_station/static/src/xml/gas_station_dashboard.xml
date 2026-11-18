@@ -706,7 +706,7 @@
                                                    placeholder="Buscar producto, referencia o EAN..."
                                                    t-att-value="state.productSearchTerm"
                                                    t-on-input="(ev) => this.onProductSearchInput(ev)" />
-                                            <button t-if="state.productSearchTerm" class="btn btn-outline-secondary" type="button" t-on-click="() => { this.state.productSearchTerm = ''; this.searchCompanyProducts(); }">
+                                            <button t-if="state.productSearchTerm" class="btn btn-outline-secondary" type="button" t-on-click="() => this.clearProductSearch()">
                                                 <i class="fa fa-times"/>
                                             </button>
                                         </div>
@@ -784,7 +784,7 @@
                                                                            style="width: 85px;"
                                                                            t-att-value="state.editingProductPrice"
                                                                            t-on-input="(ev) => this.state.editingProductPrice = ev.target.value"
-                                                                           t-on-keydown="(ev) => { if (ev.key === 'Enter') this.saveProductPrice(p); if (ev.key === 'Escape') this.cancelEditProductPrice(); }" />
+                                                                           t-on-keydown="(ev) => this.onProductPriceKeydown(ev, p)" />
                                                                     <button class="btn btn-sm btn-success p-1 px-2"
                                                                             t-att-disabled="state.isSavingPrice"
                                                                             t-on-click="() => this.saveProductPrice(p)" title="Guardar precio">

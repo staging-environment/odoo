@@ -867,6 +867,12 @@ export class GasStationDashboard extends Component {
         }, 350);
     }
 
+    clearProductSearch() {
+        this.state.productSearchTerm = "";
+        this.state.productPage = 1;
+        this.searchCompanyProducts();
+    }
+
     async goToProductPage(page) {
         const target = Math.max(1, Math.min(page, this.productTotalPages));
         if (target === this.state.productPage) return;
@@ -907,6 +913,14 @@ export class GasStationDashboard extends Component {
     cancelEditProductPrice() {
         this.state.editingProductId = null;
         this.state.editingProductPrice = "";
+    }
+
+    onProductPriceKeydown(ev, prod) {
+        if (ev.key === "Enter") {
+            this.saveProductPrice(prod);
+        } else if (ev.key === "Escape") {
+            this.cancelEditProductPrice();
+        }
     }
 
     async saveProductPrice(prod) {
