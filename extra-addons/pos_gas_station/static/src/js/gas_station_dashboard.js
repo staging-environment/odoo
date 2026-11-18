@@ -52,6 +52,29 @@ export class GasStationDashboard extends Component {
             editingProductId: null,
             editingProductPrice: "",
             isSavingPrice: false,
+            // Modales inline de productos y stock
+            isEditProductModalOpen: false,
+            editingProduct: null,
+            editProdName: "",
+            editProdCode: "",
+            editProdBarcode: "",
+            editProdCategId: null,
+            editProdType: "consu",
+            editProdPrice: 0.0,
+            editProdCost: 0.0,
+            editProdInPos: true,
+            isSavingProductForm: false,
+            isStockAdjustModalOpen: false,
+            stockAdjustProduct: null,
+            stockAdjustCurrentQty: 0.0,
+            stockAdjustNewQty: 0.0,
+            stockAdjustReason: "Recuento físico periódico",
+            isSavingStockAdjust: false,
+            isCategoriesModalOpen: false,
+            categoriesList: [],
+            categoriesLoading: false,
+            newCategoryName: "",
+            isSavingCategory: false,
             // Pestaña de Tanques y Ajustes
             isAdjustTankModalOpen: false,
             selectedAdjustTank: null,
@@ -954,31 +977,153 @@ export class GasStationDashboard extends Component {
     }
 
     openCreateProduct() {
-        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
-        this.actionService.doAction({
-            type: "ir.actions.act_window",
-            res_model: "product.template",
-            views: [[false, "form"]],
-            context: {
-                default_company_id: compId,
-            },
-            target: "current"
-        });
+        this.openEditProductModal(null);
     }
 
-    openOdooProductsView() {
-        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
-        this.actionService.doAction({
-            type: "ir.actions.act_window",
-            name: `Catálogo de Productos - ${this.state.selectedDetailCompany ? this.state.selectedDetailCompany.name : ''}`,
-            res_model: "product.template",
-            views: [[false, "kanban"], [false, "list"], [false, "form"]],
-            domain: compId ? ["|", ["company_id", "=", false], ["company_id", "=", compId]] : [],
-            context: {
-                default_company_id: compId,
-            },
-            target: "current"
-        });
+    openEditProductModal(prod) {
+        this.state.editingProduct = prod || null;
+        this.state.editProdName = prod ? prod.name : "";
+        this.state.editProdCode = prod ? (prod.default_code || "") : "";
+        this.state.editProdBarcode = prod ? (prod.barcode || "") : "";
+        this.state.editProdCategId = prod && prod.categ_id ? prod.categ_id : "";
+        this.state.editProdType = prod ? (prod.type || "consu") : "consu";
+        this.state.editProdPrice = prod ? (prod.list_price || 0.0) : 0.0;
+        this.state.editProdCost = prod ? (prod.standard_price || 0.0) : 0.0;
+        this.state.editProdInPos = prod ? (prod.available_in_pos !== false) : true;
+        this.state.isEditProductModalOpen = true;
+    }
+
+    closeEditProductModal() {
+        this.state.isEditProductModalOpen = false;
+        this.state.editingProduct = null;
+    }
+
+    async saveProductModal() {
+        if (!this.state.editProdName || !this.state.editProdName.trim()) {
+            this.notification.add("El nombre del producto es obligatorio.", { type: "warning" });
+            return;
+        }
+        const companyId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        this.state.isSavingProductForm = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/save_product", {
+                product_id: this.state.editingProduct ? this.state.editingProduct.id : null,
+                company_id: companyId,
+                name: this.state.editProdName.trim(),
+                default_code: this.state.editProdCode.trim(),
+                barcode: this.state.editProdBarcode.trim(),
+                categ_id: this.state.editProdCategId ? parseInt(this.state.editProdCategId) : null,
+                prod_type: this.state.editProdType,
+                list_price: parseFloat(this.state.editProdPrice) || 0.0,
+                standard_price: parseFloat(this.state.editProdCost) || 0.0,
+                available_in_pos: this.state.editProdInPos,
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                this.closeEditProductModal();
+                await this.fetchProducts();
+            } else {
+                this.notification.add((res && res.message) || "Error al guardar producto", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error saving product:", e);
+            this.notification.add("Error de conexión al guardar producto", { type: "danger" });
+        } finally {
+            this.state.isSavingProductForm = false;
+        }
+    }
+
+    openStockAdjustModal(prod) {
+        if (!prod) return;
+        this.state.stockAdjustProduct = prod;
+        this.state.stockAdjustCurrentQty = prod.qty_available || 0.0;
+        this.state.stockAdjustNewQty = prod.qty_available || 0.0;
+        this.state.stockAdjustReason = "Recuento físico periódico";
+        this.state.isStockAdjustModalOpen = true;
+    }
+
+    closeStockAdjustModal() {
+        this.state.isStockAdjustModalOpen = false;
+        this.state.stockAdjustProduct = null;
+    }
+
+    async saveStockAdjustModal() {
+        if (!this.state.stockAdjustProduct) return;
+        const companyId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        this.state.isSavingStockAdjust = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/adjust_product_stock", {
+                product_id: this.state.stockAdjustProduct.id,
+                company_id: companyId,
+                new_qty: parseFloat(this.state.stockAdjustNewQty) || 0.0,
+                reason: this.state.stockAdjustReason,
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                this.state.stockAdjustProduct.qty_available = res.new_qty;
+                this.closeStockAdjustModal();
+            } else {
+                this.notification.add((res && res.message) || "Error al ajustar stock", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error adjusting stock:", e);
+            this.notification.add("Error de conexión al ajustar stock", { type: "danger" });
+        } finally {
+            this.state.isSavingStockAdjust = false;
+        }
+    }
+
+    async openCategoriesModal() {
+        this.state.isCategoriesModalOpen = true;
+        this.state.newCategoryName = "";
+        await this.loadCategoriesList();
+    }
+
+    closeCategoriesModal() {
+        this.state.isCategoriesModalOpen = false;
+    }
+
+    async loadCategoriesList() {
+        this.state.categoriesLoading = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/get_categories_list", {});
+            if (res && res.status === "success") {
+                this.state.categoriesList = res.categories || [];
+                if (this.state.companyDetailData) {
+                    this.state.companyDetailData.all_categories = (res.categories || []).map(c => ({ id: c.id, name: c.name }));
+                }
+            }
+        } catch (e) {
+            console.error("Error loading categories:", e);
+        } finally {
+            this.state.categoriesLoading = false;
+        }
+    }
+
+    async saveNewCategory() {
+        if (!this.state.newCategoryName || !this.state.newCategoryName.trim()) {
+            this.notification.add("Introduzca el nombre de la categoría.", { type: "warning" });
+            return;
+        }
+        this.state.isSavingCategory = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/save_category", {
+                name: this.state.newCategoryName.trim(),
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                this.state.newCategoryName = "";
+                await this.loadCategoriesList();
+                await this.fetchProducts();
+            } else {
+                this.notification.add((res && res.message) || "Error al crear categoría", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error creating category:", e);
+            this.notification.add("Error de conexión al crear categoría", { type: "danger" });
+        } finally {
+            this.state.isSavingCategory = false;
+        }
     }
 
     openOdooStockPickingView() {
@@ -990,73 +1135,6 @@ export class GasStationDashboard extends Component {
             views: [[false, "list"], [false, "form"]],
             domain: compId ? [["company_id", "=", compId]] : [],
             context: {
-                default_company_id: compId,
-            },
-            target: "current"
-        });
-    }
-
-    openProductForm(prod) {
-        if (!prod || !prod.id) return;
-        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
-        this.actionService.doAction({
-            type: "ir.actions.act_window",
-            name: `Ficha de Producto: ${prod.name}`,
-            res_model: "product.template",
-            res_id: prod.id,
-            views: [[false, "form"]],
-            context: {
-                default_company_id: compId,
-            },
-            target: "current"
-        });
-    }
-
-    openProductStockAdjust(prod) {
-        if (!prod || !prod.id) return;
-        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
-        this.actionService.doAction({
-            type: "ir.actions.act_window",
-            name: `Recuento / Ajuste de Stock: ${prod.name}`,
-            res_model: "stock.quant",
-            views: [[false, "list"]],
-            view_mode: "list",
-            domain: [["product_id.product_tmpl_id", "=", prod.id]],
-            context: {
-                search_default_internal_loc: 1,
-                inventory_mode: true,
-                default_company_id: compId,
-            },
-            target: "current"
-        });
-    }
-
-    openOdooCategoriesView() {
-        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
-        this.actionService.doAction({
-            type: "ir.actions.act_window",
-            name: `Categorías de Productos`,
-            res_model: "product.category",
-            views: [[false, "list"], [false, "form"]],
-            context: {
-                default_company_id: compId,
-            },
-            target: "current"
-        });
-    }
-
-    openOdooInventoryAdjustView() {
-        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : false;
-        this.actionService.doAction({
-            type: "ir.actions.act_window",
-            name: `Ajustes de Inventario y Stock Físico`,
-            res_model: "stock.quant",
-            views: [[false, "list"]],
-            view_mode: "list",
-            domain: compId ? [["company_id", "=", compId]] : [],
-            context: {
-                search_default_internal_loc: 1,
-                inventory_mode: true,
                 default_company_id: compId,
             },
             target: "current"

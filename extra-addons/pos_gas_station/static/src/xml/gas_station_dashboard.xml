@@ -714,14 +714,8 @@
 
                                     <!-- BOTONES NATIVOS DE ACCIÓN ODOO -->
                                     <div class="d-flex align-items-center gap-2">
-                                        <button class="btn btn-sm btn-outline-secondary fw-bold" t-on-click="() => this.openOdooCategoriesView()" title="Ver y gestionar categorías de productos">
+                                        <button class="btn btn-sm btn-outline-secondary fw-bold" t-on-click="() => this.openCategoriesModal()" title="Gestionar categorías de productos">
                                             <i class="fa fa-tags me-1"/> Categorías
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.openOdooInventoryAdjustView()" title="Ajustes y recuentos físicos de inventario">
-                                            <i class="fa fa-sliders me-1"/> Ajustar Stock
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.openOdooProductsView()" title="Abrir catálogo completo en Odoo">
-                                            <i class="fa fa-th-large me-1"/> Catálogo Odoo
                                         </button>
                                         <button class="btn btn-sm btn-primary fw-bold" t-on-click="() => this.openCreateProduct()" title="Crear nuevo producto">
                                             <i class="fa fa-plus me-1"/> Nuevo Producto
@@ -741,13 +735,14 @@
                                         <table class="table table-hover align-middle mb-3" style="font-size: 13px;">
                                             <thead class="table-light">
                                                 <tr>
-                                                    <th style="width: 48px;"></th>
+                                                    <th style="width: 44px;"></th>
                                                     <th style="width: 14%;">Código / EAN</th>
-                                                    <th style="width: 34%;">Artículo / Descripción</th>
-                                                    <th style="width: 16%;">Categoría</th>
-                                                    <th style="width: 12%;">Tipo</th>
-                                                    <th style="width: 14%; text-align: right;">Precio Venta (PVP)</th>
-                                                    <th style="width: 10%; text-align: right;">Stock</th>
+                                                    <th style="width: 32%;">Artículo / Descripción</th>
+                                                    <th style="width: 17%;">Categoría</th>
+                                                    <th style="width: 11%;">Tipo</th>
+                                                    <th style="width: 12%; text-align: right;">PVP</th>
+                                                    <th style="width: 9%; text-align: right;">Stock</th>
+                                                    <th style="width: 5%; text-align: center;"></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -771,23 +766,17 @@
                                                             </t>
                                                         </td>
                                                         <td>
-                                                            <div class="d-flex align-items-center justify-content-between">
-                                                                <span class="fw-bold text-dark d-block text-primary-hover cursor-pointer"
-                                                                      title="Haga clic para abrir y editar la ficha completa del producto en Odoo"
-                                                                      t-on-click="() => this.openProductForm(p)">
-                                                                    <t t-esc="p.name"/>
-                                                                </span>
-                                                                <button class="btn btn-sm btn-link text-muted p-0 ms-1 opacity-50 opacity-100-hover"
-                                                                        title="Editar ficha completa"
-                                                                        t-on-click="() => this.openProductForm(p)">
-                                                                    <i class="fa fa-pencil" style="font-size: 11px;"/>
-                                                                </button>
-                                                            </div>
+                                                            <strong class="text-dark cursor-pointer text-primary-hover d-block"
+                                                                    title="Haga clic para editar la ficha completa de este producto"
+                                                                    t-on-click="() => this.openEditProductModal(p)">
+                                                                <t t-esc="p.name"/>
+                                                            </strong>
                                                         </td>
                                                         <td>
-                                                            <span class="badge bg-light text-secondary border cursor-pointer"
-                                                                  title="Haga clic para ver o editar categorías en Odoo"
-                                                                  t-on-click="() => this.openOdooCategoriesView()">
+                                                            <span class="badge bg-white text-dark border px-2 py-1 shadow-sm cursor-pointer"
+                                                                  style="font-size: 11.5px; font-weight: 600; color: #1e293b !important; border-color: #cbd5e1 !important;"
+                                                                  title="Haga clic para ver o gestionar categorías"
+                                                                  t-on-click="() => this.openCategoriesModal()">
                                                                 <t t-esc="p.categ_name"/>
                                                             </span>
                                                         </td>
@@ -819,27 +808,33 @@
                                                             </t>
                                                             <!-- MODO VISUALIZACIÓN DE PRECIO -->
                                                             <t t-else="">
-                                                                <span class="fw-bold text-dark me-2" style="font-size: 14px;">
+                                                                <span class="fw-bold text-dark me-1" style="font-size: 14px;">
                                                                     <t t-esc="p.list_price.toFixed(p.is_fuel ? 3 : 2)"/> €
                                                                 </span>
                                                                 <button class="btn btn-sm btn-light border p-1"
-                                                                        t-on-click="() => this.startEditProductPrice(p)" title="Modificar precio directamente">
+                                                                        t-on-click="() => this.startEditProductPrice(p)" title="Modificar precio rápido">
                                                                     <i class="fa fa-pencil text-muted" style="font-size: 11px;"/>
                                                                 </button>
                                                             </t>
                                                         </td>
                                                         <td style="text-align: right;">
                                                             <t t-if="p.type === 'product'">
-                                                                <span t-attf-class="badge cursor-pointer #{p.qty_available &gt; 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'}"
-                                                                      title="Haga clic para ajustar el stock o registrar recuento físico de este producto"
-                                                                      t-on-click="() => this.openProductStockAdjust(p)">
-                                                                    <i class="fa fa-sliders me-1" style="font-size: 9px;"/>
-                                                                    <t t-esc="p.qty_available"/>
+                                                                <span t-attf-class="badge cursor-pointer px-2 py-1 #{p.qty_available &gt; 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'}"
+                                                                      title="Haga clic para realizar recuento o ajuste de stock físico"
+                                                                      t-on-click="() => this.openStockAdjustModal(p)">
+                                                                    <t t-esc="p.qty_available"/> <i class="fa fa-sliders ms-1" style="font-size: 9px;"/>
                                                                 </span>
                                                             </t>
                                                             <t t-else="">
                                                                 <span class="text-muted" style="font-size: 11px;">---</span>
                                                             </t>
+                                                        </td>
+                                                        <td style="text-align: center;">
+                                                            <button class="btn btn-sm btn-outline-secondary p-1 px-2"
+                                                                    title="Editar ficha completa"
+                                                                    t-on-click="() => this.openEditProductModal(p)">
+                                                                <i class="fa fa-pencil"/>
+                                                            </button>
                                                         </td>
                                                     </tr>
                                                 </t>
@@ -1651,6 +1646,238 @@
                                     <i t-if="state.isSavingNewTank" class="fa fa-circle-o-notch fa-spin me-1"/>
                                     <i t-else="" class="fa fa-check me-1"/> Registrar Tanque
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- MODAL PARA CREAR O EDITAR PRODUCTO -->
+            <t t-if="state.isEditProductModalOpen">
+                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1065;" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                                <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                                    <i class="fa fa-cube text-primary me-1"/>
+                                    <t t-if="state.editingProduct">Editar Producto: <span class="text-info ms-1"><t t-esc="state.editingProduct.name"/></span></t>
+                                    <t t-else="">Nuevo Producto</t>
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeEditProductModal()" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-dark">Nombre del Artículo / Descripción <span class="text-danger">*</span></label>
+                                    <input type="text"
+                                           class="form-control"
+                                           placeholder="Ej: Kinder Bueno 43g, Coca Cola 33cl..."
+                                           t-model="state.editProdName"/>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Código Interno / Referencia</label>
+                                        <input type="text"
+                                               class="form-control font-monospace"
+                                               placeholder="Ej: 311001"
+                                               t-model="state.editProdCode"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Código de Barras (EAN-13)</label>
+                                        <input type="text"
+                                               class="form-control font-monospace"
+                                               placeholder="Ej: 8000500003787"
+                                               t-model="state.editProdBarcode"/>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Categoría de Producto</label>
+                                        <select class="form-select" t-model="state.editProdCategId">
+                                            <option value="">(Sin categoría específica)</option>
+                                            <t t-if="state.companyDetailData and state.companyDetailData.all_categories">
+                                                <t t-foreach="state.companyDetailData.all_categories" t-as="cat" t-key="cat.id">
+                                                    <option t-att-value="cat.id"><t t-esc="cat.name"/></option>
+                                                </t>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Tipo de Producto</label>
+                                        <select class="form-select" t-model="state.editProdType">
+                                            <option value="product">Almacenable (Control de stock)</option>
+                                            <option value="consu">Consumible</option>
+                                            <option value="service">Servicio</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Precio de Venta al Público (PVP €) <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <input type="number"
+                                                   class="form-control font-monospace fw-bold"
+                                                   step="0.01"
+                                                   min="0"
+                                                   placeholder="0.00"
+                                                   t-model="state.editProdPrice"/>
+                                            <span class="input-group-text">€</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Precio de Coste (€)</label>
+                                        <div class="input-group">
+                                            <input type="number"
+                                                   class="form-control font-monospace"
+                                                   step="0.01"
+                                                   min="0"
+                                                   placeholder="0.00"
+                                                   t-model="state.editProdCost"/>
+                                            <span class="input-group-text">€</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="editProdInPosSwitch" t-model="state.editProdInPos"/>
+                                    <label class="form-check-label small fw-bold text-dark" for="editProdInPosSwitch">Disponible para venta en el TPV de la gasolinera</label>
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end gap-2 border-top">
+                                <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.closeEditProductModal()">Cancelar</button>
+                                <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-att-disabled="state.isSavingProductForm" t-on-click="() => this.saveProductModal()">
+                                    <i t-if="state.isSavingProductForm" class="fa fa-circle-o-notch fa-spin me-1"/>
+                                    <i t-else="" class="fa fa-check me-1"/> Guardar Producto
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- MODAL PARA AJUSTE DE STOCK FÍSICO / RECUENTO -->
+            <t t-if="state.isStockAdjustModalOpen and state.stockAdjustProduct">
+                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1065;" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                                <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                                    <i class="fa fa-sliders text-warning me-1"/> Ajuste de Stock Físico
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeStockAdjustModal()" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="p-3 bg-light rounded-3 border mb-3">
+                                    <strong class="d-block text-dark fs-6 mb-1"><t t-esc="state.stockAdjustProduct.name"/></strong>
+                                    <div class="d-flex gap-3 text-muted small">
+                                        <span>Ref: <strong class="text-dark font-monospace"><t t-esc="state.stockAdjustProduct.default_code || '---'"/></strong></span>
+                                        <span>Categoría: <strong class="text-dark"><t t-esc="state.stockAdjustProduct.categ_name"/></strong></span>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-6">
+                                        <div class="p-3 rounded-3 border text-center" style="background: #f8fafc;">
+                                            <span class="text-muted small d-block mb-1">Stock Actual en Odoo</span>
+                                            <span class="fs-4 fw-bold font-monospace text-dark"><t t-esc="state.stockAdjustCurrentQty"/> uds</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-3 rounded-3 border text-center" style="background: #eff6ff; border-color: #bfdbfe !important;">
+                                            <span class="text-primary small fw-bold d-block mb-1">Nuevo Stock Contado</span>
+                                            <input type="number"
+                                                   class="form-control form-control-lg text-center font-monospace fw-bold"
+                                                   step="1"
+                                                   min="0"
+                                                   t-model="state.stockAdjustNewQty"/>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-dark">Motivo del Ajuste</label>
+                                    <select class="form-select" t-model="state.stockAdjustReason">
+                                        <option value="Recuento físico periódico">Recuento físico periódico</option>
+                                        <option value="Merma o rotura">Merma o rotura</option>
+                                        <option value="Entrada de mercancía sin albarán">Entrada de mercancía sin albarán</option>
+                                        <option value="Corrección de descuadre">Corrección de descuadre</option>
+                                    </select>
+                                </div>
+
+                                <div class="alert alert-info py-2 px-3 small mb-0 rounded-2">
+                                    <i class="fa fa-info-circle me-1"/> Al aplicar, Odoo actualizará las unidades disponibles en el almacén de esta empresa sin salir del panel.
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end gap-2 border-top">
+                                <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.closeStockAdjustModal()">Cancelar</button>
+                                <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-att-disabled="state.isSavingStockAdjust" t-on-click="() => this.saveStockAdjustModal()">
+                                    <i t-if="state.isSavingStockAdjust" class="fa fa-circle-o-notch fa-spin me-1"/>
+                                    <i t-else="" class="fa fa-check me-1"/> Aplicar Ajuste
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- MODAL PARA GESTIÓN DE CATEGORÍAS DE PRODUCTOS -->
+            <t t-if="state.isCategoriesModalOpen">
+                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1065;" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                                <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                                    <i class="fa fa-tags text-primary me-1"/> Familias y Categorías de Productos
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeCategoriesModal()" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <!-- Crear nueva categoría -->
+                                <div class="p-3 bg-light rounded-3 border mb-3">
+                                    <label class="form-label small fw-bold text-dark mb-1">Nueva Categoría</label>
+                                    <div class="input-group">
+                                        <input type="text"
+                                               class="form-control"
+                                               placeholder="Ej: Refrescos, Café, Lavado..."
+                                               t-model="state.newCategoryName"/>
+                                        <button class="btn btn-primary fw-bold"
+                                                type="button"
+                                                t-att-disabled="state.isSavingCategory"
+                                                t-on-click="() => this.saveNewCategory()">
+                                            <i t-if="state.isSavingCategory" class="fa fa-circle-o-notch fa-spin me-1"/>
+                                            <i t-else="" class="fa fa-plus me-1"/> Añadir
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Listado de categorías existentes -->
+                                <label class="form-label small fw-bold text-dark mb-2">Categorías Registradas</label>
+                                <div t-if="state.categoriesLoading" class="text-center py-4">
+                                    <i class="fa fa-circle-o-notch fa-spin fa-2x text-primary mb-2"/>
+                                    <p class="text-muted small">Cargando categorías...</p>
+                                </div>
+                                <div t-else="" style="max-height: 280px; overflow-y: auto;" class="border rounded-3 p-2 bg-white">
+                                    <t t-if="state.categoriesList and state.categoriesList.length">
+                                        <div t-foreach="state.categoriesList" t-as="cat" t-key="cat.id"
+                                             class="d-flex justify-content-between align-items-center py-2 px-3 border-bottom rounded-2 bg-light-subtle mb-1">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="fa fa-tag text-muted" style="font-size: 11px;"/>
+                                                <strong class="text-dark" style="font-size: 13px;"><t t-esc="cat.name"/></strong>
+                                            </div>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 11px;">
+                                                <t t-esc="cat.products_count"/> arts
+                                            </span>
+                                        </div>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="p-3 text-center text-muted small">No hay categorías registradas.</div>
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end border-top">
+                                <button type="button" class="btn btn-secondary btn-sm px-3" t-on-click="() => this.closeCategoriesModal()">Cerrar</button>
                             </div>
                         </div>
                     </div>

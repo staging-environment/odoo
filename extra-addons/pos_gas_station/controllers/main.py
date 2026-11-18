@@ -1761,6 +1761,9 @@ class PosGasStationController(http.Controller):
                     'status': 'Nivel crítico' if fill_pct < 15 else ('Nivel bajo' if fill_pct < 30 else 'Operativo'),
                 })
 
+        categories_records = env['product.category'].sudo().search([], order='name asc')
+        categories_data = [{'id': c.id, 'name': c.name} for c in categories_records]
+
         return {
             'status': 'success',
             'company': {
@@ -1789,6 +1792,7 @@ class PosGasStationController(http.Controller):
                 'fuels_count': fuels_count,
                 'store_count': store_count,
             },
+            'all_categories': categories_data,
             'inventory': {
                 'warehouses': warehouses_data,
                 'tanks': company_tanks,
@@ -1812,9 +1816,12 @@ class PosGasStationController(http.Controller):
                 'default_code': code,
                 'barcode': p.barcode or '',
                 'list_price': round(float(p.list_price or 0.0), 3) if is_fuel else round(float(p.list_price or 0.0), 2),
+                'standard_price': round(float(getattr(p, 'standard_price', 0.0) or 0.0), 2),
                 'type': p.type or 'consu',
                 'type_label': 'Almacenable' if p.type == 'product' else ('Servicio' if p.type == 'service' else 'Consumible'),
+                'categ_id': p.categ_id.id if p.categ_id else False,
                 'categ_name': p.categ_id.name if p.categ_id else 'General',
+                'available_in_pos': bool(getattr(p, 'available_in_pos', True)),
                 'is_fuel': is_fuel,
                 'qty_available': round(float(p.qty_available or 0.0), 2) if hasattr(p, 'qty_available') else 0.0,
                 'has_image': bool(p.image_128),
@@ -1985,6 +1992,177 @@ class PosGasStationController(http.Controller):
         except Exception as e:
             _logger.exception("Error en update_product_price: %s", e)
             return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/save_product', type='json', auth='user', methods=['POST'], csrf=False)
+    def save_product(self, product_id=None, company_id=None, name=None, default_code=None, barcode=None,
+                     categ_id=None, prod_type='consu', list_price=0.0, standard_price=0.0,
+                     available_in_pos=True, **kw):
+        """Crea o modifica un producto de forma completa desde la modal del dashboard."""
+        try:
+            env = request.env
+            if not name or not name.strip():
+                return {'status': 'error', 'message': 'El nombre del producto es obligatorio.'}
+
+            vals = {
+                'name': name.strip(),
+                'default_code': (default_code or '').strip() or False,
+                'barcode': (barcode or '').strip() or False,
+                'type': prod_type if prod_type in ['product', 'consu', 'service'] else 'consu',
+                'list_price': max(0.0, float(str(list_price).replace(',', '.') or 0.0)),
+                'standard_price': max(0.0, float(str(standard_price).replace(',', '.') or 0.0)),
+            }
+            if hasattr(env['product.template'], 'available_in_pos'):
+                vals['available_in_pos'] = bool(available_in_pos)
+
+            if categ_id:
+                cat = env['product.category'].sudo().browse(int(categ_id))
+                if cat.exists():
+                    vals['categ_id'] = cat.id
+
+            if product_id:
+                prod = env['product.template'].sudo().browse(int(product_id))
+                if not prod.exists():
+                    return {'status': 'error', 'message': 'Producto no encontrado.'}
+                prod.sudo().write(vals)
+                p_name = prod.name
+                if isinstance(p_name, dict):
+                    p_name = p_name.get('es_ES') or p_name.get('en_US') or ''
+                msg = f'Producto "{p_name}" actualizado correctamente.'
+            else:
+                if company_id:
+                    vals['company_id'] = int(company_id)
+                prod = env['product.template'].sudo().create(vals)
+                p_name = prod.name
+                if isinstance(p_name, dict):
+                    p_name = p_name.get('es_ES') or p_name.get('en_US') or ''
+                msg = f'Producto "{p_name}" creado correctamente.'
+
+            return {
+                'status': 'success',
+                'message': msg,
+                'product_id': prod.id,
+            }
+        except Exception as e:
+            _logger.exception("Error al guardar producto: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/adjust_product_stock', type='json', auth='user', methods=['POST'], csrf=False)
+    def adjust_product_stock(self, product_id=None, company_id=None, new_qty=None, warehouse_id=None, reason=None, **kw):
+        """Ajusta el stock físico de un producto almacenable en la empresa indicada."""
+        try:
+            env = request.env
+            if not product_id or new_qty is None:
+                return {'status': 'error', 'message': 'Producto y nueva cantidad obligatorios.'}
+
+            tmpl = env['product.template'].sudo().browse(int(product_id))
+            if not tmpl.exists():
+                return {'status': 'error', 'message': 'Producto no encontrado.'}
+
+            target_qty = max(0.0, float(str(new_qty).replace(',', '.')))
+
+            # Buscar variante
+            product = tmpl.product_variant_id or env['product.product'].sudo().search([('product_tmpl_id', '=', tmpl.id)], limit=1)
+            if not product:
+                return {'status': 'error', 'message': 'No se encontró variante física de producto.'}
+
+            # Buscar almacén y ubicación de la empresa
+            cid = int(company_id) if company_id else (tmpl.company_id.id if tmpl.company_id else env.company.id)
+            warehouse = None
+            if warehouse_id:
+                warehouse = env['stock.warehouse'].sudo().browse(int(warehouse_id))
+            if not warehouse or not warehouse.exists():
+                warehouse = env['stock.warehouse'].sudo().search([('company_id', '=', cid)], limit=1)
+            if not warehouse:
+                warehouse = env['stock.warehouse'].sudo().search([], limit=1)
+
+            if not warehouse or not warehouse.lot_stock_id:
+                return {'status': 'error', 'message': 'No se encontró almacén de stock para aplicar el recuento.'}
+
+            loc = warehouse.lot_stock_id
+
+            quant = env['stock.quant'].sudo().search([
+                ('location_id', '=', loc.id),
+                ('product_id', '=', product.id),
+            ], limit=1)
+
+            if not quant:
+                quant = env['stock.quant'].sudo().create({
+                    'location_id': loc.id,
+                    'product_id': product.id,
+                    'inventory_quantity': target_qty,
+                    'company_id': cid,
+                })
+            else:
+                quant.inventory_quantity = target_qty
+
+            quant.action_apply_inventory()
+
+            p_name = tmpl.name
+            if isinstance(p_name, dict):
+                p_name = p_name.get('es_ES') or p_name.get('en_US') or ''
+
+            return {
+                'status': 'success',
+                'message': f'Stock de "{p_name}" actualizado a {target_qty:g} uds en {warehouse.name}.',
+                'new_qty': target_qty,
+            }
+        except Exception as e:
+            _logger.exception("Error al ajustar stock de producto: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/save_category', type='json', auth='user', methods=['POST'], csrf=False)
+    def save_category(self, category_id=None, name=None, **kw):
+        """Crea o renombra una categoría de producto."""
+        try:
+            env = request.env
+            if not name or not name.strip():
+                return {'status': 'error', 'message': 'El nombre de la categoría es obligatorio.'}
+
+            clean_name = name.strip()
+            if category_id:
+                cat = env['product.category'].sudo().browse(int(category_id))
+                if not cat.exists():
+                    return {'status': 'error', 'message': 'Categoría no encontrada.'}
+                cat.sudo().write({'name': clean_name})
+                msg = f'Categoría renombrada a "{clean_name}".'
+            else:
+                cat = env['product.category'].sudo().create({'name': clean_name})
+                msg = f'Categoría "{clean_name}" creada correctamente.'
+
+            # Sincronizar pos.category
+            pos_cat = env['pos.category'].sudo().search([('name', '=', clean_name)], limit=1)
+            if not pos_cat:
+                env['pos.category'].sudo().create({'name': clean_name})
+
+            return {
+                'status': 'success',
+                'message': msg,
+                'category_id': cat.id,
+                'name': cat.name,
+            }
+        except Exception as e:
+            _logger.exception("Error al guardar categoría: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/get_categories_list', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_categories_list(self, **kw):
+        """Retorna las categorías con el conteo de artículos asignados."""
+        try:
+            env = request.env
+            cats = env['product.category'].sudo().search([], order='name asc')
+            data = []
+            for c in cats:
+                cnt = env['product.template'].sudo().search_count([('categ_id', '=', c.id)])
+                data.append({
+                    'id': c.id,
+                    'name': c.name,
+                    'complete_name': c.complete_name,
+                    'products_count': cnt,
+                })
+            return {'status': 'success', 'categories': data}
+        except Exception as e:
+            _logger.exception("Error al obtener categorías: %s", e)
+            return {'status': 'error', 'message': str(e), 'categories': []}
 
     @http.route('/pos_gas_station/adjust_tank_stock', type='json', auth='user', methods=['POST'], csrf=False)
     def adjust_tank_stock(self, location_id=None, new_liters=None, reason=None, **kw):
