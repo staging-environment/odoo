@@ -640,12 +640,15 @@
     border-bottom: 1px solid #94a3b8 !important;
     display: grid !important;
     grid-template-columns: repeat(5, 1fr) !important;
-    gap: 4px !important;
-    padding: 3px 5px !important;
+    gap: 3px !important;
+    padding: 3px !important;
     position: relative !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .btn-store-cat {
+    width: 100% !important;
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
     border-radius: 6px !important;
@@ -658,6 +661,7 @@
     min-height: 40px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
     transition: all 0.15s ease-in-out !important;
+    box-sizing: border-box !important;
 }
 .btn-store-cat:hover {
     background: #f8fafc !important;
@@ -2672,7 +2676,7 @@
 
 .btn-dropdown-wrapper {
     position: relative !important;
-    display: inline-block !important;
+    display: block !important;
     width: 100% !important;
     height: 100% !important;
 }
@@ -7484,9 +7488,12 @@
     position: relative !important;
     height: 100% !important;
     width: 100% !important;
+    display: block !important;
 }
 
 .btn-config-open {
+    width: 100% !important;
+    height: 100% !important;
     color: #475569 !important;
 }
 
@@ -7599,6 +7606,25 @@
 }
 
 /* ==========================================================================
+   MODAL OVERLAY UNIVERSAL VIRTUSTPV
+   ========================================================================== */
+.virtus-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.7) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 10800 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+}
+
+/* ==========================================================================
    MODAL DE CONFIGURACIÓN DE IMPRESORAS DEL TPV
    ========================================================================== */
 .printer-config-modal-window {
@@ -7612,6 +7638,36 @@
     overflow: hidden !important;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3) !important;
     animation: fadeInModal 0.2s ease-out !important;
+}
+
+.printer-direct-print-card {
+    background: #ffffff !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.15s ease !important;
+}
+
+.printer-direct-print-card.active {
+    border-color: #f59e0b !important;
+    background: #fffbeb !important;
+}
+
+.direct-print-icon {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 8px !important;
+    background: #f1f5f9 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 20px !important;
+    flex-shrink: 0 !important;
+}
+
+.direct-print-icon.active {
+    background: #fef3c7 !important;
 }
 
 .printer-config-header {

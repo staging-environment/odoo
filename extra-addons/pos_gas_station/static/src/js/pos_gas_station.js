@@ -912,6 +912,14 @@ export class UtrecarMainScreen extends Component {
         }
     }
 
+    toggleDirectPrint(val) {
+        if (!this.state.printerConfig) {
+            this.state.printerConfig = this.getPrinterConfig();
+        }
+        this.state.printerConfig.directPrint = Boolean(val);
+        this.savePrinterConfig();
+    }
+
     resetPrinterConfigToDefaults() {
         if (!confirm("¿Desea restablecer las asignaciones de impresoras a los valores predeterminados?")) {
             return;
@@ -1087,16 +1095,38 @@ export class UtrecarMainScreen extends Component {
         if (docType === 'shift_report') {
             this.printTestShiftReport(assigned);
         } else {
-            this.printShiftOrderTicket(testOrder, false, true);
+            this.printShiftOrderTicket(testOrder, false, null);
         }
     }
 
     printTestShiftReport(assigned) {
+        const isDirect = (this.state.printerConfig && this.state.printerConfig.directPrint !== undefined)
+            ? Boolean(this.state.printerConfig.directPrint)
+            : true;
         const receiptWindow = window.open("", "_blank", "width=420,height=680");
         if (!receiptWindow) {
             alert("Por favor permita las ventanas emergentes en su navegador para imprimir.");
             return;
         }
+
+        const topToolbar = isDirect ? '' : `
+            <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100;">
+                <span style="font-weight: bold; font-size: 12px;">👁️ Vista Previa: Informe Z | 🖨️ ${assigned.name}</span>
+                <div>
+                    <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 6px;">🖨️ Imprimir</button>
+                    <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">✖ Cerrar</button>
+                </div>
+            </div>
+        `;
+
+        const printScript = isDirect ? `
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            </script>
+        ` : '';
+
         receiptWindow.document.write(`
             <!DOCTYPE html>
             <html>
@@ -1117,10 +1147,7 @@ export class UtrecarMainScreen extends Component {
                 </style>
             </head>
             <body>
-                <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100;">
-                    <span style="font-weight: bold; font-size: 12px;">👁️ Vista Previa: Informe Z | 🖨️ ${assigned.name}</span>
-                    <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">🖨️ Imprimir</button>
-                </div>
+                ${topToolbar}
                 <div class="header">
                     <h2>*** PRUEBA CIERRE DE TURNO ***</h2>
                     <div>ESTACIÓN DE SERVICIO UTRECAR</div>
@@ -1134,11 +1161,7 @@ export class UtrecarMainScreen extends Component {
                 <div class="grand-total row"><span>TOTAL TURNO:</span><span>465.50 €</span></div>
                 <div class="divider"></div>
                 <div style="text-align: center; font-size: 11px; margin-top: 10px;">Comprobante de prueba emitido correctamente.</div>
-                <script>
-                    window.onload = function() {
-                        window.print();
-                    };
-                </script>
+                ${printScript}
             </body>
             </html>
         `);
@@ -2760,7 +2783,7 @@ export class UtrecarMainScreen extends Component {
         this.state.shiftActiveTab = tab;
     }
 
-    printShiftOrderTicket(order, isCopy = false, autoPrint = true) {
+    printShiftOrderTicket(order, isCopy = false, autoPrint = null) {
         if (!order) return;
         if (order.doc_type === 'invoice' || order.is_invoiced) {
             return this.printShiftOrderInvoice(order);
@@ -2844,13 +2867,19 @@ export class UtrecarMainScreen extends Component {
         const docType = order.is_albaran ? 'albaran' : (order.is_invoiced ? 'invoice' : 'ticket');
         const assignedPrinter = this.getAssignedPrinter(docType);
 
+        const shouldAutoPrint = (autoPrint !== null && autoPrint !== undefined)
+            ? Boolean(autoPrint)
+            : (this.state.printerConfig && this.state.printerConfig.directPrint !== undefined
+                ? Boolean(this.state.printerConfig.directPrint)
+                : Boolean(assignedPrinter.autoPrint));
+
         const receiptWindow = window.open("", "_blank", "width=420,height=680");
         if (!receiptWindow) {
             alert("Por favor permita las ventanas emergentes en su navegador para imprimir o visualizar.");
             return;
         }
 
-        const topToolbar = autoPrint ? '' : `
+        const topToolbar = shouldAutoPrint ? '' : `
             <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
                 <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${order.is_albaran ? 'Albarán de Crédito' : 'Ticket de Venta'} &nbsp;|&nbsp; 🖨️ <span style="color: #60a5fa;">${assignedPrinter.name}</span> (${assignedPrinter.format === 'a4' ? 'A4' : '80mm'})</span>
                 <div>
@@ -2860,7 +2889,7 @@ export class UtrecarMainScreen extends Component {
             </div>
         `;
 
-        const printScript = autoPrint ? `
+        const printScript = shouldAutoPrint ? `
             <script>
                 window.onload = function() {
                     window.print();

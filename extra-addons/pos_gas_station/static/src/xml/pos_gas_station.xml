@@ -3287,6 +3287,45 @@
                             </div>
                         </t>
 
+                        <!-- SELECTOR / INTERRUPTOR DE MODO DE IMPRESIÓN DIRECTA -->
+                        <t t-if="state.printerConfig">
+                            <div t-attf-class="printer-direct-print-card mb-3 #{state.printerConfig.directPrint ? 'active' : ''}">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div t-attf-class="direct-print-icon #{state.printerConfig.directPrint ? 'active' : ''}">
+                                            <i t-attf-class="fa #{state.printerConfig.directPrint ? 'fa-bolt text-warning' : 'fa-eye text-primary'}"/>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold fs-6 text-dark">
+                                                <t t-if="state.printerConfig.directPrint">
+                                                    Modo: Impresión Directa Rápida (Sin Previsualización)
+                                                </t>
+                                                <t t-else="">
+                                                    Modo: Con Previsualización Previa en Pantalla
+                                                </t>
+                                            </div>
+                                            <div class="text-muted" style="font-size: 11px;">
+                                                <t t-if="state.printerConfig.directPrint">
+                                                    Al emitir tickets, albaranes o cierres de turno, se envían directamente a la impresora predeterminada sin ventanas intermedias ni esperas.
+                                                </t>
+                                                <t t-else="">
+                                                    Muestra primero una ventana previa con el documento maquetado y botones de confirmación antes de imprimir físicamente en papel.
+                                                </t>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-check form-switch fs-4 mb-0 ps-5">
+                                        <input class="form-check-input cursor-pointer" 
+                                               type="checkbox" 
+                                               role="switch" 
+                                               id="directPrintSwitch"
+                                               t-att-checked="state.printerConfig.directPrint"
+                                               t-on-change="(ev) => this.toggleDirectPrint(ev.target.checked)"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+
                         <!-- PESTAÑA 1: ASIGNACIÓN POR TIPO DE DOCUMENTO -->
                         <t t-if="state.printerActiveTab === 'assignments' and state.printerConfig and state.printerConfig.assignments">
                             <div class="printer-docs-grid">
