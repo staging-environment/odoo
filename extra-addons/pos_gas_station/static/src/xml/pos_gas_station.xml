@@ -213,8 +213,46 @@
                             </button>
                         </div>
                         <button class="btn-store-cat btn-closed-shifts-open" t-on-click="() => this.openClosedShiftsModal()" title="Historial de turnos" aria-label="Historial de turnos" alt="Historial de turnos">
-                            <i class="fa fa-history text-primary" style="font-size: 16px;" role="img" title="Historial de turnos"/>
+                            <i class="fa fa-history text-primary" style="font-size: 18px;" role="img" title="Historial de turnos"/>
                         </button>
+                        <div class="btn-dropdown-wrapper pos-config-dropdown-wrapper">
+                            <button t-attf-class="btn-store-cat btn-config-open #{state.isConfigDropdownOpen ? 'active' : ''}" 
+                                    t-on-click="(ev) => this.toggleConfigDropdown(ev)" 
+                                    title="Configuración del TPV" 
+                                    aria-label="Configuración del TPV">
+                                <i class="fa fa-cog fa-lg" style="font-size: 20px; color: #475569;" role="img" title="Configuración"/>
+                            </button>
+                            <t t-if="state.isConfigDropdownOpen">
+                                <div class="pos-config-dropdown-menu" t-on-click.stop="">
+                                    <div class="pos-config-dropdown-header">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="dropdown-header-title">
+                                                <i class="fa fa-sliders me-1 text-primary"/> Configuración
+                                            </span>
+                                            <span class="badge bg-secondary" style="font-size: 10px;">
+                                                <t t-esc="state.stationName || 'TPV'"/>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="pos-config-dropdown-list">
+                                        <button class="pos-config-dropdown-item" t-on-click="() => this.openPrinterConfigModal()">
+                                            <div class="dropdown-item-icon bg-primary-subtle text-primary">
+                                                <i class="fa fa-print"/>
+                                            </div>
+                                            <div class="dropdown-item-content">
+                                                <div class="dropdown-item-title">Configuración de impresoras</div>
+                                                <div class="dropdown-item-desc">Asignar impresoras por tipo de documento</div>
+                                            </div>
+                                            <i class="fa fa-chevron-right dropdown-item-arrow"/>
+                                        </button>
+                                        <!-- Próximas pestañas/opciones se agregarán aquí -->
+                                    </div>
+                                    <div class="pos-config-dropdown-footer">
+                                        <i class="fa fa-cog text-muted me-1"/> Periféricos y hardware del puesto
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
                     </div>
 
                     <!-- CUADRÍCULA DIRECTA DE PRODUCTOS VIRTUSTPV -->
@@ -3199,6 +3237,399 @@
                                 <span>Confirmar Anulación de Ticket</span>
                             </t>
                         </button>
+                    </div>
+                </div>
+            </div>
+        </t>
+
+        <!-- ======================================================== -->
+        <!-- MODAL DE CONFIGURACIÓN DE IMPRESORAS DEL TPV             -->
+        <!-- ======================================================== -->
+        <t t-if="state.isPrinterConfigModalOpen">
+            <div class="virtus-modal-overlay" t-on-click.self="() => this.closePrinterConfigModal()">
+                <div class="printer-config-modal-window" t-on-click.stop="">
+                    <!-- ENCABEZADO -->
+                    <div class="printer-config-header">
+                        <div class="printer-config-header-left">
+                            <div class="printer-config-icon-badge">
+                                <i class="fa fa-print"/>
+                            </div>
+                            <div class="printer-config-titles">
+                                <h3 class="printer-config-title">Configuración de Impresoras del TPV</h3>
+                                <span class="printer-config-subtitle">
+                                    Preestablece la impresora del sistema, formato y número de copias para cada tipo de documento.
+                                </span>
+                            </div>
+                        </div>
+                        <button class="printer-config-close-btn" t-on-click="() => this.closePrinterConfigModal()" title="Cerrar ventana">
+                            <i class="fa fa-times"/>
+                        </button>
+                    </div>
+
+                    <!-- PESTAÑAS DENTRO DEL MODAL -->
+                    <div class="printer-config-tabs">
+                        <button t-attf-class="printer-tab-btn #{state.printerActiveTab === 'assignments' ? 'active' : ''}"
+                                t-on-click="() => this.state.printerActiveTab = 'assignments'">
+                            <i class="fa fa-file-text-o me-2"/> Asignación por Documento
+                        </button>
+                        <button t-attf-class="printer-tab-btn #{state.printerActiveTab === 'printers' ? 'active' : ''}"
+                                t-on-click="() => this.state.printerActiveTab = 'printers'">
+                            <i class="fa fa-hdd-o me-2"/> Impresoras del Sistema (<t t-esc="(state.printerConfig and state.printerConfig.systemPrinters ? state.printerConfig.systemPrinters.length : 0)"/>)
+                        </button>
+                    </div>
+
+                    <!-- CUERPO DEL MODAL -->
+                    <div class="printer-config-body">
+                        <!-- MENSAJE DE ÉXITO -->
+                        <t t-if="state.printerSaveSuccessMessage">
+                            <div class="printer-alert-success">
+                                <i class="fa fa-check-circle me-2"/> <t t-esc="state.printerSaveSuccessMessage"/>
+                            </div>
+                        </t>
+
+                        <!-- PESTAÑA 1: ASIGNACIÓN POR TIPO DE DOCUMENTO -->
+                        <t t-if="state.printerActiveTab === 'assignments' and state.printerConfig and state.printerConfig.assignments">
+                            <div class="printer-docs-grid">
+                                <!-- 1. TICKETS DE VENTA -->
+                                <div class="printer-doc-card">
+                                    <div class="doc-card-header">
+                                        <div class="doc-card-badge bg-primary">
+                                            <i class="fa fa-file-text"/>
+                                        </div>
+                                        <div class="doc-card-title-box">
+                                            <strong>Tickets de Venta</strong>
+                                            <span>Cobros ordinarios, compras tienda y suministros de pista</span>
+                                        </div>
+                                    </div>
+                                    <div class="doc-card-fields">
+                                        <div class="doc-field-row">
+                                            <label class="doc-label">Impresora predeterminada:</label>
+                                            <select class="doc-select form-select"
+                                                    t-on-change="(ev) => this.onPrinterAssignmentChange('ticket', 'printerId', ev.target.value)">
+                                                <t t-foreach="state.printerConfig.systemPrinters" t-as="p" t-key="p.id">
+                                                    <option t-att-value="p.id" t-att-selected="state.printerConfig.assignments.ticket.printerId === p.id">
+                                                        <t t-esc="p.name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+                                        <div class="doc-field-row-group">
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Formato:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('ticket', 'format', ev.target.value)">
+                                                    <option value="thermal_80" t-att-selected="state.printerConfig.assignments.ticket.format === 'thermal_80'">Rollo Térmico 80mm</option>
+                                                    <option value="a4" t-att-selected="state.printerConfig.assignments.ticket.format === 'a4'">Hoja A4</option>
+                                                </select>
+                                            </div>
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Copias:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('ticket', 'copies', parseInt(ev.target.value))">
+                                                    <option value="1" t-att-selected="state.printerConfig.assignments.ticket.copies === 1">1 copia</option>
+                                                    <option value="2" t-att-selected="state.printerConfig.assignments.ticket.copies === 2">2 copias</option>
+                                                    <option value="3" t-att-selected="state.printerConfig.assignments.ticket.copies === 3">3 copias</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn-test-print" t-on-click="() => this.testPrintDocument('ticket')" title="Imprimir ticket de prueba">
+                                                <i class="fa fa-print me-1"/> Probar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 2. ALBARANES DE CRÉDITO -->
+                                <div class="printer-doc-card">
+                                    <div class="doc-card-header">
+                                        <div class="doc-card-badge bg-warning text-dark">
+                                            <i class="fa fa-clipboard"/>
+                                        </div>
+                                        <div class="doc-card-title-box">
+                                            <strong>Albaranes de Suministro / Crédito</strong>
+                                            <span>Entregas a cuenta para clientes de crédito con firma de conductor</span>
+                                        </div>
+                                    </div>
+                                    <div class="doc-card-fields">
+                                        <div class="doc-field-row">
+                                            <label class="doc-label">Impresora predeterminada:</label>
+                                            <select class="doc-select form-select"
+                                                    t-on-change="(ev) => this.onPrinterAssignmentChange('albaran', 'printerId', ev.target.value)">
+                                                <t t-foreach="state.printerConfig.systemPrinters" t-as="p" t-key="p.id">
+                                                    <option t-att-value="p.id" t-att-selected="state.printerConfig.assignments.albaran.printerId === p.id">
+                                                        <t t-esc="p.name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+                                        <div class="doc-field-row-group">
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Formato:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('albaran', 'format', ev.target.value)">
+                                                    <option value="a4" t-att-selected="state.printerConfig.assignments.albaran.format === 'a4'">Hoja A4 (Láser/Tinta)</option>
+                                                    <option value="thermal_80" t-att-selected="state.printerConfig.assignments.albaran.format === 'thermal_80'">Rollo Térmico 80mm</option>
+                                                </select>
+                                            </div>
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Copias:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('albaran', 'copies', parseInt(ev.target.value))">
+                                                    <option value="1" t-att-selected="state.printerConfig.assignments.albaran.copies === 1">1 copia</option>
+                                                    <option value="2" t-att-selected="state.printerConfig.assignments.albaran.copies === 2">2 copias (Original + Conforme)</option>
+                                                    <option value="3" t-att-selected="state.printerConfig.assignments.albaran.copies === 3">3 copias</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn-test-print" t-on-click="() => this.testPrintDocument('albaran')" title="Imprimir albarán de prueba">
+                                                <i class="fa fa-print me-1"/> Probar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 3. FACTURAS OFICIALES -->
+                                <div class="printer-doc-card">
+                                    <div class="doc-card-header">
+                                        <div class="doc-card-badge bg-info text-white">
+                                            <i class="fa fa-file-pdf-o"/>
+                                        </div>
+                                        <div class="doc-card-title-box">
+                                            <strong>Facturas Oficiales (A4)</strong>
+                                            <span>Facturas ordinarias completas con CIF/NIF y facturas rectificativas</span>
+                                        </div>
+                                    </div>
+                                    <div class="doc-card-fields">
+                                        <div class="doc-field-row">
+                                            <label class="doc-label">Impresora predeterminada:</label>
+                                            <select class="doc-select form-select"
+                                                    t-on-change="(ev) => this.onPrinterAssignmentChange('invoice', 'printerId', ev.target.value)">
+                                                <t t-foreach="state.printerConfig.systemPrinters" t-as="p" t-key="p.id">
+                                                    <option t-att-value="p.id" t-att-selected="state.printerConfig.assignments.invoice.printerId === p.id">
+                                                        <t t-esc="p.name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+                                        <div class="doc-field-row-group">
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Formato:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('invoice', 'format', ev.target.value)">
+                                                    <option value="a4" t-att-selected="state.printerConfig.assignments.invoice.format === 'a4'">Hoja A4 Estándar</option>
+                                                    <option value="thermal_80" t-att-selected="state.printerConfig.assignments.invoice.format === 'thermal_80'">Rollo Térmico 80mm</option>
+                                                </select>
+                                            </div>
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Copias:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('invoice', 'copies', parseInt(ev.target.value))">
+                                                    <option value="1" t-att-selected="state.printerConfig.assignments.invoice.copies === 1">1 copia</option>
+                                                    <option value="2" t-att-selected="state.printerConfig.assignments.invoice.copies === 2">2 copias</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn-test-print" t-on-click="() => this.testPrintDocument('invoice')" title="Imprimir factura de prueba">
+                                                <i class="fa fa-print me-1"/> Probar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 4. CIERRES DE TURNO Y ARQUEOS -->
+                                <div class="printer-doc-card">
+                                    <div class="doc-card-header">
+                                        <div class="doc-card-badge bg-secondary text-white">
+                                            <i class="fa fa-clock-o"/>
+                                        </div>
+                                        <div class="doc-card-title-box">
+                                            <strong>Cierres de Turno y Arqueos de Caja</strong>
+                                            <span>Informe Z de turno, resumen fiscal por tipo de pago y ventas</span>
+                                        </div>
+                                    </div>
+                                    <div class="doc-card-fields">
+                                        <div class="doc-field-row">
+                                            <label class="doc-label">Impresora predeterminada:</label>
+                                            <select class="doc-select form-select"
+                                                    t-on-change="(ev) => this.onPrinterAssignmentChange('shift_report', 'printerId', ev.target.value)">
+                                                <t t-foreach="state.printerConfig.systemPrinters" t-as="p" t-key="p.id">
+                                                    <option t-att-value="p.id" t-att-selected="state.printerConfig.assignments.shift_report.printerId === p.id">
+                                                        <t t-esc="p.name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+                                        <div class="doc-field-row-group">
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Formato:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('shift_report', 'format', ev.target.value)">
+                                                    <option value="thermal_80" t-att-selected="state.printerConfig.assignments.shift_report.format === 'thermal_80'">Rollo Térmico 80mm</option>
+                                                    <option value="a4" t-att-selected="state.printerConfig.assignments.shift_report.format === 'a4'">Hoja A4</option>
+                                                </select>
+                                            </div>
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Copias:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('shift_report', 'copies', parseInt(ev.target.value))">
+                                                    <option value="1" t-att-selected="state.printerConfig.assignments.shift_report.copies === 1">1 copia</option>
+                                                    <option value="2" t-att-selected="state.printerConfig.assignments.shift_report.copies === 2">2 copias</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn-test-print" t-on-click="() => this.testPrintDocument('shift_report')" title="Imprimir informe de prueba">
+                                                <i class="fa fa-print me-1"/> Probar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 5. EXTRACCIONES Y JUSTIFICANTES DE ANULACIÓN -->
+                                <div class="printer-doc-card">
+                                    <div class="doc-card-header">
+                                        <div class="doc-card-badge bg-dark text-white">
+                                            <i class="fa fa-undo"/>
+                                        </div>
+                                        <div class="doc-card-title-box">
+                                            <strong>Extracciones, Calibraciones y Justificantes</strong>
+                                            <span>Retornos a depósito de calibración de surtidores y comprobantes de anulación</span>
+                                        </div>
+                                    </div>
+                                    <div class="doc-card-fields">
+                                        <div class="doc-field-row">
+                                            <label class="doc-label">Impresora predeterminada:</label>
+                                            <select class="doc-select form-select"
+                                                    t-on-change="(ev) => this.onPrinterAssignmentChange('extraction', 'printerId', ev.target.value)">
+                                                <t t-foreach="state.printerConfig.systemPrinters" t-as="p" t-key="p.id">
+                                                    <option t-att-value="p.id" t-att-selected="state.printerConfig.assignments.extraction.printerId === p.id">
+                                                        <t t-esc="p.name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+                                        <div class="doc-field-row-group">
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Formato:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('extraction', 'format', ev.target.value)">
+                                                    <option value="thermal_80" t-att-selected="state.printerConfig.assignments.extraction.format === 'thermal_80'">Rollo Térmico 80mm</option>
+                                                    <option value="a4" t-att-selected="state.printerConfig.assignments.extraction.format === 'a4'">Hoja A4</option>
+                                                </select>
+                                            </div>
+                                            <div class="doc-field-sub">
+                                                <label class="doc-label">Copias:</label>
+                                                <select class="doc-select-sm form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('extraction', 'copies', parseInt(ev.target.value))">
+                                                    <option value="1" t-att-selected="state.printerConfig.assignments.extraction.copies === 1">1 copia</option>
+                                                    <option value="2" t-att-selected="state.printerConfig.assignments.extraction.copies === 2">2 copias</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn-test-print" t-on-click="() => this.testPrintDocument('extraction')" title="Imprimir extracción de prueba">
+                                                <i class="fa fa-print me-1"/> Probar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+
+                        <!-- PESTAÑA 2: LISTA DE IMPRESORAS DEL SISTEMA -->
+                        <t t-if="state.printerActiveTab === 'printers' and state.printerConfig and state.printerConfig.systemPrinters">
+                            <div class="printer-list-panel">
+                                <div class="printer-list-header d-flex align-items-center justify-content-between mb-3">
+                                    <div>
+                                        <h5 class="mb-0 fw-bold">Impresoras Registradas en este Puesto</h5>
+                                        <small class="text-muted">Añade o gestiona los nombres de las impresoras instaladas en el sistema operativo Windows</small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.detectSystemPrinters()">
+                                        <i class="fa fa-search me-1"/> Detectar del Sistema
+                                    </button>
+                                </div>
+
+                                <div class="printer-cards-list">
+                                    <t t-foreach="state.printerConfig.systemPrinters" t-as="p" t-key="p.id">
+                                        <div class="printer-item-card">
+                                            <div class="printer-item-left">
+                                                <div class="printer-type-icon">
+                                                    <t t-if="p.type === 'thermal'">
+                                                        <i class="fa fa-ticket text-primary"/>
+                                                    </t>
+                                                    <t t-elif="p.type === 'laser_ink' || p.type === 'a4'">
+                                                        <i class="fa fa-file-text text-success"/>
+                                                    </t>
+                                                    <t t-elif="p.type === 'pdf'">
+                                                        <i class="fa fa-file-pdf-o text-danger"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <i class="fa fa-print text-secondary"/>
+                                                    </t>
+                                                </div>
+                                                <div class="printer-item-details">
+                                                    <strong class="printer-item-name"><t t-esc="p.name"/></strong>
+                                                    <div class="printer-item-badges">
+                                                        <span t-attf-class="badge #{p.type === 'thermal' ? 'bg-primary' : (p.type === 'laser_ink' ? 'bg-success' : 'bg-secondary')}">
+                                                            <t t-if="p.type === 'thermal'">Térmica 80mm</t>
+                                                            <t t-elif="p.type === 'laser_ink'">Láser / Inyección A4</t>
+                                                            <t t-elif="p.type === 'pdf'">PDF Virtual</t>
+                                                            <t t-else="">Sistema</t>
+                                                        </span>
+                                                        <t t-if="p.is_default">
+                                                            <span class="badge bg-dark ms-1">Predeterminada Windows</span>
+                                                        </t>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="printer-item-actions">
+                                                <t t-if="p.id !== 'windows_default' and p.id !== 'epson_tm_t20' and p.id !== 'epson_wf_m5299'">
+                                                    <button type="button" class="btn-remove-printer" t-on-click="() => this.removeSystemPrinter(p.id)" title="Eliminar impresora">
+                                                        <i class="fa fa-trash-o text-danger"/>
+                                                    </button>
+                                                </t>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+
+                                <!-- FORMULARIO PARA AÑADIR NUEVA IMPRESORA -->
+                                <div class="add-printer-card mt-3">
+                                    <h6 class="fw-bold mb-2"><i class="fa fa-plus-circle text-primary me-1"/> Añadir Impresora del Sistema</h6>
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-md-7">
+                                            <input type="text"
+                                                   class="form-control form-control-sm"
+                                                   placeholder="Nombre exacto en Windows (ej: EPSON TM-T88VI, HP LaserJet...)"
+                                                   t-att-value="state.printerNewName"
+                                                   t-on-input="(ev) => this.state.printerNewName = ev.target.value" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm"
+                                                    t-att-value="state.printerNewType"
+                                                    t-on-change="(ev) => this.state.printerNewType = ev.target.value">
+                                                <option value="thermal">Térmica 80mm</option>
+                                                <option value="laser_ink">Láser / Inyección A4</option>
+                                                <option value="pdf">Virtual / PDF</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-sm btn-primary w-100 fw-bold" t-on-click="() => this.addNewSystemPrinter()">
+                                                <i class="fa fa-plus me-1"/> Añadir
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+
+                    <!-- FOOTER -->
+                    <div class="printer-config-footer">
+                        <button type="button" class="btn btn-outline-secondary fw-bold" t-on-click="() => this.resetPrinterConfigToDefaults()">
+                            <i class="fa fa-refresh me-1"/> Restablecer valores
+                        </button>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-secondary fw-bold" t-on-click="() => this.closePrinterConfigModal()">
+                                Cerrar
+                            </button>
+                            <button type="button" class="btn btn-primary fw-bold px-4" t-on-click="() => this.savePrinterConfig()">
+                                <i class="fa fa-save me-1"/> Guardar Configuración
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

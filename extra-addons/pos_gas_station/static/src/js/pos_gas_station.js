@@ -436,14 +436,33 @@ export class UtrecarMainScreen extends Component {
             extractionReason: "Prueba de probeta / Calibración metrológica",
             extractionNotes: "",
             isSavingExtraction: false,
-            pumps: []
+            pumps: [],
+            isConfigDropdownOpen: false,
+            isPrinterConfigModalOpen: false,
+            printerActiveTab: 'assignments',
+            printerConfig: null,
+            printerNewName: "",
+            printerNewType: "thermal",
+            printerSaveSuccessMessage: "",
         });
+
+        this.state.printerConfig = this.getPrinterConfig();
 
         this.barcodeBuffer = "";
         this.barcodeTimeout = null;
 
         this.onGlobalKeyDown = (ev) => {
             if (ev.key === 'Escape') {
+                if (this.state.isPrinterConfigModalOpen) {
+                    this.closePrinterConfigModal();
+                    ev.preventDefault();
+                    return;
+                }
+                if (this.state.isConfigDropdownOpen) {
+                    this.state.isConfigDropdownOpen = false;
+                    ev.preventDefault();
+                    return;
+                }
                 if (this.state.isExtractionModalOpen) {
                     this.closeExtractionModal();
                     ev.preventDefault();
@@ -502,6 +521,12 @@ export class UtrecarMainScreen extends Component {
                 const dropdownEl = document.querySelector(".btn-dropdown-wrapper");
                 if (dropdownEl && !dropdownEl.contains(ev.target)) {
                     this.state.isPageDropdownOpen = false;
+                }
+            }
+            if (this.state.isConfigDropdownOpen) {
+                const configDropdownEl = document.querySelector(".pos-config-dropdown-wrapper");
+                if (configDropdownEl && !configDropdownEl.contains(ev.target)) {
+                    this.state.isConfigDropdownOpen = false;
                 }
             }
         };
@@ -804,6 +829,320 @@ export class UtrecarMainScreen extends Component {
         } catch(e) {
             console.error("Error guardando cuadrícula personalizada:", e);
         }
+    }
+
+    // =========================================================================
+    // CONFIGURACIÓN DEL TPV E IMPRESORAS PREESTABLECIDAS POR DOCUMENTO
+    // =========================================================================
+
+    toggleConfigDropdown(ev) {
+        if (ev) {
+            ev.stopPropagation();
+        }
+        this.state.isConfigDropdownOpen = !this.state.isConfigDropdownOpen;
+    }
+
+    closeConfigDropdown() {
+        this.state.isConfigDropdownOpen = false;
+    }
+
+    openPrinterConfigModal() {
+        this.state.isConfigDropdownOpen = false;
+        this.state.printerConfig = this.getPrinterConfig();
+        this.state.printerActiveTab = 'assignments';
+        this.state.printerSaveSuccessMessage = "";
+        this.state.isPrinterConfigModalOpen = true;
+    }
+
+    closePrinterConfigModal() {
+        this.state.isPrinterConfigModalOpen = false;
+    }
+
+    getPrinterConfig() {
+        const storageKey = `pos_gas_station_printer_config_${this.configId}`;
+        const defaultPrinters = [
+            { id: "epson_tm_t20", name: "EPSON TM-T20III (Térmica Tickets 80mm)", type: "thermal" },
+            { id: "epson_wf_m5299", name: "EPSON WF-M5299 (A4 / Documentos)", type: "laser_ink" },
+            { id: "windows_default", name: "Impresora Predeterminada del Sistema", type: "system", is_default: true },
+            { id: "pdf_print", name: "Microsoft Print to PDF", type: "pdf" },
+        ];
+        const defaultAssignments = {
+            ticket: { printerId: "epson_tm_t20", format: "thermal_80", copies: 1 },
+            albaran: { printerId: "epson_wf_m5299", format: "a4", copies: 2 },
+            invoice: { printerId: "epson_wf_m5299", format: "a4", copies: 1 },
+            shift_report: { printerId: "epson_tm_t20", format: "thermal_80", copies: 1 },
+            extraction: { printerId: "epson_tm_t20", format: "thermal_80", copies: 1 },
+            annulment: { printerId: "epson_tm_t20", format: "thermal_80", copies: 1 },
+        };
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                return {
+                    systemPrinters: (parsed.systemPrinters && parsed.systemPrinters.length > 0)
+                        ? parsed.systemPrinters
+                        : defaultPrinters,
+                    assignments: Object.assign({}, defaultAssignments, parsed.assignments || {}),
+                    directPrint: parsed.directPrint !== undefined ? parsed.directPrint : true,
+                };
+            }
+        } catch (e) {
+            console.warn("Error cargando configuración de impresoras de localStorage:", e);
+        }
+        return {
+            systemPrinters: defaultPrinters,
+            assignments: defaultAssignments,
+            directPrint: true,
+        };
+    }
+
+    savePrinterConfig() {
+        try {
+            const storageKey = `pos_gas_station_printer_config_${this.configId}`;
+            localStorage.setItem(storageKey, JSON.stringify(this.state.printerConfig));
+            this.state.printerSaveSuccessMessage = "Configuración de impresoras guardada y aplicada con éxito.";
+            setTimeout(() => {
+                if (this.state) {
+                    this.state.printerSaveSuccessMessage = "";
+                }
+            }, 3000);
+        } catch (e) {
+            console.error("Error guardando configuración de impresoras:", e);
+            alert("Error al guardar la configuración de impresoras: " + e.message);
+        }
+    }
+
+    resetPrinterConfigToDefaults() {
+        if (!confirm("¿Desea restablecer las asignaciones de impresoras a los valores predeterminados?")) {
+            return;
+        }
+        const storageKey = `pos_gas_station_printer_config_${this.configId}`;
+        try {
+            localStorage.removeItem(storageKey);
+        } catch (e) {}
+        this.state.printerConfig = this.getPrinterConfig();
+        this.state.printerSaveSuccessMessage = "Valores predeterminados restablecidos.";
+        setTimeout(() => {
+            if (this.state) {
+                this.state.printerSaveSuccessMessage = "";
+            }
+        }, 3000);
+    }
+
+    onPrinterAssignmentChange(docType, field, value) {
+        if (!this.state.printerConfig) {
+            this.state.printerConfig = this.getPrinterConfig();
+        }
+        if (!this.state.printerConfig.assignments) {
+            this.state.printerConfig.assignments = {};
+        }
+        if (!this.state.printerConfig.assignments[docType]) {
+            this.state.printerConfig.assignments[docType] = {};
+        }
+        this.state.printerConfig.assignments[docType][field] = value;
+        this.savePrinterConfig();
+    }
+
+    addNewSystemPrinter() {
+        const name = (this.state.printerNewName || "").trim();
+        if (!name) {
+            alert("Por favor indique el nombre de la impresora tal como está instalada en el sistema.");
+            return;
+        }
+        if (!this.state.printerConfig.systemPrinters) {
+            this.state.printerConfig.systemPrinters = [];
+        }
+        const exists = this.state.printerConfig.systemPrinters.some(p => p.name.toLowerCase() === name.toLowerCase());
+        if (exists) {
+            alert("Ya existe una impresora registrada con ese nombre.");
+            return;
+        }
+        const id = 'custom_' + Date.now();
+        this.state.printerConfig.systemPrinters.push({
+            id: id,
+            name: name,
+            type: this.state.printerNewType || "thermal",
+            is_custom: true,
+        });
+        this.state.printerNewName = "";
+        this.savePrinterConfig();
+    }
+
+    removeSystemPrinter(printerId) {
+        if (!confirm("¿Desea eliminar esta impresora de la lista de impresoras disponibles?")) {
+            return;
+        }
+        this.state.printerConfig.systemPrinters = this.state.printerConfig.systemPrinters.filter(p => p.id !== printerId);
+        for (const docKey of Object.keys(this.state.printerConfig.assignments || {})) {
+            if (this.state.printerConfig.assignments[docKey].printerId === printerId) {
+                this.state.printerConfig.assignments[docKey].printerId = "windows_default";
+            }
+        }
+        this.savePrinterConfig();
+    }
+
+    async detectSystemPrinters() {
+        try {
+            if (window.queryLocalPrinters) {
+                const detected = await window.queryLocalPrinters();
+                if (detected && detected.length > 0) {
+                    let addedCount = 0;
+                    for (const pr of detected) {
+                        const prName = pr.name;
+                        if (!this.state.printerConfig.systemPrinters.some(p => p.name.toLowerCase() === prName.toLowerCase())) {
+                            this.state.printerConfig.systemPrinters.push({
+                                id: 'sys_' + Math.random().toString(36).substr(2, 9),
+                                name: prName,
+                                type: prName.toLowerCase().includes('tm-') || prName.toLowerCase().includes('thermal') || prName.toLowerCase().includes('ticket') ? 'thermal' : 'laser_ink',
+                                is_detected: true,
+                            });
+                            addedCount++;
+                        }
+                    }
+                    this.savePrinterConfig();
+                    alert(`Se han detectado y añadido ${addedCount} impresoras del sistema.`);
+                    return;
+                }
+            } else if (navigator.printers && navigator.printers.query) {
+                const query = await navigator.printers.query();
+                if (query && query.length > 0) {
+                    let addedCount = 0;
+                    for (const pr of query) {
+                        const prName = pr.name || pr.printerId;
+                        if (!this.state.printerConfig.systemPrinters.some(p => p.name.toLowerCase() === prName.toLowerCase())) {
+                            this.state.printerConfig.systemPrinters.push({
+                                id: 'sys_' + Math.random().toString(36).substr(2, 9),
+                                name: prName,
+                                type: prName.toLowerCase().includes('tm-') ? 'thermal' : 'laser_ink',
+                                is_detected: true,
+                            });
+                            addedCount++;
+                        }
+                    }
+                    this.savePrinterConfig();
+                    alert(`Se han detectado y añadido ${addedCount} impresoras del sistema.`);
+                    return;
+                }
+            }
+            alert("Para añadir impresoras instaladas en este equipo Windows (ej: EPSON TM-T20III, EPSON WF-M5299, etc.), puede escribir su nombre directamente en el apartado 'Añadir Impresora del Sistema' que tiene debajo.");
+        } catch (e) {
+            console.debug("Detección de impresoras:", e);
+            alert("Puede añadir las impresoras instaladas en Windows escribiendo su nombre en 'Añadir Impresora del Sistema'.");
+        }
+    }
+
+    getAssignedPrinter(docType = 'ticket') {
+        const cfg = (this.state && this.state.printerConfig) ? this.state.printerConfig : this.getPrinterConfig();
+        const assignments = cfg.assignments || {};
+        const assign = assignments[docType] || {
+            printerId: "windows_default",
+            format: (docType === 'invoice' || docType === 'albaran') ? 'a4' : 'thermal_80',
+            copies: docType === 'albaran' ? 2 : 1,
+        };
+        const printer = (cfg.systemPrinters || []).find(p => p.id === assign.printerId || p.name === assign.printerId) || {
+            id: "windows_default",
+            name: "Impresora Predeterminada del Sistema",
+            type: assign.format === 'a4' ? 'laser_ink' : 'thermal',
+        };
+        return {
+            id: printer.id,
+            name: printer.name,
+            type: printer.type,
+            format: assign.format || (printer.type === 'laser_ink' ? 'a4' : 'thermal_80'),
+            copies: assign.copies || 1,
+            autoPrint: cfg.directPrint !== false,
+        };
+    }
+
+    testPrintDocument(docType) {
+        const assigned = this.getAssignedPrinter(docType);
+        const testOrder = {
+            name: docType === 'albaran' ? 'ALB-PRUEBA-001' : (docType === 'invoice' ? 'FTTR-PRUEBA-001' : 'TTTR-PRUEBA-001'),
+            is_albaran: docType === 'albaran',
+            is_invoiced: docType === 'invoice',
+            date_order: new Date().toLocaleString('es-ES'),
+            partner_name: "CLIENTE DE PRUEBA S.L.",
+            partner_vat: "B12345678",
+            partner_street: "Polígono Industrial C/ Principal 12",
+            partner_city: "Sevilla",
+            vehicle_plate: "1234 BBB",
+            vehicle_driver: "Juan Pérez García",
+            amount_total: 45.50,
+            company: {
+                name: (this.pos && this.pos.company && this.pos.company.name) || "ESTACIÓN DE SERVICIO UTRECAR",
+                vat: (this.pos && this.pos.company && this.pos.company.vat) || "B-91234567",
+                street: (this.pos && this.pos.config && this.pos.config.street) || "Ctra. Nacional IV",
+                city: (this.pos && this.pos.config && this.pos.config.city) || "Utrera (Sevilla)",
+                phone: (this.pos && this.pos.config && this.pos.config.phone) || "954 860 000",
+            },
+            lines: [
+                { product_name: "Gasóleo A (Diésel)", qty: 25.00, price_unit: 1.420, price_subtotal_incl: 35.50 },
+                { product_name: "Lavaparabrisas 5L", qty: 1.00, price_unit: 10.000, price_subtotal_incl: 10.00 },
+            ],
+            payments: [
+                { name: docType === 'albaran' ? "Cuenta de Crédito" : "Tarjeta Bancaria", amount: 45.50 }
+            ]
+        };
+
+        if (docType === 'shift_report') {
+            this.printTestShiftReport(assigned);
+        } else {
+            this.printShiftOrderTicket(testOrder, false, true);
+        }
+    }
+
+    printTestShiftReport(assigned) {
+        const receiptWindow = window.open("", "_blank", "width=420,height=680");
+        if (!receiptWindow) {
+            alert("Por favor permita las ventanas emergentes en su navegador para imprimir.");
+            return;
+        }
+        receiptWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>[${assigned.name}] Prueba Cierre de Turno</title>
+                <style>
+                    body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 16px; color: #000; }
+                    .header { text-align: center; margin-bottom: 10px; }
+                    .header h2 { margin: 0 0 4px 0; font-size: 15px; font-weight: bold; }
+                    .divider { border-bottom: 1px dashed #000; margin: 8px 0; }
+                    .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+                    .grand-total { font-size: 14px; font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 0; margin: 6px 0; }
+                    @media print {
+                        .no-print { display: none !important; }
+                        body { padding: 0; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100;">
+                    <span style="font-weight: bold; font-size: 12px;">👁️ Vista Previa: Informe Z | 🖨️ ${assigned.name}</span>
+                    <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">🖨️ Imprimir</button>
+                </div>
+                <div class="header">
+                    <h2>*** PRUEBA CIERRE DE TURNO ***</h2>
+                    <div>ESTACIÓN DE SERVICIO UTRECAR</div>
+                    <div>Fecha: ${new Date().toLocaleString('es-ES')}</div>
+                    <div>Impresora Asignada: <strong>${assigned.name}</strong></div>
+                </div>
+                <div class="divider"></div>
+                <div class="row"><span>Total Ventas Efectivo:</span><strong>150.00 €</strong></div>
+                <div class="row"><span>Total Ventas Tarjeta:</span><strong>230.50 €</strong></div>
+                <div class="row"><span>Total Crédito:</span><strong>85.00 €</strong></div>
+                <div class="grand-total row"><span>TOTAL TURNO:</span><span>465.50 €</span></div>
+                <div class="divider"></div>
+                <div style="text-align: center; font-size: 11px; margin-top: 10px;">Comprobante de prueba emitido correctamente.</div>
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        receiptWindow.document.close();
     }
 
     addProductToGrid(prod) {
@@ -2303,10 +2642,11 @@ export class UtrecarMainScreen extends Component {
         const docTitle = isAlbaran ? 'ALBARÁN NEGATIVO' : (isInvoice ? 'FACTURA DE ANULACIÓN' : 'JUSTIFICANTE DE ANULACIÓN');
         const docRefLabel = isAlbaran ? 'Nº ALBARÁN NEGATIVO' : (isInvoice ? 'Nº FACTURA ANULACIÓN' : 'Nº ANULACIÓN');
         const origDocLabel = isAlbaran ? 'ALBARÁN ORIGINAL' : (isInvoice ? 'FACTURA ORIGINAL' : 'TICKET ORIGINAL ANULADO');
+        const assignedPrinter = this.getAssignedPrinter('annulment');
 
         const topToolbar = autoPrint ? '' : `
             <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -10px -10px 12px -10px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -10px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
-                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${docTitle}</span>
+                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${docTitle} &nbsp;|&nbsp; 🖨️ <span style="color: #60a5fa;">${assignedPrinter.name}</span></span>
                 <div>
                     <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; margin-right: 6px;">🖨️ Imprimir</button>
                     <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">✖ Cerrar</button>
@@ -2328,8 +2668,12 @@ export class UtrecarMainScreen extends Component {
             <html>
             <head>
                 <meta charset="utf-8">
-                <title>${docTitle} ${refAnnul}</title>
+                <title>[${assignedPrinter.name}] ${docTitle} ${refAnnul}</title>
                 <style>
+                    @page {
+                        size: ${assignedPrinter.format === 'a4' ? 'A4 portrait' : '80mm auto'};
+                        margin: ${assignedPrinter.format === 'a4' ? '12mm' : '0'};
+                    }
                     @media print { .no-print { display: none !important; } }
                     body { font-family: monospace, sans-serif; font-size: 12px; margin: 0; padding: 10px; color: #000; }
                     .text-center { text-align: center; }
@@ -2497,6 +2841,9 @@ export class UtrecarMainScreen extends Component {
             </div>
         ` : '';
 
+        const docType = order.is_albaran ? 'albaran' : (order.is_invoiced ? 'invoice' : 'ticket');
+        const assignedPrinter = this.getAssignedPrinter(docType);
+
         const receiptWindow = window.open("", "_blank", "width=420,height=680");
         if (!receiptWindow) {
             alert("Por favor permita las ventanas emergentes en su navegador para imprimir o visualizar.");
@@ -2505,7 +2852,7 @@ export class UtrecarMainScreen extends Component {
 
         const topToolbar = autoPrint ? '' : `
             <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
-                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${order.is_albaran ? 'Albarán de Crédito' : 'Ticket de Venta'}</span>
+                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${order.is_albaran ? 'Albarán de Crédito' : 'Ticket de Venta'} &nbsp;|&nbsp; 🖨️ <span style="color: #60a5fa;">${assignedPrinter.name}</span> (${assignedPrinter.format === 'a4' ? 'A4' : '80mm'})</span>
                 <div>
                     <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; margin-right: 6px;">🖨️ Imprimir</button>
                     <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">✖ Cerrar</button>
@@ -2526,7 +2873,7 @@ export class UtrecarMainScreen extends Component {
             <html>
             <head>
                 <meta charset="utf-8">
-                <title>${order.is_albaran ? 'Albarán' : 'Ticket'} ${order.name}${isCopy ? ' (COPIA)' : ''}</title>
+                <title>[${assignedPrinter.name}] ${order.is_albaran ? 'Albarán' : 'Ticket'} ${order.name}${isCopy ? ' (COPIA)' : ''}</title>
                 <style>
                     body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 16px; color: #000; }
                     .header { text-align: center; margin-bottom: 10px; }
@@ -2541,6 +2888,10 @@ export class UtrecarMainScreen extends Component {
                     .total-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
                     .grand-total { font-size: 15px; font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 0; margin: 6px 0; }
                     .footer { text-align: center; margin-top: 15px; font-size: 11px; }
+                    @page {
+                        size: ${assignedPrinter.format === 'a4' ? 'A4 portrait' : '80mm auto'};
+                        margin: ${assignedPrinter.format === 'a4' ? '12mm' : '0'};
+                    }
                     @media print {
                         .no-print { display: none !important; }
                         body { padding: 0; }

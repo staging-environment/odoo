@@ -97,7 +97,7 @@
 }
 
 .virtus-ticket-topbar {
-    height: 38px !important;
+    height: 48px !important;
     background: #e2e8f0 !important;
     border-bottom: 1px solid #94a3b8 !important;
     display: flex !important;
@@ -635,26 +635,39 @@
 }
 
 .virtus-store-topbar {
-    height: 34px !important;
+    height: 48px !important;
     background: #e2e8f0 !important;
     border-bottom: 1px solid #94a3b8 !important;
     display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 3px !important;
-    padding: 2px 4px !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 4px !important;
+    padding: 3px 5px !important;
+    position: relative !important;
 }
 
 .btn-store-cat {
     background: #ffffff !important;
-    border: 1px solid #94a3b8 !important;
-    border-radius: 3px !important;
-    font-size: 15px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    font-size: 19px !important;
     cursor: pointer !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    height: 100% !important;
+    min-height: 40px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.15s ease-in-out !important;
 }
-.btn-store-cat:hover { background: #e2e8f0 !important; }
+.btn-store-cat:hover {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+.btn-store-cat:active {
+    background: #e2e8f0 !important;
+    transform: translateY(1px) !important;
+}
 
 .virtus-store-grid {
     flex: 1 1 0 !important;
@@ -7462,4 +7475,434 @@
 .partnerlist-screen .button.more-info,
 .partnerlist-screen .top-right-buttons a[target="_blank"] {
     display: none !important;
+}
+
+/* ==========================================================================
+   DESPLEGABLE DE CONFIGURACIÓN DEL TPV (TUERCA SUPERIOR DERECHA)
+   ========================================================================== */
+.pos-config-dropdown-wrapper {
+    position: relative !important;
+    height: 100% !important;
+    width: 100% !important;
+}
+
+.btn-config-open {
+    color: #475569 !important;
+}
+
+.btn-config-open.active,
+.btn-config-open:active {
+    background: #e2e8f0 !important;
+    border-color: #64748b !important;
+    color: #0f172a !important;
+}
+
+.pos-config-dropdown-menu {
+    position: absolute !important;
+    top: calc(100% + 5px) !important;
+    right: 0 !important;
+    width: 320px !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    z-index: 1050 !important;
+    overflow: hidden !important;
+    animation: fadeInDown 0.15s ease-out !important;
+}
+
+.pos-config-dropdown-header {
+    padding: 10px 14px !important;
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    font-size: 13px !important;
+    color: #1e293b !important;
+}
+
+.dropdown-header-title {
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.pos-config-dropdown-list {
+    padding: 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+}
+
+.pos-config-dropdown-item {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 10px 12px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    text-align: left !important;
+    transition: all 0.15s ease !important;
+    gap: 12px !important;
+}
+
+.pos-config-dropdown-item:hover {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+}
+
+.pos-config-dropdown-item .dropdown-item-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+    flex-shrink: 0 !important;
+    background: #e0f2fe !important;
+    color: #0284c7 !important;
+}
+
+.pos-config-dropdown-item .dropdown-item-content {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+
+.pos-config-dropdown-item .dropdown-item-title {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    line-height: 1.2 !important;
+}
+
+.pos-config-dropdown-item .dropdown-item-desc {
+    font-size: 11px !important;
+    color: #64748b !important;
+    margin-top: 3px !important;
+    line-height: 1.2 !important;
+}
+
+.dropdown-item-arrow {
+    font-size: 12px !important;
+    color: #94a3b8 !important;
+}
+
+.pos-config-dropdown-footer {
+    padding: 8px 14px !important;
+    background: #f8fafc !important;
+    border-top: 1px solid #f1f5f9 !important;
+    font-size: 11px !important;
+    color: #64748b !important;
+    text-align: center !important;
+}
+
+/* ==========================================================================
+   MODAL DE CONFIGURACIÓN DE IMPRESORAS DEL TPV
+   ========================================================================== */
+.printer-config-modal-window {
+    background: #ffffff !important;
+    width: 92% !important;
+    max-width: 900px !important;
+    max-height: 90vh !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3) !important;
+    animation: fadeInModal 0.2s ease-out !important;
+}
+
+.printer-config-header {
+    padding: 16px 20px !important;
+    background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+    color: #ffffff !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.printer-config-header-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+}
+
+.printer-config-icon-badge {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 22px !important;
+    color: #38bdf8 !important;
+}
+
+.printer-config-title {
+    margin: 0 !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+}
+
+.printer-config-subtitle {
+    font-size: 12px !important;
+    color: #94a3b8 !important;
+    display: block !important;
+    margin-top: 2px !important;
+}
+
+.printer-config-close-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: none !important;
+    color: #ffffff !important;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    font-size: 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background 0.15s ease !important;
+}
+
+.printer-config-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.printer-config-tabs {
+    display: flex !important;
+    background: #f1f5f9 !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    padding: 0 16px !important;
+    gap: 8px !important;
+}
+
+.printer-tab-btn {
+    padding: 12px 18px !important;
+    border: none !important;
+    background: transparent !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    cursor: pointer !important;
+    border-bottom: 3px solid transparent !important;
+    transition: all 0.15s ease !important;
+}
+
+.printer-tab-btn.active {
+    color: #0284c7 !important;
+    border-bottom-color: #0284c7 !important;
+    background: #ffffff !important;
+}
+
+.printer-config-body {
+    padding: 16px 20px !important;
+    overflow-y: auto !important;
+    flex: 1 1 auto !important;
+    background: #f8fafc !important;
+}
+
+.printer-alert-success {
+    padding: 10px 16px !important;
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    border: 1px solid #86efac !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    margin-bottom: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.printer-docs-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+}
+
+.printer-doc-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.doc-card-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-bottom: 10px !important;
+}
+
+.doc-card-badge {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 15px !important;
+    flex-shrink: 0 !important;
+}
+
+.doc-card-title-box {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.doc-card-title-box strong {
+    font-size: 14px !important;
+    color: #1e293b !important;
+}
+
+.doc-card-title-box span {
+    font-size: 11px !important;
+    color: #64748b !important;
+}
+
+.doc-card-fields {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.doc-field-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.doc-field-row-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.doc-field-sub {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 !important;
+}
+
+.doc-label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #475569 !important;
+    white-space: nowrap !important;
+    margin: 0 !important;
+}
+
+.doc-select {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    flex: 1 !important;
+}
+
+.doc-select-sm {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    flex: 1 !important;
+}
+
+.btn-test-print {
+    background: #0284c7 !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 6px 14px !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: background 0.15s ease !important;
+}
+
+.btn-test-print:hover {
+    background: #0369a1 !important;
+}
+
+.printer-list-panel {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 16px !important;
+}
+
+.printer-cards-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.printer-item-card {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 10px 14px !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+}
+
+.printer-item-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.printer-type-icon {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 6px !important;
+    background: #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+}
+
+.printer-item-name {
+    font-size: 13px !important;
+    color: #1e293b !important;
+    display: block !important;
+}
+
+.printer-item-badges {
+    margin-top: 2px !important;
+}
+
+.btn-remove-printer {
+    background: transparent !important;
+    border: 1px solid #fca5a5 !important;
+    border-radius: 4px !important;
+    padding: 4px 8px !important;
+    cursor: pointer !important;
+}
+
+.btn-remove-printer:hover {
+    background: #fee2e2 !important;
+}
+
+.add-printer-card {
+    background: #f1f5f9 !important;
+    border: 1px dashed #94a3b8 !important;
+    border-radius: 8px !important;
+    padding: 12px 14px !important;
+}
+
+.printer-config-footer {
+    padding: 12px 20px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #cbd5e1 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
 }
