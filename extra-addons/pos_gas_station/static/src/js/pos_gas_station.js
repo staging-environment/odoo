@@ -4965,9 +4965,10 @@ export class UtrecarMainScreen extends Component {
         // Calculamos precio unitario para el total neto objetivo
         const netPrice = this.getNetPriceForTargetTotal(product, Math.abs(refundTotal), Math.abs(refundQty), currentOrder);
 
-        const descNota = sale.isMoney
+        const rectRef = sale.orderRef ? ` | Rectifica: ${sale.orderRef}` : "";
+        const descNota = (sale.isMoney
             ? `Calle ${sale.pumpId} - Sobrante de Prefijado [Prefijado: ${sale.presetAmount.toFixed(2)}€ | Repostado: ${sale.dispensedAmount.toFixed(2)}€ (${sale.dispensedLiters.toFixed(2)}L)]`
-            : `Calle ${sale.pumpId} - Sobrante de Prefijado [Prefijado: ${sale.presetLiters.toFixed(2)}L | Repostado: ${sale.dispensedLiters.toFixed(2)}L (${sale.dispensedAmount.toFixed(2)}€)]`;
+            : `Calle ${sale.pumpId} - Sobrante de Prefijado [Prefijado: ${sale.presetLiters.toFixed(2)}L | Repostado: ${sale.dispensedLiters.toFixed(2)}L (${sale.dispensedAmount.toFixed(2)}€)]`) + rectRef;
 
         await currentOrder.add_product(product, {
             quantity: refundQty, // ¡CANTIDAD EN NEGATIVO!

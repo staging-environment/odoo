@@ -3517,6 +3517,53 @@ class PosGasStationController(http.Controller):
             return {'status': 'error', 'message': str(e), 'shifts': []}
 
     # ==================== GESTIÓN DE PEDIDOS DEL TURNO ACTIVO ====================
+    def _nest_prepay_rectificativos(self, orders, orders_list):
+        """Mueve cada ticket rectificativo de sobrante de prepago al historial de su ticket original."""
+        by_id = {o.id: o for o in orders}
+        dicts = {d['id']: d for d in orders_list}
+        child_ids = set()
+        for o in orders:
+            if o.amount_total >= 0:
+                continue
+            notes = ' '.join((l.customer_note or '') for l in o.lines)
+            if 'Sobrante de Prefijado' not in notes:
+                continue
+            parent = None
+            m_ref = re.search(r'Rectifica:\s*([A-Z]{2,}[A-Z0-9_]*\d+)', notes)
+            if m_ref:
+                ref = m_ref.group(1)
+                parent = next((x for x in orders if x.id != o.id and (x.name == ref or dicts.get(x.id, {}).get('name') == ref)), None)
+            if not parent:
+                # Compatibilidad con rectificativos antiguos sin referencia: buscar el prepago de la misma calle e importe
+                m_pump = re.search(r'Calle\s*(\d+)', notes)
+                m_pre = re.search(r'Prefijado:\s*([\d.,]+)\s*€', notes)
+                if m_pump and m_pre:
+                    key = f"Calle {m_pump.group(1)} [Prepago: {float(m_pre.group(1).replace(',', '.')):.2f}"
+                    cands = [x for x in orders if x.id != o.id and x.amount_total > 0
+                             and (not o.date_order or not x.date_order or x.date_order <= o.date_order)
+                             and any(key in (l.customer_note or '') for l in x.lines)]
+                    if cands:
+                        parent = max(cands, key=lambda x: (x.date_order or fields.Datetime.now(), x.id))
+            if not parent or parent.id not in dicts or o.id not in dicts:
+                continue
+            child = dicts[o.id]
+            pdict = dicts[parent.id]
+            pdict.setdefault('history', []).append({
+                'type': 'rectificativa',
+                'type_label': 'Ticket Rectificativo',
+                'icon': 'fa-undo',
+                'badge_class': 'badge-history-annulment',
+                'ref': child.get('name'),
+                'date': child.get('date_order'),
+                'description': 'Devolución de sobrante de prepago',
+                'amount': f"{o.amount_total:.2f}",
+                'amount_raw': o.amount_total,
+                'child_order': child,
+            })
+            pdict['has_history'] = True
+            child_ids.add(o.id)
+        return [d for d in orders_list if d['id'] not in child_ids]
+
     @http.route('/pos_gas_station/get_shift_orders', type='json', auth='user', methods=['POST'], csrf=False)
     def get_shift_orders(self, session_id=None, config_id=None):
         try:
@@ -3835,6 +3882,12 @@ class PosGasStationController(http.Controller):
                         'phone': o.company_id.phone or '',
                     }
                 })
+
+            # Tickets rectificativos de sobrante de prepago: se muestran dentro del historial del ticket original
+            try:
+                orders_list = self._nest_prepay_rectificativos(orders, orders_list)
+            except Exception as nest_err:
+                _logger.warning("No se pudieron anidar rectificativos de prepago: %s", nest_err)
 
             return {
                 'status': 'success',

@@ -1739,7 +1739,7 @@
                                                 <!-- Botonera de resolución de sobrante -->
                                                 <div class="sale-card-footer refund-actions-footer">
                                                     <button type="button" class="btn btn-primary fw-bold btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'ticket')" title="Emitir ticket simplificado de devolución con el sobrante en negativo y descontar de caja">
-                                                        <i class="fa fa-print me-1"/> Hacer Ticket Devolución
+                                                        <i class="fa fa-print me-1"/> Hacer Ticket Rectificativo
                                                     </button>
                                                     <button type="button" class="btn btn-danger fw-bold text-white btn-refund-btn" t-on-click="() => this.anularYDescontarDeCaja(sale)" title="Anular el sobrante y descontar directamente de la caja registradora">
                                                         <i class="fa fa-money me-1"/> Anular y Descontar de Caja
@@ -2045,12 +2045,20 @@
                                                                                     <t t-esc="item.date"/>
                                                                                 </td>
                                                                                 <td style="width: 90px; text-align: right;">
-                                                                                    <strong t-attf-style="#{item.type === 'annulment' ? 'color: #dc2626;' : 'color: #0f172a;'}">
+                                                                                    <strong t-attf-style="#{(item.type === 'annulment' || item.type === 'rectificativa') ? 'color: #dc2626;' : 'color: #0f172a;'}">
                                                                                         <t t-esc="item.amount"/> €
                                                                                     </strong>
                                                                                 </td>
                                                                                 <td style="width: 200px; text-align: center;" t-on-click.stop="">
-                                                                                    <t t-if="item.type === 'annulment' &amp;&amp; (ord.doc_type === 'invoice' || (item.type_label &amp;&amp; item.type_label.includes('Factura')))">
+                                                                                    <t t-if="item.type === 'rectificativa' &amp;&amp; item.child_order">
+                                                                                        <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderTicket(item.child_order, false, false)" title="Visualizar ticket rectificativo en pantalla">
+                                                                                            👁
+                                                                                        </button>
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderTicket(item.child_order, false, true)" title="Imprimir ticket rectificativo">
+                                                                                            🖨️ Imprimir
+                                                                                        </button>
+                                                                                    </t>
+                                                                                    <t t-elif="item.type === 'annulment' &amp;&amp; (ord.doc_type === 'invoice' || (item.type_label &amp;&amp; item.type_label.includes('Factura')))">
                                                                                         <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderRefundInvoice(ord, item)" title="Visualizar Factura Rectificativa oficial en pantalla (PDF)">
                                                                                             👁
                                                                                         </button>
