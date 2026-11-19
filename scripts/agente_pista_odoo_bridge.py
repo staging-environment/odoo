@@ -389,7 +389,9 @@ class AgentePistaRepsol:
 
         is_des = not is_colgado
         if self._sim_microswitch_activo(calle):
+            # Simulación en curso: el microswitch real (manguera colgada) no debe resetear la calle
             is_des = local.get("is_descolgada", False)
+            is_colgado = not is_des
         if local.get("is_descolgada") != is_des:
             local["is_descolgada"] = is_des
             hubo_cambio = True
@@ -686,6 +688,14 @@ class AgentePistaRepsol:
                         logging.info(f"🧪 [SIMULACIÓN MICROSWITCH] Calle {calle}: manguera {'DESCOLGADA' if des else 'COLGADA'}")
                         self.enviar_estado_a_odoo(forzar=True)
                         continue
+                    if not hasattr(self, "_sim_microswitch_hasta"):
+                        self._sim_microswitch_hasta = {}
+                    if estado in ("unhook", "dispensing"):
+                        # Durante una simulación de suministro, la manguera se considera descolgada
+                        self.pumps[calle - 1]["is_descolgada"] = True
+                        self._sim_microswitch_hasta[calle] = time.time() + 60
+                    else:
+                        self._sim_microswitch_hasta.pop(calle, None)
                     if estado == "dispensing":
                         self.pumps[calle - 1]["fuel"] = prod_info["name"]
                         self.pumps[calle - 1]["product_id"] = prod_info["id"]
