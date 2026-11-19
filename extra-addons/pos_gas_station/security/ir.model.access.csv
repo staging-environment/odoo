@@ -17,4 +17,7 @@ access_utrecar_emp_comp_access_pos_mgr,utrecar.employee.company.access.pos_mgr,m
 access_utrecar_vpn_admin_user,utrecar.vpn.admin.user,model_utrecar_vpn_admin,base.group_user,1,0,0,0
 access_utrecar_vpn_admin_manager,utrecar.vpn.admin.manager,model_utrecar_vpn_admin,base.group_system,1,1,1,1
 access_utrecar_vpn_admin_pos_mgr,utrecar.vpn.admin.pos_mgr,model_utrecar_vpn_admin,point_of_sale.group_pos_manager,1,1,1,1
+access_product_barcode_user,product.barcode.user,model_product_barcode,base.group_user,1,0,0,0
+access_product_barcode_manager,product.barcode.manager,model_product_barcode,base.group_system,1,1,1,1
+access_product_barcode_pos_mgr,product.barcode.pos_mgr,model_product_barcode,point_of_sale.group_pos_manager,1,1,1,1
 

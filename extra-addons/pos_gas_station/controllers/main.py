@@ -1761,8 +1761,14 @@ class PosGasStationController(http.Controller):
                     'status': 'Nivel crítico' if fill_pct < 15 else ('Nivel bajo' if fill_pct < 30 else 'Operativo'),
                 })
 
-        categories_records = env['product.category'].sudo().search([], order='name asc')
-        categories_data = [{'id': c.id, 'name': c.name} for c in categories_records]
+        categories_records = env['product.category'].sudo().search([], order='code asc, name asc')
+        categories_data = [{
+            'id': c.id,
+            'name': c.name,
+            'parent_id': c.parent_id.id if c.parent_id else False,
+            'code': getattr(c, 'code', '') or '',
+            'full_code': getattr(c, 'full_code', '') or '',
+        } for c in categories_records]
 
         return {
             'status': 'success',
@@ -1810,17 +1816,33 @@ class PosGasStationController(http.Controller):
                 p_name = p_name.get('es_ES') or p_name.get('en_US') or (list(p_name.values())[0] if p_name else '')
             code = p.default_code or ''
             is_fuel = (code in fuel_codes) or any(k in str(p_name).lower() for k in ['gasóleo', 'gasoleo', 'sin plomo', 'gasolina', 'diesel'])
+            extra_barcodes = [b for b in p.extra_barcode_ids.mapped('barcode') if b] if hasattr(p, 'extra_barcode_ids') else []
+            all_barcodes = ([p.barcode] if p.barcode else []) + extra_barcodes
+            first_tax = p.taxes_id[0] if p.taxes_id else None
+            tax_name = ''
+            if first_tax:
+                t_name = first_tax.name
+                if isinstance(t_name, dict):
+                    t_name = t_name.get('es_ES') or t_name.get('en_US') or ''
+                tax_name = t_name
+            first_seller = p.seller_ids[0] if p.seller_ids else None
             res.append({
                 'id': p.id,
                 'name': p_name,
                 'default_code': code,
                 'barcode': p.barcode or '',
+                'extra_barcodes': extra_barcodes,
+                'all_barcodes': all_barcodes,
                 'list_price': round(float(p.list_price or 0.0), 3) if is_fuel else round(float(p.list_price or 0.0), 2),
                 'standard_price': round(float(getattr(p, 'standard_price', 0.0) or 0.0), 2),
                 'type': p.type or 'consu',
                 'type_label': 'Almacenable' if p.type == 'product' else ('Servicio' if p.type == 'service' else 'Consumible'),
                 'categ_id': p.categ_id.id if p.categ_id else False,
                 'categ_name': p.categ_id.name if p.categ_id else 'General',
+                'tax_id': first_tax.id if first_tax else 'exempt',
+                'tax_name': tax_name or 'Exento de IVA',
+                'supplier_id': first_seller.partner_id.id if first_seller and first_seller.partner_id else False,
+                'supplier_name': first_seller.partner_id.name if first_seller and first_seller.partner_id else '',
                 'available_in_pos': bool(getattr(p, 'available_in_pos', True)),
                 'is_fuel': is_fuel,
                 'qty_available': round(float(p.qty_available or 0.0), 2) if hasattr(p, 'qty_available') else 0.0,
@@ -1993,37 +2015,333 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error en update_product_price: %s", e)
             return {'status': 'error', 'message': str(e)}
 
-    @http.route('/pos_gas_station/save_product', type='json', auth='user', methods=['POST'], csrf=False)
-    def save_product(self, product_id=None, company_id=None, name=None, default_code=None, barcode=None,
-                     categ_id=None, prod_type='consu', list_price=0.0, standard_price=0.0,
-                     available_in_pos=True, **kw):
-        """Crea o modifica un producto de forma completa desde la modal del dashboard."""
+    @http.route('/pos_gas_station/get_product_form_metadata', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_product_form_metadata(self, company_id=None, **kw):
+        """Devuelve jerarquía de categorías (2 niveles), impuestos de venta y proveedores."""
         try:
             env = request.env
-            if not name or not name.strip():
+            cid = int(company_id) if company_id else env.company.id
+
+            # 1. Categorías jerárquicas a 2 niveles (Padre 1 dígito -> Hija 2 dígitos)
+            all_cats = env['product.category'].sudo().search([], order='code asc, name asc')
+            parents_map = {}
+            children_by_parent = {}
+            for c in all_cats:
+                c_code = getattr(c, 'code', '') or ''
+                if not c.parent_id:
+                    if c_code and len(c_code) == 1 and c_code.isdigit():
+                        parents_map[c.id] = {
+                            'id': c.id,
+                            'name': c.name,
+                            'code': c_code,
+                            'children': [],
+                        }
+                else:
+                    if c_code and len(c_code) == 2 and c_code.isdigit():
+                        children_by_parent.setdefault(c.parent_id.id, []).append({
+                            'id': c.id,
+                            'name': c.name,
+                            'code': c_code,
+                            'full_code': getattr(c, 'full_code', '') or f"{getattr(c.parent_id, 'code', '') or ''}{c_code}",
+                            'parent_id': c.parent_id.id,
+                        })
+
+            categories_tree = []
+            for pid, pdata in sorted(parents_map.items(), key=lambda item: (item[1]['code'], item[1]['name'])):
+                pdata['children'] = sorted(children_by_parent.get(pid, []), key=lambda ch: (ch['code'], ch['name']))
+                if pdata['children']:
+                    categories_tree.append(pdata)
+
+            # 2. Impuestos de venta (IVA) de la empresa
+            taxes = env['account.tax'].sudo().search([
+                ('type_tax_use', '=', 'sale'),
+                ('active', '=', True),
+                ('company_id', '=', cid),
+            ], order='amount desc, id asc')
+            if not taxes:
+                taxes = env['account.tax'].sudo().search([
+                    ('type_tax_use', '=', 'sale'),
+                    ('active', '=', True),
+                ], order='amount desc, id asc')
+
+            taxes_data = []
+            seen_tax_amounts = set()
+            for t in taxes:
+                t_name = t.name
+                if isinstance(t_name, dict):
+                    t_name = t_name.get('es_ES') or t_name.get('en_US') or ''
+                # Evitar duplicados visuales de mismo porcentaje en la misma empresa
+                key = (round(float(t.amount), 2), t.company_id.id)
+                if key in seen_tax_amounts:
+                    continue
+                seen_tax_amounts.add(key)
+                taxes_data.append({
+                    'id': t.id,
+                    'name': t_name or f"IVA {t.amount:g}%",
+                    'amount': float(t.amount),
+                    'price_include': bool(t.price_include),
+                })
+
+            # 3. Proveedores existentes
+            suppliers = env['res.partner'].sudo().search([
+                ('supplier_rank', '>', 0),
+                ('active', '=', True),
+            ], order='name asc')
+            suppliers_data = [{
+                'id': s.id,
+                'name': s.name or '',
+                'vat': s.vat or '',
+            } for s in suppliers]
+
+            return {
+                'status': 'success',
+                'categories_tree': categories_tree,
+                'taxes': taxes_data,
+                'suppliers': suppliers_data,
+            }
+        except Exception as e:
+            _logger.exception("Error en get_product_form_metadata: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/next_product_code', type='json', auth='user', methods=['POST'], csrf=False)
+    def next_product_code(self, categ_id=None, **kw):
+        """Calcula el siguiente código interno autoincremental prefijado con los 3 dígitos de la categoría."""
+        try:
+            env = request.env
+            if not categ_id:
+                return {'status': 'error', 'message': 'Categoría obligatoria.'}
+            cat = env['product.category'].sudo().browse(int(categ_id))
+            if not cat.exists() or not cat.parent_id:
+                return {'status': 'error', 'message': 'Debe seleccionar una subfamilia válida de segundo nivel.'}
+
+            parent_code = (getattr(cat.parent_id, 'code', '') or '').strip()
+            child_code = (getattr(cat, 'code', '') or '').strip()
+            prefix = f"{parent_code}{child_code}"
+            if len(prefix) != 3 or not prefix.isdigit():
+                return {'status': 'error', 'message': 'La categoría seleccionada no tiene un código válido de 3 dígitos.'}
+
+            existing = env['product.template'].sudo().search([
+                ('default_code', '=like', f"{prefix}%")
+            ])
+            max_seq = 0
+            used_codes = set()
+            for p in existing:
+                dc = (p.default_code or '').strip()
+                used_codes.add(dc)
+                if dc.startswith(prefix):
+                    suffix = dc[len(prefix):]
+                    if suffix.isdigit():
+                        val = int(suffix)
+                        if val > max_seq and val < 999:
+                            max_seq = val
+
+            next_seq = max_seq + 1
+            candidate = f"{prefix}{str(next_seq).zfill(3)}"
+            while candidate in used_codes and next_seq < 999:
+                next_seq += 1
+                candidate = f"{prefix}{str(next_seq).zfill(3)}"
+
+            return {
+                'status': 'success',
+                'prefix': prefix,
+                'next_code': candidate,
+            }
+        except Exception as e:
+            _logger.exception("Error en next_product_code: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/create_supplier', type='json', auth='user', methods=['POST'], csrf=False)
+    def create_supplier(self, name=None, vat=None, phone=None, email=None, **kw):
+        """Crea un nuevo proveedor sobre la marcha desde el modal flotante."""
+        try:
+            env = request.env
+            clean_name = (name or '').strip()
+            if not clean_name:
+                return {'status': 'error', 'message': 'El nombre o razón social del proveedor es obligatorio.'}
+
+            clean_vat = (vat or '').strip().upper() or False
+            if clean_vat:
+                existing_vat = env['res.partner'].sudo().search([
+                    ('vat', '=', clean_vat),
+                    ('supplier_rank', '>', 0),
+                ], limit=1)
+                if existing_vat:
+                    return {
+                        'status': 'error',
+                        'message': f'Ya existe un proveedor con el NIF/CIF {clean_vat}: {existing_vat.name}.',
+                    }
+
+            partner = env['res.partner'].sudo().create({
+                'name': clean_name,
+                'vat': clean_vat,
+                'phone': (phone or '').strip() or False,
+                'email': (email or '').strip() or False,
+                'supplier_rank': 1,
+                'is_company': True,
+                'company_id': False,
+            })
+
+            return {
+                'status': 'success',
+                'message': f'Proveedor "{partner.name}" creado correctamente.',
+                'supplier': {
+                    'id': partner.id,
+                    'name': partner.name,
+                    'vat': partner.vat or '',
+                },
+            }
+        except Exception as e:
+            _logger.exception("Error al crear proveedor: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/save_product', type='json', auth='user', methods=['POST'], csrf=False)
+    def save_product(self, product_id=None, company_id=None, name=None, default_code=None,
+                     barcode=None, barcodes=None, categ_id=None, prod_type='consu',
+                     list_price=None, standard_price=None, tax_id=None, supplier_id=None,
+                     image_1920=None, available_in_pos=True, **kw):
+        """Crea o modifica un producto de forma completa con validación estricta."""
+        try:
+            env = request.env
+            pid = int(product_id) if product_id else 0
+            existing_prod = None
+            if pid:
+                existing_prod = env['product.template'].sudo().browse(pid)
+                if not existing_prod.exists():
+                    return {'status': 'error', 'message': 'Producto no encontrado.'}
+
+            # 1. Validación de campos obligatorios
+            clean_name = (name or '').strip()
+            if not clean_name:
                 return {'status': 'error', 'message': 'El nombre del producto es obligatorio.'}
 
+            clean_code = (default_code or '').strip()
+            if not clean_code:
+                return {'status': 'error', 'message': 'El código interno / referencia es obligatorio.'}
+
+            # Normalizar lista de códigos de barras (multivalue)
+            raw_barcodes = []
+            if isinstance(barcodes, list):
+                raw_barcodes = [str(b).strip() for b in barcodes if str(b).strip()]
+            elif barcode:
+                raw_barcodes = [str(barcode).strip()]
+
+            # Eliminar duplicados preservando orden y verificar que no haya EANs repetidos en el mismo producto
+            seen_local = set()
+            clean_barcodes = []
+            for b in raw_barcodes:
+                if b in seen_local:
+                    return {'status': 'error', 'message': f'El código de barras "{b}" está repetido en el mismo artículo.'}
+                seen_local.add(b)
+                clean_barcodes.append(b)
+
+            if not clean_barcodes:
+                return {'status': 'error', 'message': 'Debe indicar al menos un código de barras (EAN).'}
+
+            if not categ_id:
+                return {'status': 'error', 'message': 'La categoría de producto es obligatoria.'}
+            cat = env['product.category'].sudo().browse(int(categ_id))
+            if not cat.exists() or not cat.parent_id:
+                return {'status': 'error', 'message': 'Debe seleccionar una categoría hija (2º nivel) válida.'}
+
+            if prod_type not in ['product', 'consu', 'service']:
+                return {'status': 'error', 'message': 'El tipo de producto es obligatorio.'}
+
+            if list_price is None or str(list_price).strip() == '':
+                return {'status': 'error', 'message': 'El Precio de Venta al Público (PVP) es obligatorio.'}
+            parsed_list_price = float(str(list_price).replace(',', '.'))
+            if parsed_list_price < 0:
+                return {'status': 'error', 'message': 'El PVP no puede ser negativo.'}
+
+            if standard_price is None or str(standard_price).strip() == '':
+                return {'status': 'error', 'message': 'El Precio de Coste es obligatorio.'}
+            parsed_std_price = float(str(standard_price).replace(',', '.'))
+            if parsed_std_price < 0:
+                return {'status': 'error', 'message': 'El Precio de Coste no puede ser negativo.'}
+
+            if not tax_id:
+                return {'status': 'error', 'message': 'Debe seleccionar el tipo de IVA o indicar Exento de IVA.'}
+
+            if not supplier_id:
+                return {'status': 'error', 'message': 'Debe seleccionar un proveedor para el producto.'}
+            supplier = env['res.partner'].sudo().browse(int(supplier_id))
+            if not supplier.exists():
+                return {'status': 'error', 'message': 'El proveedor seleccionado no existe.'}
+
+            clean_image = (image_1920 or '').strip() if image_1920 else ''
+            if not clean_image and (not existing_prod or not existing_prod.image_1920):
+                return {'status': 'error', 'message': 'La imagen asociada al producto es obligatoria.'}
+
+            # 2. Validación de unicidad de Código Interno y EANs (no más de 1 artículo con el mismo código / EAN)
+            dup_code = env['product.template'].sudo().search([
+                ('default_code', '=', clean_code),
+                ('id', '!=', pid),
+            ], limit=1)
+            if dup_code:
+                return {
+                    'status': 'error',
+                    'message': f'Ya existe otro artículo con el código interno "{clean_code}" ({dup_code.name}).',
+                }
+
+            for ean in clean_barcodes:
+                dup_tmpl = env['product.template'].sudo().search([
+                    ('barcode', '=', ean),
+                    ('id', '!=', pid),
+                ], limit=1)
+                if dup_tmpl:
+                    return {
+                        'status': 'error',
+                        'message': f'El código de barras / EAN "{ean}" ya está asignado al artículo "{dup_tmpl.name}".',
+                    }
+                dup_prod = env['product.product'].sudo().search([
+                    ('barcode', '=', ean),
+                    ('product_tmpl_id', '!=', pid),
+                ], limit=1)
+                if dup_prod:
+                    return {
+                        'status': 'error',
+                        'message': f'El código de barras / EAN "{ean}" ya está asignado al artículo "{dup_prod.name}".',
+                    }
+                dup_extra = env['product.barcode'].sudo().search([
+                    ('barcode', '=', ean),
+                    ('product_tmpl_id', '!=', pid),
+                ], limit=1)
+                if dup_extra:
+                    return {
+                        'status': 'error',
+                        'message': f'El código de barras / EAN "{ean}" ya está asignado como EAN adicional al artículo "{dup_extra.product_tmpl_id.name}".',
+                    }
+
+            # 3. Construir valores
+            primary_barcode = clean_barcodes[0]
+            extra_barcodes = clean_barcodes[1:]
+
             vals = {
-                'name': name.strip(),
-                'default_code': (default_code or '').strip() or False,
-                'barcode': (barcode or '').strip() or False,
-                'type': prod_type if prod_type in ['product', 'consu', 'service'] else 'consu',
-                'list_price': max(0.0, float(str(list_price).replace(',', '.') or 0.0)),
-                'standard_price': max(0.0, float(str(standard_price).replace(',', '.') or 0.0)),
+                'name': clean_name,
+                'default_code': clean_code,
+                'barcode': primary_barcode,
+                'categ_id': cat.id,
+                'type': prod_type,
+                'list_price': parsed_list_price,
+                'standard_price': parsed_std_price,
+                'extra_barcode_ids': [(5, 0, 0)] + [(0, 0, {'barcode': b}) for b in extra_barcodes],
             }
             if hasattr(env['product.template'], 'available_in_pos'):
                 vals['available_in_pos'] = bool(available_in_pos)
 
-            if categ_id:
-                cat = env['product.category'].sudo().browse(int(categ_id))
-                if cat.exists():
-                    vals['categ_id'] = cat.id
+            if clean_image:
+                vals['image_1920'] = clean_image
 
-            if product_id:
-                prod = env['product.template'].sudo().browse(int(product_id))
-                if not prod.exists():
-                    return {'status': 'error', 'message': 'Producto no encontrado.'}
-                prod.sudo().write(vals)
+            if str(tax_id) == 'exempt':
+                vals['taxes_id'] = [(6, 0, [])]
+            else:
+                tax_rec = env['account.tax'].sudo().browse(int(tax_id))
+                if not tax_rec.exists():
+                    return {'status': 'error', 'message': 'El tipo de IVA seleccionado no existe.'}
+                vals['taxes_id'] = [(6, 0, [tax_rec.id])]
+
+            if existing_prod:
+                existing_prod.sudo().write(vals)
+                prod = existing_prod
                 p_name = prod.name
                 if isinstance(p_name, dict):
                     p_name = p_name.get('es_ES') or p_name.get('en_US') or ''
@@ -2036,6 +2354,25 @@ class PosGasStationController(http.Controller):
                 if isinstance(p_name, dict):
                     p_name = p_name.get('es_ES') or p_name.get('en_US') or ''
                 msg = f'Producto "{p_name}" creado correctamente.'
+
+            # 4. Asociar proveedor en seller_ids (product.supplierinfo)
+            seller_rec = env['product.supplierinfo'].sudo().search([
+                ('product_tmpl_id', '=', prod.id),
+                ('partner_id', '=', supplier.id),
+            ], limit=1)
+            if not seller_rec:
+                seller_vals = {
+                    'product_tmpl_id': prod.id,
+                    'partner_id': supplier.id,
+                    'price': parsed_std_price,
+                }
+                if supplier.company_id:
+                    seller_vals['company_id'] = supplier.company_id.id
+                elif prod.company_id:
+                    seller_vals['company_id'] = False
+                env['product.supplierinfo'].sudo().create(seller_vals)
+            else:
+                seller_rec.sudo().write({'price': parsed_std_price})
 
             return {
                 'status': 'success',
@@ -2111,23 +2448,46 @@ class PosGasStationController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/save_category', type='json', auth='user', methods=['POST'], csrf=False)
-    def save_category(self, category_id=None, name=None, **kw):
-        """Crea o renombra una categoría de producto."""
+    def save_category(self, category_id=None, name=None, parent_id=None, code=None, **kw):
+        """Crea o actualiza una categoría de producto jerárquica (1 dígito padre, 2 dígitos hija)."""
         try:
             env = request.env
             if not name or not name.strip():
                 return {'status': 'error', 'message': 'El nombre de la categoría es obligatorio.'}
 
             clean_name = name.strip()
+            pid = int(parent_id) if parent_id else False
+            clean_code = (code or '').strip()
+
+            if pid:
+                parent_cat = env['product.category'].sudo().browse(pid)
+                if not parent_cat.exists() or parent_cat.parent_id:
+                    return {'status': 'error', 'message': 'La categoría padre debe ser de primer nivel.'}
+                if not clean_code:
+                    clean_code = env['product.category'].get_next_child_code(pid)
+                elif len(clean_code) != 2 or not clean_code.isdigit():
+                    return {'status': 'error', 'message': 'El código de subfamilia debe tener exactamente 2 dígitos.'}
+            else:
+                if not clean_code:
+                    clean_code = env['product.category'].get_next_parent_code()
+                elif len(clean_code) != 1 or not clean_code.isdigit():
+                    return {'status': 'error', 'message': 'El código de categoría padre debe tener exactamente 1 dígito.'}
+
+            vals = {
+                'name': clean_name,
+                'parent_id': pid,
+                'code': clean_code,
+            }
+
             if category_id:
                 cat = env['product.category'].sudo().browse(int(category_id))
                 if not cat.exists():
                     return {'status': 'error', 'message': 'Categoría no encontrada.'}
-                cat.sudo().write({'name': clean_name})
-                msg = f'Categoría renombrada a "{clean_name}".'
+                cat.sudo().write(vals)
+                msg = f'Categoría "{clean_name}" actualizada correctamente.'
             else:
-                cat = env['product.category'].sudo().create({'name': clean_name})
-                msg = f'Categoría "{clean_name}" creada correctamente.'
+                cat = env['product.category'].sudo().create(vals)
+                msg = f'Categoría "{clean_name}" ({cat.full_code or clean_code}) creada correctamente.'
 
             # Sincronizar pos.category
             pos_cat = env['pos.category'].sudo().search([('name', '=', clean_name)], limit=1)
@@ -2139,6 +2499,8 @@ class PosGasStationController(http.Controller):
                 'message': msg,
                 'category_id': cat.id,
                 'name': cat.name,
+                'code': cat.code,
+                'full_code': cat.full_code,
             }
         except Exception as e:
             _logger.exception("Error al guardar categoría: %s", e)
@@ -2146,16 +2508,20 @@ class PosGasStationController(http.Controller):
 
     @http.route('/pos_gas_station/get_categories_list', type='json', auth='user', methods=['POST'], csrf=False)
     def get_categories_list(self, **kw):
-        """Retorna las categorías con el conteo de artículos asignados."""
+        """Retorna las categorías con su jerarquía, código y conteo de artículos."""
         try:
             env = request.env
-            cats = env['product.category'].sudo().search([], order='name asc')
+            cats = env['product.category'].sudo().search([], order='code asc, name asc')
             data = []
             for c in cats:
                 cnt = env['product.template'].sudo().search_count([('categ_id', '=', c.id)])
                 data.append({
                     'id': c.id,
                     'name': c.name,
+                    'parent_id': c.parent_id.id if c.parent_id else False,
+                    'parent_name': c.parent_id.name if c.parent_id else '',
+                    'code': getattr(c, 'code', '') or '',
+                    'full_code': getattr(c, 'full_code', '') or '',
                     'complete_name': c.complete_name,
                     'products_count': cnt,
                 })

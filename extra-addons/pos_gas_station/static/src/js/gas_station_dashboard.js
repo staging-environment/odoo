@@ -57,13 +57,29 @@ export class GasStationDashboard extends Component {
             editingProduct: null,
             editProdName: "",
             editProdCode: "",
-            editProdBarcode: "",
-            editProdCategId: null,
+            editProdBarcodes: [],
+            editProdNewBarcode: "",
+            editProdCategId: "",
             editProdType: "consu",
-            editProdPrice: 0.0,
-            editProdCost: 0.0,
+            editProdPrice: "",
+            editProdCost: "",
+            editProdTaxId: "",
+            editProdSupplierId: "",
+            editProdImageBase64: "",
+            editProdImagePreview: "",
+            editProdHasExistingImage: false,
             editProdInPos: true,
             isSavingProductForm: false,
+            productCategoriesTree: [],
+            productTaxesList: [],
+            productSuppliersList: [],
+            // Modal flotante de nuevo proveedor
+            isNewSupplierModalOpen: false,
+            newSupplierName: "",
+            newSupplierVat: "",
+            newSupplierPhone: "",
+            newSupplierEmail: "",
+            isSavingNewSupplier: false,
             isStockAdjustModalOpen: false,
             stockAdjustProduct: null,
             stockAdjustCurrentQty: 0.0,
@@ -74,6 +90,8 @@ export class GasStationDashboard extends Component {
             categoriesList: [],
             categoriesLoading: false,
             newCategoryName: "",
+            newCategoryParentId: "",
+            newCategoryCode: "",
             isSavingCategory: false,
             // Pestaña de Tanques y Ajustes
             isAdjustTankModalOpen: false,
@@ -980,29 +998,202 @@ export class GasStationDashboard extends Component {
         this.openEditProductModal(null);
     }
 
-    openEditProductModal(prod) {
+    async loadProductFormMetadata() {
+        const companyId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        try {
+            const res = await jsonrpc("/pos_gas_station/get_product_form_metadata", {
+                company_id: companyId,
+            });
+            if (res && res.status === "success") {
+                this.state.productCategoriesTree = res.categories_tree || [];
+                this.state.productTaxesList = res.taxes || [];
+                this.state.productSuppliersList = res.suppliers || [];
+            }
+        } catch (e) {
+            console.error("Error loading product form metadata:", e);
+        }
+    }
+
+    async openEditProductModal(prod) {
         this.state.editingProduct = prod || null;
         this.state.editProdName = prod ? prod.name : "";
         this.state.editProdCode = prod ? (prod.default_code || "") : "";
-        this.state.editProdBarcode = prod ? (prod.barcode || "") : "";
-        this.state.editProdCategId = prod && prod.categ_id ? prod.categ_id : "";
+        const initialBarcodes = prod
+            ? (Array.isArray(prod.all_barcodes) && prod.all_barcodes.length
+                ? [...prod.all_barcodes]
+                : (prod.barcode ? [prod.barcode] : []))
+            : [];
+        this.state.editProdBarcodes = initialBarcodes;
+        this.state.editProdNewBarcode = "";
+        this.state.editProdCategId = prod && prod.categ_id ? String(prod.categ_id) : "";
         this.state.editProdType = prod ? (prod.type || "consu") : "consu";
-        this.state.editProdPrice = prod ? (prod.list_price || 0.0) : 0.0;
-        this.state.editProdCost = prod ? (prod.standard_price || 0.0) : 0.0;
+        this.state.editProdPrice = prod ? String(prod.list_price ?? "") : "";
+        this.state.editProdCost = prod ? String(prod.standard_price ?? "") : "";
+        this.state.editProdTaxId = prod && prod.tax_id ? String(prod.tax_id) : "";
+        this.state.editProdSupplierId = prod && prod.supplier_id ? String(prod.supplier_id) : "";
+        this.state.editProdImageBase64 = "";
+        this.state.editProdHasExistingImage = Boolean(prod && prod.has_image);
+        this.state.editProdImagePreview = (prod && prod.image_url) ? prod.image_url : "";
         this.state.editProdInPos = prod ? (prod.available_in_pos !== false) : true;
         this.state.isEditProductModalOpen = true;
+        await this.loadProductFormMetadata();
     }
 
     closeEditProductModal() {
         this.state.isEditProductModalOpen = false;
         this.state.editingProduct = null;
+        this.state.isNewSupplierModalOpen = false;
+    }
+
+    async onProductCategoryChange(ev) {
+        const categId = ev.target.value;
+        this.state.editProdCategId = categId;
+        if (!categId) {
+            if (!this.state.editingProduct) {
+                this.state.editProdCode = "";
+            }
+            return;
+        }
+        try {
+            const res = await jsonrpc("/pos_gas_station/next_product_code", {
+                categ_id: parseInt(categId),
+            });
+            if (res && res.status === "success" && res.next_code) {
+                this.state.editProdCode = res.next_code;
+            }
+        } catch (e) {
+            console.error("Error fetching next product code:", e);
+        }
+    }
+
+    onProductImageSelected(ev) {
+        const file = ev.target.files && ev.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            this.notification.add("El archivo seleccionado debe ser una imagen.", { type: "warning" });
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = reader.result || "";
+            const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+            this.state.editProdImagePreview = dataUrl;
+            this.state.editProdImageBase64 = base64;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    addProductBarcode() {
+        const clean = (this.state.editProdNewBarcode || "").trim();
+        if (!clean) return;
+        if (this.state.editProdBarcodes.includes(clean)) {
+            this.notification.add(`El código de barras "${clean}" ya está en la lista.`, { type: "warning" });
+            return;
+        }
+        this.state.editProdBarcodes = [...this.state.editProdBarcodes, clean];
+        this.state.editProdNewBarcode = "";
+    }
+
+    removeProductBarcode(idx) {
+        this.state.editProdBarcodes = this.state.editProdBarcodes.filter((_, i) => i !== idx);
+    }
+
+    onBarcodeInputKeydown(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.addProductBarcode();
+        }
+    }
+
+    openNewSupplierModal() {
+        this.state.newSupplierName = "";
+        this.state.newSupplierVat = "";
+        this.state.newSupplierPhone = "";
+        this.state.newSupplierEmail = "";
+        this.state.isNewSupplierModalOpen = true;
+    }
+
+    closeNewSupplierModal() {
+        this.state.isNewSupplierModalOpen = false;
+    }
+
+    async saveNewSupplierModal() {
+        if (!this.state.newSupplierName || !this.state.newSupplierName.trim()) {
+            this.notification.add("El nombre / razón social del proveedor es obligatorio.", { type: "warning" });
+            return;
+        }
+        this.state.isSavingNewSupplier = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/create_supplier", {
+                name: this.state.newSupplierName.trim(),
+                vat: (this.state.newSupplierVat || "").trim(),
+                phone: (this.state.newSupplierPhone || "").trim(),
+                email: (this.state.newSupplierEmail || "").trim(),
+            });
+            if (res && res.status === "success" && res.supplier) {
+                this.notification.add(res.message, { type: "success" });
+                this.state.productSuppliersList = [...this.state.productSuppliersList, res.supplier]
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                this.state.editProdSupplierId = String(res.supplier.id);
+                this.closeNewSupplierModal();
+            } else {
+                this.notification.add((res && res.message) || "Error al crear proveedor", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error creating supplier:", e);
+            this.notification.add("Error de conexión al crear proveedor", { type: "danger" });
+        } finally {
+            this.state.isSavingNewSupplier = false;
+        }
     }
 
     async saveProductModal() {
+        // Si escribió un EAN en la caja y no pulsó "+", añadirlo automáticamente
+        if (this.state.editProdNewBarcode && this.state.editProdNewBarcode.trim()) {
+            this.addProductBarcode();
+        }
+
         if (!this.state.editProdName || !this.state.editProdName.trim()) {
-            this.notification.add("El nombre del producto es obligatorio.", { type: "warning" });
+            this.notification.add("El nombre del artículo es obligatorio.", { type: "warning" });
             return;
         }
+        if (!this.state.editProdImageBase64 && !this.state.editProdHasExistingImage) {
+            this.notification.add("La imagen asociada al producto es obligatoria.", { type: "warning" });
+            return;
+        }
+        if (!this.state.editProdCategId) {
+            this.notification.add("Debe seleccionar una categoría de producto.", { type: "warning" });
+            return;
+        }
+        if (!this.state.editProdCode || !this.state.editProdCode.trim()) {
+            this.notification.add("El código interno / referencia es obligatorio.", { type: "warning" });
+            return;
+        }
+        if (!this.state.editProdBarcodes || this.state.editProdBarcodes.length === 0) {
+            this.notification.add("Debe añadir al menos un código de barras (EAN).", { type: "warning" });
+            return;
+        }
+        if (!this.state.editProdType) {
+            this.notification.add("El tipo de producto es obligatorio.", { type: "warning" });
+            return;
+        }
+        if (!this.state.editProdTaxId) {
+            this.notification.add("Debe seleccionar el tipo de IVA o Exento de IVA.", { type: "warning" });
+            return;
+        }
+        if (this.state.editProdPrice === "" || this.state.editProdPrice === null || isNaN(parseFloat(this.state.editProdPrice))) {
+            this.notification.add("El Precio de Venta al Público (PVP) es obligatorio.", { type: "warning" });
+            return;
+        }
+        if (this.state.editProdCost === "" || this.state.editProdCost === null || isNaN(parseFloat(this.state.editProdCost))) {
+            this.notification.add("El Precio de Coste es obligatorio.", { type: "warning" });
+            return;
+        }
+        if (!this.state.editProdSupplierId) {
+            this.notification.add("Debe seleccionar un proveedor para el producto.", { type: "warning" });
+            return;
+        }
+
         const companyId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
         this.state.isSavingProductForm = true;
         try {
@@ -1011,11 +1202,14 @@ export class GasStationDashboard extends Component {
                 company_id: companyId,
                 name: this.state.editProdName.trim(),
                 default_code: this.state.editProdCode.trim(),
-                barcode: this.state.editProdBarcode.trim(),
-                categ_id: this.state.editProdCategId ? parseInt(this.state.editProdCategId) : null,
+                barcodes: this.state.editProdBarcodes,
+                categ_id: parseInt(this.state.editProdCategId),
                 prod_type: this.state.editProdType,
-                list_price: parseFloat(this.state.editProdPrice) || 0.0,
-                standard_price: parseFloat(this.state.editProdCost) || 0.0,
+                list_price: parseFloat(this.state.editProdPrice),
+                standard_price: parseFloat(this.state.editProdCost),
+                tax_id: this.state.editProdTaxId,
+                supplier_id: parseInt(this.state.editProdSupplierId),
+                image_1920: this.state.editProdImageBase64 || null,
                 available_in_pos: this.state.editProdInPos,
             });
             if (res && res.status === "success") {
@@ -1076,6 +1270,8 @@ export class GasStationDashboard extends Component {
     async openCategoriesModal() {
         this.state.isCategoriesModalOpen = true;
         this.state.newCategoryName = "";
+        this.state.newCategoryParentId = "";
+        this.state.newCategoryCode = "";
         await this.loadCategoriesList();
     }
 
@@ -1090,7 +1286,13 @@ export class GasStationDashboard extends Component {
             if (res && res.status === "success") {
                 this.state.categoriesList = res.categories || [];
                 if (this.state.companyDetailData) {
-                    this.state.companyDetailData.all_categories = (res.categories || []).map(c => ({ id: c.id, name: c.name }));
+                    this.state.companyDetailData.all_categories = (res.categories || []).map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        parent_id: c.parent_id,
+                        code: c.code,
+                        full_code: c.full_code,
+                    }));
                 }
             }
         } catch (e) {
@@ -1109,10 +1311,13 @@ export class GasStationDashboard extends Component {
         try {
             const res = await jsonrpc("/pos_gas_station/save_category", {
                 name: this.state.newCategoryName.trim(),
+                parent_id: this.state.newCategoryParentId ? parseInt(this.state.newCategoryParentId) : null,
+                code: (this.state.newCategoryCode || "").trim() || null,
             });
             if (res && res.status === "success") {
                 this.notification.add(res.message, { type: "success" });
                 this.state.newCategoryName = "";
+                this.state.newCategoryCode = "";
                 await this.loadCategoriesList();
                 await this.fetchProducts();
             } else {

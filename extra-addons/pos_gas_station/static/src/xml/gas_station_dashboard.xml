@@ -1654,8 +1654,8 @@
 
             <!-- MODAL PARA CREAR O EDITAR PRODUCTO -->
             <t t-if="state.isEditProductModalOpen">
-                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1065;" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1065; overflow-y: auto;" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered modal-lg my-4">
                         <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
                             <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
                                 <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
@@ -1665,46 +1665,50 @@
                                 </h5>
                                 <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeEditProductModal()" aria-label="Cerrar"></button>
                             </div>
-                            <div class="modal-body p-4">
-                                <div class="mb-3">
-                                    <label class="form-label small fw-bold text-dark">Nombre del Artículo / Descripción <span class="text-danger">*</span></label>
-                                    <input type="text"
-                                           class="form-control"
-                                           placeholder="Ej: Kinder Bueno 43g, Coca Cola 33cl..."
-                                           t-model="state.editProdName"/>
+                            <div class="modal-body p-4" style="max-height: 78vh; overflow-y: auto;">
+                                <!-- Fila 1: Nombre e Imagen -->
+                                <div class="row g-3 mb-3 align-items-center">
+                                    <div class="col-md-8">
+                                        <label class="form-label small fw-bold text-dark">Nombre del Artículo / Descripción <span class="text-danger">*</span></label>
+                                        <input type="text"
+                                               class="form-control"
+                                               placeholder="Ej: Kinder Bueno 43g, Coca Cola 33cl..."
+                                               t-model="state.editProdName"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-dark">Imagen del Producto <span class="text-danger">*</span></label>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="border rounded-3 d-flex align-items-center justify-content-center bg-light flex-shrink-0" style="width: 52px; height: 52px; overflow: hidden;">
+                                                <img t-if="state.editProdImagePreview" t-att-src="state.editProdImagePreview" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;"/>
+                                                <i t-else="" class="fa fa-image text-muted fs-4"/>
+                                            </div>
+                                            <input type="file"
+                                                   class="form-control form-control-sm"
+                                                   accept="image/*"
+                                                   t-on-change="(ev) => this.onProductImageSelected(ev)"/>
+                                        </div>
+                                    </div>
                                 </div>
 
+                                <!-- Fila 2: Categoría Jerárquica (2 niveles) y Tipo de Producto -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-dark">Código Interno / Referencia</label>
-                                        <input type="text"
-                                               class="form-control font-monospace"
-                                               placeholder="Ej: 311001"
-                                               t-model="state.editProdCode"/>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-dark">Código de Barras (EAN-13)</label>
-                                        <input type="text"
-                                               class="form-control font-monospace"
-                                               placeholder="Ej: 8000500003787"
-                                               t-model="state.editProdBarcode"/>
-                                    </div>
-                                </div>
-
-                                <div class="row g-3 mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-dark">Categoría de Producto</label>
-                                        <select class="form-select" t-model="state.editProdCategId">
-                                            <option value="">(Sin categoría específica)</option>
-                                            <t t-if="state.companyDetailData and state.companyDetailData.all_categories">
-                                                <t t-foreach="state.companyDetailData.all_categories" t-as="cat" t-key="cat.id">
-                                                    <option t-att-value="cat.id"><t t-esc="cat.name"/></option>
-                                                </t>
+                                        <label class="form-label small fw-bold text-dark">Categoría de Producto (Familia / Subfamilia) <span class="text-danger">*</span></label>
+                                        <select class="form-select" t-att-value="state.editProdCategId" t-on-change="(ev) => this.onProductCategoryChange(ev)">
+                                            <option value="">-- Seleccionar Categoría (2º nivel) --</option>
+                                            <t t-foreach="state.productCategoriesTree" t-as="pcat" t-key="pcat.id">
+                                                <optgroup t-att-label="pcat.code + ' · ' + pcat.name">
+                                                    <t t-foreach="pcat.children" t-as="ccat" t-key="ccat.id">
+                                                        <option t-att-value="ccat.id" t-att-selected="String(ccat.id) === String(state.editProdCategId)">
+                                                            <t t-esc="'&#160;&#160;&#160;' + ccat.full_code + ' · ' + ccat.name"/>
+                                                        </option>
+                                                    </t>
+                                                </optgroup>
                                             </t>
                                         </select>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-dark">Tipo de Producto</label>
+                                        <label class="form-label small fw-bold text-dark">Tipo de Producto <span class="text-danger">*</span></label>
                                         <select class="form-select" t-model="state.editProdType">
                                             <option value="product">Almacenable (Control de stock)</option>
                                             <option value="consu">Consumible</option>
@@ -1713,9 +1717,75 @@
                                     </div>
                                 </div>
 
+                                <!-- Fila 3: Código Interno (debajo de Categoría) y Proveedor -->
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-dark">Precio de Venta al Público (PVP €) <span class="text-danger">*</span></label>
+                                        <label class="form-label small fw-bold text-dark">Código Interno / Referencia <span class="text-danger">*</span></label>
+                                        <input type="text"
+                                               class="form-control font-monospace fw-bold"
+                                               placeholder="Ej: 311001 (prefijado por categoría)"
+                                               t-model="state.editProdCode"/>
+                                        <div class="form-text text-muted" style="font-size: 11px;">
+                                            3 primeros dígitos de categoría + secuencia autoincremental (editable).
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Proveedor <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <select class="form-select" t-model="state.editProdSupplierId">
+                                                <option value="">-- Seleccionar Proveedor --</option>
+                                                <t t-foreach="state.productSuppliersList" t-as="sup" t-key="sup.id">
+                                                    <option t-att-value="sup.id">
+                                                        <t t-esc="sup.name"/><t t-if="sup.vat"> (<t t-esc="sup.vat"/>)</t>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                            <button type="button" class="btn btn-outline-primary fw-bold" title="Crear nuevo proveedor" t-on-click="() => this.openNewSupplierModal()">
+                                                <i class="fa fa-plus"/> Nuevo
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Fila 4: Códigos de Barras Multivalue (EAN) -->
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-dark">Códigos de Barras (EAN) <span class="text-danger">*</span></label>
+                                    <div class="input-group mb-2">
+                                        <input type="text"
+                                               class="form-control font-monospace"
+                                               placeholder="Escanee o escriba un EAN y pulse Añadir..."
+                                               t-model="state.editProdNewBarcode"
+                                               t-on-keydown="(ev) => this.onBarcodeInputKeydown(ev)"/>
+                                        <button type="button" class="btn btn-outline-secondary fw-bold" t-on-click="() => this.addProductBarcode()">
+                                            <i class="fa fa-plus me-1"/> Añadir EAN
+                                        </button>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2" t-if="state.editProdBarcodes.length">
+                                        <t t-foreach="state.editProdBarcodes" t-as="ean" t-key="ean">
+                                            <span class="badge bg-dark text-white d-inline-flex align-items-center gap-2 py-2 px-3 font-monospace" style="font-size: 12px;">
+                                                <i class="fa fa-barcode text-info"/>
+                                                <t t-esc="ean"/>
+                                                <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 9px;" aria-label="Eliminar" t-on-click="() => this.removeProductBarcode(ean_index)"></button>
+                                            </span>
+                                        </t>
+                                    </div>
+                                    <div t-else="" class="text-muted small fst-italic">Ningún código de barras añadido todavía (mínimo 1 obligatorio).</div>
+                                </div>
+
+                                <!-- Fila 5: Tipo de IVA, PVP y Precio de Coste -->
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-dark">Tipo de IVA <span class="text-danger">*</span></label>
+                                        <select class="form-select" t-model="state.editProdTaxId">
+                                            <option value="">-- Seleccionar IVA --</option>
+                                            <t t-foreach="state.productTaxesList" t-as="tax" t-key="tax.id">
+                                                <option t-att-value="tax.id"><t t-esc="tax.name"/></option>
+                                            </t>
+                                            <option value="exempt">Exento de IVA (0%)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-dark">Precio de Venta (PVP €) <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <input type="number"
                                                    class="form-control font-monospace fw-bold"
@@ -1725,9 +1795,10 @@
                                                    t-model="state.editProdPrice"/>
                                             <span class="input-group-text">€</span>
                                         </div>
+                                        <div class="form-text text-muted" style="font-size: 11px;">PVP final al público (IVA incluido).</div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-dark">Precio de Coste (€)</label>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-dark">Precio de Coste (€) <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <input type="number"
                                                    class="form-control font-monospace"
@@ -1736,6 +1807,9 @@
                                                    placeholder="0.00"
                                                    t-model="state.editProdCost"/>
                                             <span class="input-group-text">€</span>
+                                        </div>
+                                        <div class="form-text text-info fw-semibold" style="font-size: 11px;">
+                                            <i class="fa fa-info-circle me-1"/>Precio SIN IVA (IVA no incluido).
                                         </div>
                                     </div>
                                 </div>
@@ -1750,6 +1824,49 @@
                                 <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-att-disabled="state.isSavingProductForm" t-on-click="() => this.saveProductModal()">
                                     <i t-if="state.isSavingProductForm" class="fa fa-circle-o-notch fa-spin me-1"/>
                                     <i t-else="" class="fa fa-check me-1"/> Guardar Producto
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- MODAL FLOTANTE PARA CREAR NUEVO PROVEEDOR SOBRE LA MARCHA -->
+            <t t-if="state.isNewSupplierModalOpen">
+                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); z-index: 1085;" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-primary text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                                <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                                    <i class="fa fa-truck me-1"/> Nuevo Proveedor
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeNewSupplierModal()" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-dark">Nombre / Razón Social <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" placeholder="Ej: Distribuciones Alimentarias S.L." t-model="state.newSupplierName"/>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">NIF / CIF</label>
+                                        <input type="text" class="form-control font-monospace" placeholder="Ej: B41000000" t-model="state.newSupplierVat"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Teléfono</label>
+                                        <input type="text" class="form-control" placeholder="Ej: 954000000" t-model="state.newSupplierPhone"/>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-dark">Correo Electrónico</label>
+                                        <input type="email" class="form-control" placeholder="pedidos@proveedor.com" t-model="state.newSupplierEmail"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end gap-2 border-top">
+                                <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.closeNewSupplierModal()">Cancelar</button>
+                                <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-att-disabled="state.isSavingNewSupplier" t-on-click="() => this.saveNewSupplierModal()">
+                                    <i t-if="state.isSavingNewSupplier" class="fa fa-circle-o-notch fa-spin me-1"/>
+                                    <i t-else="" class="fa fa-check me-1"/> Crear y Seleccionar
                                 </button>
                             </div>
                         </div>
@@ -1836,7 +1953,26 @@
                             <div class="modal-body p-4">
                                 <!-- Crear nueva categoría -->
                                 <div class="p-3 bg-light rounded-3 border mb-3">
-                                    <label class="form-label small fw-bold text-dark mb-1">Nueva Categoría</label>
+                                    <label class="form-label small fw-bold text-dark mb-2">Nueva Categoría / Subfamilia</label>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-7">
+                                            <select class="form-select form-select-sm" t-model="state.newCategoryParentId">
+                                                <option value="">-- Categoría Padre (Nivel 1, 1 dígito) --</option>
+                                                <t t-foreach="state.categoriesList" t-as="pcat" t-key="pcat.id">
+                                                    <option t-if="!pcat.parent_id and pcat.code and pcat.code.length === 1" t-att-value="pcat.id">
+                                                        <t t-esc="pcat.code + ' · ' + pcat.name"/> (Subfamilia)
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <input type="text"
+                                                   class="form-control form-control-sm font-monospace"
+                                                   t-att-placeholder="state.newCategoryParentId ? 'Cód. 2 díg. (auto)' : 'Cód. 1 díg. (auto)'"
+                                                   maxlength="2"
+                                                   t-model="state.newCategoryCode"/>
+                                        </div>
+                                    </div>
                                     <div class="input-group">
                                         <input type="text"
                                                class="form-control"
@@ -1861,10 +1997,13 @@
                                 <div t-else="" style="max-height: 280px; overflow-y: auto;" class="border rounded-3 p-2 bg-white">
                                     <t t-if="state.categoriesList and state.categoriesList.length">
                                         <div t-foreach="state.categoriesList" t-as="cat" t-key="cat.id"
-                                             class="d-flex justify-content-between align-items-center py-2 px-3 border-bottom rounded-2 bg-light-subtle mb-1">
+                                             t-attf-class="d-flex justify-content-between align-items-center py-2 px-3 border-bottom rounded-2 mb-1 {{ cat.parent_id ? 'ms-4 bg-white' : 'bg-light fw-bold' }}">
                                             <div class="d-flex align-items-center gap-2">
-                                                <i class="fa fa-tag text-muted" style="font-size: 11px;"/>
-                                                <strong class="text-dark" style="font-size: 13px;"><t t-esc="cat.name"/></strong>
+                                                <span t-if="cat.full_code" class="badge bg-dark font-monospace" style="font-size: 11px;">
+                                                    <t t-esc="cat.full_code"/>
+                                                </span>
+                                                <i t-else="" class="fa fa-tag text-muted" style="font-size: 11px;"/>
+                                                <span class="text-dark" style="font-size: 13px;"><t t-esc="cat.name"/></span>
                                             </div>
                                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 11px;">
                                                 <t t-esc="cat.products_count"/> arts

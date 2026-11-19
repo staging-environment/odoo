@@ -596,6 +596,7 @@ export class UtrecarMainScreen extends Component {
         const all = Object.values(this.pos.db.product_by_id || {});
         return (
             all.find(p => (p.barcode || "").trim() === clean) ||
+            all.find(p => Array.isArray(p.extra_barcodes) && p.extra_barcodes.some(b => (b || "").trim() === clean)) ||
             all.find(p => (p.default_code || "").trim().toLowerCase() === lower) ||
             (clean.length >= 6 ? all.find(p => p.barcode && p.barcode.trim().endsWith(clean)) : null) ||
             null

@@ -360,3 +360,16 @@ class PosSession(models.Model):
             res['orders_details']['amount'] = sum(orders.mapped('amount_total'))
 
         return res
+
+    def _get_pos_ui_product_product(self, params):
+        products = super()._get_pos_ui_product_product(params)
+        if products:
+            prod_ids = [p['id'] for p in products]
+            prod_recs = self.env['product.product'].sudo().browse(prod_ids)
+            extra_map = {
+                p.id: [b for b in p.product_tmpl_id.extra_barcode_ids.mapped('barcode') if b]
+                for p in prod_recs
+            }
+            for p in products:
+                p['extra_barcodes'] = extra_map.get(p['id'], [])
+        return products
