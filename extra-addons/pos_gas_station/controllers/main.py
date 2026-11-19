@@ -2110,6 +2110,7 @@ class PosGasStationController(http.Controller):
             'id': s.id,
             'name': s.name or '',
             'vat': s.vat or '',
+            'ref': s.ref or '',
         } for s in suppliers]
 
         return {

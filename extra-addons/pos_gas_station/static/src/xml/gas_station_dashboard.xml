@@ -1194,11 +1194,8 @@
                                         </div>
                                     </div>
                                     <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-3" t-on-click="() => this.openCategoryFormModal('parent', null, null)">
-                                            <i class="fa fa-folder-plus me-1"/> + Nueva Familia Padre
-                                        </button>
-                                        <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-on-click="() => this.openCategoryFormModal('child', null, null)">
-                                            <i class="fa fa-plus me-1"/> + Nueva Subfamilia
+                                        <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-on-click="() => this.openCategoryFormModal('parent', null, null)">
+                                            <i class="fa fa-plus me-1"/> Nueva familia / subfamilia
                                         </button>
                                     </div>
                                 </div>
@@ -2025,18 +2022,53 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-dark">Proveedor <span class="text-danger">*</span></label>
-                                        <div class="input-group">
-                                            <select class="form-select" t-model="state.editProdSupplierId">
-                                                <option value="">-- Seleccionar Proveedor --</option>
-                                                <t t-foreach="state.productSuppliersList || []" t-as="sup" t-key="sup.id">
-                                                    <option t-att-value="sup.id">
-                                                        <t t-esc="sup.name"/><t t-if="sup.vat"> (<t t-esc="sup.vat"/>)</t>
-                                                    </option>
+                                        <div class="position-relative">
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white text-muted">
+                                                    <i t-if="state.editProdSupplierId" class="fa fa-check-circle text-success"/>
+                                                    <i t-else="" class="fa fa-search"/>
+                                                </span>
+                                                <input type="text"
+                                                       class="form-control"
+                                                       placeholder="Escribir para buscar proveedor (nombre o NIF)..."
+                                                       autocomplete="off"
+                                                       t-att-value="state.editProdSupplierSearch"
+                                                       t-on-input="(ev) => this.onSupplierSearchInput(ev)"
+                                                       t-on-focus="() => this.onSupplierSearchFocus()"
+                                                       t-on-blur="() => this.onSupplierSearchBlur()"/>
+                                                <button t-if="state.editProdSupplierSearch"
+                                                        type="button"
+                                                        class="btn btn-outline-secondary"
+                                                        title="Limpiar proveedor"
+                                                        t-on-click="() => this.clearSelectedSupplier()">
+                                                    <i class="fa fa-times"/>
+                                                </button>
+                                                <button type="button"
+                                                        class="btn btn-outline-primary fw-bold"
+                                                        title="Crear nuevo proveedor"
+                                                        t-on-click.stop="() => this.openNewSupplierModal()">
+                                                    <i class="fa fa-plus"/> Nuevo
+                                                </button>
+                                            </div>
+                                            <!-- Lista desplegable Autocomplete de Proveedores -->
+                                            <div t-if="state.isSupplierDropdownOpen"
+                                                 class="position-absolute w-100 bg-white border rounded-3 shadow-lg mt-1"
+                                                 style="z-index: 1090; max-height: 220px; overflow-y: auto; left: 0;">
+                                                <t t-if="filteredProductSuppliers.length">
+                                                    <div t-foreach="filteredProductSuppliers" t-as="sup" t-key="sup.id"
+                                                         class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center"
+                                                         style="cursor: pointer; font-size: 13px;"
+                                                         t-on-mousedown.prevent="() => this.selectSupplierOption(sup)">
+                                                        <span class="fw-semibold text-dark"><t t-esc="sup.name"/></span>
+                                                        <span t-if="sup.vat" class="badge bg-light text-secondary border font-monospace" style="font-size: 11px;">
+                                                            <t t-esc="sup.vat"/>
+                                                        </span>
+                                                    </div>
                                                 </t>
-                                            </select>
-                                            <button type="button" class="btn btn-outline-primary fw-bold" title="Crear nuevo proveedor" t-on-click.stop="() => this.openNewSupplierModal()">
-                                                <i class="fa fa-plus"/> Nuevo
-                                            </button>
+                                                <div t-else="" class="p-3 text-center text-muted small">
+                                                    No se encontraron proveedores para "<t t-esc="state.editProdSupplierSearch"/>".
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

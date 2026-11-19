@@ -65,6 +65,8 @@ export class GasStationDashboard extends Component {
             editProdCost: "",
             editProdTaxId: "",
             editProdSupplierId: "",
+            editProdSupplierSearch: "",
+            isSupplierDropdownOpen: false,
             editProdImageBase64: "",
             editProdImagePreview: "",
             editProdHasExistingImage: false,
@@ -1194,6 +1196,17 @@ export class GasStationDashboard extends Component {
         }
         this.state.editProdTaxId = defaultTaxId;
         this.state.editProdSupplierId = prod && prod.supplier_id ? String(prod.supplier_id) : "";
+        let supplierLabel = "";
+        if (prod && prod.supplier_id) {
+            const foundSup = (this.state.productSuppliersList || []).find(s => String(s.id) === String(prod.supplier_id));
+            if (foundSup) {
+                supplierLabel = foundSup.vat ? `${foundSup.name} (${foundSup.vat})` : foundSup.name;
+            } else if (prod.supplier_name) {
+                supplierLabel = prod.supplier_name;
+            }
+        }
+        this.state.editProdSupplierSearch = supplierLabel;
+        this.state.isSupplierDropdownOpen = false;
         this.state.editProdImageBase64 = "";
         this.state.editProdHasExistingImage = Boolean(prod && prod.has_image);
         this.state.editProdImagePreview = (prod && prod.image_url) ? prod.image_url : "";
@@ -1201,10 +1214,54 @@ export class GasStationDashboard extends Component {
         this.state.isEditProductModalOpen = true;
     }
 
+    get filteredProductSuppliers() {
+        const list = this.state.productSuppliersList || [];
+        const q = (this.state.editProdSupplierSearch || "").trim().toLowerCase();
+        if (!q) {
+            return list.slice(0, 35);
+        }
+        return list.filter(sup => {
+            const name = (sup.name || "").toLowerCase();
+            const vat = (sup.vat || "").toLowerCase();
+            const ref = (sup.ref || "").toLowerCase();
+            return name.includes(q) || vat.includes(q) || ref.includes(q);
+        }).slice(0, 35);
+    }
+
+    onSupplierSearchInput(ev) {
+        this.state.editProdSupplierSearch = ev.target.value;
+        this.state.editProdSupplierId = "";
+        this.state.isSupplierDropdownOpen = true;
+    }
+
+    onSupplierSearchFocus() {
+        this.state.isSupplierDropdownOpen = true;
+    }
+
+    onSupplierSearchBlur() {
+        setTimeout(() => {
+            this.state.isSupplierDropdownOpen = false;
+        }, 200);
+    }
+
+    selectSupplierOption(sup) {
+        if (!sup) return;
+        this.state.editProdSupplierId = String(sup.id);
+        this.state.editProdSupplierSearch = sup.vat ? `${sup.name} (${sup.vat})` : sup.name;
+        this.state.isSupplierDropdownOpen = false;
+    }
+
+    clearSelectedSupplier() {
+        this.state.editProdSupplierId = "";
+        this.state.editProdSupplierSearch = "";
+        this.state.isSupplierDropdownOpen = true;
+    }
+
     closeEditProductModal() {
         this.state.isEditProductModalOpen = false;
         this.state.editingProduct = null;
         this.state.isNewSupplierModalOpen = false;
+        this.state.isSupplierDropdownOpen = false;
     }
 
     async onProductCategoryChange(ev) {
@@ -1301,6 +1358,10 @@ export class GasStationDashboard extends Component {
                 this.state.productSuppliersList = [...this.state.productSuppliersList, res.supplier]
                     .sort((a, b) => a.name.localeCompare(b.name));
                 this.state.editProdSupplierId = String(res.supplier.id);
+                this.state.editProdSupplierSearch = res.supplier.vat
+                    ? `${res.supplier.name} (${res.supplier.vat})`
+                    : res.supplier.name;
+                this.state.isSupplierDropdownOpen = false;
                 this.closeNewSupplierModal();
             } else {
                 this.notification.add((res && res.message) || "Error al crear proveedor", { type: "danger" });
@@ -1317,6 +1378,18 @@ export class GasStationDashboard extends Component {
         // Si escribió un EAN en la caja y no pulsó "+", añadirlo automáticamente
         if (this.state.editProdNewBarcode && this.state.editProdNewBarcode.trim()) {
             this.addProductBarcode();
+        }
+
+        // Si escribió exactamente el nombre de un proveedor sin hacer clic en la sugerencia
+        if (!this.state.editProdSupplierId && this.state.editProdSupplierSearch && this.state.editProdSupplierSearch.trim()) {
+            const q = this.state.editProdSupplierSearch.trim().toLowerCase();
+            const exact = (this.state.productSuppliersList || []).find(
+                s => (s.name || "").toLowerCase() === q ||
+                     (s.vat && `${s.name} (${s.vat})`.toLowerCase() === q)
+            );
+            if (exact) {
+                this.state.editProdSupplierId = String(exact.id);
+            }
         }
 
         if (!this.state.editProdName || !this.state.editProdName.trim()) {
