@@ -499,3 +499,50 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 
 
 
+
+### 14. Sonidos y Alarma Visual de Pista, Moneditas en Servidor, Rectificativos, Facturas Congeladas y Litros x1000 (19/11/2026)
+
+#### A. Teclado de importe del TPV
+- El importe prefijado (`.lcd-current`) ocupa el hueco libre sobre los billetes, grande y centrado (tamaño relativo a la caja con `container-type: size`).
+- Botón "C LIMPIAR" renombrado a **"PONER IMPORTE A 0 €"** (admite 2 líneas).
+
+#### B. Sonidos y alarma visual de manguera (`fetchPumpsStatus` / `playFuelSound` en `pos_gas_station.js`)
+- **Regla:** solo hay avisos si se descuelga una manguera en una calle **NO autorizada ni prepagada**:
+  - Mientras siga descolgada: alarma intermitente (doble pitido agudo cada 1 s) + la tarjeta del surtidor parpadea amarillo/rojo con el rótulo **"⚠ DESCOLGADA SIN AUTORIZAR"** (`.pump-unauth-unhook`).
+  - Al colgar: un único sonido de "finalizado" (arpegio Do-Mi-Sol).
+  - Calles autorizadas o prepagadas: **silencio total** (ni al descolgar, ni repostando, ni al colgar).
+- La autorización queda "enganchada" durante todo el descolgado (`this.hoseTrack`) y el colgado exige 700 ms estables (antirrebote del microswitch).
+- **Bloqueo de audio del navegador:** tras recargar, Edge no permite sonar hasta tocar la pantalla. El TPV desbloquea el audio al primer toque/tecla y muestra **"🔇 Toque la pantalla para activar el sonido"** mientras esté bloqueado. Opción pendiente: añadir `--autoplay-policy=no-user-gesture-required` al acceso directo "TPV Odoo" del PC de Repsol.
+- **Limitación conocida:** el agente solo sabe si una calle tiene *alguna* manguera descolgada, no *cuál*. Descolgar la manguera de otro combustible en una calle autorizada no genera aviso (el surtidor físico no la deja suministrar porque el prefijado es por producto). Pendiente: comprobar si SDES/Wayne DART informa de la manguera concreta.
+
+#### C. Moneditas (cobros pendientes por calle) persistidas en servidor
+- Antes solo vivían en `localStorage` del navegador y se perdían al recargar (se perdieron 3 de la calle 6 y se recrearon desde el log del agente).
+- Ahora se guardan también en `ir.config_parameter` `pos_gas_station.pending_sales_<config_id>` mediante `/pos_gas_station/pending_sales/get` y `/set` (`loadPendingSalesFromServer`, `savePendingSales`). El servidor es la fuente de verdad al arrancar; se conservan operaciones locales más nuevas que la última copia.
+- En la ventana de la monedita (ventas autorizadas/modo lleno): botón **"AÑADIR ARTÍCULO"** (abre el catálogo en modo `state.storeTarget`, cada clic suma 1 ud. a esa venta) y **papelera** por artículo para quitar 1 ud. No aplica a sobrantes de prepago.
+
+#### D. Prepagos: fin de suministro y sobrantes
+- `controllers/main.py` (`/status`): la autorización en memoria (`STATION_PUMP_OVERRIDES`) se suelta cuando ya hubo descolgado/suministro (`_started`) y el agente devuelve la calle a reposo (`blocked/prepago/idle/atendido`). Antes un prepago completado quedaba en verde hasta 10 minutos.
+- Sobrante de prepago: botón renombrado a **"Hacer Ticket Rectificativo"**. La nota de la línea incluye `| Rectifica: <ticket original>`.
+- Historial de turno (`get_shift_orders` → `_nest_prepay_rectificativos`): el rectificativo ya no sale como fila propia; aparece en el desplegable del ticket original como **"Ticket Rectificativo"** con 👁 / 🖨️. Fallback para rectificativos antiguos: misma calle e importe prefijado (`Calle N [Prepago: X €]`).
+
+#### E. Litros de prepago multiplicados por 1000 (CORREGIDO)
+- Síntoma: líneas de prepago guardadas como p. ej. `6897 L × 0,00145 €` en lugar de `6,897 L × 1,45 €` (total correcto). Causa probable: Odoo parsea cantidades en texto con el locale es_ES ("." = miles).
+- Protecciones: patch de `Orderline.set_quantity` (en líneas de surtidor el punto es decimal) y `pos.order._utrecar_fix_fuel_line_qty` en `_order_fields` (qty ≥ 100 y precio < 0,01 en líneas "Calle" → qty/1000, precio×1000; deja log WARNING).
+- Datos históricos corregidos en producción (19/11/2026, backup previo `~/odoo_pre_fix_litros_20261119.dump`): 30 líneas de ticket (16–19/11), 5 facturas (`FTTR202600012`–`016`) y 13 `stock.move`. Totales sin cambios (389,00 €).
+
+#### F. Facturas con datos del cliente congelados (`utrecar_invoice_vehicle` 17.0.1.4.0)
+- Campos `inv_snap_*` en `account.move` (nombre, NIF/CIF, dirección, C.P., población, provincia, país) capturados en `_post`; se recapturan si la factura vuelve a borrador.
+- El PDF (`account.report_invoice_document`) usa siempre la copia congelada → cambiar la ficha del cliente no altera facturas emitidas.
+- Backfill aplicado a 8.807 facturas existentes con los datos vigentes el 19/11/2026 (backup previo `~/odoo_pre_snapshot_20261119.dump`). Cambios de esquema → desplegar con `odoo -u utrecar_invoice_vehicle --stop-after-init` además del reinicio.
+
+#### G. Seguridad TPV y ticket
+- Retirado del historial el botón **"Convertir a Albarán de Crédito"** (lo había reintroducido el commit `3ca96f6`) y `/pos_gas_station/convert_to_albaran` rechaza a cualquier usuario no administrador. El crédito se gestiona solo desde la Administración de Odoo.
+- El ticket muestra cliente con nombre, código, CIF/NIF, dirección, **C.P. y población** (también en reimpresión desde historial).
+
+#### H. Agente de pista y simulaciones
+- `scripts/agente_pista_odoo_bridge.py`: nuevas simulaciones solo-microswitch (`estado: descolgar/colgar`) y, durante cualquier simulación de suministro, se ignora el microswitch real de esa calle (`_sim_microswitch_hasta`, máx. 60–120 s) para que no resetee la calle a 0.
+- **Ojo:** al reiniciar el agente se re-ejecuta la última orden guardada en `pos_gas_station.pump_command_<config>` (p. ej. volvió a prefijar 5 € en la calle 6). Pendiente: ignorar órdenes antiguas al arrancar.
+- Copia de respaldo del agente anterior en el PC de Repsol: `C:\Utrecar\agente_pista_odoo_bridge.backup_20261119.py`.
+- Scripts reutilizables en `scripts/simulaciones_pista/` (copiar a `C:\Utrecar\` del PC de pista y ejecutar con `python`):
+  - `simular_suministro_lento.py <calle> <importe> [cod_producto] [precio] [paso]`
+  - `simular_descolgar_manguera.py <calle> [segundos]`
