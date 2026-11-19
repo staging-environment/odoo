@@ -8116,3 +8116,37 @@
 .btn-remove-pending-item:hover {
     background: #fecaca !important;
 }
+
+/* ==========================================================================
+   ALARMA VISUAL: MANGUERA DESCOLGADA EN CALLE NO AUTORIZADA NI PREPAGADA
+   ========================================================================== */
+@keyframes utrecarUnauthBlink {
+    0%, 100% { box-shadow: 0 0 0 4px #facc15, 0 0 22px 6px rgba(250, 204, 21, 0.9); transform: scale(1.04); filter: brightness(1.25); }
+    50%      { box-shadow: 0 0 0 4px #dc2626, 0 0 6px 2px rgba(220, 38, 38, 0.4);  transform: scale(1.0);  filter: brightness(0.85); }
+}
+@keyframes utrecarUnauthBanner {
+    0%, 100% { background: #facc15; color: #7f1d1d; }
+    50%      { background: #7f1d1d; color: #facc15; }
+}
+.aseproda-dispenser-box.pump-unauth-unhook {
+    animation: utrecarUnauthBlink 0.6s ease-in-out infinite !important;
+    border-color: #facc15 !important;
+    z-index: 5 !important;
+}
+.aseproda-dispenser-box.pump-unauth-unhook .unauth-unhook-banner {
+    position: absolute !important;
+    left: 4px !important;
+    right: 4px !important;
+    bottom: 8px !important;
+    z-index: 6 !important;
+    padding: 4px 2px !important;
+    border: 2px solid #7f1d1d !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+    text-align: center !important;
+    letter-spacing: 0.3px !important;
+    animation: utrecarUnauthBanner 0.6s steps(1) infinite !important;
+    pointer-events: none !important;
+}

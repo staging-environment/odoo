@@ -1726,7 +1726,9 @@ export class UtrecarMainScreen extends Component {
                                 }
                             }
                         }
-                        if (ht.unhooked && !ht.authorized) {
+                        // Marca visual: manguera descolgada en calle NO autorizada ni prepagada
+                        p.unauthorizedUnhook = Boolean(ht.unhooked && !ht.authorized);
+                        if (p.unauthorizedUnhook) {
                             anyUnauthorizedUnhooked = true;
                         }
 

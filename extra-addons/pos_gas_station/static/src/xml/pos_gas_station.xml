@@ -327,8 +327,13 @@
                         <t t-foreach="state.pumps" t-as="pump" t-key="pump.id">
                             <t t-set="fuelInfo" t-value="getPumpFuelData(pump)"/>
                             
-                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{shouldShowPrepayCoin(pump) ? 'has-uncollected-coin' : ''} #{state.selectedPumpId === pump.id ? 'is-selected' : ''} #{isPumpDispensing(pump) ? 'nozzle-is-off-hook' : ''}"
+                            <div t-attf-class="aseproda-dispenser-box status-#{pump.status} #{shouldShowPrepayCoin(pump) ? 'has-uncollected-coin' : ''} #{state.selectedPumpId === pump.id ? 'is-selected' : ''} #{isPumpDispensing(pump) ? 'nozzle-is-off-hook' : ''} #{pump.unauthorizedUnhook ? 'pump-unauth-unhook' : ''}"
                                  t-on-click="() => this.onPumpCardClick(pump)">
+
+                                <!-- ALARMA VISUAL: MANGUERA DESCOLGADA SIN AUTORIZAR NI PREPAGAR -->
+                                <div t-if="pump.unauthorizedUnhook" class="unauth-unhook-banner">
+                                    ⚠ DESCOLGADA<br/>SIN AUTORIZAR
+                                </div>
                                 
                                 <!-- MONEDA FLOTANTE CON BADGE NUMÉRICO DE COBROS PENDIENTES -->
                                 <t t-if="shouldShowPrepayCoin(pump)">
