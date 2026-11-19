@@ -388,6 +388,8 @@ class AgentePistaRepsol:
         hubo_cambio = False
 
         is_des = not is_colgado
+        if self._sim_microswitch_activo(calle):
+            is_des = local.get("is_descolgada", False)
         if local.get("is_descolgada") != is_des:
             local["is_descolgada"] = is_des
             hubo_cambio = True
@@ -637,6 +639,15 @@ class AgentePistaRepsol:
         except Exception as e:
             logging.debug(f"Error procesando comandos de Odoo: {e}")
 
+    def _sim_microswitch_activo(self, calle):
+        """True si hay una simulación de microswitch en curso para la calle (máx. 120 s)."""
+        hasta = getattr(self, "_sim_microswitch_hasta", {}).get(calle)
+        if hasta and time.time() < hasta:
+            return True
+        if hasta:
+            self._sim_microswitch_hasta.pop(calle, None)
+        return False
+
     def comprobar_simulacion_local(self):
         import glob
         sim_files = glob.glob(r"C:\Utrecar\simular_venta*.json")
@@ -662,6 +673,19 @@ class AgentePistaRepsol:
                     estado = data.get("estado", "ready")
                     logging.info(f"🧪 [SIMULACIÓN LOCAL] Recibida simulación para Calle {calle}: {estado} ({importe}€ / {litros}L)")
                     prod_info = MAPA_COMBUSTIBLES.get(str(prod), MAPA_COMBUSTIBLES["default"])
+                    if estado in ("descolgar", "colgar"):
+                        # Simulación SOLO del microswitch: no cambia estado de la calle ni envía órdenes al hardware
+                        if not hasattr(self, "_sim_microswitch_hasta"):
+                            self._sim_microswitch_hasta = {}
+                        des = estado == "descolgar"
+                        self.pumps[calle - 1]["is_descolgada"] = des
+                        if des:
+                            self._sim_microswitch_hasta[calle] = time.time() + 120
+                        else:
+                            self._sim_microswitch_hasta.pop(calle, None)
+                        logging.info(f"🧪 [SIMULACIÓN MICROSWITCH] Calle {calle}: manguera {'DESCOLGADA' if des else 'COLGADA'}")
+                        self.enviar_estado_a_odoo(forzar=True)
+                        continue
                     if estado == "dispensing":
                         self.pumps[calle - 1]["fuel"] = prod_info["name"]
                         self.pumps[calle - 1]["product_id"] = prod_info["id"]
@@ -745,6 +769,8 @@ class AgentePistaRepsol:
                         if 1 <= calle <= TOTAL_CALLES:
                             local = self.pumps[calle - 1]
                             is_des = not ec.estaColgada
+                            if self._sim_microswitch_activo(calle):
+                                is_des = local.get("is_descolgada", False)
                             if local.get("is_descolgada") != is_des:
                                 local["is_descolgada"] = is_des
                                 hubo_cambio = True
