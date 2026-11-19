@@ -20,4 +20,7 @@ access_utrecar_vpn_admin_pos_mgr,utrecar.vpn.admin.pos_mgr,model_utrecar_vpn_adm
 access_product_barcode_user,product.barcode.user,model_product_barcode,base.group_user,1,0,0,0
 access_product_barcode_manager,product.barcode.manager,model_product_barcode,base.group_system,1,1,1,1
 access_product_barcode_pos_mgr,product.barcode.pos_mgr,model_product_barcode,point_of_sale.group_pos_manager,1,1,1,1
+access_utrecar_tax_type_user,utrecar.tax.type.user,model_utrecar_tax_type,base.group_user,1,0,0,0
+access_utrecar_tax_type_manager,utrecar.tax.type.manager,model_utrecar_tax_type,base.group_system,1,1,1,1
+access_utrecar_tax_type_pos_mgr,utrecar.tax.type.pos_mgr,model_utrecar_tax_type,point_of_sale.group_pos_manager,1,1,1,1
 

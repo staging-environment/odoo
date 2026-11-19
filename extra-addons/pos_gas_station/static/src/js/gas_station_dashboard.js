@@ -73,6 +73,17 @@ export class GasStationDashboard extends Component {
             productCategoriesTree: [],
             productTaxesList: [],
             productSuppliersList: [],
+            // Administración y Configuración de Parámetros (Tipos de IVA)
+            isAdminMenuOpen: false,
+            taxTypesList: [],
+            taxTypesLoading: false,
+            isTaxTypeModalOpen: false,
+            editingTaxType: null,
+            taxTypeCode: "",
+            taxTypeName: "",
+            taxTypePercentage: "21",
+            taxTypeIsExempt: false,
+            isSavingTaxType: false,
             // Modal flotante de nuevo proveedor
             isNewSupplierModalOpen: false,
             newSupplierName: "",
@@ -698,6 +709,11 @@ export class GasStationDashboard extends Component {
                 this.state.productTotalCount = (data.product_stats && typeof data.product_stats.total === "number")
                     ? data.product_stats.total
                     : (data.products ? data.products.length : 0);
+                if (data.product_form_metadata) {
+                    this.state.productCategoriesTree = data.product_form_metadata.categories_tree || [];
+                    this.state.productTaxesList = data.product_form_metadata.taxes || [];
+                    this.state.productSuppliersList = data.product_form_metadata.suppliers || [];
+                }
             } else {
                 this.notification.add(data.message || "Error al cargar detalle de empresa", { type: "danger" });
             }
@@ -714,11 +730,121 @@ export class GasStationDashboard extends Component {
         this.state.selectedDetailCompany = null;
         this.state.selectedDetailStation = null;
         this.state.companyDetailData = null;
+        this.state.isAdminMenuOpen = false;
         this.loadDashboardData();
     }
 
     setDetailTab(tab) {
         this.state.detailTab = tab;
+        this.state.isAdminMenuOpen = false;
+    }
+
+    toggleAdminMenu() {
+        this.state.isAdminMenuOpen = !this.state.isAdminMenuOpen;
+    }
+
+    async selectAdminOption(optionTab) {
+        this.state.isAdminMenuOpen = false;
+        this.state.detailTab = optionTab;
+        if (optionTab === "admin_params") {
+            await this.loadTaxTypes();
+        }
+    }
+
+    async loadTaxTypes() {
+        const companyId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        this.state.taxTypesLoading = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/get_tax_types", {
+                company_id: companyId,
+            });
+            if (res && res.status === "success") {
+                this.state.taxTypesList = res.tax_types || [];
+            } else {
+                this.notification.add((res && res.message) || "Error al cargar tipos de IVA", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error loading tax types:", e);
+            this.notification.add("Error de conexión al cargar tipos de IVA", { type: "danger" });
+        } finally {
+            this.state.taxTypesLoading = false;
+        }
+    }
+
+    openTaxTypeModal(taxRow = null) {
+        this.state.editingTaxType = taxRow || null;
+        this.state.taxTypeCode = taxRow ? String(taxRow.code || "") : "";
+        this.state.taxTypeName = taxRow ? (taxRow.name || "") : "";
+        this.state.taxTypePercentage = taxRow ? String(taxRow.percentage ?? 0) : "21";
+        this.state.taxTypeIsExempt = taxRow ? Boolean(taxRow.is_exempt) : false;
+        this.state.isTaxTypeModalOpen = true;
+    }
+
+    closeTaxTypeModal() {
+        this.state.isTaxTypeModalOpen = false;
+        this.state.editingTaxType = null;
+    }
+
+    async saveTaxTypeModal() {
+        if (!this.state.taxTypeCode || !this.state.taxTypeCode.trim()) {
+            this.notification.add("El código del tipo de IVA es obligatorio.", { type: "warning" });
+            return;
+        }
+        if (!this.state.taxTypeName || !this.state.taxTypeName.trim()) {
+            this.notification.add("El nombre del tipo de IVA es obligatorio.", { type: "warning" });
+            return;
+        }
+        const companyId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        this.state.isSavingTaxType = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/save_tax_type", {
+                tax_type_id: this.state.editingTaxType ? this.state.editingTaxType.id : null,
+                company_id: companyId,
+                code: this.state.taxTypeCode.trim(),
+                name: this.state.taxTypeName.trim(),
+                percentage: this.state.taxTypeIsExempt ? 0 : (parseFloat(this.state.taxTypePercentage) || 0),
+                is_exempt: this.state.taxTypeIsExempt,
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                this.closeTaxTypeModal();
+                await this.loadTaxTypes();
+                await this.loadProductFormMetadata();
+            } else {
+                this.notification.add((res && res.message) || "Error al guardar tipo de IVA", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error saving tax type:", e);
+            this.notification.add("Error de conexión al guardar tipo de IVA", { type: "danger" });
+        } finally {
+            this.state.isSavingTaxType = false;
+        }
+    }
+
+    async deleteTaxType(taxRow) {
+        if (!taxRow) return;
+        this.dialog.add(ConfirmationDialog, {
+            title: "Eliminar Tipo de IVA",
+            body: `¿Seguro que desea eliminar el tipo de IVA "${taxRow.code} · ${taxRow.name}"?`,
+            confirm: async () => {
+                try {
+                    const res = await jsonrpc("/pos_gas_station/delete_tax_type", {
+                        tax_type_id: taxRow.id,
+                    });
+                    if (res && res.status === "success") {
+                        this.notification.add(res.message, { type: "success" });
+                        await this.loadTaxTypes();
+                        await this.loadProductFormMetadata();
+                    } else {
+                        this.notification.add((res && res.message) || "Error al eliminar tipo de IVA", { type: "danger" });
+                    }
+                } catch (e) {
+                    console.error("Error deleting tax type:", e);
+                    this.notification.add("Error de conexión al eliminar tipo de IVA", { type: "danger" });
+                }
+            },
+            cancel: () => {},
+        });
     }
 
     async setCustomerFilter(type) {
@@ -1008,6 +1134,8 @@ export class GasStationDashboard extends Component {
                 this.state.productCategoriesTree = res.categories_tree || [];
                 this.state.productTaxesList = res.taxes || [];
                 this.state.productSuppliersList = res.suppliers || [];
+            } else if (res && res.message) {
+                this.notification.add(res.message, { type: "warning" });
             }
         } catch (e) {
             console.error("Error loading product form metadata:", e);
@@ -1015,6 +1143,7 @@ export class GasStationDashboard extends Component {
     }
 
     async openEditProductModal(prod) {
+        await this.loadProductFormMetadata();
         this.state.editingProduct = prod || null;
         this.state.editProdName = prod ? prod.name : "";
         this.state.editProdCode = prod ? (prod.default_code || "") : "";
@@ -1029,14 +1158,20 @@ export class GasStationDashboard extends Component {
         this.state.editProdType = prod ? (prod.type || "consu") : "consu";
         this.state.editProdPrice = prod ? String(prod.list_price ?? "") : "";
         this.state.editProdCost = prod ? String(prod.standard_price ?? "") : "";
-        this.state.editProdTaxId = prod && prod.tax_id ? String(prod.tax_id) : "";
+        let defaultTaxId = "";
+        if (prod && prod.tax_id) {
+            defaultTaxId = String(prod.tax_id);
+        } else if (this.state.productTaxesList && this.state.productTaxesList.length) {
+            const generalTax = this.state.productTaxesList.find(t => String(t.code) === "1") || this.state.productTaxesList[0];
+            defaultTaxId = generalTax ? String(generalTax.id) : "";
+        }
+        this.state.editProdTaxId = defaultTaxId;
         this.state.editProdSupplierId = prod && prod.supplier_id ? String(prod.supplier_id) : "";
         this.state.editProdImageBase64 = "";
         this.state.editProdHasExistingImage = Boolean(prod && prod.has_image);
         this.state.editProdImagePreview = (prod && prod.image_url) ? prod.image_url : "";
         this.state.editProdInPos = prod ? (prod.available_in_pos !== false) : true;
         this.state.isEditProductModalOpen = true;
-        await this.loadProductFormMetadata();
     }
 
     closeEditProductModal() {

@@ -1799,6 +1799,7 @@ class PosGasStationController(http.Controller):
                 'store_count': store_count,
             },
             'all_categories': categories_data,
+            'product_form_metadata': self._build_product_form_metadata(env, company.id),
             'inventory': {
                 'warehouses': warehouses_data,
                 'tanks': company_tanks,
@@ -1810,6 +1811,7 @@ class PosGasStationController(http.Controller):
         """Serializa registros de product.template para el panel de administración."""
         res = []
         fuel_codes = ['GAS_A', 'SP95', 'GAS_PLUS', 'GAS_B', '1', '2']
+        TaxType = request.env['utrecar.tax.type'].sudo()
         for p in products:
             p_name = p.name or ''
             if isinstance(p_name, dict):
@@ -1820,11 +1822,22 @@ class PosGasStationController(http.Controller):
             all_barcodes = ([p.barcode] if p.barcode else []) + extra_barcodes
             first_tax = p.taxes_id[0] if p.taxes_id else None
             tax_name = ''
+            tax_type_id = ''
+            cid = p.company_id.id if p.company_id else request.env.company.id
             if first_tax:
                 t_name = first_tax.name
                 if isinstance(t_name, dict):
                     t_name = t_name.get('es_ES') or t_name.get('en_US') or ''
                 tax_name = t_name
+                tt = TaxType.search([
+                    ('company_id', '=', cid),
+                    '|', ('account_tax_id', '=', first_tax.id), ('percentage', '=', first_tax.amount),
+                ], limit=1)
+                if tt:
+                    tax_type_id = tt.id
+            else:
+                tt_ex = TaxType.search([('company_id', '=', cid), ('is_exempt', '=', True)], limit=1)
+                tax_type_id = tt_ex.id if tt_ex else 'exempt'
             first_seller = p.seller_ids[0] if p.seller_ids else None
             res.append({
                 'id': p.id,
@@ -1839,7 +1852,7 @@ class PosGasStationController(http.Controller):
                 'type_label': 'Almacenable' if p.type == 'product' else ('Servicio' if p.type == 'service' else 'Consumible'),
                 'categ_id': p.categ_id.id if p.categ_id else False,
                 'categ_name': p.categ_id.name if p.categ_id else 'General',
-                'tax_id': first_tax.id if first_tax else 'exempt',
+                'tax_id': tax_type_id or (first_tax.id if first_tax else 'exempt'),
                 'tax_name': tax_name or 'Exento de IVA',
                 'supplier_id': first_seller.partner_id.id if first_seller and first_seller.partner_id else False,
                 'supplier_name': first_seller.partner_id.name if first_seller and first_seller.partner_id else '',
@@ -2015,92 +2028,194 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error en update_product_price: %s", e)
             return {'status': 'error', 'message': str(e)}
 
+    def _ensure_default_tax_types(self, env, cid):
+        """Inicializa los tipos de IVA desde la estructura de Aseproda si la empresa aún no tiene ninguno."""
+        TaxType = env['utrecar.tax.type'].sudo()
+        existing = TaxType.search([('company_id', '=', cid)])
+        if existing:
+            return existing
+        defaults = [
+            ('1', 'TIPO GENERAL 21%', 21.0, False),
+            ('2', 'TIPO REDUCIDO 10%', 10.0, False),
+            ('3', 'TIPO SUPERREDUCIDO 4%', 4.0, False),
+            ('4', 'EXENTO IVA', 0.0, True),
+            ('5', 'ANTICRISIS 5%', 5.0, False),
+            ('6', 'TIPO 2%', 2.0, False),
+            ('99', 'Exento', 0.0, True),
+        ]
+        created = TaxType
+        for code, name, pct, is_ex in defaults:
+            rec = TaxType.create({
+                'code': code,
+                'name': name,
+                'percentage': pct,
+                'is_exempt': is_ex,
+                'company_id': cid,
+            })
+            rec.sync_odoo_account_tax()
+            created |= rec
+        return created
+
+    def _build_product_form_metadata(self, env, cid):
+        """Construye categorías (2 niveles), tipos de IVA y proveedores para el formulario."""
+        all_cats = env['product.category'].sudo().search([], order='code asc, name asc')
+        parents_map = {}
+        children_by_parent = {}
+        for c in all_cats:
+            c_code = getattr(c, 'code', '') or ''
+            if not c.parent_id:
+                if c_code and len(c_code) == 1 and c_code.isdigit():
+                    parents_map[c.id] = {
+                        'id': c.id,
+                        'name': c.name,
+                        'code': c_code,
+                        'children': [],
+                    }
+            else:
+                if c_code and len(c_code) == 2 and c_code.isdigit():
+                    children_by_parent.setdefault(c.parent_id.id, []).append({
+                        'id': c.id,
+                        'name': c.name,
+                        'code': c_code,
+                        'full_code': getattr(c, 'full_code', '') or f"{getattr(c.parent_id, 'code', '') or ''}{c_code}",
+                        'parent_id': c.parent_id.id,
+                    })
+
+        categories_tree = []
+        for pid, pdata in sorted(parents_map.items(), key=lambda item: (item[1]['code'], item[1]['name'])):
+            pdata['children'] = sorted(children_by_parent.get(pid, []), key=lambda ch: (ch['code'], ch['name']))
+            if pdata['children']:
+                categories_tree.append(pdata)
+
+        self._ensure_default_tax_types(env, cid)
+        tax_types = env['utrecar.tax.type'].sudo().search([
+            ('company_id', '=', cid),
+            ('active', '=', True),
+        ], order='code_num asc, code asc, id asc')
+        taxes_data = [{
+            'id': t.id,
+            'code': t.code,
+            'name': t.name,
+            'label': f"{t.code} · {t.name}" + (" (Exento)" if t.is_exempt else f" ({t.percentage:g}%)"),
+            'amount': float(t.percentage),
+            'is_exempt': bool(t.is_exempt),
+            'account_tax_id': t.account_tax_id.id if t.account_tax_id else False,
+        } for t in tax_types]
+
+        suppliers = env['res.partner'].sudo().search([
+            ('supplier_rank', '>', 0),
+            ('active', '=', True),
+        ], order='name asc')
+        suppliers_data = [{
+            'id': s.id,
+            'name': s.name or '',
+            'vat': s.vat or '',
+        } for s in suppliers]
+
+        return {
+            'categories_tree': categories_tree,
+            'taxes': taxes_data,
+            'suppliers': suppliers_data,
+        }
+
     @http.route('/pos_gas_station/get_product_form_metadata', type='json', auth='user', methods=['POST'], csrf=False)
     def get_product_form_metadata(self, company_id=None, **kw):
-        """Devuelve jerarquía de categorías (2 niveles), impuestos de venta y proveedores."""
+        """Devuelve jerarquía de categorías (2 niveles), tipos de IVA y proveedores."""
         try:
             env = request.env
             cid = int(company_id) if company_id else env.company.id
-
-            # 1. Categorías jerárquicas a 2 niveles (Padre 1 dígito -> Hija 2 dígitos)
-            all_cats = env['product.category'].sudo().search([], order='code asc, name asc')
-            parents_map = {}
-            children_by_parent = {}
-            for c in all_cats:
-                c_code = getattr(c, 'code', '') or ''
-                if not c.parent_id:
-                    if c_code and len(c_code) == 1 and c_code.isdigit():
-                        parents_map[c.id] = {
-                            'id': c.id,
-                            'name': c.name,
-                            'code': c_code,
-                            'children': [],
-                        }
-                else:
-                    if c_code and len(c_code) == 2 and c_code.isdigit():
-                        children_by_parent.setdefault(c.parent_id.id, []).append({
-                            'id': c.id,
-                            'name': c.name,
-                            'code': c_code,
-                            'full_code': getattr(c, 'full_code', '') or f"{getattr(c.parent_id, 'code', '') or ''}{c_code}",
-                            'parent_id': c.parent_id.id,
-                        })
-
-            categories_tree = []
-            for pid, pdata in sorted(parents_map.items(), key=lambda item: (item[1]['code'], item[1]['name'])):
-                pdata['children'] = sorted(children_by_parent.get(pid, []), key=lambda ch: (ch['code'], ch['name']))
-                if pdata['children']:
-                    categories_tree.append(pdata)
-
-            # 2. Impuestos de venta (IVA) de la empresa
-            taxes = env['account.tax'].sudo().search([
-                ('type_tax_use', '=', 'sale'),
-                ('active', '=', True),
-                ('company_id', '=', cid),
-            ], order='amount desc, id asc')
-            if not taxes:
-                taxes = env['account.tax'].sudo().search([
-                    ('type_tax_use', '=', 'sale'),
-                    ('active', '=', True),
-                ], order='amount desc, id asc')
-
-            taxes_data = []
-            seen_tax_amounts = set()
-            for t in taxes:
-                t_name = t.name
-                if isinstance(t_name, dict):
-                    t_name = t_name.get('es_ES') or t_name.get('en_US') or ''
-                # Evitar duplicados visuales de mismo porcentaje en la misma empresa
-                key = (round(float(t.amount), 2), t.company_id.id)
-                if key in seen_tax_amounts:
-                    continue
-                seen_tax_amounts.add(key)
-                taxes_data.append({
-                    'id': t.id,
-                    'name': t_name or f"IVA {t.amount:g}%",
-                    'amount': float(t.amount),
-                    'price_include': bool(t.price_include),
-                })
-
-            # 3. Proveedores existentes
-            suppliers = env['res.partner'].sudo().search([
-                ('supplier_rank', '>', 0),
-                ('active', '=', True),
-            ], order='name asc')
-            suppliers_data = [{
-                'id': s.id,
-                'name': s.name or '',
-                'vat': s.vat or '',
-            } for s in suppliers]
-
-            return {
-                'status': 'success',
-                'categories_tree': categories_tree,
-                'taxes': taxes_data,
-                'suppliers': suppliers_data,
-            }
+            meta = self._build_product_form_metadata(env, cid)
+            return {'status': 'success', **meta}
         except Exception as e:
             _logger.exception("Error en get_product_form_metadata: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/get_tax_types', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_tax_types(self, company_id=None, **kw):
+        """Devuelve la lista de tipos de IVA configurados en Parámetros de Administración."""
+        try:
+            env = request.env
+            cid = int(company_id) if company_id else env.company.id
+            self._ensure_default_tax_types(env, cid)
+            rows = env['utrecar.tax.type'].sudo().search([
+                ('company_id', '=', cid),
+                ('active', '=', True),
+            ], order='code_num asc, code asc, id asc')
+            return {
+                'status': 'success',
+                'tax_types': [{
+                    'id': r.id,
+                    'code': r.code,
+                    'name': r.name,
+                    'percentage': float(r.percentage),
+                    'is_exempt': bool(r.is_exempt),
+                    'account_tax_id': r.account_tax_id.id if r.account_tax_id else False,
+                } for r in rows],
+            }
+        except Exception as e:
+            _logger.exception("Error en get_tax_types: %s", e)
+            return {'status': 'error', 'message': str(e), 'tax_types': []}
+
+    @http.route('/pos_gas_station/save_tax_type', type='json', auth='user', methods=['POST'], csrf=False)
+    def save_tax_type(self, tax_type_id=None, company_id=None, code=None, name=None, percentage=0.0, is_exempt=False, **kw):
+        """Crea o actualiza un tipo de IVA y sincroniza su account.tax en Odoo."""
+        try:
+            env = request.env
+            cid = int(company_id) if company_id else env.company.id
+            clean_code = (code or '').strip()
+            clean_name = (name or '').strip()
+            if not clean_code:
+                return {'status': 'error', 'message': 'El código del tipo de IVA es obligatorio.'}
+            if not clean_name:
+                return {'status': 'error', 'message': 'El nombre del tipo de IVA es obligatorio.'}
+            pct = 0.0 if is_exempt else max(0.0, float(str(percentage).replace(',', '.') or 0.0))
+
+            TaxType = env['utrecar.tax.type'].sudo()
+            tid = int(tax_type_id) if tax_type_id else 0
+            dup = TaxType.search([
+                ('code', '=', clean_code),
+                ('company_id', '=', cid),
+                ('id', '!=', tid),
+            ], limit=1)
+            if dup:
+                return {'status': 'error', 'message': f'Ya existe un tipo de IVA con el código "{clean_code}".'}
+
+            vals = {
+                'code': clean_code,
+                'name': clean_name,
+                'percentage': pct,
+                'is_exempt': bool(is_exempt),
+                'company_id': cid,
+            }
+            if tid:
+                rec = TaxType.browse(tid)
+                if not rec.exists():
+                    return {'status': 'error', 'message': 'Tipo de IVA no encontrado.'}
+                rec.write(vals)
+                msg = f'Tipo de IVA "{clean_name}" actualizado.'
+            else:
+                rec = TaxType.create(vals)
+                msg = f'Tipo de IVA "{clean_name}" creado.'
+            rec.sync_odoo_account_tax()
+            return {'status': 'success', 'message': msg, 'id': rec.id}
+        except Exception as e:
+            _logger.exception("Error en save_tax_type: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/delete_tax_type', type='json', auth='user', methods=['POST'], csrf=False)
+    def delete_tax_type(self, tax_type_id=None, **kw):
+        """Elimina un tipo de IVA de la configuración de parámetros."""
+        try:
+            if not tax_type_id:
+                return {'status': 'error', 'message': 'ID obligatorio.'}
+            rec = request.env['utrecar.tax.type'].sudo().browse(int(tax_type_id))
+            if not rec.exists():
+                return {'status': 'error', 'message': 'Tipo de IVA no encontrado.'}
+            name = rec.name
+            rec.unlink()
+            return {'status': 'success', 'message': f'Tipo de IVA "{name}" eliminado.'}
+        except Exception as e:
+            _logger.exception("Error en delete_tax_type: %s", e)
             return {'status': 'error', 'message': str(e)}
 
     @http.route('/pos_gas_station/next_product_code', type='json', auth='user', methods=['POST'], csrf=False)
@@ -2334,10 +2449,22 @@ class PosGasStationController(http.Controller):
             if str(tax_id) == 'exempt':
                 vals['taxes_id'] = [(6, 0, [])]
             else:
-                tax_rec = env['account.tax'].sudo().browse(int(tax_id))
-                if not tax_rec.exists():
-                    return {'status': 'error', 'message': 'El tipo de IVA seleccionado no existe.'}
-                vals['taxes_id'] = [(6, 0, [tax_rec.id])]
+                tt = env['utrecar.tax.type'].sudo().browse(int(tax_id))
+                if tt.exists():
+                    if tt.is_exempt:
+                        vals['taxes_id'] = [(6, 0, [])]
+                    else:
+                        if not tt.account_tax_id:
+                            tt.sync_odoo_account_tax()
+                        if tt.account_tax_id:
+                            vals['taxes_id'] = [(6, 0, [tt.account_tax_id.id])]
+                        else:
+                            return {'status': 'error', 'message': 'No se pudo vincular el impuesto de Odoo para este tipo de IVA.'}
+                else:
+                    tax_rec = env['account.tax'].sudo().browse(int(tax_id))
+                    if not tax_rec.exists():
+                        return {'status': 'error', 'message': 'El tipo de IVA seleccionado no existe.'}
+                    vals['taxes_id'] = [(6, 0, [tax_rec.id])]
 
             if existing_prod:
                 existing_prod.sudo().write(vals)

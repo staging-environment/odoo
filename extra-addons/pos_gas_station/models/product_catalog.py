@@ -107,3 +107,68 @@ class ProductTemplate(models.Model):
         'product_tmpl_id',
         string='Códigos de Barras Adicionales',
     )
+
+
+class UtrecarTaxType(models.Model):
+    _name = 'utrecar.tax.type'
+    _description = 'Tipos de IVA (Parámetros de Administración)'
+    _order = 'code_num asc, code asc, id asc'
+
+    code = fields.Char(string='Código', required=True, size=10, index=True)
+    code_num = fields.Integer(string='Orden Numérico', compute='_compute_code_num', store=True)
+    name = fields.Char(string='Nombre / Descripción', required=True)
+    percentage = fields.Float(string='Porcentaje (%)', digits=(5, 2), default=0.0)
+    is_exempt = fields.Boolean(string='Exento de IVA', default=False)
+    active = fields.Boolean(string='Activo', default=True)
+    company_id = fields.Many2one('res.company', string='Empresa', index=True)
+    account_tax_id = fields.Many2one(
+        'account.tax',
+        string='Impuesto Odoo Vinculado',
+        ondelete='set null',
+    )
+
+    _sql_constraints = [
+        ('code_company_uniq', 'unique(code, company_id)', 'Ya existe un tipo de IVA con ese código en esta empresa.')
+    ]
+
+    @api.depends('code')
+    def _compute_code_num(self):
+        for rec in self:
+            try:
+                rec.code_num = int(rec.code) if rec.code and rec.code.strip().isdigit() else 9999
+            except Exception:
+                rec.code_num = 9999
+
+    def sync_odoo_account_tax(self):
+        """Sincroniza o vincula un account.tax de venta en Odoo para este tipo de IVA."""
+        Tax = self.env['account.tax'].sudo()
+        for rec in self:
+            if rec.is_exempt:
+                continue
+            cid = rec.company_id.id if rec.company_id else self.env.company.id
+            if rec.account_tax_id and rec.account_tax_id.exists():
+                rec.account_tax_id.sudo().write({
+                    'name': rec.name,
+                    'amount': rec.percentage,
+                    'price_include': True,
+                    'active': rec.active,
+                })
+            else:
+                existing = Tax.search([
+                    ('type_tax_use', '=', 'sale'),
+                    ('company_id', '=', cid),
+                    ('amount', '=', rec.percentage),
+                    ('active', '=', True),
+                ], limit=1)
+                if existing:
+                    rec.account_tax_id = existing.id
+                else:
+                    new_tax = Tax.create({
+                        'name': rec.name,
+                        'amount': rec.percentage,
+                        'amount_type': 'percent',
+                        'type_tax_use': 'sale',
+                        'price_include': True,
+                        'company_id': cid,
+                    })
+                    rec.account_tax_id = new_tax.id

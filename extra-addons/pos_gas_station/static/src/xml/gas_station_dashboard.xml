@@ -379,6 +379,26 @@
                                     <t t-esc="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.tanks ? state.companyDetailData.inventory.tanks.length : 0"/>
                                 </span>
                             </button>
+
+                            <div class="btn-group position-relative">
+                                <button type="button"
+                                        class="btn btn-sm company-tab-btn dropdown-toggle"
+                                        t-att-class="state.detailTab === 'admin_params' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
+                                        t-on-click.stop="() => this.toggleAdminMenu()">
+                                    <i class="fa fa-cogs"/>
+                                    <span>Administración</span>
+                                </button>
+                                <div t-if="state.isAdminMenuOpen"
+                                     class="dropdown-menu show shadow-lg border mt-1"
+                                     style="position: absolute; top: 100%; left: 0; z-index: 1055; min-width: 250px; border-radius: 10px; background: #ffffff;">
+                                    <button type="button"
+                                            class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 fw-semibold"
+                                            t-on-click="() => this.selectAdminOption('admin_params')">
+                                        <i class="fa fa-sliders text-primary"/>
+                                        <span>Configuración de parámetros</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1010,6 +1030,72 @@
                                 <t t-else="">
                                     <p class="text-muted small mb-0">No hay almacenes específicos registrados para esta empresa.</p>
                                 </t>
+                            </div>
+                        </div>
+
+                        <!-- PESTAÑA 5: ADMINISTRACIÓN -> CONFIGURACIÓN DE PARÁMETROS (TIPOS DE IVA) -->
+                        <div t-if="state.detailTab === 'admin_params'">
+                            <div class="bg-white rounded-3 shadow-sm border p-4">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom">
+                                    <div>
+                                        <h5 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                                            <i class="fa fa-sliders text-primary"/>
+                                            <span>Configuración de Parámetros · Tipos de IVA</span>
+                                        </h5>
+                                        <p class="text-muted small mb-0">
+                                            Tipos de IVA e IGIC disponibles para los productos y ventas de <strong class="text-dark"><t t-esc="state.selectedDetailCompany.name"/></strong>.
+                                        </p>
+                                    </div>
+                                    <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-on-click="() => this.openTaxTypeModal(null)">
+                                        <i class="fa fa-plus me-1"/> Nuevo Tipo de IVA
+                                    </button>
+                                </div>
+
+                                <div t-if="state.taxTypesLoading" class="text-center py-5">
+                                    <i class="fa fa-circle-o-notch fa-spin fa-2x text-primary mb-2"/>
+                                    <p class="text-muted small">Cargando tipos de IVA...</p>
+                                </div>
+                                <div t-else="" class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 100px;">Código</th>
+                                                <th>Nombre</th>
+                                                <th style="width: 140px;" class="text-end">Porcentaje</th>
+                                                <th style="width: 130px;" class="text-center">Exento</th>
+                                                <th style="width: 140px;" class="text-end">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-if="state.taxTypesList and state.taxTypesList.length">
+                                                <tr t-foreach="state.taxTypesList" t-as="tt" t-key="tt.id">
+                                                    <td class="font-monospace fw-bold text-dark"><t t-esc="tt.code"/></td>
+                                                    <td class="fw-semibold text-dark"><t t-esc="tt.name"/></td>
+                                                    <td class="text-end font-monospace">
+                                                        <span class="badge bg-light text-dark border"><t t-esc="tt.percentage.toFixed(2)"/> %</span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span t-if="tt.is_exempt" class="badge bg-warning-subtle text-warning border border-warning-subtle">Exento</span>
+                                                        <span t-else="" class="badge bg-success-subtle text-success border border-success-subtle">Sujeto</span>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Modificar" t-on-click="() => this.openTaxTypeModal(tt)">
+                                                            <i class="fa fa-pencil"/>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" title="Eliminar" t-on-click="() => this.deleteTaxType(tt)">
+                                                            <i class="fa fa-trash"/>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                            <t t-else="">
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted py-4">No hay tipos de IVA configurados.</td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </t>
@@ -1740,7 +1826,7 @@
                                                     </option>
                                                 </t>
                                             </select>
-                                            <button type="button" class="btn btn-outline-primary fw-bold" title="Crear nuevo proveedor" t-on-click="() => this.openNewSupplierModal()">
+                                            <button type="button" class="btn btn-outline-primary fw-bold" title="Crear nuevo proveedor" t-on-click.stop="() => this.openNewSupplierModal()">
                                                 <i class="fa fa-plus"/> Nuevo
                                             </button>
                                         </div>
@@ -1779,9 +1865,9 @@
                                         <select class="form-select" t-model="state.editProdTaxId">
                                             <option value="">-- Seleccionar IVA --</option>
                                             <t t-foreach="state.productTaxesList" t-as="tax" t-key="tax.id">
-                                                <option t-att-value="tax.id"><t t-esc="tax.name"/></option>
+                                                <option t-att-value="tax.id"><t t-esc="tax.label || tax.name"/></option>
                                             </t>
-                                            <option value="exempt">Exento de IVA (0%)</option>
+                                            <option t-if="!state.productTaxesList.length" value="exempt">Exento de IVA (0%)</option>
                                         </select>
                                     </div>
                                     <div class="col-md-4">
@@ -2017,6 +2103,58 @@
                             </div>
                             <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end border-top">
                                 <button type="button" class="btn btn-secondary btn-sm px-3" t-on-click="() => this.closeCategoriesModal()">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- MODAL PARA CREAR / EDITAR TIPO DE IVA -->
+            <t t-if="state.isTaxTypeModalOpen">
+                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 1070;" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
+                            <div class="modal-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                                <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                                    <i class="fa fa-percent text-primary me-1"/>
+                                    <t t-if="state.editingTaxType">Editar Tipo de IVA</t>
+                                    <t t-else="">Nuevo Tipo de IVA</t>
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeTaxTypeModal()" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-dark">Código <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control font-monospace fw-bold" placeholder="Ej: 1, 2, 99" t-model="state.taxTypeCode"/>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label small fw-bold text-dark">Nombre / Descripción <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" placeholder="Ej: TIPO GENERAL 21%" t-model="state.taxTypeName"/>
+                                    </div>
+                                </div>
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Porcentaje (%)</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control font-monospace" step="0.01" min="0" t-att-disabled="state.taxTypeIsExempt" t-model="state.taxTypePercentage"/>
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 pt-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="taxTypeExemptSwitch" t-model="state.taxTypeIsExempt"/>
+                                            <label class="form-check-label small fw-bold text-dark" for="taxTypeExemptSwitch">Exento de IVA</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light py-3 px-4 d-flex justify-content-end gap-2 border-top">
+                                <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.closeTaxTypeModal()">Cancelar</button>
+                                <button type="button" class="btn btn-primary btn-sm fw-bold px-3" t-att-disabled="state.isSavingTaxType" t-on-click="() => this.saveTaxTypeModal()">
+                                    <i t-if="state.isSavingTaxType" class="fa fa-circle-o-notch fa-spin me-1"/>
+                                    <i t-else="" class="fa fa-check me-1"/> Guardar Tipo de IVA
+                                </button>
                             </div>
                         </div>
                     </div>
