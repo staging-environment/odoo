@@ -1780,13 +1780,13 @@
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-dark">Categoría de Producto (Familia / Subfamilia) <span class="text-danger">*</span></label>
-                                        <select class="form-select" t-att-value="state.editProdCategId" t-on-change="(ev) => this.onProductCategoryChange(ev)">
+                                        <select class="form-select" t-model="state.editProdCategId" t-on-change="(ev) => this.onProductCategoryChange(ev)">
                                             <option value="">-- Seleccionar Categoría (2º nivel) --</option>
-                                            <t t-foreach="state.productCategoriesTree" t-as="pcat" t-key="pcat.id">
+                                            <t t-foreach="state.productCategoriesTree || []" t-as="pcat" t-key="pcat.id">
                                                 <optgroup t-att-label="pcat.code + ' · ' + pcat.name">
-                                                    <t t-foreach="pcat.children" t-as="ccat" t-key="ccat.id">
-                                                        <option t-att-value="ccat.id" t-att-selected="String(ccat.id) === String(state.editProdCategId)">
-                                                            <t t-esc="'&#160;&#160;&#160;' + ccat.full_code + ' · ' + ccat.name"/>
+                                                    <t t-foreach="pcat.children || []" t-as="ccat" t-key="ccat.id">
+                                                        <option t-att-value="ccat.id">
+                                                            <t t-esc="'&#160;&#160;&#160;' + (ccat.full_code || '') + ' · ' + ccat.name"/>
                                                         </option>
                                                     </t>
                                                 </optgroup>
@@ -1820,7 +1820,7 @@
                                         <div class="input-group">
                                             <select class="form-select" t-model="state.editProdSupplierId">
                                                 <option value="">-- Seleccionar Proveedor --</option>
-                                                <t t-foreach="state.productSuppliersList" t-as="sup" t-key="sup.id">
+                                                <t t-foreach="state.productSuppliersList || []" t-as="sup" t-key="sup.id">
                                                     <option t-att-value="sup.id">
                                                         <t t-esc="sup.name"/><t t-if="sup.vat"> (<t t-esc="sup.vat"/>)</t>
                                                     </option>
@@ -1846,12 +1846,12 @@
                                             <i class="fa fa-plus me-1"/> Añadir EAN
                                         </button>
                                     </div>
-                                    <div class="d-flex flex-wrap gap-2" t-if="state.editProdBarcodes.length">
+                                    <div class="d-flex flex-wrap gap-2" t-if="state.editProdBarcodes and state.editProdBarcodes.length">
                                         <t t-foreach="state.editProdBarcodes" t-as="ean" t-key="ean">
                                             <span class="badge bg-dark text-white d-inline-flex align-items-center gap-2 py-2 px-3 font-monospace" style="font-size: 12px;">
                                                 <i class="fa fa-barcode text-info"/>
                                                 <t t-esc="ean"/>
-                                                <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 9px;" aria-label="Eliminar" t-on-click="() => this.removeProductBarcode(ean_index)"></button>
+                                                <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 9px;" aria-label="Eliminar" t-on-click="() => this.removeProductBarcode(ean)"></button>
                                             </span>
                                         </t>
                                     </div>
@@ -1864,10 +1864,10 @@
                                         <label class="form-label small fw-bold text-dark">Tipo de IVA <span class="text-danger">*</span></label>
                                         <select class="form-select" t-model="state.editProdTaxId">
                                             <option value="">-- Seleccionar IVA --</option>
-                                            <t t-foreach="state.productTaxesList" t-as="tax" t-key="tax.id">
+                                            <t t-foreach="state.productTaxesList || []" t-as="tax" t-key="tax.id">
                                                 <option t-att-value="tax.id"><t t-esc="tax.label || tax.name"/></option>
                                             </t>
-                                            <option t-if="!state.productTaxesList.length" value="exempt">Exento de IVA (0%)</option>
+                                            <option t-if="!state.productTaxesList or !state.productTaxesList.length" value="exempt">Exento de IVA (0%)</option>
                                         </select>
                                     </div>
                                     <div class="col-md-4">

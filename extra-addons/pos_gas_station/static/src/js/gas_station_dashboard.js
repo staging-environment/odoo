@@ -1120,8 +1120,8 @@ export class GasStationDashboard extends Component {
         }
     }
 
-    openCreateProduct() {
-        this.openEditProductModal(null);
+    async openCreateProduct() {
+        await this.openEditProductModal(null);
     }
 
     async loadProductFormMetadata() {
@@ -1143,7 +1143,11 @@ export class GasStationDashboard extends Component {
     }
 
     async openEditProductModal(prod) {
-        await this.loadProductFormMetadata();
+        if (!this.state.productCategoriesTree || !this.state.productCategoriesTree.length) {
+            await this.loadProductFormMetadata();
+        } else {
+            this.loadProductFormMetadata();
+        }
         this.state.editingProduct = prod || null;
         this.state.editProdName = prod ? prod.name : "";
         this.state.editProdCode = prod ? (prod.default_code || "") : "";
@@ -1229,8 +1233,12 @@ export class GasStationDashboard extends Component {
         this.state.editProdNewBarcode = "";
     }
 
-    removeProductBarcode(idx) {
-        this.state.editProdBarcodes = this.state.editProdBarcodes.filter((_, i) => i !== idx);
+    removeProductBarcode(item) {
+        if (typeof item === "number") {
+            this.state.editProdBarcodes = this.state.editProdBarcodes.filter((_, i) => i !== item);
+        } else {
+            this.state.editProdBarcodes = this.state.editProdBarcodes.filter(b => b !== item);
+        }
     }
 
     onBarcodeInputKeydown(ev) {
