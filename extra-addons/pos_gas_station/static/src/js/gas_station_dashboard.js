@@ -75,6 +75,8 @@ export class GasStationDashboard extends Component {
             productCategoriesTree: [],
             productTaxesList: [],
             productSuppliersList: [],
+            provincesList: [],
+            nextSupplierCode: "",
             // Administración y Configuración de Parámetros (Landing por Cajitas)
             isAdminMenuOpen: false,
             adminParamSection: "menu", // 'menu' | 'taxes' | 'categories'
@@ -89,10 +91,21 @@ export class GasStationDashboard extends Component {
             isSavingTaxType: false,
             // Modal flotante de nuevo proveedor
             isNewSupplierModalOpen: false,
-            newSupplierName: "",
+            newSupplierCode: "",
             newSupplierVat: "",
+            newSupplierCae: "",
+            newSupplierEnBaja: false,
+            newSupplierName: "",
+            newSupplierStreet: "",
+            newSupplierCity: "",
+            newSupplierStateId: "",
+            newSupplierZip: "",
             newSupplierPhone: "",
+            newSupplierFax: "",
             newSupplierEmail: "",
+            newSupplierWebsite: "",
+            newSupplierDocFormat: "impreso",
+            newSupplierError: "",
             isSavingNewSupplier: false,
             isStockAdjustModalOpen: false,
             stockAdjustProduct: null,
@@ -796,6 +809,8 @@ export class GasStationDashboard extends Component {
                     this.state.productCategoriesTree = data.product_form_metadata.categories_tree || [];
                     this.state.productTaxesList = data.product_form_metadata.taxes || [];
                     this.state.productSuppliersList = data.product_form_metadata.suppliers || [];
+                    this.state.provincesList = data.product_form_metadata.provinces || [];
+                    this.state.nextSupplierCode = data.product_form_metadata.next_supplier_code || "";
                 }
             } else {
                 this.notification.add(data.message || "Error al cargar detalle de empresa", { type: "danger" });
@@ -1236,6 +1251,8 @@ export class GasStationDashboard extends Component {
                 this.state.productCategoriesTree = res.categories_tree || [];
                 this.state.productTaxesList = res.taxes || [];
                 this.state.productSuppliersList = res.suppliers || [];
+                this.state.provincesList = res.provinces || [];
+                this.state.nextSupplierCode = res.next_supplier_code || "";
             } else if (res && res.message) {
                 this.notification.add(res.message, { type: "warning" });
             }
@@ -1406,32 +1423,145 @@ export class GasStationDashboard extends Component {
     }
 
     openNewSupplierModal() {
-        this.state.newSupplierName = "";
+        this.state.newSupplierCode = this.state.nextSupplierCode || "";
         this.state.newSupplierVat = "";
+        this.state.newSupplierCae = "";
+        this.state.newSupplierEnBaja = false;
+        this.state.newSupplierName = "";
+        this.state.newSupplierStreet = "";
+        this.state.newSupplierCity = "";
+        this.state.newSupplierStateId = "";
+        this.state.newSupplierZip = "";
         this.state.newSupplierPhone = "";
+        this.state.newSupplierFax = "";
         this.state.newSupplierEmail = "";
+        this.state.newSupplierWebsite = "";
+        this.state.newSupplierDocFormat = "impreso";
+        this.state.newSupplierError = "";
         this.state.isNewSupplierModalOpen = true;
     }
 
     closeNewSupplierModal() {
+        this.state.newSupplierError = "";
         this.state.isNewSupplierModalOpen = false;
     }
 
+    _validateSpanishNifCif(rawVat) {
+        if (!rawVat) {
+            return { valid: false, message: "El campo NIF / CIF es obligatorio." };
+        }
+        let v = String(rawVat).toUpperCase().replace(/[\s\-.]/g, "");
+        if (v.startsWith("ES") && v.length === 11) {
+            v = v.slice(2);
+        }
+        if (v.length !== 9) {
+            return { valid: false, message: `El NIF / CIF "${rawVat}" debe tener 9 caracteres (ej: 12345678Z o B41000000).` };
+        }
+        const letrasDni = "TRWAGMYFPDXBNJZSQVHLCKE";
+        if (/^\d{8}[A-Z]$/.test(v)) {
+            const num = parseInt(v.slice(0, 8), 10);
+            if (v[8] !== letrasDni[num % 23]) {
+                return { valid: false, message: `El NIF "${v}" no es válido (letra de control incorrecta).` };
+            }
+            return { valid: true };
+        }
+        if (/^[XYZ]\d{7}[A-Z]$/.test(v)) {
+            const prefixMap = { X: "0", Y: "1", Z: "2" };
+            const num = parseInt(prefixMap[v[0]] + v.slice(1, 8), 10);
+            if (v[8] !== letrasDni[num % 23]) {
+                return { valid: false, message: `El NIE "${v}" no es válido (letra de control incorrecta).` };
+            }
+            return { valid: true };
+        }
+        if (/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(v)) {
+            const orgLetter = v[0];
+            const digits = v.slice(1, 8);
+            const ctrl = v[8];
+            let sumEven = 0;
+            for (const i of [1, 3, 5]) {
+                sumEven += parseInt(digits[i], 10);
+            }
+            let sumOdd = 0;
+            for (const i of [0, 2, 4, 6]) {
+                const d = parseInt(digits[i], 10) * 2;
+                sumOdd += Math.floor(d / 10) + (d % 10);
+            }
+            const total = sumEven + sumOdd;
+            const ctrlDigit = (10 - (total % 10)) % 10;
+            const ctrlLetter = "JABCDEFGHI"[ctrlDigit];
+            let valid = false;
+            if ("ABEH".includes(orgLetter)) {
+                valid = ctrl === String(ctrlDigit);
+            } else if ("KPQS".includes(orgLetter)) {
+                valid = ctrl === ctrlLetter;
+            } else {
+                valid = ctrl === String(ctrlDigit) || ctrl === ctrlLetter;
+            }
+            if (!valid) {
+                return { valid: false, message: `El CIF "${v}" no es válido (dígito/letra de control incorrecto).` };
+            }
+            return { valid: true };
+        }
+        return { valid: false, message: `El formato de NIF / CIF "${rawVat}" no es válido.` };
+    }
+
+    _showSupplierError(msg) {
+        this.state.newSupplierError = msg;
+        this.notification.add(msg, { type: "danger" });
+    }
+
     async saveNewSupplierModal() {
-        if (!this.state.newSupplierName || !this.state.newSupplierName.trim()) {
-            this.notification.add("El nombre / razón social del proveedor es obligatorio.", { type: "warning" });
+        this.state.newSupplierError = "";
+        const vat = (this.state.newSupplierVat || "").trim();
+        const vatCheck = this._validateSpanishNifCif(vat);
+        if (!vatCheck.valid) {
+            this._showSupplierError(vatCheck.message);
             return;
         }
+        if (!this.state.newSupplierName || !this.state.newSupplierName.trim()) {
+            this._showSupplierError("El campo Nombre es obligatorio.");
+            return;
+        }
+        if (!this.state.newSupplierStreet || !this.state.newSupplierStreet.trim()) {
+            this._showSupplierError("El campo Domicilio es obligatorio.");
+            return;
+        }
+        if (!this.state.newSupplierCity || !this.state.newSupplierCity.trim()) {
+            this._showSupplierError("El campo Población es obligatorio.");
+            return;
+        }
+        if (!this.state.newSupplierStateId) {
+            this._showSupplierError("El campo Provincia es obligatorio.");
+            return;
+        }
+        if (!this.state.newSupplierPhone || !this.state.newSupplierPhone.trim()) {
+            this._showSupplierError("El campo Teléfono es obligatorio.");
+            return;
+        }
+
         this.state.isSavingNewSupplier = true;
         try {
             const res = await jsonrpc("/pos_gas_station/create_supplier", {
+                code: (this.state.newSupplierCode || "").trim(),
+                vat: vat,
+                cae: (this.state.newSupplierCae || "").trim(),
+                en_baja: Boolean(this.state.newSupplierEnBaja),
                 name: this.state.newSupplierName.trim(),
-                vat: (this.state.newSupplierVat || "").trim(),
-                phone: (this.state.newSupplierPhone || "").trim(),
+                street: this.state.newSupplierStreet.trim(),
+                city: this.state.newSupplierCity.trim(),
+                state_id: parseInt(this.state.newSupplierStateId, 10),
+                zip_code: (this.state.newSupplierZip || "").trim(),
+                phone: this.state.newSupplierPhone.trim(),
+                fax: (this.state.newSupplierFax || "").trim(),
                 email: (this.state.newSupplierEmail || "").trim(),
+                website: (this.state.newSupplierWebsite || "").trim(),
+                doc_format: this.state.newSupplierDocFormat || "impreso",
             });
             if (res && res.status === "success" && res.supplier) {
                 this.notification.add(res.message, { type: "success" });
+                if (res.next_supplier_code) {
+                    this.state.nextSupplierCode = res.next_supplier_code;
+                }
                 this.state.productSuppliersList = [...this.state.productSuppliersList, res.supplier]
                     .sort((a, b) => a.name.localeCompare(b.name));
                 this.state.editProdSupplierId = String(res.supplier.id);
@@ -1441,11 +1571,11 @@ export class GasStationDashboard extends Component {
                 this.state.isSupplierDropdownOpen = false;
                 this.closeNewSupplierModal();
             } else {
-                this.notification.add((res && res.message) || "Error al crear proveedor", { type: "danger" });
+                this._showSupplierError((res && res.message) || "Error al crear proveedor");
             }
         } catch (e) {
             console.error("Error creating supplier:", e);
-            this.notification.add("Error de conexión al crear proveedor", { type: "danger" });
+            this._showSupplierError("Error de conexión al crear proveedor");
         } finally {
             this.state.isSavingNewSupplier = false;
         }

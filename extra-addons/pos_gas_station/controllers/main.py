@@ -2113,10 +2113,20 @@ class PosGasStationController(http.Controller):
             'ref': s.ref or '',
         } for s in suppliers]
 
+        es_country = env['res.country'].sudo().search([('code', '=', 'ES')], limit=1)
+        provinces_data = []
+        if es_country:
+            states = env['res.country.state'].sudo().search([('country_id', '=', es_country.id)], order='name asc')
+            provinces_data = [{'id': st.id, 'name': st.name, 'code': st.code or ''} for st in states]
+
+        next_supplier_code = env['res.partner'].sudo()._get_next_supplier_code()
+
         return {
             'categories_tree': categories_tree,
             'taxes': taxes_data,
             'suppliers': suppliers_data,
+            'provinces': provinces_data,
+            'next_supplier_code': next_supplier_code,
         }
 
     @http.route('/pos_gas_station/get_product_form_metadata', type='json', auth='user', methods=['POST'], csrf=False)
@@ -2266,44 +2276,155 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error en next_product_code: %s", e)
             return {'status': 'error', 'message': str(e)}
 
+    def _validate_spanish_nif_cif(self, raw_vat):
+        """Valida NIF (DNI), NIE o CIF español según el algoritmo oficial de la AEAT."""
+        import re
+        if not raw_vat:
+            return False, '', 'El NIF / CIF es obligatorio.'
+        v = re.sub(r'[\s\-.]', '', str(raw_vat).upper())
+        if v.startswith('ES') and len(v) == 11:
+            v = v[2:]
+
+        if len(v) != 9:
+            return False, v, f'El NIF / CIF "{raw_vat}" debe tener 9 caracteres (ej: 12345678Z o B41000000).'
+
+        letras_dni = 'TRWAGMYFPDXBNJZSQVHLCKE'
+        # 1. DNI: 8 dígitos + letra
+        if re.match(r'^\d{8}[A-Z]$', v):
+            num = int(v[:8])
+            expected = letras_dni[num % 23]
+            if v[8] != expected:
+                return False, v, f'El NIF "{v}" no es válido (letra de control incorrecta).'
+            return True, v, ''
+
+        # 2. NIE: X/Y/Z + 7 dígitos + letra
+        if re.match(r'^[XYZ]\d{7}[A-Z]$', v):
+            prefix_map = {'X': '0', 'Y': '1', 'Z': '2'}
+            num = int(prefix_map[v[0]] + v[1:8])
+            expected = letras_dni[num % 23]
+            if v[8] != expected:
+                return False, v, f'El NIE "{v}" no es válido (letra de control incorrecta).'
+            return True, v, ''
+
+        # 3. CIF: Letra + 7 dígitos + control (dígito o letra)
+        if re.match(r'^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$', v):
+            org_letter = v[0]
+            digits = v[1:8]
+            ctrl = v[8]
+            sum_even = sum(int(digits[i]) for i in (1, 3, 5))
+            sum_odd = 0
+            for i in (0, 2, 4, 6):
+                d = int(digits[i]) * 2
+                sum_odd += (d // 10) + (d % 10)
+            total = sum_even + sum_odd
+            unit = total % 10
+            ctrl_digit = (10 - unit) % 10
+            ctrl_letter = 'JABCDEFGHI'[ctrl_digit]
+
+            if org_letter in 'ABEH':
+                valid = (ctrl == str(ctrl_digit))
+            elif org_letter in 'KPQS':
+                valid = (ctrl == ctrl_letter)
+            else:
+                valid = (ctrl == str(ctrl_digit) or ctrl == ctrl_letter)
+
+            if not valid:
+                return False, v, f'El CIF "{v}" no es válido (dígito/letra de control incorrecto).'
+            return True, v, ''
+
+        return False, v, f'El formato de NIF / CIF "{raw_vat}" no es válido en España.'
+
     @http.route('/pos_gas_station/create_supplier', type='json', auth='user', methods=['POST'], csrf=False)
-    def create_supplier(self, name=None, vat=None, phone=None, email=None, **kw):
-        """Crea un nuevo proveedor sobre la marcha desde el modal flotante."""
+    def create_supplier(self, code=None, name=None, vat=None, cae=None, en_baja=False,
+                        street=None, city=None, state_id=None, zip_code=None,
+                        phone=None, fax=None, email=None, website=None, doc_format='impreso', **kw):
+        """Crea un nuevo proveedor con todos los campos y validaciones requeridas."""
         try:
             env = request.env
+
+            # 1. Validación NIF / CIF (obligatorio + algoritmo AEAT)
+            clean_vat_raw = (vat or '').strip().upper()
+            if not clean_vat_raw:
+                return {'status': 'error', 'message': 'El campo NIF / CIF es obligatorio.'}
+
+            is_valid_vat, norm_vat, vat_err = self._validate_spanish_nif_cif(clean_vat_raw)
+            if not is_valid_vat:
+                return {'status': 'error', 'message': vat_err}
+
+            # Comprobar duplicado de NIF/CIF con o sin prefijo ES
+            existing_vat = env['res.partner'].sudo().search([
+                ('vat', 'in', [norm_vat, f'ES{norm_vat}']),
+                ('supplier_rank', '>', 0),
+                ('active', 'in', [True, False]),
+            ], limit=1)
+            if existing_vat:
+                return {
+                    'status': 'error',
+                    'message': f'Ya existe un proveedor con el NIF/CIF {norm_vat}: {existing_vat.name}.',
+                }
+
+            # 2. Validación de campos obligatorios
             clean_name = (name or '').strip()
             if not clean_name:
-                return {'status': 'error', 'message': 'El nombre o razón social del proveedor es obligatorio.'}
+                return {'status': 'error', 'message': 'El campo Nombre es obligatorio.'}
 
-            clean_vat = (vat or '').strip().upper() or False
-            if clean_vat:
-                existing_vat = env['res.partner'].sudo().search([
-                    ('vat', '=', clean_vat),
-                    ('supplier_rank', '>', 0),
-                ], limit=1)
-                if existing_vat:
-                    return {
-                        'status': 'error',
-                        'message': f'Ya existe un proveedor con el NIF/CIF {clean_vat}: {existing_vat.name}.',
-                    }
+            clean_street = (street or '').strip()
+            if not clean_street:
+                return {'status': 'error', 'message': 'El campo Domicilio es obligatorio.'}
 
-            partner = env['res.partner'].sudo().create({
+            clean_city = (city or '').strip()
+            if not clean_city:
+                return {'status': 'error', 'message': 'El campo Población es obligatorio.'}
+
+            if not state_id:
+                return {'status': 'error', 'message': 'El campo Provincia es obligatorio.'}
+
+            clean_phone = (phone or '').strip()
+            if not clean_phone:
+                return {'status': 'error', 'message': 'El campo Teléfono es obligatorio.'}
+
+            # 3. Código de proveedor
+            clean_code = (code or '').strip()
+            if not clean_code:
+                clean_code = env['res.partner'].sudo()._get_next_supplier_code()
+            ref_val = clean_code if clean_code.upper().startswith('PROV-') else f'PROV-{clean_code}'
+
+            es_country = env['res.country'].sudo().search([('code', '=', 'ES')], limit=1)
+            prov_id = int(state_id)
+
+            vals = {
+                'ref': ref_val,
                 'name': clean_name,
-                'vat': clean_vat,
-                'phone': (phone or '').strip() or False,
+                'vat': f'ES{norm_vat}' if not norm_vat.startswith('ES') else norm_vat,
+                'cae': (cae or '').strip() or False,
+                'active': not bool(en_baja),
+                'street': clean_street,
+                'city': clean_city,
+                'state_id': prov_id,
+                'country_id': es_country.id if es_country else False,
+                'zip': (zip_code or kw.get('zip') or '').strip() or False,
+                'phone': clean_phone,
+                'fax': (fax or '').strip() or False,
                 'email': (email or '').strip() or False,
+                'website': (website or '').strip() or False,
+                'doc_format': doc_format or 'impreso',
                 'supplier_rank': 1,
                 'is_company': True,
                 'company_id': False,
-            })
+            }
+
+            partner = env['res.partner'].sudo().create(vals)
+            next_code = env['res.partner'].sudo()._get_next_supplier_code()
 
             return {
                 'status': 'success',
-                'message': f'Proveedor "{partner.name}" creado correctamente.',
+                'message': f'Proveedor "{partner.name}" creado correctamente (Cód: {clean_code}).',
+                'next_supplier_code': next_code,
                 'supplier': {
                     'id': partner.id,
                     'name': partner.name,
                     'vat': partner.vat or '',
+                    'ref': partner.ref or '',
                 },
             }
         except Exception as e:

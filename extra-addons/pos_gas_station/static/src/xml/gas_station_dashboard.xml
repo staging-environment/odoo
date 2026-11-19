@@ -2159,8 +2159,8 @@
 
             <!-- MODAL FLOTANTE PARA CREAR NUEVO PROVEEDOR SOBRE LA MARCHA -->
             <t t-if="state.isNewSupplierModalOpen">
-                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); z-index: 1085;" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered">
+                <div class="modal fade show d-block" style="background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); z-index: 1085; overflow-y: auto;" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered modal-lg my-4">
                         <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
                             <div class="modal-header bg-primary text-white py-3 px-4 d-flex justify-content-between align-items-center">
                                 <h5 class="modal-title fw-bold mb-0 text-white d-flex align-items-center gap-2">
@@ -2168,23 +2168,101 @@
                                 </h5>
                                 <button type="button" class="btn-close btn-close-white" t-on-click="() => this.closeNewSupplierModal()" aria-label="Cerrar"></button>
                             </div>
-                            <div class="modal-body p-4">
+                            <div class="modal-body p-4" style="max-height: 78vh; overflow-y: auto;">
+                                <div t-if="state.newSupplierError" class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-3 rounded-3" role="alert">
+                                    <i class="fa fa-exclamation-triangle flex-shrink-0"/>
+                                    <span class="small fw-semibold"><t t-esc="state.newSupplierError"/></span>
+                                </div>
+
+                                <!-- Fila 1: Código, NIF, CAE, En Baja -->
+                                <div class="row g-3 mb-3 align-items-end">
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-bold text-dark">Código</label>
+                                        <input type="text" class="form-control font-monospace fw-bold" placeholder="489" t-model="state.newSupplierCode"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-dark">NIF / CIF <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control font-monospace text-uppercase" placeholder="Ej: B41000000" t-model="state.newSupplierVat"/>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-dark">CAE</label>
+                                        <input type="text" class="form-control font-monospace" placeholder="Código CAE" t-model="state.newSupplierCae"/>
+                                    </div>
+                                    <div class="col-md-2 pb-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="newSupplierEnBaja" t-model="state.newSupplierEnBaja"/>
+                                            <label class="form-check-label small fw-bold text-dark" for="newSupplierEnBaja">En Baja</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Fila 2: Nombre -->
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-dark">Nombre / Razón Social <span class="text-danger">*</span></label>
+                                    <label class="form-label small fw-bold text-dark">Nombre <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" placeholder="Ej: Distribuciones Alimentarias S.L." t-model="state.newSupplierName"/>
                                 </div>
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-dark">NIF / CIF</label>
-                                        <input type="text" class="form-control font-monospace" placeholder="Ej: B41000000" t-model="state.newSupplierVat"/>
+
+                                <!-- Fila 3: Domicilio -->
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-dark">Domicilio <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" placeholder="Calle, número, polígono..." t-model="state.newSupplierStreet"/>
+                                </div>
+
+                                <!-- Fila 4: Población, Provincia, DP -->
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-bold text-dark">Población <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" placeholder="Ej: Utrera, Sevilla..." t-model="state.newSupplierCity"/>
                                     </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-bold text-dark">Provincia <span class="text-danger">*</span></label>
+                                        <select class="form-select" t-model="state.newSupplierStateId">
+                                            <option value="">-- Seleccionar Provincia --</option>
+                                            <t t-foreach="state.provincesList || []" t-as="prov" t-key="prov.id">
+                                                <option t-att-value="prov.id"><t t-esc="prov.name"/></option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-bold text-dark">DP</label>
+                                        <input type="text" class="form-control font-monospace" maxlength="10" placeholder="41710" t-model="state.newSupplierZip"/>
+                                    </div>
+                                </div>
+
+                                <!-- Fila 5: Teléfono y Fax -->
+                                <div class="row g-3 mb-3">
                                     <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-dark">Teléfono</label>
+                                        <label class="form-label small fw-bold text-dark">Teléfono <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control" placeholder="Ej: 954000000" t-model="state.newSupplierPhone"/>
                                     </div>
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-dark">Correo Electrónico</label>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Fax</label>
+                                        <input type="text" class="form-control" placeholder="Ej: 954000001" t-model="state.newSupplierFax"/>
+                                    </div>
+                                </div>
+
+                                <!-- Fila 6: EMail y Web -->
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">EMail</label>
                                         <input type="email" class="form-control" placeholder="pedidos@proveedor.com" t-model="state.newSupplierEmail"/>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Web</label>
+                                        <input type="text" class="form-control" placeholder="https://www.proveedor.com" t-model="state.newSupplierWebsite"/>
+                                    </div>
+                                </div>
+
+                                <!-- Fila 7: Formato Documentación -->
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark">Formato Documentación</label>
+                                        <select class="form-select" t-model="state.newSupplierDocFormat">
+                                            <option value="impreso">Impreso</option>
+                                            <option value="email">Email</option>
+                                            <option value="impreso_email">Impreso/Email</option>
+                                            <option value="ninguno">Ninguno</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

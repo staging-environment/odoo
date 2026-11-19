@@ -11,6 +11,14 @@ class ResPartner(models.Model):
         tracking=True,
         help='Estación de servicio a la que pertenece o repostó habitualmente este cliente'
     )
+    cae = fields.Char(string='CAE', help='Código de Actividad y del Establecimiento')
+    fax = fields.Char(string='Fax')
+    doc_format = fields.Selection([
+        ('impreso', 'Impreso'),
+        ('email', 'Email'),
+        ('impreso_email', 'Impreso/Email'),
+        ('ninguno', 'Ninguno'),
+    ], string='Formato Documentación', default='impreso')
 
     @api.model
     def default_get(self, fields_list):
@@ -44,6 +52,23 @@ class ResPartner(models.Model):
             next_num = self.env.cr.fetchone()[0]
             code = str(next_num)
         return code
+
+    @api.model
+    def _get_next_supplier_code(self):
+        """Genera el siguiente código secuencial numérico para proveedores."""
+        self.env.cr.execute("""
+            SELECT COALESCE(MAX(
+                CASE
+                    WHEN ref ~ '^PROV-[0-9]+$' THEN CAST(SUBSTRING(ref FROM 6) AS INTEGER)
+                    WHEN ref ~ '^[0-9]+$' THEN CAST(ref AS INTEGER)
+                    ELSE 0
+                END
+            ), 0) + 1
+            FROM res_partner
+            WHERE supplier_rank > 0 AND (ref ~ '^PROV-[0-9]+$' OR ref ~ '^[0-9]+$');
+        """)
+        row = self.env.cr.fetchone()
+        return str(row[0] if row and row[0] else 1)
 
     @api.model
     def create_from_ui(self, partner):
