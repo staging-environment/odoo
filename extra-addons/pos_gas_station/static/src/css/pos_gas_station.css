@@ -8083,3 +8083,36 @@
     line-height: 1.05 !important;
     font-size: 13px !important;
 }
+
+/* Monedita: añadir / quitar artículos de tienda en venta pendiente */
+.sale-card-footer .btn-add-pending-item {
+    margin-left: auto !important;
+    margin-right: 10px !important;
+    background: #ffffff !important;
+    color: #1d4ed8 !important;
+    border: 2px solid #2563eb !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    padding: 8px 16px !important;
+    cursor: pointer !important;
+}
+.sale-card-footer .btn-add-pending-item:hover {
+    background: #eff6ff !important;
+}
+.btn-remove-pending-item {
+    background: #fee2e2 !important;
+    color: #dc2626 !important;
+    border: 1px solid #fca5a5 !important;
+    border-radius: 6px !important;
+    width: 28px !important;
+    height: 28px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+}
+.btn-remove-pending-item:hover {
+    background: #fecaca !important;
+}

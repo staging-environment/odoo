@@ -386,6 +386,7 @@ export class UtrecarMainScreen extends Component {
             clientSortDirection: "asc",
             clientSortField: "name",
             storeSearch: "",
+            storeTarget: null,
                         isShiftOrdersModalOpen: false,
             shiftOrdersLoading: false,
             isStationsModalOpen: false,
@@ -3739,6 +3740,13 @@ export class UtrecarMainScreen extends Component {
     closeStoreModal() {
         this.state.isStoreModalOpen = false;
         this.state.storeSearch = "";
+        // Si se abrió desde la monedita, volver a la ventana de cobros pendientes de esa calle
+        const t = this.state.storeTarget;
+        if (t) {
+            this.state.storeTarget = null;
+            const pump = (this.state.pumps || []).find(p => String(p.id) === String(t.pumpId)) || t.pump;
+            if (pump) this.openPendingSalesModal(pump);
+        }
     }
 
     onStoreSearchInput(ev) {
@@ -4641,6 +4649,101 @@ export class UtrecarMainScreen extends Component {
     closePendingSalesModal() {
         this.state.isPendingSalesModalOpen = false;
         this.state.pendingModalPump = null;
+    }
+
+    // ------------------------------------------------------------------
+    // AÑADIR / QUITAR ARTÍCULOS DE TIENDA EN UNA VENTA PENDIENTE (MONEDITA)
+    // ------------------------------------------------------------------
+    findPendingSale(pumpId, saleId) {
+        const list = (this.pos.pendingSales && this.pos.pendingSales[pumpId]) || [];
+        return list.find(s => s.id === saleId) || null;
+    }
+
+    recalcPendingSaleTotal(sale) {
+        const fuelAmt = sale.fuel ? Number(sale.fuel.amount || 0) : 0;
+        const storeAmt = (sale.storeLines || []).reduce((acc, it) => acc + Number(it.amount || 0), 0);
+        sale.totalAmount = Math.round((fuelAmt + storeAmt) * 100) / 100;
+    }
+
+    commitPendingSaleChange(pumpId) {
+        // Reasignar el array para forzar el refresco reactivo de la ventana flotante
+        if (this.pos.pendingSales && this.pos.pendingSales[pumpId]) {
+            this.pos.pendingSales[pumpId] = [...this.pos.pendingSales[pumpId]];
+        }
+        this.savePendingSales();
+        this.state.orderVersion = Date.now();
+    }
+
+    openStorePickerForPendingSale(sale) {
+        const pump = this.state.pendingModalPump;
+        this.state.storeTarget = { pumpId: sale.pumpId, saleId: sale.id, pump };
+        this.closePendingSalesModal();
+        this.openStoreModal();
+    }
+
+    onStoreProductPick(product) {
+        if (this.state.storeTarget) {
+            this.addProductToPendingSale(product);
+        } else {
+            this.addStoreProductToOrder(product, true);
+        }
+    }
+
+    onStoreProductDblPick(product) {
+        if (this.state.storeTarget) return; // en modo monedita cada clic suma 1 unidad
+        this.onProductCardDblClick(product);
+    }
+
+    getStorePickerQty(product) {
+        const t = this.state.storeTarget;
+        if (!t) return this.getProductOrderQty(product);
+        const sale = this.findPendingSale(t.pumpId, t.saleId);
+        if (!sale) return 0;
+        const line = (sale.storeLines || []).find(l => l.productId === product.id);
+        return line ? line.qty : 0;
+    }
+
+    addProductToPendingSale(product) {
+        const t = this.state.storeTarget;
+        const sale = t && this.findPendingSale(t.pumpId, t.saleId);
+        if (!sale) {
+            alert("La venta pendiente ya no existe (puede que se haya cobrado).");
+            this.closeStoreModal();
+            return;
+        }
+        if (!sale.storeLines) sale.storeLines = [];
+        const price = Number(product.lst_price || product.list_price || 0);
+        let line = sale.storeLines.find(l => l.productId === product.id);
+        if (line) {
+            line.qty = Number(line.qty || 0) + 1;
+            line.amount = Math.round(line.qty * Number(line.price || price) * 100) / 100;
+        } else {
+            sale.storeLines.push({
+                name: product.display_name || product.name,
+                qty: 1,
+                price: price,
+                amount: Math.round(price * 100) / 100,
+                productId: product.id,
+            });
+        }
+        this.recalcPendingSaleTotal(sale);
+        this.commitPendingSaleChange(t.pumpId);
+    }
+
+    removeOneFromPendingSale(sale, item) {
+        if (!sale || sale.isPrepayRefund) return;
+        const real = this.findPendingSale(sale.pumpId, sale.id);
+        if (!real || !real.storeLines) return;
+        const line = real.storeLines.find(l => l.productId === item.productId);
+        if (!line) return;
+        line.qty = Number(line.qty || 0) - 1;
+        if (line.qty <= 0) {
+            real.storeLines = real.storeLines.filter(l => l !== line);
+        } else {
+            line.amount = Math.round(line.qty * Number(line.price || 0) * 100) / 100;
+        }
+        this.recalcPendingSaleTotal(real);
+        this.commitPendingSaleChange(real.pumpId);
     }
 
     async parkCurrentPumpSale() {
