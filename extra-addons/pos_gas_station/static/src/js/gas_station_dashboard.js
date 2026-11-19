@@ -1473,7 +1473,19 @@ export class GasStationDashboard extends Component {
     async openCategoryFormModal(level = 'parent', parentId = null, categoryToEdit = null) {
         this.state.editingCategory = categoryToEdit || null;
         this.state.categoryModalLevel = level;
-        this.state.categoryParentId = parentId ? String(parentId) : (categoryToEdit && categoryToEdit.parent_id ? String(categoryToEdit.parent_id) : "");
+        let resolvedParentId = "";
+        if (parentId) {
+            resolvedParentId = String(parentId);
+        } else if (categoryToEdit && categoryToEdit.parent_id) {
+            resolvedParentId = String(categoryToEdit.parent_id);
+        } else if (level === "child") {
+            if (this.state.categoryParentId) {
+                resolvedParentId = String(this.state.categoryParentId);
+            } else if (this.state.allParentsList && this.state.allParentsList.length) {
+                resolvedParentId = String(this.state.allParentsList[0].id);
+            }
+        }
+        this.state.categoryParentId = resolvedParentId;
         this.state.categoryName = categoryToEdit ? categoryToEdit.name : "";
 
         if (categoryToEdit) {

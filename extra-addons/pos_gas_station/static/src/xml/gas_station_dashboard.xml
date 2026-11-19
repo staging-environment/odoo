@@ -2266,7 +2266,7 @@
                                         <div class="form-check mb-0">
                                             <input class="form-check-input" type="radio" name="catLevelRadio" id="levelChildRadio" value="child"
                                                    t-att-checked="state.categoryModalLevel === 'child'"
-                                                   t-on-change="() => this.openCategoryFormModal('child', state.categoryParentId || (state.allParentsList and state.allParentsList.length ? state.allParentsList[0].id : null), null)"/>
+                                                   t-on-change="() => this.openCategoryFormModal('child', null, null)"/>
                                             <label class="form-check-label fw-bold small text-dark" for="levelChildRadio">
                                                 Subfamilia (Nivel 2, 2 dígitos)
                                             </label>
@@ -2277,7 +2277,7 @@
                                 <!-- Si es subfamilia: Seleccionar Familia Padre -->
                                 <div class="mb-3" t-if="state.categoryModalLevel === 'child'">
                                     <label class="form-label small fw-bold text-dark">Familia Padre Asignada <span class="text-danger">*</span></label>
-                                    <select class="form-select" t-model="state.categoryParentId" t-on-change="(ev) => this.onCategoryModalParentChange(ev)" t-att-disabled="Boolean(state.editingCategory)">
+                                    <select class="form-select" t-model="state.categoryParentId" t-on-change="(ev) => this.onCategoryModalParentChange(ev)" t-att-disabled="state.editingCategory ? true : false">
                                         <option value="">-- Seleccionar Familia Padre --</option>
                                         <t t-foreach="state.allParentsList || []" t-as="p" t-key="p.id">
                                             <option t-att-value="p.id">
