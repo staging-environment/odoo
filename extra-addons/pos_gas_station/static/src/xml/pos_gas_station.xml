@@ -523,7 +523,7 @@
                             💧 <t t-esc="state.mode === 'money' ? 'MODO €' : 'MODO L'"/>
                         </button>
                         <button class="btn-action-tile btn-c-reset" t-on-click="() => this.clearPreset()" title="Borrar prefijado">
-                            C LIMPIAR
+                            PONER IMPORTE A 0 €
                         </button>
                     </div>
 

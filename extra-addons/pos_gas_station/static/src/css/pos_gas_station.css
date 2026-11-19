@@ -8074,3 +8074,12 @@
     height: auto !important;
     margin: 0 !important;
 }
+
+/* Botón "PONER IMPORTE A 0 €": texto más largo, permitir 2 líneas sin cortar */
+.virtus-action-row .btn-c-reset {
+    white-space: normal !important;
+    text-overflow: clip !important;
+    text-align: center !important;
+    line-height: 1.05 !important;
+    font-size: 13px !important;
+}
