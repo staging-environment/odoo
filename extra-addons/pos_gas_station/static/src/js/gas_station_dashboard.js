@@ -73,8 +73,9 @@ export class GasStationDashboard extends Component {
             productCategoriesTree: [],
             productTaxesList: [],
             productSuppliersList: [],
-            // Administración y Configuración de Parámetros (Tipos de IVA)
+            // Administración y Configuración de Parámetros (Landing por Cajitas)
             isAdminMenuOpen: false,
+            adminParamSection: "menu", // 'menu' | 'taxes' | 'categories'
             taxTypesList: [],
             taxTypesLoading: false,
             isTaxTypeModalOpen: false,
@@ -99,11 +100,20 @@ export class GasStationDashboard extends Component {
             isSavingStockAdjust: false,
             isCategoriesModalOpen: false,
             categoriesList: [],
+            categoriesTree: [],
+            allParentsList: [],
+            nextParentCode: "",
             categoriesLoading: false,
             newCategoryName: "",
             newCategoryParentId: "",
             newCategoryCode: "",
             isSavingCategory: false,
+            isCategoryModalOpen: false,
+            editingCategory: null,
+            categoryModalLevel: "parent", // 'parent' | 'child'
+            categoryParentId: "",
+            categoryCode: "",
+            categoryName: "",
             // Pestaña de Tanques y Ajustes
             isAdjustTankModalOpen: false,
             selectedAdjustTank: null,
@@ -747,7 +757,20 @@ export class GasStationDashboard extends Component {
         this.state.isAdminMenuOpen = false;
         this.state.detailTab = optionTab;
         if (optionTab === "admin_params") {
-            await this.loadTaxTypes();
+            this.state.adminParamSection = "menu";
+            await Promise.all([
+                this.loadTaxTypes(),
+                this.loadCategoriesList()
+            ]);
+        }
+    }
+
+    setAdminParamSection(section) {
+        this.state.adminParamSection = section;
+        if (section === "taxes") {
+            this.loadTaxTypes();
+        } else if (section === "categories") {
+            this.loadCategoriesList();
         }
     }
 
@@ -1411,11 +1434,8 @@ export class GasStationDashboard extends Component {
     }
 
     async openCategoriesModal() {
-        this.state.isCategoriesModalOpen = true;
-        this.state.newCategoryName = "";
-        this.state.newCategoryParentId = "";
-        this.state.newCategoryCode = "";
-        await this.loadCategoriesList();
+        await this.selectAdminOption("admin_params");
+        this.setAdminParamSection("categories");
     }
 
     closeCategoriesModal() {
@@ -1428,6 +1448,9 @@ export class GasStationDashboard extends Component {
             const res = await jsonrpc("/pos_gas_station/get_categories_list", {});
             if (res && res.status === "success") {
                 this.state.categoriesList = res.categories || [];
+                this.state.categoriesTree = res.categories_tree || [];
+                this.state.allParentsList = res.all_parents || [];
+                this.state.nextParentCode = res.next_parent_code || "";
                 if (this.state.companyDetailData) {
                     this.state.companyDetailData.all_categories = (res.categories || []).map(c => ({
                         id: c.id,
@@ -1437,12 +1460,139 @@ export class GasStationDashboard extends Component {
                         full_code: c.full_code,
                     }));
                 }
+            } else if (res && res.message) {
+                this.notification.add(res.message, { type: "warning" });
             }
         } catch (e) {
             console.error("Error loading categories:", e);
         } finally {
             this.state.categoriesLoading = false;
         }
+    }
+
+    async openCategoryFormModal(level = 'parent', parentId = null, categoryToEdit = null) {
+        this.state.editingCategory = categoryToEdit || null;
+        this.state.categoryModalLevel = level;
+        this.state.categoryParentId = parentId ? String(parentId) : (categoryToEdit && categoryToEdit.parent_id ? String(categoryToEdit.parent_id) : "");
+        this.state.categoryName = categoryToEdit ? categoryToEdit.name : "";
+
+        if (categoryToEdit) {
+            this.state.categoryCode = categoryToEdit.code || "";
+        } else {
+            // Sugerir siguiente código disponible
+            try {
+                const res = await jsonrpc("/pos_gas_station/get_next_category_code", {
+                    parent_id: this.state.categoryParentId ? parseInt(this.state.categoryParentId) : null,
+                });
+                if (res && res.status === "success") {
+                    this.state.categoryCode = res.code || "";
+                } else {
+                    this.state.categoryCode = level === "parent" ? (this.state.nextParentCode || "1") : "01";
+                }
+            } catch (e) {
+                this.state.categoryCode = level === "parent" ? (this.state.nextParentCode || "1") : "01";
+            }
+        }
+        this.state.isCategoryModalOpen = true;
+    }
+
+    closeCategoryModal() {
+        this.state.isCategoryModalOpen = false;
+        this.state.editingCategory = null;
+    }
+
+    async onCategoryModalParentChange(ev) {
+        const pid = ev.target.value;
+        this.state.categoryParentId = pid;
+        if (this.state.categoryModalLevel === "child" && pid && !this.state.editingCategory) {
+            try {
+                const res = await jsonrpc("/pos_gas_station/get_next_category_code", {
+                    parent_id: parseInt(pid),
+                });
+                if (res && res.status === "success") {
+                    this.state.categoryCode = res.code || "01";
+                }
+            } catch (e) {
+                console.error("Error getting next child code:", e);
+            }
+        }
+    }
+
+    async saveCategoryModal() {
+        if (!this.state.categoryName || !this.state.categoryName.trim()) {
+            this.notification.add("El nombre de la categoría es obligatorio.", { type: "warning" });
+            return;
+        }
+        const isChild = this.state.categoryModalLevel === "child";
+        if (isChild && !this.state.categoryParentId) {
+            this.notification.add("Debe seleccionar una categoría padre para la subfamilia.", { type: "warning" });
+            return;
+        }
+        const code = (this.state.categoryCode || "").trim();
+        if (!code) {
+            this.notification.add("El código de la categoría es obligatorio.", { type: "warning" });
+            return;
+        }
+        if (isChild && (code.length !== 2 || !/^\d{2}$/.test(code))) {
+            this.notification.add("El código de subfamilia debe tener exactamente 2 dígitos numéricos (ej: 01, 12).", { type: "warning" });
+            return;
+        }
+        if (!isChild && (code.length !== 1 || !/^\d$/.test(code))) {
+            this.notification.add("El código de familia padre debe tener exactamente 1 dígito numérico (1-9).", { type: "warning" });
+            return;
+        }
+
+        this.state.isSavingCategory = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/save_category", {
+                category_id: this.state.editingCategory ? this.state.editingCategory.id : null,
+                name: this.state.categoryName.trim(),
+                parent_id: isChild ? parseInt(this.state.categoryParentId) : null,
+                code: code,
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                this.closeCategoryModal();
+                await this.loadCategoriesList();
+                await this.loadProductFormMetadata();
+                await this.fetchProducts();
+            } else {
+                this.notification.add((res && res.message) || "Error al guardar categoría", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error saving category:", e);
+            this.notification.add("Error de conexión al guardar categoría", { type: "danger" });
+        } finally {
+            this.state.isSavingCategory = false;
+        }
+    }
+
+    async deleteCategoryItem(catItem) {
+        if (!catItem) return;
+        const isParent = !catItem.parent_id;
+        const typeLabel = isParent ? "Familia Padre" : "Subfamilia";
+        this.dialog.add(ConfirmationDialog, {
+            title: `Eliminar ${typeLabel}`,
+            body: `¿Está seguro de que desea eliminar ${isParent ? 'la familia' : 'la subfamilia'} "${catItem.full_code ? catItem.full_code + ' · ' : ''}${catItem.name}"? Esta acción solo se permitirá si no tiene subfamilias ni artículos asociados.`,
+            confirm: async () => {
+                try {
+                    const res = await jsonrpc("/pos_gas_station/delete_category", {
+                        category_id: catItem.id,
+                    });
+                    if (res && res.status === "success") {
+                        this.notification.add(res.message, { type: "success" });
+                        await this.loadCategoriesList();
+                        await this.loadProductFormMetadata();
+                        await this.fetchProducts();
+                    } else {
+                        this.notification.add((res && res.message) || "Error al eliminar categoría", { type: "danger" });
+                    }
+                } catch (e) {
+                    console.error("Error deleting category:", e);
+                    this.notification.add("Error de conexión al eliminar categoría", { type: "danger" });
+                }
+            }
+        });
     }
 
     async saveNewCategory() {

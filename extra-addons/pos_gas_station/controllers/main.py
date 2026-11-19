@@ -2589,16 +2589,30 @@ class PosGasStationController(http.Controller):
             if pid:
                 parent_cat = env['product.category'].sudo().browse(pid)
                 if not parent_cat.exists() or parent_cat.parent_id:
-                    return {'status': 'error', 'message': 'La categoría padre debe ser de primer nivel.'}
+                    return {'status': 'error', 'message': 'La categoría padre seleccionada debe ser de primer nivel.'}
                 if not clean_code:
                     clean_code = env['product.category'].get_next_child_code(pid)
                 elif len(clean_code) != 2 or not clean_code.isdigit():
-                    return {'status': 'error', 'message': 'El código de subfamilia debe tener exactamente 2 dígitos.'}
+                    return {'status': 'error', 'message': 'El código de subfamilia debe tener exactamente 2 dígitos numéricos (ej: 01, 11).'}
+
+                # Comprobar unicidad de código bajo este padre
+                domain = [('parent_id', '=', pid), ('code', '=', clean_code)]
+                if category_id:
+                    domain.append(('id', '!=', int(category_id)))
+                if env['product.category'].sudo().search(domain, limit=1):
+                    return {'status': 'error', 'message': f'Ya existe una subfamilia con el código "{clean_code}" en la categoría padre "{parent_cat.name}".'}
             else:
                 if not clean_code:
                     clean_code = env['product.category'].get_next_parent_code()
                 elif len(clean_code) != 1 or not clean_code.isdigit():
-                    return {'status': 'error', 'message': 'El código de categoría padre debe tener exactamente 1 dígito.'}
+                    return {'status': 'error', 'message': 'El código de categoría padre debe tener exactamente 1 dígito numérico (1-9).'}
+
+                # Comprobar unicidad de código entre padres
+                domain = [('parent_id', '=', False), ('code', '=', clean_code)]
+                if category_id:
+                    domain.append(('id', '!=', int(category_id)))
+                if env['product.category'].sudo().search(domain, limit=1):
+                    return {'status': 'error', 'message': f'Ya existe una categoría padre con el código "{clean_code}".'}
 
             vals = {
                 'name': clean_name,
@@ -2633,29 +2647,126 @@ class PosGasStationController(http.Controller):
             _logger.exception("Error al guardar categoría: %s", e)
             return {'status': 'error', 'message': str(e)}
 
-    @http.route('/pos_gas_station/get_categories_list', type='json', auth='user', methods=['POST'], csrf=False)
-    def get_categories_list(self, **kw):
-        """Retorna las categorías con su jerarquía, código y conteo de artículos."""
+    @http.route('/pos_gas_station/delete_category', type='json', auth='user', methods=['POST'], csrf=False)
+    def delete_category(self, category_id=None, **kw):
+        """Elimina una categoría si no tiene subfamilias ni artículos asociados."""
         try:
             env = request.env
-            cats = env['product.category'].sudo().search([], order='code asc, name asc')
-            data = []
-            for c in cats:
+            if not category_id:
+                return {'status': 'error', 'message': 'ID de categoría obligatorio.'}
+            cat = env['product.category'].sudo().browse(int(category_id))
+            if not cat.exists():
+                return {'status': 'error', 'message': 'Categoría no encontrada.'}
+
+            # 1. Comprobar si tiene subfamilias hijas
+            child_count = env['product.category'].sudo().search_count([('parent_id', '=', cat.id)])
+            if child_count > 0:
+                return {
+                    'status': 'error',
+                    'message': f'No se puede eliminar la categoría "{cat.name}" porque contiene {child_count} subfamilia(s) asociadas. Elimine o traslade primero sus subfamilias.'
+                }
+
+            # 2. Comprobar si tiene artículos asignados
+            prod_count = env['product.template'].sudo().search_count([('categ_id', '=', cat.id)])
+            if prod_count > 0:
+                return {
+                    'status': 'error',
+                    'message': f'No se puede eliminar la categoría "{cat.name}" porque tiene {prod_count} artículo(s) asignado(s). Reasigne primero los artículos a otra categoría.'
+                }
+
+            cat_name = cat.name
+            cat.sudo().unlink()
+            return {'status': 'success', 'message': f'Categoría "{cat_name}" eliminada correctamente.'}
+        except Exception as e:
+            _logger.exception("Error al eliminar categoría: %s", e)
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/get_next_category_code', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_next_category_code(self, parent_id=None, **kw):
+        """Devuelve el siguiente código sugerido según sea nivel padre o hijo."""
+        try:
+            env = request.env
+            if parent_id:
+                pid = int(parent_id)
+                next_code = env['product.category'].get_next_child_code(pid)
+                parent = env['product.category'].sudo().browse(pid)
+                p_code = getattr(parent, 'code', '') or ''
+                return {
+                    'status': 'success',
+                    'code': next_code,
+                    'parent_code': p_code,
+                    'full_code': f"{p_code}{next_code}",
+                }
+            else:
+                next_code = env['product.category'].get_next_parent_code()
+                return {
+                    'status': 'success',
+                    'code': next_code,
+                    'parent_code': '',
+                    'full_code': next_code,
+                }
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/pos_gas_station/get_categories_list', type='json', auth='user', methods=['POST'], csrf=False)
+    def get_categories_list(self, **kw):
+        """Retorna las categorías con su jerarquía estructurada en árbol y lista plana."""
+        try:
+            env = request.env
+            all_cats = env['product.category'].sudo().search([], order='code asc, name asc')
+
+            parents_dict = {}
+            children_by_parent = {}
+
+            for c in all_cats:
                 cnt = env['product.template'].sudo().search_count([('categ_id', '=', c.id)])
-                data.append({
+                c_code = getattr(c, 'code', '') or ''
+                c_full = getattr(c, 'full_code', '') or c_code
+
+                cat_data = {
                     'id': c.id,
                     'name': c.name,
+                    'code': c_code,
+                    'full_code': c_full,
                     'parent_id': c.parent_id.id if c.parent_id else False,
                     'parent_name': c.parent_id.name if c.parent_id else '',
-                    'code': getattr(c, 'code', '') or '',
-                    'full_code': getattr(c, 'full_code', '') or '',
                     'complete_name': c.complete_name,
                     'products_count': cnt,
-                })
-            return {'status': 'success', 'categories': data}
+                }
+
+                if not c.parent_id and c_code and len(c_code) == 1 and c_code.isdigit():
+                    cat_data['children'] = []
+                    cat_data['total_products_count'] = cnt
+                    parents_dict[c.id] = cat_data
+                elif c.parent_id:
+                    children_by_parent.setdefault(c.parent_id.id, []).append(cat_data)
+
+            tree = []
+            for pid, pdata in sorted(parents_dict.items(), key=lambda x: x[1]['code']):
+                p_children = children_by_parent.get(pid, [])
+                pdata['children'] = sorted(p_children, key=lambda ch: ch.get('code', ''))
+                pdata['total_products_count'] = pdata['products_count'] + sum(ch['products_count'] for ch in p_children)
+                pdata['children_count'] = len(p_children)
+                tree.append(pdata)
+
+            next_parent_code = env['product.category'].get_next_parent_code()
+
+            flat_list = []
+            for p in tree:
+                flat_list.append(p)
+                for ch in p['children']:
+                    flat_list.append(ch)
+
+            return {
+                'status': 'success',
+                'categories_tree': tree,
+                'categories': flat_list,
+                'all_parents': [{'id': p['id'], 'name': p['name'], 'code': p['code']} for p in tree],
+                'next_parent_code': next_parent_code,
+            }
         except Exception as e:
             _logger.exception("Error al obtener categorías: %s", e)
-            return {'status': 'error', 'message': str(e), 'categories': []}
+            return {'status': 'error', 'message': str(e), 'categories_tree': [], 'categories': []}
 
     @http.route('/pos_gas_station/adjust_tank_stock', type='json', auth='user', methods=['POST'], csrf=False)
     def adjust_tank_stock(self, location_id=None, new_liters=None, reason=None, **kw):
