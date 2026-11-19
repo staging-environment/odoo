@@ -387,6 +387,7 @@ export class UtrecarMainScreen extends Component {
             clientSortField: "name",
             storeSearch: "",
             storeTarget: null,
+            audioLocked: false,
                         isShiftOrdersModalOpen: false,
             shiftOrdersLoading: false,
             isStationsModalOpen: false,
@@ -535,6 +536,11 @@ export class UtrecarMainScreen extends Component {
         this.lastTrackedOrderId = null;
 
         onMounted(() => {
+            // El navegador bloquea el audio tras recargar hasta que se toca la pantalla: desbloquearlo al primer toque
+            this.unlockPumpAudio = () => this.ensurePumpAudio(true);
+            window.addEventListener("pointerdown", this.unlockPumpAudio, true);
+            window.addEventListener("keydown", this.unlockPumpAudio, true);
+            this.ensurePumpAudio(false);
             this.loadPendingSalesFromServer();
             this.fetchPumpsStatus();
             this.pollInterval = setInterval(() => {
@@ -584,6 +590,10 @@ export class UtrecarMainScreen extends Component {
             }
             window.removeEventListener("keydown", this.onGlobalKeyDown);
             window.removeEventListener("click", this.onGlobalClick);
+            if (this.unlockPumpAudio) {
+                window.removeEventListener("pointerdown", this.unlockPumpAudio, true);
+                window.removeEventListener("keydown", this.unlockPumpAudio, true);
+            }
         });
     }
 
@@ -1611,16 +1621,39 @@ export class UtrecarMainScreen extends Component {
         this.state.storeSearch = "";
     }
 
-    playFuelSound(type = "tick") {
+    ensurePumpAudio(fromGesture = false) {
         try {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (!AudioCtx) return;
+            if (!AudioCtx) return null;
             if (!this.audioCtx) {
                 this.audioCtx = new AudioCtx();
+                this.audioCtx.onstatechange = () => {
+                    this.state.audioLocked = this.audioCtx.state !== "running";
+                };
             }
             if (this.audioCtx.state === "suspended") {
-                this.audioCtx.resume();
+                this.audioCtx.resume().then(() => {
+                    this.state.audioLocked = this.audioCtx.state !== "running";
+                }).catch(() => {});
             }
+            this.state.audioLocked = this.audioCtx.state !== "running";
+            if (fromGesture && this.audioCtx.state === "running") {
+                // Un tono inaudible deja el audio "activado" para el resto de la sesión
+                const o = this.audioCtx.createOscillator();
+                const g = this.audioCtx.createGain();
+                g.gain.value = 0.00001;
+                o.connect(g); g.connect(this.audioCtx.destination);
+                o.start(); o.stop(this.audioCtx.currentTime + 0.02);
+            }
+            return this.audioCtx;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    playFuelSound(type = "tick") {
+        try {
+            if (!this.ensurePumpAudio(false)) return;
             const now = this.audioCtx.currentTime;
             const ctx = this.audioCtx;
             const tone = (freq, start, dur, vol, wave) => {
