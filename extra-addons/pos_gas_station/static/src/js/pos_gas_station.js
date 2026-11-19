@@ -1673,13 +1673,14 @@ export class UtrecarMainScreen extends Component {
                     let anyUnauthorizedUnhooked = false;
 
                     data.pumps.forEach(p => {
-                        p.amount = Number(p.amount || 0);
+                        try {
+                            p.amount = Number(p.amount || 0);
                         p.liters = Number(p.liters || 0);
 
                         const isUnhookedNow = this.isNozzleUnhooked(p);
                         const wasUnhookedPrev = Boolean(this.prevPumpsUnhooked[p.id]);
 
-                        const presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
+                        let presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
 
                         // ¿Tiene la pista autorización o prefijado activo?
                         const isAuthorizedOrPreset = Boolean(
@@ -1897,11 +1898,15 @@ export class UtrecarMainScreen extends Component {
                                 p.statusText = this.pos.pendingSales[p.id].length === 1 ? "COBRAR" : `COBROS (${this.pos.pendingSales[p.id].length})`;
                             }
                         }
+                        } catch (pumpErr) {
+                            console.error("Error procesando estado de surtidor", p.id, pumpErr);
+                        }
                     });
 
                     // Sincronizar estado visual de cada surtidor según sus monedas pendientes
                     data.pumps.forEach(p => {
-                        const pCount = (this.pos && this.pos.pendingSales && this.pos.pendingSales[p.id]) ? this.pos.pendingSales[p.id].length : 0;
+                        try {
+                            const pCount = (this.pos && this.pos.pendingSales && this.pos.pendingSales[p.id]) ? this.pos.pendingSales[p.id].length : 0;
                         if (pCount > 0 && p.status !== "dispensing") {
                             p.status = "ready";
                             const hasRefund = this.pos.pendingSales[p.id].some(s => s.isPrepayRefund);
@@ -1914,6 +1919,9 @@ export class UtrecarMainScreen extends Component {
                         } else if (pCount === 0 && p.status !== "dispensing" && p.status !== "atendido") {
                             p.status = "blocked";
                             p.statusText = "PREPAGO";
+                        }
+                        } catch (syncErr) {
+                            console.error("Error sincronizando surtidor", p.id, syncErr);
                         }
                     });
 
