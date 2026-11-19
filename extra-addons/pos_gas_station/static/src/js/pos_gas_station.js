@@ -1620,31 +1620,29 @@ export class UtrecarMainScreen extends Component {
                 this.audioCtx.resume();
             }
             const now = this.audioCtx.currentTime;
-            const osc = this.audioCtx.createOscillator();
-            const gain = this.audioCtx.createGain();
-
+            const ctx = this.audioCtx;
+            const tone = (freq, start, dur, vol, wave) => {
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.type = wave;
+                o.frequency.setValueAtTime(freq, now + start);
+                g.gain.setValueAtTime(0.0001, now + start);
+                g.gain.exponentialRampToValueAtTime(vol, now + start + 0.015);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+                o.connect(g);
+                g.connect(ctx.destination);
+                o.start(now + start);
+                o.stop(now + start + dur + 0.02);
+            };
             if (type === "start" || type === "unauthorized_unhook") {
-                // Doble bip suave y nítido al descolgar manguera sin autorizar ni prefijar
-                osc.type = "sine";
-                osc.frequency.setValueAtTime(659.25, now); // E5
-                osc.frequency.setValueAtTime(880.00, now + 0.10); // A5
-                gain.gain.setValueAtTime(0.18, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
-                osc.connect(gain);
-                gain.connect(this.audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + 0.32);
+                // Alarma: dos pitidos cortos y agudos (se repite cada segundo mientras siga descolgada)
+                tone(1046.5, 0.00, 0.12, 0.20, "square");
+                tone(1046.5, 0.18, 0.12, 0.20, "square");
             } else if (type === "done") {
-                // Ding agradable cuando se cuelga la manguera y finaliza el repostaje
-                osc.type = "sine";
-                osc.frequency.setValueAtTime(659.25, now); // E5
-                osc.frequency.setValueAtTime(880.00, now + 0.09); // A5
-                gain.gain.setValueAtTime(0.14, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-                osc.connect(gain);
-                gain.connect(this.audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + 0.35);
+                // Finalizado: arpegio ascendente suave Do-Mi-Sol
+                tone(523.25, 0.00, 0.35, 0.16, "sine");
+                tone(659.25, 0.12, 0.35, 0.16, "sine");
+                tone(783.99, 0.24, 0.55, 0.16, "sine");
             }
         } catch (e) {
             console.debug("Audio pista:", e);
@@ -1693,15 +1691,36 @@ export class UtrecarMainScreen extends Component {
                             (p.statusText || "").includes("LLENO")
                         );
 
-                        // REGLA SOLICITADA POR EL USUARIO:
-                        // El sonido SOLO debe sonar cuando un cliente descuelga una manguera de un surtidor
-                        // cuando NO está prefijado ni autorizado. NO debe sonar cuando está repostando.
-                        const isUnauthorizedUnhook = Boolean(isUnhookedNow && !isAuthorizedOrPreset);
-                        if (isUnauthorizedUnhook) {
-                            anyUnauthorizedUnhooked = true;
-                            if (!wasUnhookedPrev) {
-                                this.playFuelSound("unauthorized_unhook");
+                        // SONIDOS DE PISTA:
+                        // - Alarma intermitente SOLO mientras una manguera esté descolgada en una calle
+                        //   NO autorizada ni prefijada (nunca durante un repostaje autorizado).
+                        // - Al colgar la manguera, un único "ding" agradable de finalizado.
+                        // La autorización se "engancha" durante todo el descolgado para que el estado
+                        // de fin de venta (ready/blocked) no dispare la alarma al colgar, y el colgado
+                        // exige ~700 ms estables para ignorar parpadeos del microswitch.
+                        if (!this.hoseTrack) this.hoseTrack = {};
+                        const ht = this.hoseTrack[p.id] || (this.hoseTrack[p.id] = { unhooked: false, authorized: false, hookedSince: 0 });
+                        const tsNow = Date.now();
+                        const isAuthNow = isAuthorizedOrPreset || p.amount > 0.02 || p.liters > 0.02;
+                        if (isUnhookedNow) {
+                            ht.hookedSince = 0;
+                            if (!ht.unhooked) {
+                                ht.unhooked = true;
+                                ht.authorized = isAuthNow;
+                            } else if (isAuthNow) {
+                                ht.authorized = true;
                             }
+                        } else if (ht.unhooked) {
+                            if (!ht.hookedSince) ht.hookedSince = tsNow;
+                            if (tsNow - ht.hookedSince >= 700) {
+                                ht.unhooked = false;
+                                ht.authorized = false;
+                                ht.hookedSince = 0;
+                                this.playFuelSound("done");
+                            }
+                        }
+                        if (ht.unhooked && !ht.authorized) {
+                            anyUnauthorizedUnhooked = true;
                         }
 
                         this.prevPumpsUnhooked[p.id] = isUnhookedNow;
@@ -1928,7 +1947,7 @@ export class UtrecarMainScreen extends Component {
                     // Sonido periódico ÚNICAMENTE mientras haya alguna manguera descolgada NO autorizada ni prefijada
                     const nowTs = Date.now();
                     if (anyUnauthorizedUnhooked) {
-                        if (nowTs - (this.lastUnauthorizedSoundTime || 0) > 2200) {
+                        if (nowTs - (this.lastUnauthorizedSoundTime || 0) > 1000) {
                             this.lastUnauthorizedSoundTime = nowTs;
                             this.playFuelSound("unauthorized_unhook");
                         }
