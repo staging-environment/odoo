@@ -4342,7 +4342,30 @@ export class UtrecarMainScreen extends Component {
                 await this.checkoutPendingSale(sales[0]);
             }
         } else if (pump.status === "ready" || pump.amount > 0) {
-            await this.onPumpClick(pump);
+            // Consolidar venta como pendingSale en la monedita si no se había registrado aún
+            const fuelProd = (pump.product_id && this.pos.db.product_by_id[pump.product_id]) || this.findFuelProduct(pump.fuel || "GA");
+            const pendingSale = {
+                id: "sale_" + pump.id + "_" + Date.now(),
+                pumpId: pump.id,
+                timestamp: Date.now(),
+                timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                fuel: {
+                    name: (fuelProd && fuelProd.display_name) || pump.fuel || "Combustible",
+                    liters: pump.liters || 0,
+                    price: pump.price || (pump.liters > 0 ? (pump.amount / pump.liters) : 1.45),
+                    amount: pump.amount || 0,
+                    productId: fuelProd ? fuelProd.id : null,
+                    code: this.getPumpFuelCode(pump)
+                },
+                storeLines: [],
+                totalAmount: pump.amount || 0,
+                vehiclePlate: pump.vehiclePlate || ""
+            };
+            if (!this.pos.pendingSales) this.pos.pendingSales = {};
+            if (!this.pos.pendingSales[pump.id]) this.pos.pendingSales[pump.id] = [];
+            this.pos.pendingSales[pump.id].push(pendingSale);
+            this.savePendingSales();
+            await this.checkoutPendingSale(pendingSale);
         }
     }
 
@@ -4457,6 +4480,12 @@ export class UtrecarMainScreen extends Component {
     async checkoutPendingSale(sale) {
         this.closePendingSalesModal();
         let currentOrder = this.pos.get_order();
+
+        // Si la orden actual ya contiene cargado exactamente este cobro pendiente, no duplicar líneas
+        if (currentOrder && currentOrder.pending_sale_id === sale.id) {
+            return;
+        }
+
         const hasOtherFuel = currentOrder && currentOrder.get_orderlines && currentOrder.get_orderlines().some(l => this.isFuelProduct(l.product));
         if (!currentOrder || hasOtherFuel) {
             currentOrder = this.pos.add_new_order();
@@ -5024,34 +5053,19 @@ export class UtrecarMainScreen extends Component {
             return;
         }
 
-        // === CASO SUMINISTRO LIBRE CON COMBUSTIBLE SELECCIONADO (AUTORIZAR NUEVO REPOSTAJE) ===
+        // === CASO SUMINISTRO LIBRE CON COMBUSTIBLE SELECCIONADO EN PANTALLA ===
         if (this.state.selectedFuel) {
             await this.executeAuthorizePump(pump.id);
             this.state.selectedFuel = null;
             return;
         }
 
-        // 3. Si NO ha seleccionado combustible:
-        // Si la calle tiene cobros o sobrantes pendientes en la monedita:
-        const pendingCount = this.getPumpPendingSalesCount(pump);
-        if (pendingCount > 1) {
-            this.openPendingSalesModal(pump);
-            return;
-        } else if (pendingCount === 1) {
-            const sales = this.getPumpPendingSales(pump.id);
-            if (sales && sales.length > 0) {
-                await this.checkoutPendingSale(sales[0]);
-                return;
-            }
-        }
-
-        // Si ha finalizado repostaje en bomba directa: cobrar
-        if (pump.status === 'ready' || (pump.amount > 0 && pump.status !== 'dispensing')) {
-            await this.onPumpClick(pump);
-            return;
-        }
-
-        // 4. Si no tiene monedas y no ha seleccionado combustible -> Abrir modal para elegir combustible y autorizar
+        // === CASO SIN COMBUSTIBLE PREVIO: ABRIR MODAL PARA SELECCIONAR COMBUSTIBLE Y AUTORIZAR ===
+        // REGLA CRÍTICA DE OPERATIVA DE PISTA:
+        // Hacer clic en la tarjeta del surtidor NUNCA carga el ticket ni altera las monedas pendientes.
+        // El ticket para cobro se carga ÚNICAMENTE haciendo clic sobre la monedita dorada.
+        // Por tanto, pulsar sobre el surtidor abre SIEMPRE el modal de autorización para permitir
+        // autorizar a un nuevo cliente (incluso si la calle tiene 1 o varias monedas pendientes de cobro).
         this.openAuthorizeModal(pump);
     }
 
