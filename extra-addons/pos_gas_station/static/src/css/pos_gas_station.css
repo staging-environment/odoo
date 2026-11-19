@@ -8039,3 +8039,38 @@
 .opacity-100-hover:hover {
     opacity: 1 !important;
 }
+
+/* ==========================================================================
+   IMPORTE PREFIJADO GRANDE Y CENTRADO (aprovecha el hueco sobre los billetes)
+   ========================================================================== */
+.virtus-quadrant-keypad .virtus-numpad-header {
+    flex: 1 1 auto !important;
+    height: auto !important;
+    min-height: 64px !important;
+}
+.virtus-quadrant-keypad .lcd-value-display {
+    justify-content: center !important;
+    container-type: size;
+    min-height: 0 !important;
+}
+.virtus-quadrant-keypad .lcd-current {
+    font-size: 48px !important;
+    font-size: min(62cqh, 15cqw) !important;
+    line-height: 1 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-weight: 900 !important;
+    letter-spacing: 1px !important;
+    white-space: nowrap !important;
+}
+.virtus-quadrant-keypad .lcd-edit-icon {
+    position: absolute !important;
+    top: 6px !important;
+    right: 8px !important;
+    margin: 0 !important;
+    font-size: 16px !important;
+}
+.virtus-quadrant-keypad .virtus-keypad-matrix {
+    flex: 0 1 195px !important;
+    height: auto !important;
+    margin: 0 !important;
+}
