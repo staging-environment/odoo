@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import re
+import logging
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 class PosOrder(models.Model):
     _inherit = 'pos.order'
@@ -382,7 +385,30 @@ class PosOrder(models.Model):
         return name
 
     @api.model
+    @api.model
+    def _utrecar_fix_fuel_line_qty(self, ui_order):
+        """Corrige líneas de combustible con litros x1000 y precio /1000 (p. ej. 6897 L a 0,00145 €).
+
+        El total de la línea no cambia: se divide la cantidad entre 1000 y se multiplica el precio por 1000.
+        """
+        for l in ui_order.get('lines', []) or []:
+            vals = l[2] if isinstance(l, (list, tuple)) and len(l) == 3 and isinstance(l[2], dict) else None
+            if not vals:
+                continue
+            note = vals.get('customer_note') or ''
+            try:
+                qty = float(vals.get('qty') or 0.0)
+                price = float(vals.get('price_unit') or 0.0)
+            except (TypeError, ValueError):
+                continue
+            if 'Calle' in note and abs(qty) >= 100 and 0 < abs(price) < 0.01:
+                vals['qty'] = qty / 1000.0
+                vals['price_unit'] = price * 1000.0
+                _logger.warning("Utrecar: corregida línea de combustible x1000 (%s L -> %s L) en %s",
+                                qty, vals['qty'], ui_order.get('name'))
+
     def _order_fields(self, ui_order):
+        self._utrecar_fix_fuel_line_qty(ui_order)
         fields = super()._order_fields(ui_order)
         fields['is_albaran'] = ui_order.get('is_albaran', False)
         raw_plate = ui_order.get('vehicle_plate')

@@ -6,7 +6,7 @@ import { ProductScreen } from "@point_of_sale/app/screens/product_screen/product
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
 import { PaymentScreenStatus } from "@point_of_sale/app/screens/payment_screen/payment_status/payment_status";
 import { OrderReceipt } from "@point_of_sale/app/screens/receipt_screen/receipt/order_receipt";
-import { Order } from "@point_of_sale/app/store/models";
+import { Order, Orderline } from "@point_of_sale/app/store/models";
 import { PosStore } from "@point_of_sale/app/store/pos_store";
 import { patch } from "@web/core/utils/patch";
 import { usePos } from "@point_of_sale/app/store/pos_hook";
@@ -7091,4 +7091,23 @@ patch(PosStore.prototype, {
         const targetUrl = configId ? `/pos_gas_station/select_employee?station_id=${configId}` : '/pos_gas_station/select_employee';
         window.location.href = targetUrl;
     }
+});
+
+// ----------------------------------------------------------------------------
+// Litros de combustible: Odoo interpreta una cantidad en texto con el formato del idioma
+// (es_ES: "." = separador de miles), de modo que "6.897" L acababa como 6897 L.
+// En líneas de surtidor se lee siempre el punto como separador decimal.
+// ----------------------------------------------------------------------------
+patch(Orderline.prototype, {
+    set_quantity(quantity, keep_price) {
+        if (typeof quantity === "string" && (this.pump_id || this.fuel_display_price || this.target_total)) {
+            const txt = quantity.trim();
+            if (/^-?\d+\.\d+$/.test(txt)) {
+                quantity = parseFloat(txt);
+            } else if (/^-?\d+,\d+$/.test(txt)) {
+                quantity = parseFloat(txt.replace(",", "."));
+            }
+        }
+        return super.set_quantity(quantity, keep_price);
+    },
 });
