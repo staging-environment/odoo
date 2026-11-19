@@ -1714,10 +1714,15 @@ export class UtrecarMainScreen extends Component {
                         } else if (ht.unhooked) {
                             if (!ht.hookedSince) ht.hookedSince = tsNow;
                             if (tsNow - ht.hookedSince >= 700) {
+                                // El "ding" de finalizado SOLO tras colgar una manguera NO autorizada ni prepagada.
+                                // En calles autorizadas o prepagadas no suena nada.
+                                const wasUnauthorized = !ht.authorized;
                                 ht.unhooked = false;
                                 ht.authorized = false;
                                 ht.hookedSince = 0;
-                                this.playFuelSound("done");
+                                if (wasUnauthorized) {
+                                    this.playFuelSound("done");
+                                }
                             }
                         }
                         if (ht.unhooked && !ht.authorized) {
