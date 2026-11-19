@@ -390,10 +390,30 @@
                                 <div class="dispenser-head">
                                     <div class="lcd-header-line">
                                         <span class="f-code"><t t-esc="getPumpFuelCode(pump)"/></span>
-                                        <span class="f-liters"><t t-esc="pump.liters > 0 ? pump.liters.toFixed(2) + 'L' : '0.00L'"/></span>
+                                        <span class="f-liters">
+                                            <t t-if="pump.status === 'dispensing' &amp;&amp; pump.liters > 0">
+                                                <t t-esc="pump.liters.toFixed(2) + 'L'"/>
+                                            </t>
+                                            <t t-elif="getPumpPendingSalesCount(pump) === 1 &amp;&amp; getPumpPendingSales(pump.id)[0] &amp;&amp; getPumpPendingSales(pump.id)[0].fuel">
+                                                <t t-esc="(getPumpPendingSales(pump.id)[0].fuel.liters ? getPumpPendingSales(pump.id)[0].fuel.liters.toFixed(2) : '0.00') + 'L'"/>
+                                            </t>
+                                            <t t-elif="pump.liters > 0">
+                                                <t t-esc="pump.liters.toFixed(2) + 'L'"/>
+                                            </t>
+                                            <t t-else="">0.00L</t>
+                                        </span>
                                     </div>
                                     <div class="lcd-price-main">
-                                        <t t-if="pump.amount > 0">
+                                        <t t-if="pump.status === 'dispensing' &amp;&amp; pump.amount > 0">
+                                            <t t-esc="pump.amount.toFixed(2).replace('.', ',') + ' €'"/>
+                                        </t>
+                                        <t t-elif="getPumpPendingSalesCount(pump) === 1 &amp;&amp; getPumpPendingSales(pump.id)[0]">
+                                            <t t-esc="(getPumpPendingSales(pump.id)[0].totalAmount || (getPumpPendingSales(pump.id)[0].fuel ? getPumpPendingSales(pump.id)[0].fuel.amount : 0) || 0).toFixed(2).replace('.', ',') + ' €'"/>
+                                        </t>
+                                        <t t-elif="getPumpPendingSalesCount(pump) > 1">
+                                            <t t-esc="getPumpTotalPendingAmount(pump).toFixed(2).replace('.', ',') + ' €'"/>
+                                        </t>
+                                        <t t-elif="pump.amount > 0">
                                             <t t-esc="pump.amount.toFixed(2).replace('.', ',') + ' €'"/>
                                         </t>
                                         <t t-elif="getPumpPresetAmount(pump) > 0">
@@ -402,10 +422,7 @@
                                         <t t-else="">0,00 €</t>
                                     </div>
                                     <div class="lcd-black-strip">
-                                        <t t-if="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
-                                            FIN REPOSTAJE
-                                        </t>
-                                        <t t-elif="pump.status === 'dispensing'">
+                                        <t t-if="pump.status === 'dispensing'">
                                             <t t-if="getPumpPresetAmount(pump) > 0">
                                                 AUTORIZADO <t t-esc="getPumpPresetAmount(pump).toFixed(2).replace('.', ',')"/> €
                                             </t>
@@ -415,6 +432,15 @@
                                             <t t-else="">
                                                 AUTORIZADO (LLENO)
                                             </t>
+                                        </t>
+                                        <t t-elif="getPumpPendingSalesCount(pump) > 1">
+                                            COBROS PENDIENTES (<t t-esc="getPumpPendingSalesCount(pump)"/>)
+                                        </t>
+                                        <t t-elif="getPumpPendingSalesCount(pump) === 1">
+                                            COBRO PENDIENTE
+                                        </t>
+                                        <t t-elif="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
+                                            FIN REPOSTAJE
                                         </t>
                                         <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || state.trackMode === 'atendido'">
                                             LLENO (POSTPAGO)
@@ -430,15 +456,15 @@
 
                                 <!-- Cuerpo inferior: Cobrar si terminado, Suministro si echando, Autorizar para despacho -->
                                 <div class="dispenser-lower-body">
-                                    <t t-if="shouldShowPrepayCoin(pump) || pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
-                                        <div class="dispenser-padlock-panel ready-orange" title="Repostaje completado (Haga clic en la calle para cobrar)">
-                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
-                                        </div>
-                                    </t>
-                                    <t t-elif="(pump.status === 'dispensing' || (pump.status === 'atendido' &amp;&amp; (pump.statusText || '').includes('LLENO')) || pump.is_lleno) &amp;&amp; pump.status !== 'blocked' &amp;&amp; !(pump.statusText || '').includes('SIN PREFIJADO')">
+                                    <t t-if="pump.status === 'dispensing' || (pump.status === 'atendido' &amp;&amp; (pump.statusText || '').includes('LLENO')) || pump.is_lleno">
                                         <div class="dispenser-dispensing-panel">
                                             <span class="dispensing-anim">⛽</span>
                                             <strong>SUMINISTRO</strong>
+                                        </div>
+                                    </t>
+                                    <t t-elif="shouldShowPrepayCoin(pump) || pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
+                                        <div class="dispenser-padlock-panel ready-orange" title="Repostaje completado (Haga clic en la calle para cobrar o autorizar nueva venta)">
+                                            <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
                                         </div>
                                     </t>
                                     <t t-elif="pump.status === 'atendido' || pump.status === 'postpago' || (pump.status === 'idle' &amp;&amp; state.trackMode === 'atendido')">
@@ -1785,8 +1811,11 @@
                             </t>
                         </div>
 
-                        <div class="pending-modal-footer">
-                            <button class="btn-secondary" t-on-click="() => this.closePendingSalesModal()">Cerrar</button>
+                        <div class="pending-modal-footer d-flex align-items-center justify-content-between">
+                            <button class="btn btn-secondary" t-on-click="() => this.closePendingSalesModal()">Cerrar</button>
+                            <button class="btn btn-success fw-bold ms-auto" t-on-click="() => this.onAuthorizeNewSaleFromModal(state.pendingModalPump)">
+                                <i class="fa fa-plus-circle me-1"/> Autorizar Nuevo Repostaje en Calle <t t-esc="state.pendingModalPump ? state.pendingModalPump.id : ''"/>
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -1698,11 +1698,6 @@ export class UtrecarMainScreen extends Component {
                             this.playFuelSound("start");
                         }
 
-                        // 2. Manguera se cuelga tras haber estado descolgada -> Sonido agradable de fin de repostaje
-                        if (!isUnhookedNow && wasUnhookedPrev) {
-                            this.playFuelSound("done");
-                        }
-
                         if (isUnhookedNow) {
                             anyHoseUnhooked = true;
                         }
@@ -1803,64 +1798,94 @@ export class UtrecarMainScreen extends Component {
                             }
                         }
 
-                        // Si la calle finalizó repostaje ('ready' o con importe > 0 sin estar echando)
-                        // y tiene productos de tienda vinculados, pasarlos de inmediato a la monedita con el combustible
-                        if ((p.status === "ready" || (p.amount > 0 && p.status !== "dispensing")) && 
-                            this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[p.id] && this.pos.pumpPendingStoreItems[p.id].length > 0) {
-                            const storeItems = this.pos.pumpPendingStoreItems[p.id];
-                            delete this.pos.pumpPendingStoreItems[p.id];
-                            this.savePumpPendingStoreItems();
+                        // Si la calle finalizó repostaje (manguera colgada con 'ready' o importe > 0 sin estar suministrando)
+                        const isFuelingDone = !isUnhookedNow && (p.status === "ready" || (p.amount > 0 && p.status !== "dispensing")) && !p.has_prepay;
+                        if (isFuelingDone && (p.amount > 0 || p.liters > 0)) {
+                            if (!this.processedFuelingKeys) this.processedFuelingKeys = {};
+                            const fuelingKey = `${p.id}_${p.amount}_${p.liters}_${p.updated_at || ''}`;
+                            if (!this.processedFuelingKeys[fuelingKey]) {
+                                this.processedFuelingKeys[fuelingKey] = true;
 
-                            const fuelProd = (p.product_id && this.pos.db.product_by_id[p.product_id]) || this.findFuelProduct(p.fuel || "GA");
-                            const fuelInfo = {
-                                name: (fuelProd && fuelProd.display_name) || p.fuel || "Combustible",
-                                liters: p.liters || 0,
-                                price: p.price || (p.liters > 0 ? (p.amount / p.liters) : 1.45),
-                                amount: p.amount || 0,
-                                productId: fuelProd ? fuelProd.id : null
-                            };
-                            const storeTotal = storeItems.reduce((acc, it) => acc + (it.amount || (it.price * it.qty)), 0);
-                            const pendingPlate = (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[p.id]) || p.vehiclePlate || this.state.vehiclePlate || "";
-                            if (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[p.id]) {
-                                delete this.pos.pumpPendingPlates[p.id];
-                                this.savePumpPendingPlates();
+                                const storeItems = (this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[p.id]) || [];
+                                if (this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[p.id]) {
+                                    delete this.pos.pumpPendingStoreItems[p.id];
+                                    this.savePumpPendingStoreItems();
+                                }
+
+                                const fuelProd = (p.product_id && this.pos.db.product_by_id[p.product_id]) || this.findFuelProduct(p.fuel || "GA");
+                                const fuelInfo = {
+                                    name: (fuelProd && fuelProd.display_name) || p.fuel || "Combustible",
+                                    liters: p.liters || 0,
+                                    price: p.price || (p.liters > 0 ? (p.amount / p.liters) : 1.45),
+                                    amount: p.amount || 0,
+                                    productId: fuelProd ? fuelProd.id : null,
+                                    code: this.getPumpFuelCode(p)
+                                };
+                                const storeTotal = storeItems.reduce((acc, it) => acc + (it.amount || (it.price * it.qty)), 0);
+                                const pendingPlate = (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[p.id]) || p.vehiclePlate || this.state.vehiclePlate || "";
+                                if (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[p.id]) {
+                                    delete this.pos.pumpPendingPlates[p.id];
+                                    this.savePumpPendingPlates();
+                                }
+                                const pendingSale = {
+                                    id: "sale_" + p.id + "_" + Date.now(),
+                                    pumpId: p.id,
+                                    timestamp: Date.now(),
+                                    timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                    fuel: fuelInfo,
+                                    storeLines: storeItems,
+                                    totalAmount: (p.amount || 0) + storeTotal,
+                                    vehiclePlate: pendingPlate
+                                };
+                                if (!this.pos.pendingSales) this.pos.pendingSales = {};
+                                if (!this.pos.pendingSales[p.id]) this.pos.pendingSales[p.id] = [];
+                                this.pos.pendingSales[p.id].push(pendingSale);
+                                this.savePendingSales();
+
+                                // Liberar surtidor en pista para el siguiente vehículo y bloquear en hardware
+                                try {
+                                    jsonrpc("/pos_gas_station/clear_pump", {
+                                        config_id: this.configId,
+                                        pump_id: p.id
+                                    }).catch(e => console.debug("Liberar bomba tras pasar a monedita:", e));
+                                } catch (e) {}
+
+                                p.amount = 0;
+                                p.liters = 0;
+                                p.preset_amount = 0;
+                                p.has_prepay = false;
+                                p.is_lleno = false;
+                                p.status = "ready";
+                                p.statusText = this.pos.pendingSales[p.id].length === 1 ? "COBRAR" : `COBROS (${this.pos.pendingSales[p.id].length})`;
                             }
-                            const pendingSale = {
-                                id: "sale_" + p.id + "_" + Date.now(),
-                                pumpId: p.id,
-                                timestamp: Date.now(),
-                                timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                fuel: fuelInfo,
-                                storeLines: storeItems,
-                                totalAmount: (p.amount || 0) + storeTotal,
-                                vehiclePlate: pendingPlate
-                            };
-                            if (!this.pos.pendingSales) this.pos.pendingSales = {};
-                            if (!this.pos.pendingSales[p.id]) this.pos.pendingSales[p.id] = [];
-                            this.pos.pendingSales[p.id].push(pendingSale);
-                            this.savePendingSales();
-
-                            // Liberar surtidor en pista para el siguiente vehículo
-                            try {
-                                jsonrpc("/pos_gas_station/clear_pump", {
-                                    config_id: this.configId,
-                                    pump_id: p.id
-                                }).catch(e => console.debug("Liberar bomba tras pasar a monedita:", e));
-                            } catch (e) {}
-
-                            p.status = "atendido";
-                            p.statusText = "LLENO (LIBRE)";
-                            p.amount = 0;
-                            p.liters = 0;
                         }
                     });
 
-                    // Sonido periódico suave ÚNICA Y EXCLUSIVAMENTE mientras haya alguna manguera descolgada en alguna de las 8 calles
+                    // Sincronizar estado visual de cada surtidor según sus monedas pendientes
+                    data.pumps.forEach(p => {
+                        const pCount = (this.pos && this.pos.pendingSales && this.pos.pendingSales[p.id]) ? this.pos.pendingSales[p.id].length : 0;
+                        if (pCount > 0 && p.status !== "dispensing") {
+                            p.status = "ready";
+                            p.statusText = pCount === 1 ? "COBRAR" : `COBROS (${pCount})`;
+                        } else if (pCount === 0 && p.status !== "dispensing" && p.status !== "atendido") {
+                            p.status = "blocked";
+                            p.statusText = "PREPAGO";
+                        }
+                    });
+
+                    // Sonido continuo/periódico mientras haya alguna manguera descolgada en cualquier pista
                     const nowTs = Date.now();
-                    if (anyHoseUnhooked && (nowTs - (this.lastTickSoundTime || 0) > 2500)) {
-                        this.lastTickSoundTime = nowTs;
-                        this.playFuelSound("tick");
+                    const wasAnyUnhooked = Boolean(this.wasAnyHoseUnhookedGlobal);
+                    if (anyHoseUnhooked) {
+                        if (nowTs - (this.lastUnhookedSoundTime || 0) > 1300) {
+                            this.lastUnhookedSoundTime = nowTs;
+                            this.playFuelSound("tick");
+                        }
+                    } else if (wasAnyUnhooked && !anyHoseUnhooked) {
+                        // TODAS las mangueras han vuelto a colgarse -> emitir sonido final agradable
+                        this.playFuelSound("done");
                     }
+                    this.wasAnyHoseUnhookedGlobal = anyHoseUnhooked;
 
                     this.state.pumps = data.pumps;
                     const attendedCount = data.pumps.filter(p => p.status === "atendido" || p.status === "postpago").length;
@@ -4092,33 +4117,12 @@ export class UtrecarMainScreen extends Component {
             return true;
         }
 
-        // 1. En modo lleno postpago sin aparcar, solo cuando la manguera se cuelga (ready)
-        if (pump.status !== "ready") {
-            return false;
+        // Si está en 'ready' con saldo positivo pendiente
+        if (pump.status === "ready" && pump.amount > 0) {
+            return true;
         }
 
-        // 2. En modalidad prepago / prefijado activo no debe aparecer hasta que termine
-        if (pump.has_prepay) {
-            return false;
-        }
-        if (pump.preset_amount && pump.preset_amount > 0) {
-            return false;
-        }
-        const preset = (this.state.pumpPresets && this.state.pumpPresets[pump.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[pump.id]);
-        if (preset) {
-            if (preset.hasPrepay || (preset.amount > 0 && !preset.isLleno)) {
-                return false;
-            }
-        }
-
-        // 3. Debe tener importe positivo a cobrar en caja
-        if (!pump.amount || pump.amount <= 0) {
-            return false;
-        }
-
-        // 4. Solo en MODO LLENO / POSTPAGO
-        const isModoLleno = pump.is_lleno || Boolean(preset && preset.isLleno) || (!pump.has_prepay && !pump.preset_amount);
-        return Boolean(isModoLleno);
+        return false;
     }
 
     registerPrepayRefund(pump, presetInfo, finalAmt, finalLts) {
@@ -4304,6 +4308,12 @@ export class UtrecarMainScreen extends Component {
         return (this.pos.pendingSales && this.pos.pendingSales[pumpId]) ? this.pos.pendingSales[pumpId] : [];
     }
 
+    getPumpTotalPendingAmount(pump) {
+        if (!pump) return 0;
+        const sales = this.getPumpPendingSales(pump.id);
+        return sales.reduce((sum, s) => sum + (s.totalAmount || (s.fuel && s.fuel.amount) || 0), 0);
+    }
+
     hasPumpLineInCurrentOrder() {
         const order = this.pos.get_order();
         if (!order) return false;
@@ -4322,11 +4332,24 @@ export class UtrecarMainScreen extends Component {
         });
     }
 
-    onCoinBadgeClick(pump) {
-        if (this.getPumpPendingSalesCount(pump) > 0) {
+    async onCoinBadgeClick(pump) {
+        const count = this.getPumpPendingSalesCount(pump);
+        if (count > 1) {
             this.openPendingSalesModal(pump);
-        } else if (pump.status === "ready") {
-            this.onPumpCardClick(pump);
+        } else if (count === 1) {
+            const sales = this.getPumpPendingSales(pump.id);
+            if (sales && sales.length > 0) {
+                await this.checkoutPendingSale(sales[0]);
+            }
+        } else if (pump.status === "ready" || pump.amount > 0) {
+            await this.onPumpClick(pump);
+        }
+    }
+
+    onAuthorizeNewSaleFromModal(pump) {
+        this.closePendingSalesModal();
+        if (pump) {
+            this.openAuthorizeModal(pump);
         }
     }
 
@@ -4515,8 +4538,8 @@ export class UtrecarMainScreen extends Component {
                 currentOrder.remove_paymentline(pl);
             }
         }
-        // Redirigir de inmediato a la pantalla de cobro
-        this.pos.showScreen("PaymentScreen");
+        // Se refleja de inmediato en el ticket del TPV para cobro permaneciendo en la vista principal
+        this.state.orderVersion = Date.now();
     }
 
     async processRefundAction(sale, actionType) {
@@ -4776,6 +4799,22 @@ export class UtrecarMainScreen extends Component {
         }
 
         await this.resetAndLockPump(pumpId, true, true);
+
+        // REGLA USUARIO: Si ese surtidor tuviese alguna monedita pendiente previamente,
+        // la pista se cierra pero el color del surtidor debe quedar NARANJA con sus moneditas.
+        // Si ya no quedan monedas pendientes, es cuando debe quedar en ROJO.
+        const targetPump = this.state.pumps && this.state.pumps.find(p => p.id === pumpId);
+        if (targetPump) {
+            const pendingCount = this.getPumpPendingSalesCount(targetPump);
+            if (pendingCount > 0) {
+                targetPump.status = "ready";
+                targetPump.statusText = pendingCount === 1 ? "COBRAR" : `COBROS (${pendingCount})`;
+            } else {
+                targetPump.status = "blocked";
+                targetPump.statusText = "PREPAGO";
+            }
+        }
+
         this.state.orderVersion = Date.now();
     }
 
@@ -4943,25 +4982,13 @@ export class UtrecarMainScreen extends Component {
     async onPumpCardClick(pump) {
         this.state.selectedPumpId = pump.id;
 
-        // Si la calle tiene cobros o sobrantes pendientes en la monedita, abrir de inmediato la ventana
-        if (this.getPumpPendingSalesCount(pump) > 0) {
-            this.openPendingSalesModal(pump);
-            return;
-        }
-
-        // Si ha finalizado repostaje o tiene saldo por cobrar: cobrar
-        if (pump.status === 'ready' || (pump.amount > 0 && pump.status !== 'dispensing')) {
-            this.onPumpClick(pump);
-            return;
-        }
-        // Si está suministrando activamente o autorizada a Lleno/Postpago: abrir ventana de cancelación
-        if (pump.status === 'dispensing' || (pump.status === 'atendido' && (pump.statusText || '').includes('LLENO'))) {
+        // 1. Si está suministrando activamente o autorizada a Lleno/Postpago: abrir ventana de cancelación
+        if (this.isPumpDispensing(pump) || pump.status === 'dispensing' || (pump.statusText || '').includes('AUTORIZADO') || (pump.statusText || '').includes('SUMINISTRO')) {
             this.openCancelModal(pump);
             return;
         }
 
-        // El importe prefijado ÚNICAMENTE proviene del valor tecleado en el teclado numérico / billetes de pista.
-        // JAMÁS se toma como referencia el total del carrito ni productos del inventario/tienda.
+        // 2. El importe prefijado ÚNICAMENTE proviene del valor tecleado en el teclado numérico / billetes de pista.
         let presetVal = this.state.presetValue || 0;
         let fuelCode = this.state.selectedFuel;
 
@@ -4985,8 +5012,8 @@ export class UtrecarMainScreen extends Component {
                 return;
             }
 
-            if (pump.status === "dispensing" || pump.status === "ready" || pump.amount > 0 || pump.statusText === "AUTORIZADO") {
-                alert(`⚠️ La Calle ${pump.id} ya está ocupada (${pump.statusText}).\nDebe cobrarse o liberarse antes de una nueva autorización.`);
+            if (this.isPumpDispensing(pump) || pump.is_descolgada || (pump.status === "dispensing" && pump.liters > 0.05)) {
+                alert(`⚠️ La Calle ${pump.id} está suministrando activamente en pista.\nEspere a que el cliente cuelgue la manguera para una nueva autorización.`);
                 return;
             }
 
@@ -4997,18 +5024,35 @@ export class UtrecarMainScreen extends Component {
             return;
         }
 
-        // === CASO SUMINISTRO LIBRE / POSTPAGO / LLENO (presetVal === 0) ===
-        // Si el cajero no ha seleccionado combustible todavía, abrir la ventana modal para seleccionarlo
-        if (!this.state.selectedFuel) {
-            this.openAuthorizeModal(pump);
+        // === CASO SUMINISTRO LIBRE CON COMBUSTIBLE SELECCIONADO (AUTORIZAR NUEVO REPOSTAJE) ===
+        if (this.state.selectedFuel) {
+            await this.executeAuthorizePump(pump.id);
+            this.state.selectedFuel = null;
             return;
         }
 
-        // Si ya seleccionó el combustible, autorizar directamente la calle en pista:
-        // No salta la calculadora de pago, no se añade combustible ficticio a la orden,
-        // y los productos de tienda (ej. Coca-Cola) permanecen en el ticket hasta el cobro final.
-        await this.executeAuthorizePump(pump.id);
-        this.state.selectedFuel = null;
+        // 3. Si NO ha seleccionado combustible:
+        // Si la calle tiene cobros o sobrantes pendientes en la monedita:
+        const pendingCount = this.getPumpPendingSalesCount(pump);
+        if (pendingCount > 1) {
+            this.openPendingSalesModal(pump);
+            return;
+        } else if (pendingCount === 1) {
+            const sales = this.getPumpPendingSales(pump.id);
+            if (sales && sales.length > 0) {
+                await this.checkoutPendingSale(sales[0]);
+                return;
+            }
+        }
+
+        // Si ha finalizado repostaje en bomba directa: cobrar
+        if (pump.status === 'ready' || (pump.amount > 0 && pump.status !== 'dispensing')) {
+            await this.onPumpClick(pump);
+            return;
+        }
+
+        // 4. Si no tiene monedas y no ha seleccionado combustible -> Abrir modal para elegir combustible y autorizar
+        this.openAuthorizeModal(pump);
     }
 
     openAuthorizeModal(pump) {
@@ -5223,8 +5267,8 @@ export class UtrecarMainScreen extends Component {
         this.state.selectedPumpId = pumpId;
         const targetPump = this.state.pumps.find(p => p.id === pumpId);
 
-        if (targetPump && (targetPump.status === "dispensing" || targetPump.status === "ready" || targetPump.amount > 0 || targetPump.statusText === "AUTORIZADO")) {
-            alert(`⚠️ La Calle ${pumpId} ya está ocupada (${targetPump.statusText}).\nDebe cobrarse o liberarse antes de una nueva autorización.`);
+        if (targetPump && (this.isPumpDispensing(targetPump) || targetPump.is_descolgada || (targetPump.status === "dispensing" && targetPump.liters > 0.05))) {
+            alert(`⚠️ La Calle ${pumpId} está suministrando activamente en pista.\nEspere a que el cliente cuelgue la manguera para una nueva autorización.`);
             return;
         }
 
@@ -6596,6 +6640,19 @@ patch(PaymentScreen.prototype, {
                     try {
                         localStorage.setItem(`pos_gas_station_pending_sales_${this.pos.config.id}`, JSON.stringify(this.pos.pendingSales));
                     } catch (e) {}
+                }
+                const targetPump = this.state && this.state.pumps && this.state.pumps.find(p => String(p.id) === String(pid));
+                if (targetPump && targetPump.status !== "dispensing") {
+                    const remaining = (this.pos.pendingSales[pid] && this.pos.pendingSales[pid].length) || 0;
+                    if (remaining === 0) {
+                        targetPump.status = "blocked";
+                        targetPump.statusText = "PREPAGO";
+                        targetPump.amount = 0;
+                        targetPump.liters = 0;
+                    } else {
+                        targetPump.status = "ready";
+                        targetPump.statusText = remaining === 1 ? "COBRAR" : `COBROS (${remaining})`;
+                    }
                 }
             }
         }

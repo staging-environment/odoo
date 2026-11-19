@@ -7363,36 +7363,87 @@
 }
 
 /* ==========================================================================
-   ESTILOS DE SOBRANTE DE PREPAGO Y PRIORIDAD AMARILLA EN SURTIDOR
+   ESTILOS DE SOBRANTE DE PREPAGO Y PRIORIDAD DE COLORES EN SURTIDOR
    ========================================================================== */
 
-/* REGLA SUPREMA: SI EL SURTIDOR TIENE MONEDAS PENDIENTES, SIEMPRE ES AMARILLO AUNQUE LA PISTA ESTÉ CERRADA O BLOQUEADA */
-.aseproda-dispenser-box.has-uncollected-coin,
-.aseproda-dispenser-box.has-uncollected-coin.status-blocked,
-.aseproda-dispenser-box.has-uncollected-coin.status-prepago,
-.aseproda-dispenser-box.has-uncollected-coin.status-idle,
-.aseproda-dispenser-box.has-uncollected-coin.status-atendido {
+/* 1. REGLA SUPREMA: SI LA PISTA ESTÁ SUMINISTRANDO O AUTORIZADA (status-dispensing), SIEMPRE PREVALECE VERDE BRILLANTE */
+.aseproda-dispenser-box.status-dispensing,
+.aseproda-dispenser-box.status-dispensing.has-uncollected-coin,
+.aseproda-dispenser-box.status-dispensing.status-ready {
+    border: 3px solid #16a34a !important;
+    background: #f0fdf4 !important;
+    box-shadow: 0 0 16px rgba(22, 163, 74, 0.6) !important;
+}
+
+.aseproda-dispenser-box.status-dispensing .dispenser-corner-tab,
+.aseproda-dispenser-box.status-dispensing.has-uncollected-coin .dispenser-corner-tab,
+.aseproda-dispenser-box.status-dispensing.status-ready .dispenser-corner-tab {
+    background: #16a34a !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+}
+
+.aseproda-dispenser-box.status-dispensing .dispenser-lower-body,
+.aseproda-dispenser-box.status-dispensing.has-uncollected-coin .dispenser-lower-body,
+.aseproda-dispenser-box.status-dispensing.status-ready .dispenser-lower-body {
+    background: #16a34a !important;
+}
+
+/* 2. REGLA: SI TIENE MONEDAS PENDIENTES Y NO ESTÁ SUMINISTRANDO, SIEMPRE ES NARANJA CON PISTA CERRADA */
+.aseproda-dispenser-box.has-uncollected-coin:not(.status-dispensing),
+.aseproda-dispenser-box.has-uncollected-coin.status-blocked:not(.status-dispensing),
+.aseproda-dispenser-box.has-uncollected-coin.status-prepago:not(.status-dispensing),
+.aseproda-dispenser-box.has-uncollected-coin.status-idle:not(.status-dispensing),
+.aseproda-dispenser-box.has-uncollected-coin.status-atendido:not(.status-dispensing),
+.aseproda-dispenser-box.status-ready:not(.status-dispensing) {
     border: 3px solid #ca8a04 !important;
     background: #fefce8 !important;
     box-shadow: 0 0 16px rgba(234, 179, 8, 0.6) !important;
 }
 
-.aseproda-dispenser-box.has-uncollected-coin .dispenser-corner-tab,
-.aseproda-dispenser-box.has-uncollected-coin.status-blocked .dispenser-corner-tab,
-.aseproda-dispenser-box.has-uncollected-coin.status-prepago .dispenser-corner-tab {
+.aseproda-dispenser-box.has-uncollected-coin:not(.status-dispensing) .dispenser-corner-tab,
+.aseproda-dispenser-box.has-uncollected-coin.status-blocked:not(.status-dispensing) .dispenser-corner-tab,
+.aseproda-dispenser-box.has-uncollected-coin.status-prepago:not(.status-dispensing) .dispenser-corner-tab,
+.aseproda-dispenser-box.status-ready:not(.status-dispensing) .dispenser-corner-tab {
     background: #eab308 !important;
     color: #000000 !important;
     font-weight: 900 !important;
 }
 
-.aseproda-dispenser-box.has-uncollected-coin .dispenser-lower-body,
-.aseproda-dispenser-box.has-uncollected-coin.status-blocked .dispenser-lower-body,
-.aseproda-dispenser-box.has-uncollected-coin.status-prepago .dispenser-lower-body {
+.aseproda-dispenser-box.has-uncollected-coin:not(.status-dispensing) .dispenser-lower-body,
+.aseproda-dispenser-box.has-uncollected-coin.status-blocked:not(.status-dispensing) .dispenser-lower-body,
+.aseproda-dispenser-box.has-uncollected-coin.status-prepago:not(.status-dispensing) .dispenser-lower-body,
+.aseproda-dispenser-box.status-ready:not(.status-dispensing) .dispenser-lower-body {
     background: #eab308 !important;
 }
 
-.aseproda-dispenser-box.has-uncollected-coin .dispenser-padlock-panel {
+.aseproda-dispenser-box.has-uncollected-coin:not(.status-dispensing) .dispenser-padlock-panel,
+.aseproda-dispenser-box.status-ready:not(.status-dispensing) .dispenser-padlock-panel {
     background: #eab308 !important;
+}
+
+/* 3. REGLA: SI ESTÁ BLOQUEADA Y NO TIENE MONEDAS PENDIENTES, ES ROJO */
+.aseproda-dispenser-box.status-blocked:not(.has-uncollected-coin):not(.status-dispensing):not(.status-ready),
+.aseproda-dispenser-box.status-prepago:not(.has-uncollected-coin):not(.status-dispensing):not(.status-ready) {
+    border: 3px solid #dc2626 !important;
+    background: #fef2f2 !important;
+}
+
+.aseproda-dispenser-box.status-blocked:not(.has-uncollected-coin):not(.status-dispensing):not(.status-ready) .dispenser-corner-tab,
+.aseproda-dispenser-box.status-prepago:not(.has-uncollected-coin):not(.status-dispensing):not(.status-ready) .dispenser-corner-tab {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+}
+
+.aseproda-dispenser-box.status-blocked:not(.has-uncollected-coin):not(.status-dispensing):not(.status-ready) .dispenser-lower-body,
+.aseproda-dispenser-box.status-prepago:not(.has-uncollected-coin):not(.status-dispensing):not(.status-ready) .dispenser-lower-body {
+    background: #dc2626 !important;
+}
+
+.aseproda-dispenser-box.status-blocked:not(.has-uncollected-coin):not(.status-dispensing):not(.status-ready) .dispenser-padlock-panel,
+.aseproda-dispenser-box.status-prepago:not(.has-uncollected-coin):not(.status-dispensing):not(.status-ready) .dispenser-padlock-panel {
+    background: #dc2626 !important;
 }
 
 /* TARJETAS DE SOBRANTE DE PREPAGO EN EL MODAL DE MONEDITA */
