@@ -2578,7 +2578,7 @@ class PosGasStationController(http.Controller):
     def save_category(self, category_id=None, name=None, parent_id=None, code=None, **kw):
         """Crea o actualiza una categoría de producto jerárquica (1 dígito padre, 2 dígitos hija)."""
         try:
-            env = request.env
+            env = kw.get('env') if 'env' in kw else request.env
             if not name or not name.strip():
                 return {'status': 'error', 'message': 'El nombre de la categoría es obligatorio.'}
 
@@ -2651,7 +2651,7 @@ class PosGasStationController(http.Controller):
     def delete_category(self, category_id=None, **kw):
         """Elimina una categoría si no tiene subfamilias ni artículos asociados."""
         try:
-            env = request.env
+            env = kw.get('env') if 'env' in kw else request.env
             if not category_id:
                 return {'status': 'error', 'message': 'ID de categoría obligatorio.'}
             cat = env['product.category'].sudo().browse(int(category_id))
@@ -2685,7 +2685,7 @@ class PosGasStationController(http.Controller):
     def get_next_category_code(self, parent_id=None, **kw):
         """Devuelve el siguiente código sugerido según sea nivel padre o hijo."""
         try:
-            env = request.env
+            env = kw.get('env') if 'env' in kw else request.env
             if parent_id:
                 pid = int(parent_id)
                 next_code = env['product.category'].get_next_child_code(pid)
@@ -2712,7 +2712,7 @@ class PosGasStationController(http.Controller):
     def get_categories_list(self, **kw):
         """Retorna las categorías con su jerarquía estructurada en árbol y lista plana."""
         try:
-            env = request.env
+            env = kw.get('env') if 'env' in kw else request.env
             all_cats = env['product.category'].sudo().search([], order='code asc, name asc')
 
             parents_dict = {}
