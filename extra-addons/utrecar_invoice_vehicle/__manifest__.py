@@ -1,6 +1,6 @@
 {
     'name': 'Utrecar - Datos de Vehículo, Conductor, Envío Automático y Gestión Comercial',
-    'version': '17.0.1.4.0',
+    'version': '17.0.1.5.0',
     'category': 'Accounting/Accounting',
     'summary': 'Matrículas, kms, conductor, envío automático, gestión de crédito/contado y periodicidad de facturación',
     'description': """

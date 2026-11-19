@@ -67,5 +67,16 @@
                 </t>
             </t>
         </xpath>
+        <xpath expr="//div[@name='customer_code']" position="replace">
+            <t t-set="utrecar_cust_code" t-value="o.inv_snap_ref if o.inv_snap_set else o.partner_id.ref"/>
+            <div t-attf-class="#{'col-auto col-3 mw-100' if report_type != 'html' else 'col'} mb-2" t-if="utrecar_cust_code" name="customer_code">
+                <strong>Código de cliente:</strong><br/>
+                <span t-esc="utrecar_cust_code"/>
+            </div>
+        </xpath>
+        <xpath expr="//div[@name='shipping_address_block']/div" position="replace">
+            <div t-if="o.inv_snap_set and o.inv_snap_shipping" style="white-space: pre-line;" t-esc="o.inv_snap_shipping"/>
+            <div t-else="" t-field="o.partner_shipping_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+        </xpath>
     </template>
 </odoo>

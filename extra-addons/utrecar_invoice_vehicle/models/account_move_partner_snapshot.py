@@ -22,6 +22,9 @@ class AccountMovePartnerSnapshot(models.Model):
     inv_snap_city = fields.Char(string='Población (en factura)', copy=False, readonly=True)
     inv_snap_state = fields.Char(string='Provincia (en factura)', copy=False, readonly=True)
     inv_snap_country = fields.Char(string='País (en factura)', copy=False, readonly=True)
+    inv_snap_ref = fields.Char(string='Código cliente (en factura)', copy=False, readonly=True)
+    inv_snap_shipping = fields.Text(string='Dirección de envío (en factura)', copy=False, readonly=True)
+    inv_snap_version = fields.Integer(string='Versión de la captura', copy=False, readonly=True)
 
     def _utrecar_partner_snapshot_vals(self):
         self.ensure_one()
@@ -38,7 +41,21 @@ class AccountMovePartnerSnapshot(models.Model):
             'inv_snap_city': partner.city or '',
             'inv_snap_state': partner.state_id.name or '',
             'inv_snap_country': partner.country_id.name or '',
+            'inv_snap_ref': partner.ref or commercial.ref or '',
+            'inv_snap_shipping': self._utrecar_shipping_text(),
+            'inv_snap_version': 2,
         }
+
+    def _utrecar_shipping_text(self):
+        """Dirección de envío en texto, solo si es distinta del cliente facturado."""
+        self.ensure_one()
+        ship = self.partner_shipping_id
+        if not ship or ship == self.partner_id:
+            return ''
+        parts = [ship.display_name or '', ship.street or '', ship.street2 or '',
+                 ' '.join(x for x in [ship.zip or '', ship.city or ''] if x),
+                 ', '.join(x for x in [ship.state_id.name or '', ship.country_id.name or ''] if x)]
+        return '\n'.join(p for p in parts if p)
 
     def _utrecar_freeze_partner_data(self):
         for move in self:
@@ -70,3 +87,12 @@ class AccountMovePartnerSnapshot(models.Model):
         ])
         moves._utrecar_freeze_partner_data()
         _logger.info("Utrecar: datos fiscales de cliente congelados en %s facturas existentes", len(moves))
+        # v2: código de cliente y dirección de envío en facturas congeladas con la captura v1
+        v1 = self.sudo().search([('inv_snap_set', '=', True), '|', ('inv_snap_version', '=', False), ('inv_snap_version', '<', 2)])
+        for move in v1:
+            move.write({
+                'inv_snap_ref': move.partner_id.ref or move.partner_id.commercial_partner_id.ref or '',
+                'inv_snap_shipping': move._utrecar_shipping_text(),
+                'inv_snap_version': 2,
+            })
+        _logger.info("Utrecar: código de cliente y envío congelados en %s facturas (captura v2)", len(v1))
