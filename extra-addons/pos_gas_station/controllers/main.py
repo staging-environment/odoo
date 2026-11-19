@@ -4619,6 +4619,12 @@ class PosGasStationController(http.Controller):
 
     @http.route('/pos_gas_station/convert_to_albaran', type='json', auth='user', methods=['POST'], csrf=False)
     def convert_to_albaran(self, order_id, partner_id=None, vehicle_plate=None, vehicle_driver=None, **kw):
+        # Los empleados de pista nunca pueden pasar una venta a crédito desde el TPV (solo Administración)
+        if not request.env.user.has_group('base.group_system'):
+            return {
+                'status': 'error',
+                'message': 'No está permitido convertir tickets a albaranes de crédito desde el TPV. Gestiónelo desde la Administración de Odoo.'
+            }
         try:
             env = request.env
             order = env['pos.order'].sudo().browse(int(order_id))

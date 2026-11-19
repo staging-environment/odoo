@@ -18,4 +18,54 @@
             </div>
         </xpath>
     </template>
+
+    <!-- Datos fiscales del cliente congelados en el momento de emitir la factura -->
+    <template id="invoice_partner_snapshot_address">
+        <address class="mb-0">
+            <div><strong t-esc="o.inv_snap_name"/></div>
+            <div t-if="o.inv_snap_street" t-esc="o.inv_snap_street"/>
+            <div t-if="o.inv_snap_street2" t-esc="o.inv_snap_street2"/>
+            <div t-if="o.inv_snap_zip or o.inv_snap_city"><t t-esc="o.inv_snap_zip"/> <t t-esc="o.inv_snap_city"/></div>
+            <div t-if="o.inv_snap_state or o.inv_snap_country">
+                <t t-esc="o.inv_snap_state"/><t t-if="o.inv_snap_state and o.inv_snap_country">, </t><t t-esc="o.inv_snap_country"/>
+            </div>
+        </address>
+        <div t-if="o.inv_snap_vat">NIF/CIF: <span t-esc="o.inv_snap_vat"/></div>
+    </template>
+
+    <template id="report_invoice_document_partner_snapshot" inherit_id="account.report_invoice_document">
+        <xpath expr="//div[@name='address_not_same_as_shipping']/t[@t-set='address']" position="replace">
+            <t t-set="address">
+                <t t-if="o.inv_snap_set">
+                    <t t-call="utrecar_invoice_vehicle.invoice_partner_snapshot_address"/>
+                </t>
+                <t t-else="">
+                    <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                    <div t-if="o.partner_id.vat">NIF/CIF: <span t-field="o.partner_id.vat"/></div>
+                </t>
+            </t>
+        </xpath>
+        <xpath expr="//div[@name='address_same_as_shipping']/t[@t-set='address']" position="replace">
+            <t t-set="address">
+                <t t-if="o.inv_snap_set">
+                    <t t-call="utrecar_invoice_vehicle.invoice_partner_snapshot_address"/>
+                </t>
+                <t t-else="">
+                    <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                    <div t-if="o.partner_id.vat">NIF/CIF: <span t-field="o.partner_id.vat"/></div>
+                </t>
+            </t>
+        </xpath>
+        <xpath expr="//div[@name='no_shipping']/t[@t-set='address']" position="replace">
+            <t t-set="address">
+                <t t-if="o.inv_snap_set">
+                    <t t-call="utrecar_invoice_vehicle.invoice_partner_snapshot_address"/>
+                </t>
+                <t t-else="">
+                    <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                    <div t-if="o.partner_id.vat">NIF/CIF: <span t-field="o.partner_id.vat"/></div>
+                </t>
+            </t>
+        </xpath>
+    </template>
 </odoo>

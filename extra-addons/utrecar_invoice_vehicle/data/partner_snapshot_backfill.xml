@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Congela los datos fiscales del cliente en las facturas ya emitidas (solo las que aún no los tienen) -->
+    <function model="account.move" name="_utrecar_backfill_partner_snapshot"/>
+</odoo>

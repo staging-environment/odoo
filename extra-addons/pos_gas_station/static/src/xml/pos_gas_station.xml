@@ -2179,12 +2179,7 @@
                                             <i class="fa fa-file-text-o me-1"/> 📄 Generar Factura (NIF/CIF)
                                         </button>
                                     </t>
-                                    <!-- BOTÓN CONVERTIR EN ALBARÁN DE CRÉDITO (SOLO PARA CLIENTES PREVIAMENTE AUTORIZADOS CON CRÉDITO) -->
-                                    <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; !state.selectedShiftOrder.is_invoiced &amp;&amp; state.selectedShiftOrder.amount_total > 0">
-                                        <button class="btn-action-primary btn-action-convert-albaran" t-on-click="() => this.openConvertAlbaranModal(state.selectedShiftOrder)" style="background: #2563eb; border-color: #1d4ed8; color: white;">
-                                            <i class="fa fa-file-text me-1"/> 📋 Convertir a Albarán de Crédito
-                                        </button>
-                                    </t>
+                                    <!-- Conversión de tickets a crédito: NO permitida desde el TPV (solo desde Administración de Odoo) -->
                                     <t t-if="!state.selectedShiftOrder.is_ticket_annulled &amp;&amp; !state.selectedShiftOrder.has_annulment &amp;&amp; !state.selectedShiftOrder.is_invoiced &amp;&amp; state.selectedShiftOrder.amount_total > 0">
                                         <button class="btn-action-primary btn-action-annul" t-on-click="() => this.openAnnulOrderModal(state.selectedShiftOrder)">
                                             <i class="fa fa-ban me-1"/> ❌ Anular Ticket
@@ -4064,6 +4059,7 @@
                     <div t-if="props.data.partner.ref"><strong>CÓD. CLIENTE:</strong> <t t-esc="props.data.partner.ref"/></div>
                     <div t-if="props.data.partner.vat"><strong>CIF/NIF:</strong> <t t-esc="props.data.partner.vat"/></div>
                     <div t-if="props.data.partner.street"><strong>DIR:</strong> <t t-esc="props.data.partner.street"/></div>
+                    <div t-if="props.data.partner.zip or props.data.partner.city"><t t-esc="props.data.partner.zip"/> <t t-esc="props.data.partner.city"/></div>
                 </div>
             </t>
             <t t-elif="props.data.partner">
@@ -4072,6 +4068,7 @@
                     <div t-if="props.data.partner.ref"><strong>CÓD. CLIENTE:</strong> <t t-esc="props.data.partner.ref"/></div>
                     <div t-if="props.data.partner.vat"><strong>CIF/NIF:</strong> <t t-esc="props.data.partner.vat"/></div>
                     <div t-if="props.data.partner.street"><strong>DIR:</strong> <t t-esc="props.data.partner.street"/></div>
+                    <div t-if="props.data.partner.zip or props.data.partner.city"><t t-esc="props.data.partner.zip"/> <t t-esc="props.data.partner.city"/></div>
                 </div>
             </t>
         </xpath>

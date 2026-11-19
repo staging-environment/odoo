@@ -2913,7 +2913,7 @@ export class UtrecarMainScreen extends Component {
             <div style="margin-top: 6px; font-size: 11px; border: ${order.is_albaran ? '1px solid #000' : '1px dashed #bbb'}; padding: 6px; border-radius: 4px;">
                 <strong>${order.is_albaran ? 'CLIENTE DE CRÉDITO:' : 'CLIENTE:'}</strong> ${order.partner_name}<br/>
                 ${order.partner_vat ? `<strong>CIF/NIF:</strong> ${order.partner_vat}<br/>` : ''}
-                ${order.partner_street ? `${order.partner_street}, ${order.partner_city || ''}<br/>` : ''}
+                ${order.partner_street ? `${order.partner_street}, ${order.partner_zip ? order.partner_zip + " " : ""}${order.partner_city || ''}<br/>` : ''}
                 ${order.vehicle_plate ? `<strong>MATRÍCULA:</strong> ${order.vehicle_plate}<br/>` : ''}
                 ${order.vehicle_driver ? `<strong>CONDUCTOR / DNI:</strong> ${order.vehicle_driver}<br/>` : ''}
             </div>
@@ -6342,6 +6342,7 @@ patch(Order.prototype, {
                 ref: partner.ref || (partner.id ? `CLI-${partner.id}` : ''),
                 vat: partner.vat || '',
                 street: partner.street || '',
+                zip: partner.zip || '',
                 city: partner.city || '',
                 customer_type: partner.customer_type,
                 customer_payment_mode: partner.customer_payment_mode,
