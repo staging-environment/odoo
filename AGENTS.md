@@ -530,10 +530,14 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 - Protecciones: patch de `Orderline.set_quantity` (en líneas de surtidor el punto es decimal) y `pos.order._utrecar_fix_fuel_line_qty` en `_order_fields` (qty ≥ 100 y precio < 0,01 en líneas "Calle" → qty/1000, precio×1000; deja log WARNING).
 - Datos históricos corregidos en producción (19/11/2026, backup previo `~/odoo_pre_fix_litros_20261119.dump`): 30 líneas de ticket (16–19/11), 5 facturas (`FTTR202600012`–`016`) y 13 `stock.move`. Totales sin cambios (389,00 €).
 
-#### F. Facturas con datos del cliente congelados (`utrecar_invoice_vehicle` 17.0.1.4.0)
-- Campos `inv_snap_*` en `account.move` (nombre, NIF/CIF, dirección, C.P., población, provincia, país) capturados en `_post`; se recapturan si la factura vuelve a borrador.
-- El PDF (`account.report_invoice_document`) usa siempre la copia congelada → cambiar la ficha del cliente no altera facturas emitidas.
-- Backfill aplicado a 8.807 facturas existentes con los datos vigentes el 19/11/2026 (backup previo `~/odoo_pre_snapshot_20261119.dump`). Cambios de esquema → desplegar con `odoo -u utrecar_invoice_vehicle --stop-after-init` además del reinicio.
+#### F. Facturas con datos del cliente congelados (`utrecar_invoice_vehicle` 17.0.1.5.0)
+- **Regla de negocio:** los datos identificativos del cliente se recogen **en el momento de emitir** la factura y quedan asociados a ella para siempre. Si después cambia el domicilio (o cualquier dato) del cliente, las facturas ya emitidas no varían; las nuevas toman los datos vigentes en su emisión, y así sucesivamente.
+- Campos `inv_snap_*` en `account.move` capturados en `_post`: nombre, NIF/CIF (del contacto comercial), dirección, dirección 2, C.P., población, provincia, país, **código de cliente** (`inv_snap_ref`) y **dirección de envío** si difiere (`inv_snap_shipping`). `inv_snap_version = 2`. Se recapturan si la factura vuelve a borrador (`button_draft`).
+- El PDF (`account.report_invoice_document`) usa siempre la copia congelada para dirección, NIF, código de cliente y dirección de envío. Verificado con `ir.ui.view._get_combined_arch()` que no quedan más datos del cliente leídos en vivo.
+- Backfill aplicado a las 8.807 facturas existentes con los datos vigentes el 19/11/2026 (backups previos `~/odoo_pre_snapshot_20261119.dump` y `~/odoo_pre_snapshot_v2_20261119.dump`).
+- Prueba en producción con rollback: tras cambiar dirección y código del cliente de `FTTR202600016`, su PDF mantiene los datos antiguos y una factura nueva sale con los nuevos.
+- **Ojo en pruebas:** `action_post` envía la factura por email automáticamente al cliente (`invoice_delivery_method = email`). En pruebas desactivar el envío o usar facturas sin email.
+- Cambios de esquema → desplegar con `odoo -u utrecar_invoice_vehicle --stop-after-init` además del reinicio.
 
 #### G. Seguridad TPV y ticket
 - Retirado del historial el botón **"Convertir a Albarán de Crédito"** (lo había reintroducido el commit `3ca96f6`) y `/pos_gas_station/convert_to_albaran` rechaza a cualquier usuario no administrador. El crédito se gestiona solo desde la Administración de Odoo.
