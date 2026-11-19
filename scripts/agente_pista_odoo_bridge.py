@@ -638,32 +638,56 @@ class AgentePistaRepsol:
             logging.debug(f"Error procesando comandos de Odoo: {e}")
 
     def comprobar_simulacion_local(self):
-        sim_path = "C:\\Utrecar\\simular_venta.json"
-        if os.path.exists(sim_path):
+        import glob
+        sim_files = glob.glob(r"C:\Utrecar\simular_venta*.json")
+        for sim_path in sim_files:
             try:
-                with open(sim_path, "r") as f:
-                    data = json.load(f)
-                os.remove(sim_path)
-                calle = data.get("calle", 8)
-                litros = float(data.get("litros", 24.24))
-                importe = float(data.get("importe", 40.0))
-                precio = float(data.get("precio", 1.65))
-                prod = int(data.get("cod_producto", 2))
-                estado = data.get("estado", "ready")
-                logging.info(f"🧪 [SIMULACIÓN LOCAL] Recibida simulación para Calle {calle}: {estado} ({importe}€ / {litros}L)")
-                if estado == "dispensing":
-                    self._on_cambio_estado_socket(calle, True, False, False, litros, importe, prod)
-                elif estado == "unhook":
-                    self.pumps[calle - 1]["status"] = "dispensing"
-                    self.pumps[calle - 1]["statusText"] = "SUMINISTRO 0.00L"
-                    self.pumps[calle - 1]["amount"] = 0.0
-                    self.pumps[calle - 1]["liters"] = 0.0
-                    self.pumps[calle - 1]["fuel"] = "Sin Plomo 95"
-                    self._on_cambio_estado_socket(calle, False, False, False, 0.0, 0.0, prod)
-                else:
-                    self.marcar_calle_completada(calle, litros, importe, precio, prod)
+                with open(sim_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                try:
+                    os.remove(sim_path)
+                except Exception:
+                    pass
+                if not content.strip():
+                    continue
+                data_list = json.loads(content)
+                if not isinstance(data_list, list):
+                    data_list = [data_list]
+                for data in data_list:
+                    calle = data.get("calle", 8)
+                    litros = float(data.get("litros", 24.24))
+                    importe = float(data.get("importe", 40.0))
+                    precio = float(data.get("precio", 1.65))
+                    prod = int(data.get("cod_producto", 2))
+                    estado = data.get("estado", "ready")
+                    logging.info(f"🧪 [SIMULACIÓN LOCAL] Recibida simulación para Calle {calle}: {estado} ({importe}€ / {litros}L)")
+                    prod_info = MAPA_COMBUSTIBLES.get(str(prod), MAPA_COMBUSTIBLES["default"])
+                    if estado == "dispensing":
+                        self.pumps[calle - 1]["fuel"] = prod_info["name"]
+                        self.pumps[calle - 1]["product_id"] = prod_info["id"]
+                        self.pumps[calle - 1]["price"] = precio
+                        self._on_cambio_estado_socket(calle, True, False, False, litros, importe, prod)
+                    elif estado == "unhook":
+                        self.pumps[calle - 1]["status"] = "dispensing"
+                        self.pumps[calle - 1]["statusText"] = "SUMINISTRO 0.00L"
+                        self.pumps[calle - 1]["amount"] = 0.0
+                        self.pumps[calle - 1]["liters"] = 0.0
+                        self.pumps[calle - 1]["fuel"] = prod_info["name"]
+                        self.pumps[calle - 1]["product_id"] = prod_info["id"]
+                        self.pumps[calle - 1]["price"] = precio
+                        if "has_prepay" in data:
+                            self.pumps[calle - 1]["has_prepay"] = bool(data["has_prepay"])
+                        if "preset_amount" in data:
+                            self.pumps[calle - 1]["preset_amount"] = float(data["preset_amount"])
+                        self._on_cambio_estado_socket(calle, False, False, False, 0.0, 0.0, prod)
+                    else:
+                        if "has_prepay" in data:
+                            self.pumps[calle - 1]["has_prepay"] = bool(data["has_prepay"])
+                        if "preset_amount" in data:
+                            self.pumps[calle - 1]["preset_amount"] = float(data["preset_amount"])
+                        self.marcar_calle_completada(calle, litros, importe, precio, prod)
             except Exception as e:
-                logging.error(f"Error procesando simulación: {e}")
+                logging.error(f"Error procesando simulación ({sim_path}): {e}")
 
     def leer_liberaciones_de_odoo(self):
         self.comprobar_simulacion_local()
