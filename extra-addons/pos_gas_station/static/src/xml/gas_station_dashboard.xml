@@ -316,7 +316,7 @@
                                             <span class="mini-stat-lbl">Clientes</span>
                                         </div>
                                     </button>
-                                    <button type="button" class="company-mini-stat" t-on-click="() => this.setDetailTab('inventory')" title="Ver Inventario y Almacenes">
+                                    <button type="button" class="company-mini-stat" t-on-click="() => this.setDetailTab('stock')" title="Ver Inventario y Almacenes">
                                         <i class="fa fa-cubes text-warning"/>
                                         <div>
                                             <span class="mini-stat-val"><t t-esc="(state.companyDetailData and state.companyDetailData.inventory) ? state.companyDetailData.inventory.warehouses.length : 0"/></span>

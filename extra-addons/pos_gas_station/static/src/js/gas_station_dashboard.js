@@ -193,11 +193,35 @@ export class GasStationDashboard extends Component {
         });
 
         onMounted(() => {
-            this.loadDashboardData();
+            this.loadDashboardData(true);
         });
     }
 
-    async loadDashboardData() {
+    saveNavState() {
+        try {
+            const navState = {
+                viewMode: this.state.viewMode,
+                companyId: this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null,
+                stationId: this.state.selectedDetailStation ? this.state.selectedDetailStation.id : null,
+                detailTab: this.state.detailTab || "stations",
+                adminParamSection: this.state.adminParamSection || "menu",
+            };
+            window.sessionStorage.setItem("utrecar_dashboard_nav_state", JSON.stringify(navState));
+        } catch (e) {
+            // Ignorar errores de almacenamiento
+        }
+    }
+
+    getSavedNavState() {
+        try {
+            const raw = window.sessionStorage.getItem("utrecar_dashboard_nav_state");
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async loadDashboardData(restoreNav = false) {
         this.state.loading = true;
         try {
             const data = await jsonrpc("/pos_gas_station/dashboard_data", {});
@@ -211,6 +235,43 @@ export class GasStationDashboard extends Component {
                 this.state.stats = data.stats;
                 this.state.allAuthorizedCompanies = data.all_authorized_companies || [];
                 this.state.selectedCompanyId = data.selected_company_id;
+
+                if (restoreNav) {
+                    const saved = this.getSavedNavState();
+                    if (saved && saved.viewMode === "company_detail" && saved.companyId) {
+                        const matchedComp = (this.state.companies || []).find(c => c.id === saved.companyId);
+                        if (matchedComp) {
+                            await this.openCompanyDetail(
+                                matchedComp,
+                                saved.detailTab || "stations",
+                                saved.adminParamSection || "menu"
+                            );
+                        }
+                    } else if (saved && saved.viewMode === "station_detail" && saved.stationId) {
+                        let matchedStation = null;
+                        let matchedComp = null;
+                        for (const c of (this.state.companies || [])) {
+                            if (saved.companyId && c.id === saved.companyId) {
+                                matchedComp = c;
+                            }
+                            const st = (c.stations || []).find(s => s.id === saved.stationId);
+                            if (st) {
+                                matchedStation = st;
+                                if (!matchedComp) matchedComp = c;
+                                break;
+                            }
+                        }
+                        if (matchedStation) {
+                            if (matchedComp && saved.companyId) {
+                                this.state.selectedDetailCompany = matchedComp;
+                                this.state.detailTab = saved.detailTab || "stations";
+                                this.state.adminParamSection = saved.adminParamSection || "menu";
+                                this.loadCompanyDetailData(matchedComp.id);
+                            }
+                            this.openStationDetail(matchedStation);
+                        }
+                    }
+                }
             }
         } catch (e) {
             console.error("Error loading gas station dashboard:", e);
@@ -459,6 +520,7 @@ export class GasStationDashboard extends Component {
         this.state.editStationEmail = st.email || "";
         this.state.stationEditError = null;
         this.state.viewMode = "station_detail";
+        this.saveNavState();
     }
 
     backFromStationDetail() {
@@ -468,6 +530,7 @@ export class GasStationDashboard extends Component {
         } else {
             this.state.viewMode = "dashboard";
         }
+        this.saveNavState();
     }
 
     promptRenameStation(st) {
@@ -687,10 +750,11 @@ export class GasStationDashboard extends Component {
     }
 
     // ==================== PÁGINA DE DETALLE DE EMPRESA ====================
-    async openCompanyDetail(comp) {
+    async openCompanyDetail(comp, initialTab = "stations", initialAdminSection = "menu") {
         this.state.selectedDetailCompany = comp;
         this.state.viewMode = "company_detail";
-        this.state.detailTab = "stations";
+        this.state.detailTab = initialTab || "stations";
+        this.state.adminParamSection = initialAdminSection || "menu";
         this.state.customerSearchTerm = "";
         this.state.customerCodeSearchTerm = "";
         this.state.customerFilterType = "all";
@@ -704,7 +768,14 @@ export class GasStationDashboard extends Component {
         this.state.productTotalCount = 0;
         this.state.editingProductId = null;
         this.state.editingProductPrice = "";
+        this.saveNavState();
         await this.loadCompanyDetailData(comp.id);
+        if (this.state.detailTab === "admin_params") {
+            await Promise.all([
+                this.loadTaxTypes(),
+                this.loadCategoriesList()
+            ]);
+        }
     }
 
     async loadCompanyDetailData(companyId) {
@@ -743,12 +814,14 @@ export class GasStationDashboard extends Component {
         this.state.selectedDetailStation = null;
         this.state.companyDetailData = null;
         this.state.isAdminMenuOpen = false;
+        this.saveNavState();
         this.loadDashboardData();
     }
 
     setDetailTab(tab) {
         this.state.detailTab = tab;
         this.state.isAdminMenuOpen = false;
+        this.saveNavState();
     }
 
     toggleAdminMenu() {
@@ -760,15 +833,19 @@ export class GasStationDashboard extends Component {
         this.state.detailTab = optionTab;
         if (optionTab === "admin_params") {
             this.state.adminParamSection = "menu";
+            this.saveNavState();
             await Promise.all([
                 this.loadTaxTypes(),
                 this.loadCategoriesList()
             ]);
+        } else {
+            this.saveNavState();
         }
     }
 
     setAdminParamSection(section) {
         this.state.adminParamSection = section;
+        this.saveNavState();
         if (section === "taxes") {
             this.loadTaxTypes();
         } else if (section === "categories") {
