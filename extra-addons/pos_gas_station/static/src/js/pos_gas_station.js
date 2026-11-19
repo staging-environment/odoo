@@ -1707,7 +1707,6 @@ export class UtrecarMainScreen extends Component {
                         this.prevPumpsStatus[p.id] = p.status;
                         this.prevPumpsLiters[p.id] = p.liters;
 
-                        const presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
                         if (presetInfo && presetInfo.hasPrepay) {
                             // Rastrear el máximo suministrado en pista durante el repostaje
                             if (p.amount > 0) presetInfo.maxDispensedAmount = Math.max(presetInfo.maxDispensedAmount || 0, p.amount);
