@@ -1741,9 +1741,11 @@
                                                     <button type="button" class="btn btn-danger fw-bold text-white btn-refund-btn" t-on-click="() => this.anularYDescontarDeCaja(sale)" title="Anular el sobrante y descontar directamente de la caja registradora">
                                                         <i class="fa fa-money me-1"/> Anular y Descontar de Caja
                                                     </button>
-                                                    <button type="button" class="btn btn-warning fw-bold text-dark btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'albaran')" title="Generar albarán de crédito si es cliente de cuenta">
-                                                        <i class="fa fa-file-text-o me-1"/> Hacer Albarán
-                                                    </button>
+                                                    <t t-if="isCreditCustomerForSale(sale)">
+                                                        <button type="button" class="btn btn-warning fw-bold text-dark btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'albaran')" title="Generar albarán de crédito si es cliente de cuenta">
+                                                            <i class="fa fa-file-text-o me-1"/> Hacer Albarán
+                                                        </button>
+                                                    </t>
                                                     <button type="button" class="btn btn-info fw-bold text-white btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'factura')" title="Emitir factura a cliente con CIF/NIF">
                                                         <i class="fa fa-file-invoice me-1"/> Hacer Factura
                                                     </button>

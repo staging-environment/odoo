@@ -4345,6 +4345,15 @@ export class UtrecarMainScreen extends Component {
         return Boolean(this.pos && this.pos.pumpPendingStoreItems && this.pos.pumpPendingStoreItems[pumpId] && this.pos.pumpPendingStoreItems[pumpId].length > 0);
     }
 
+    isCreditCustomerForSale(sale) {
+        const partner = (sale && sale.partner) || this.currentOrderPartner;
+        if (!partner) return false;
+        if (partner.credit_blocked) return false;
+        if (partner.customer_type === 'credit') return true;
+        if (partner.customer_type === 'monthly') return false;
+        return Boolean(partner.customer_payment_mode === 'credit');
+    }
+
     hasPumpPendingRefund(pump) {
         if (!pump) return false;
         const sales = this.getPumpPendingSales(pump.id);
@@ -4863,6 +4872,10 @@ export class UtrecarMainScreen extends Component {
         } else if (actionType === 'albaran') {
             currentOrder.is_albaran = true;
             currentOrder.set_to_invoice(false);
+            const targetPartner = (sale && sale.partner) || this.currentOrderPartner;
+            if (targetPartner && !currentOrder.get_partner()) {
+                currentOrder.set_partner(targetPartner);
+            }
             this.pos.showScreen("PaymentScreen");
             if (!currentOrder.get_partner()) {
                 setTimeout(() => {
