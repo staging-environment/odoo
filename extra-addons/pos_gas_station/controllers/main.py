@@ -942,7 +942,13 @@ class PosGasStationController(http.Controller):
                 if hw_status == 'ready' or ov_age > timeout:
                     # Finalizó el repostaje en hardware o expiró
                     del overrides[pid]
+                elif ov.get('_started') and not hw_is_descolgada and hw_status in ('blocked', 'prepago', 'idle', 'atendido'):
+                    # Ya se descolgó/suministró y el agente ha devuelto la calle a reposo
+                    # (p. ej. prepago completado íntegramente -> PREPAGO): soltar la autorización
+                    del overrides[pid]
                 elif hw_is_descolgada or hw_status == 'dispensing' or hw_liters > 0.02 or hw_amount > 0.02:
+                    if hw_is_descolgada or hw_liters > 0.02 or hw_amount > 0.02:
+                        ov['_started'] = True
                     # El cliente ya está suministrando en vivo: usar telemetría viva pero preservar metadatos de autorización
                     pump['status'] = 'dispensing'
                     pump['statusText'] = f'SUMINISTRO {hw_liters:.2f}L' if hw_liters > 0 else 'SUMINISTRO'
