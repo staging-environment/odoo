@@ -1094,6 +1094,31 @@ class PosGasStationController(http.Controller):
 
         return {'status': 'cancelled', 'pump_id': pid}
 
+    @http.route('/pos_gas_station/pending_sales/get', type='json', auth='user', methods=['POST'], csrf=False)
+    def pending_sales_get(self, config_id=None, **kw):
+        """Devuelve las moneditas (cobros pendientes por calle) guardadas en servidor para el TPV."""
+        cfg = int(config_id or 7)
+        raw = request.env['ir.config_parameter'].sudo().get_param(f'pos_gas_station.pending_sales_{cfg}')
+        if not raw:
+            return {'exists': False, 'pending_sales': {}, 'saved_at': 0}
+        try:
+            data = json.loads(raw)
+        except Exception:
+            return {'exists': False, 'pending_sales': {}, 'saved_at': 0}
+        return {'exists': True, 'pending_sales': data.get('pending_sales') or {}, 'saved_at': data.get('saved_at') or 0}
+
+    @http.route('/pos_gas_station/pending_sales/set', type='json', auth='user', methods=['POST'], csrf=False)
+    def pending_sales_set(self, config_id=None, pending_sales=None, **kw):
+        """Persiste en servidor las moneditas para que no se pierdan al recargar o cambiar de navegador."""
+        cfg = int(config_id or 7)
+        payload = {
+            'pending_sales': pending_sales if isinstance(pending_sales, dict) else {},
+            'saved_at': int(time.time() * 1000),
+        }
+        request.env['ir.config_parameter'].sudo().set_param(
+            f'pos_gas_station.pending_sales_{cfg}', json.dumps(payload, ensure_ascii=False))
+        return {'status': 'success', 'saved_at': payload['saved_at']}
+
     @http.route('/pos_gas_station/clear_pump', type='json', auth='public', methods=['POST'], csrf=False, cors='*')
     def clear_pump(self, config_id=None, pump_id=None, **kw):
         cfg = int(config_id or 7)

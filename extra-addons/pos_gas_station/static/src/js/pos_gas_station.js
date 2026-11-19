@@ -534,6 +534,7 @@ export class UtrecarMainScreen extends Component {
         this.lastTrackedOrderId = null;
 
         onMounted(() => {
+            this.loadPendingSalesFromServer();
             this.fetchPumpsStatus();
             this.pollInterval = setInterval(() => {
                 this.fetchPumpsStatus();
@@ -4331,6 +4332,40 @@ export class UtrecarMainScreen extends Component {
         } catch (e) {
             console.debug("Error guardando pendingSales:", e);
         }
+        // Copia en servidor: las moneditas no pueden perderse al recargar el TPV o cambiar de navegador
+        if (!this.pendingSalesServerLoaded) return; // no pisar el servidor antes de haber leído su copia
+        jsonrpc("/pos_gas_station/pending_sales/set", {
+            config_id: this.configId,
+            pending_sales: this.pos.pendingSales || {},
+        }).catch(e => console.warn("No se pudieron guardar las moneditas en servidor:", e));
+    }
+
+    async loadPendingSalesFromServer() {
+        try {
+            const res = await jsonrpc("/pos_gas_station/pending_sales/get", { config_id: this.configId });
+            if (res && res.exists) {
+                const server = res.pending_sales || {};
+                const savedAt = Number(res.saved_at || 0);
+                const local = this.pos.pendingSales || {};
+                // Conservar operaciones locales creadas después de la última copia del servidor
+                for (const pid in local) {
+                    for (const sale of (local[pid] || [])) {
+                        const known = (server[pid] || []).some(s => s.id === sale.id);
+                        if (!known && Number(sale.timestamp || 0) > savedAt) {
+                            if (!server[pid]) server[pid] = [];
+                            server[pid].push(sale);
+                        }
+                    }
+                }
+                this.pos.pendingSales = server;
+            }
+            this.pendingSalesServerLoaded = true;
+            this.savePendingSales();
+        } catch (e) {
+            console.warn("No se pudieron cargar las moneditas del servidor:", e);
+            // Reintentar en el siguiente arranque; mientras tanto se usa la copia local
+            setTimeout(() => { if (!this.pendingSalesServerLoaded) this.loadPendingSalesFromServer(); }, 5000);
+        }
     }
 
     savePumpPresets() {
@@ -6873,6 +6908,10 @@ patch(PaymentScreen.prototype, {
                     try {
                         localStorage.setItem(`pos_gas_station_pending_sales_${this.pos.config.id}`, JSON.stringify(this.pos.pendingSales));
                     } catch (e) {}
+                    jsonrpc("/pos_gas_station/pending_sales/set", {
+                        config_id: this.pos.config.id,
+                        pending_sales: this.pos.pendingSales || {},
+                    }).catch(e => console.warn("No se pudieron guardar las moneditas en servidor:", e));
                 }
                 const targetPump = this.state && this.state.pumps && this.state.pumps.find(p => String(p.id) === String(pid));
                 if (targetPump && targetPump.status !== "dispensing") {
