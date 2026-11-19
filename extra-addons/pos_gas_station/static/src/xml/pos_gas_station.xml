@@ -1737,7 +1737,7 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Requirement 10: Botonera con las 4 únicas opciones permitidas -->
+                                                <!-- Botonera de resolución de sobrante -->
                                                 <div class="sale-card-footer refund-actions-footer">
                                                     <button type="button" class="btn btn-primary fw-bold btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'ticket')" title="Emitir ticket simplificado con el sobrante en negativo">
                                                         <i class="fa fa-print me-1"/> Hacer Ticket
@@ -1748,8 +1748,11 @@
                                                     <button type="button" class="btn btn-info fw-bold text-white btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'factura')" title="Emitir factura a cliente con CIF/NIF">
                                                         <i class="fa fa-file-invoice me-1"/> Hacer Factura
                                                     </button>
+                                                    <button type="button" class="btn btn-danger fw-bold text-white btn-refund-btn" t-on-click="() => this.dismissRefund(sale)" title="Anular y descartar el sobrante restante de la monedita">
+                                                        <i class="fa fa-trash me-1"/> Anular Sobrante
+                                                    </button>
                                                     <button type="button" class="btn btn-secondary fw-bold btn-refund-btn" t-on-click="() => this.closePendingSalesModal()" title="Mantener aparcado en la monedita sin emitir documento">
-                                                        <i class="fa fa-bookmark-o me-1"/> Guardar sin ticket
+                                                        <i class="fa fa-bookmark-o me-1"/> Guardar sin cobrar
                                                     </button>
                                                 </div>
                                             </div>

@@ -4333,16 +4333,9 @@ export class UtrecarMainScreen extends Component {
     }
 
     async onCoinBadgeClick(pump) {
+        // Consolidar venta como pendingSale en la monedita si no se había registrado aún
         const count = this.getPumpPendingSalesCount(pump);
-        if (count > 1) {
-            this.openPendingSalesModal(pump);
-        } else if (count === 1) {
-            const sales = this.getPumpPendingSales(pump.id);
-            if (sales && sales.length > 0) {
-                await this.checkoutPendingSale(sales[0]);
-            }
-        } else if (pump.status === "ready" || pump.amount > 0) {
-            // Consolidar venta como pendingSale en la monedita si no se había registrado aún
+        if (count === 0 && (pump.status === "ready" || pump.amount > 0)) {
             const fuelProd = (pump.product_id && this.pos.db.product_by_id[pump.product_id]) || this.findFuelProduct(pump.fuel || "GA");
             const pendingSale = {
                 id: "sale_" + pump.id + "_" + Date.now(),
@@ -4365,8 +4358,40 @@ export class UtrecarMainScreen extends Component {
             if (!this.pos.pendingSales[pump.id]) this.pos.pendingSales[pump.id] = [];
             this.pos.pendingSales[pump.id].push(pendingSale);
             this.savePendingSales();
-            await this.checkoutPendingSale(pendingSale);
         }
+
+        // REGLA CRÍTICA DE OPERATIVA:
+        // Aunque exista una sola monedita, SIEMPRE se abre la ventana flotante con las operaciones pendientes.
+        // NUNCA se carga automáticamente el ticket en la pantalla del TPV al pulsar la moneda para evitar borrados accidentales de líneas.
+        this.openPendingSalesModal(pump);
+    }
+
+    async dismissRefund(sale) {
+        if (!confirm(`¿Desea anular y cancelar este sobrante de ${sale.refundAmount.toFixed(2)} €?\nEsta operación se descartará y la monedita desaparecerá.`)) {
+            return;
+        }
+        const pid = sale.pumpId;
+        if (this.pos.pendingSales && this.pos.pendingSales[pid]) {
+            this.pos.pendingSales[pid] = this.pos.pendingSales[pid].filter(s => s.id !== sale.id);
+            if (this.pos.pendingSales[pid].length === 0) {
+                delete this.pos.pendingSales[pid];
+            }
+            this.savePendingSales();
+        }
+        const remaining = (this.pos.pendingSales && this.pos.pendingSales[pid] && this.pos.pendingSales[pid].length) || 0;
+        const targetPump = this.state && this.state.pumps && this.state.pumps.find(p => String(p.id) === String(pid));
+        if (targetPump && targetPump.status !== "dispensing") {
+            if (remaining === 0) {
+                targetPump.status = "blocked";
+                targetPump.statusText = "PREPAGO";
+                targetPump.amount = 0;
+                targetPump.liters = 0;
+            } else {
+                targetPump.status = "ready";
+                targetPump.statusText = remaining === 1 ? "COBRAR" : `COBROS (${remaining})`;
+            }
+        }
+        this.closePendingSalesModal();
     }
 
     onAuthorizeNewSaleFromModal(pump) {
