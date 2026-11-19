@@ -394,12 +394,6 @@
                                             <t t-if="pump.status === 'dispensing' &amp;&amp; pump.liters > 0">
                                                 <t t-esc="pump.liters.toFixed(2) + 'L'"/>
                                             </t>
-                                            <t t-elif="getPumpPendingSalesCount(pump) === 1 &amp;&amp; getPumpPendingSales(pump.id)[0] &amp;&amp; getPumpPendingSales(pump.id)[0].fuel">
-                                                <t t-esc="(getPumpPendingSales(pump.id)[0].fuel.liters ? getPumpPendingSales(pump.id)[0].fuel.liters.toFixed(2) : '0.00') + 'L'"/>
-                                            </t>
-                                            <t t-elif="pump.liters > 0">
-                                                <t t-esc="pump.liters.toFixed(2) + 'L'"/>
-                                            </t>
                                             <t t-else="">0.00L</t>
                                         </span>
                                     </div>
@@ -407,16 +401,10 @@
                                         <t t-if="pump.status === 'dispensing' &amp;&amp; pump.amount > 0">
                                             <t t-esc="pump.amount.toFixed(2).replace('.', ',') + ' €'"/>
                                         </t>
-                                        <t t-elif="getPumpPendingSalesCount(pump) === 1 &amp;&amp; getPumpPendingSales(pump.id)[0]">
-                                            <t t-esc="(getPumpPendingSales(pump.id)[0].totalAmount || (getPumpPendingSales(pump.id)[0].fuel ? getPumpPendingSales(pump.id)[0].fuel.amount : 0) || 0).toFixed(2).replace('.', ',') + ' €'"/>
+                                        <t t-elif="pump.status === 'dispensing' &amp;&amp; getPumpPresetAmount(pump) > 0">
+                                            <t t-esc="getPumpPresetAmount(pump).toFixed(2).replace('.', ',') + ' €'"/>
                                         </t>
-                                        <t t-elif="getPumpPendingSalesCount(pump) > 1">
-                                            <t t-esc="getPumpTotalPendingAmount(pump).toFixed(2).replace('.', ',') + ' €'"/>
-                                        </t>
-                                        <t t-elif="pump.amount > 0">
-                                            <t t-esc="pump.amount.toFixed(2).replace('.', ',') + ' €'"/>
-                                        </t>
-                                        <t t-elif="getPumpPresetAmount(pump) > 0">
+                                        <t t-elif="pump.status !== 'ready' &amp;&amp; getPumpPresetAmount(pump) > 0">
                                             <t t-esc="getPumpPresetAmount(pump).toFixed(2).replace('.', ',') + ' €'"/>
                                         </t>
                                         <t t-else="">0,00 €</t>

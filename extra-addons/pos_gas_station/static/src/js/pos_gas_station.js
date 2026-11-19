@@ -1623,27 +1623,17 @@ export class UtrecarMainScreen extends Component {
             const osc = this.audioCtx.createOscillator();
             const gain = this.audioCtx.createGain();
 
-            if (type === "start") {
-                // Doble bip suave y nítido al descolgar/iniciar repostaje
+            if (type === "start" || type === "unauthorized_unhook") {
+                // Doble bip suave y nítido al descolgar manguera sin autorizar ni prefijar
                 osc.type = "sine";
-                osc.frequency.setValueAtTime(587.33, now); // D5
-                osc.frequency.setValueAtTime(880.00, now + 0.08); // A5
-                gain.gain.setValueAtTime(0.12, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+                osc.frequency.setValueAtTime(659.25, now); // E5
+                osc.frequency.setValueAtTime(880.00, now + 0.10); // A5
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
                 osc.connect(gain);
                 gain.connect(this.audioCtx.destination);
                 osc.start(now);
-                osc.stop(now + 0.28);
-            } else if (type === "tick") {
-                // Pulso sutil de advertencia mientras fluye combustible en pista
-                osc.type = "sine";
-                osc.frequency.setValueAtTime(523.25, now); // C5
-                gain.gain.setValueAtTime(0.06, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-                osc.connect(gain);
-                gain.connect(this.audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + 0.12);
+                osc.stop(now + 0.32);
             } else if (type === "done") {
                 // Ding agradable cuando se cuelga la manguera y finaliza el repostaje
                 osc.type = "sine";
@@ -1680,31 +1670,42 @@ export class UtrecarMainScreen extends Component {
                     if (!this.prevPumpsStatus) this.prevPumpsStatus = {};
                     if (!this.prevPumpsLiters) this.prevPumpsLiters = {};
                     if (!this.prevPumpsUnhooked) this.prevPumpsUnhooked = {};
-                    let anyHoseUnhooked = false;
+                    let anyUnauthorizedUnhooked = false;
 
                     data.pumps.forEach(p => {
                         p.amount = Number(p.amount || 0);
                         p.liters = Number(p.liters || 0);
 
-                        const prevStatus = this.prevPumpsStatus[p.id] || "unknown";
-                        const curStatus = p.status;
-                        const curLts = p.liters;
-
                         const isUnhookedNow = this.isNozzleUnhooked(p);
                         const wasUnhookedPrev = Boolean(this.prevPumpsUnhooked[p.id]);
 
-                        // 1. Manguera se descuelga en este instante -> Sonido suave de inicio/descolgado
-                        if (isUnhookedNow && !wasUnhookedPrev) {
-                            this.playFuelSound("start");
-                        }
+                        const presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
 
-                        if (isUnhookedNow) {
-                            anyHoseUnhooked = true;
+                        // ¿Tiene la pista autorización o prefijado activo?
+                        const isAuthorizedOrPreset = Boolean(
+                            presetInfo ||
+                            p.has_prepay ||
+                            p.status === "atendido" ||
+                            p.status === "postpago" ||
+                            p.status === "dispensing" ||
+                            (p.statusText || "").includes("AUTORIZADO") ||
+                            (p.statusText || "").includes("LLENO")
+                        );
+
+                        // REGLA SOLICITADA POR EL USUARIO:
+                        // El sonido SOLO debe sonar cuando un cliente descuelga una manguera de un surtidor
+                        // cuando NO está prefijado ni autorizado. NO debe sonar cuando está repostando.
+                        const isUnauthorizedUnhook = Boolean(isUnhookedNow && !isAuthorizedOrPreset);
+                        if (isUnauthorizedUnhook) {
+                            anyUnauthorizedUnhooked = true;
+                            if (!wasUnhookedPrev) {
+                                this.playFuelSound("unauthorized_unhook");
+                            }
                         }
 
                         this.prevPumpsUnhooked[p.id] = isUnhookedNow;
-                        this.prevPumpsStatus[p.id] = curStatus;
-                        this.prevPumpsLiters[p.id] = curLts;
+                        this.prevPumpsStatus[p.id] = p.status;
+                        this.prevPumpsLiters[p.id] = p.liters;
 
                         const presetInfo = (this.state.pumpPresets && this.state.pumpPresets[p.id]) || (this.pos && this.pos.pumpPresets && this.pos.pumpPresets[p.id]);
                         if (presetInfo && presetInfo.hasPrepay) {
@@ -1873,19 +1874,14 @@ export class UtrecarMainScreen extends Component {
                         }
                     });
 
-                    // Sonido continuo/periódico mientras haya alguna manguera descolgada en cualquier pista
+                    // Sonido periódico ÚNICAMENTE mientras haya alguna manguera descolgada NO autorizada ni prefijada
                     const nowTs = Date.now();
-                    const wasAnyUnhooked = Boolean(this.wasAnyHoseUnhookedGlobal);
-                    if (anyHoseUnhooked) {
-                        if (nowTs - (this.lastUnhookedSoundTime || 0) > 1300) {
-                            this.lastUnhookedSoundTime = nowTs;
-                            this.playFuelSound("tick");
+                    if (anyUnauthorizedUnhooked) {
+                        if (nowTs - (this.lastUnauthorizedSoundTime || 0) > 2200) {
+                            this.lastUnauthorizedSoundTime = nowTs;
+                            this.playFuelSound("unauthorized_unhook");
                         }
-                    } else if (wasAnyUnhooked && !anyHoseUnhooked) {
-                        // TODAS las mangueras han vuelto a colgarse -> emitir sonido final agradable
-                        this.playFuelSound("done");
                     }
-                    this.wasAnyHoseUnhookedGlobal = anyHoseUnhooked;
 
                     this.state.pumps = data.pumps;
                     const attendedCount = data.pumps.filter(p => p.status === "atendido" || p.status === "postpago").length;
@@ -4750,10 +4746,6 @@ export class UtrecarMainScreen extends Component {
 
     isNozzleUnhooked(pump) {
         if (!pump) return false;
-        // Si está bloqueada, en reposo o ya lista para cobro con manguera colgada
-        if (pump.status === "blocked" || pump.status === "idle" || pump.status === "ready") {
-            return false;
-        }
         // Estado físico reportado directamente por el microswitch del surtidor (SDES)
         if (pump.is_descolgada === true) {
             return true;
@@ -4766,20 +4758,20 @@ export class UtrecarMainScreen extends Component {
     }
 
     isPumpDispensing(pump) {
-        return this.isNozzleUnhooked(pump);
+        if (!pump) return false;
+        return (pump.status === "dispensing" && (Number(pump.liters || 0) > 0.02 || (pump.statusText || "").includes("SUMINISTRO") || (pump.statusText || "").includes("AUTORIZADO") || (pump.statusText || "").includes("LLENO")));
     }
 
     getPumpPresetAmount(pump) {
         if (!pump) return 0;
-        // Si la pista está bloqueada o sin prefijado activo, el importe es estrictamente 0
-        if (pump.status === "blocked" || pump.status === "idle" || (pump.statusText || "").includes("SIN PREFIJADO")) {
+        // Si la pista está bloqueada, en reposo o con cobros pendientes, el importe en display es estrictamente 0
+        if (pump.status === "blocked" || pump.status === "idle" || pump.status === "ready" || (pump.statusText || "").includes("SIN PREFIJADO") || (pump.statusText || "").includes("COBROS")) {
             return 0;
         }
         if (pump.preset_amount && pump.preset_amount > 0) return pump.preset_amount;
         if (this.state.pumpPresets && this.state.pumpPresets[pump.id]) {
             return this.state.pumpPresets[pump.id].amount || 0;
         }
-        if (pump.amount && pump.amount > 0) return pump.amount;
         return 0;
     }
 
