@@ -7389,37 +7389,45 @@
     background: #16a34a !important;
 }
 
-/* 2. REGLA: SI TIENE MONEDAS PENDIENTES Y NO ESTÁ SUMINISTRANDO, SIEMPRE ES NARANJA CON PISTA CERRADA */
+/* 2. REGLA: SI TIENE MONEDAS PENDIENTES O ESTÁ EN READY / SOBRANTE, SIEMPRE ES NARANJA CON PISTA CERRADA */
 .aseproda-dispenser-box.has-uncollected-coin:not(.status-dispensing),
 .aseproda-dispenser-box.has-uncollected-coin.status-blocked:not(.status-dispensing),
 .aseproda-dispenser-box.has-uncollected-coin.status-prepago:not(.status-dispensing),
 .aseproda-dispenser-box.has-uncollected-coin.status-idle:not(.status-dispensing),
 .aseproda-dispenser-box.has-uncollected-coin.status-atendido:not(.status-dispensing),
 .aseproda-dispenser-box.status-ready:not(.status-dispensing) {
-    border: 3px solid #ca8a04 !important;
-    background: #fefce8 !important;
-    box-shadow: 0 0 16px rgba(234, 179, 8, 0.6) !important;
+    border: 3px solid #ea580c !important;
+    background: #fff7ed !important;
+    box-shadow: 0 0 16px rgba(234, 88, 12, 0.6) !important;
 }
 
 .aseproda-dispenser-box.has-uncollected-coin:not(.status-dispensing) .dispenser-corner-tab,
 .aseproda-dispenser-box.has-uncollected-coin.status-blocked:not(.status-dispensing) .dispenser-corner-tab,
 .aseproda-dispenser-box.has-uncollected-coin.status-prepago:not(.status-dispensing) .dispenser-corner-tab,
 .aseproda-dispenser-box.status-ready:not(.status-dispensing) .dispenser-corner-tab {
-    background: #eab308 !important;
-    color: #000000 !important;
+    background: #ea580c !important;
+    color: #ffffff !important;
     font-weight: 900 !important;
 }
 
 .aseproda-dispenser-box.has-uncollected-coin:not(.status-dispensing) .dispenser-lower-body,
 .aseproda-dispenser-box.has-uncollected-coin.status-blocked:not(.status-dispensing) .dispenser-lower-body,
 .aseproda-dispenser-box.has-uncollected-coin.status-prepago:not(.status-dispensing) .dispenser-lower-body,
-.aseproda-dispenser-box.status-ready:not(.status-dispensing) .dispenser-lower-body {
-    background: #eab308 !important;
+.aseproda-dispenser-box.status-ready:not(.status-dispensing) .dispenser-lower-body,
+.dispenser-padlock-panel.ready-orange {
+    background: #ea580c !important;
 }
 
 .aseproda-dispenser-box.has-uncollected-coin:not(.status-dispensing) .dispenser-padlock-panel,
-.aseproda-dispenser-box.status-ready:not(.status-dispensing) .dispenser-padlock-panel {
-    background: #eab308 !important;
+.aseproda-dispenser-box.status-ready:not(.status-dispensing) .dispenser-padlock-panel,
+.dispenser-padlock-panel.ready-orange {
+    background: #ea580c !important;
+}
+
+.aseproda-dispenser-box.has-uncollected-coin:not(.status-dispensing) .virtus-dial-lock,
+.aseproda-dispenser-box.status-ready:not(.status-dispensing) .virtus-dial-lock,
+.dispenser-padlock-panel.ready-orange .virtus-dial-lock {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4)) sepia(0.8) saturate(6) hue-rotate(-25deg) !important;
 }
 
 /* 3. REGLA: SI ESTÁ BLOQUEADA Y NO TIENE MONEDAS PENDIENTES, ES ROJO */

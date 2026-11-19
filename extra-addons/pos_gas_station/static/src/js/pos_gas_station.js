@@ -1707,6 +1707,44 @@ export class UtrecarMainScreen extends Component {
                         this.prevPumpsStatus[p.id] = p.status;
                         this.prevPumpsLiters[p.id] = p.liters;
 
+                        // Reconstrucción automática de preset si el servidor o hardware informa de un sobrante de prepago
+                        const isServerPrepayRefund = Boolean(
+                            (p.statusText && p.statusText.includes("SOBRANTE")) ||
+                            (p.preset_amount > 0 && p.amount > 0 && (p.preset_amount - p.amount) > 0.05 && (p.status === "ready" || p.status === "blocked" || p.has_prepay))
+                        );
+
+                        if (!presetInfo && isServerPrepayRefund) {
+                            let diffAmt = 0;
+                            if (p.preset_amount > p.amount && p.amount > 0) {
+                                diffAmt = Math.round((p.preset_amount - p.amount) * 100) / 100;
+                            } else if (p.statusText && p.statusText.includes("SOBRANTE")) {
+                                const m = p.statusText.match(/SOBRANTE\s*([\d\.,]+)/i);
+                                if (m) diffAmt = parseFloat(m[1].replace(',', '.'));
+                            }
+                            const presetVal = p.preset_amount > 0 ? p.preset_amount : (p.amount + diffAmt);
+                            const fuelProd = (p.product_id && this.pos.db && this.pos.db.product_by_id && this.pos.db.product_by_id[p.product_id]) || this.findFuelProduct(p.fuel || "95");
+                            const uPrice = p.price || (p.liters > 0 ? (p.amount / p.liters) : 1.55);
+                            presetInfo = {
+                                amount: presetVal,
+                                liters: uPrice > 0 ? Math.round((presetVal / uPrice) * 1000) / 1000 : (p.liters || 0),
+                                isMoney: true,
+                                hasPrepay: true,
+                                fuel: (fuelProd && fuelProd.display_name) || p.fuel || "Sin Plomo 95",
+                                code: this.getPumpFuelCode(p) || "95",
+                                unitPrice: uPrice,
+                                productId: fuelProd ? fuelProd.id : null,
+                                hasStartedDispensing: true,
+                                maxDispensedAmount: p.amount,
+                                maxDispensedLiters: p.liters
+                            };
+                            if (!this.state.pumpPresets) this.state.pumpPresets = {};
+                            this.state.pumpPresets[p.id] = presetInfo;
+                            if (this.pos) {
+                                if (!this.pos.pumpPresets) this.pos.pumpPresets = {};
+                                this.pos.pumpPresets[p.id] = presetInfo;
+                            }
+                        }
+
                         if (presetInfo && presetInfo.hasPrepay) {
                             // Rastrear el máximo suministrado en pista durante el repostaje
                             if (p.amount > 0) presetInfo.maxDispensedAmount = Math.max(presetInfo.maxDispensedAmount || 0, p.amount);
@@ -1866,7 +1904,13 @@ export class UtrecarMainScreen extends Component {
                         const pCount = (this.pos && this.pos.pendingSales && this.pos.pendingSales[p.id]) ? this.pos.pendingSales[p.id].length : 0;
                         if (pCount > 0 && p.status !== "dispensing") {
                             p.status = "ready";
-                            p.statusText = pCount === 1 ? "COBRAR" : `COBROS (${pCount})`;
+                            const hasRefund = this.pos.pendingSales[p.id].some(s => s.isPrepayRefund);
+                            if (hasRefund) {
+                                const refSale = this.pos.pendingSales[p.id].find(s => s.isPrepayRefund);
+                                p.statusText = `SOBRANTE ${Math.abs(refSale.refundAmount).toFixed(2)} €`;
+                            } else {
+                                p.statusText = pCount === 1 ? "COBRAR" : `COBROS (${pCount})`;
+                            }
                         } else if (pCount === 0 && p.status !== "dispensing" && p.status !== "atendido") {
                             p.status = "blocked";
                             p.statusText = "PREPAGO";
@@ -4107,6 +4151,11 @@ export class UtrecarMainScreen extends Component {
             return true;
         }
 
+        // Si la calle indica un sobrante en su texto de estado
+        if ((pump.statusText || "").includes("SOBRANTE")) {
+            return true;
+        }
+
         // Si la calle tiene productos de tienda vinculados a la espera de cobro, mostrar la monedita
         if (this.hasPumpPendingStoreItems(pump.id)) {
             return true;
@@ -4188,13 +4237,20 @@ export class UtrecarMainScreen extends Component {
         if (this.pos && this.pos.pumpPresets) delete this.pos.pumpPresets[pump.id];
         this.savePumpPresets();
 
-        // Liberar la bomba en backend
+        // Liberar y cerrar físicamente la bomba en backend
         try {
             jsonrpc("/pos_gas_station/clear_pump", {
                 config_id: this.configId,
                 pump_id: pump.id
             }).catch(e => console.debug("Liberar bomba tras sobrante:", e));
         } catch (e) {}
+
+        pump.status = "ready";
+        pump.statusText = `SOBRANTE ${diffAmt.toFixed(2)} €`;
+        pump.amount = 0;
+        pump.liters = 0;
+        pump.has_prepay = false;
+        pump.preset_amount = 0;
     }
 
 
@@ -4330,29 +4386,55 @@ export class UtrecarMainScreen extends Component {
     async onCoinBadgeClick(pump) {
         // Consolidar venta como pendingSale en la monedita si no se había registrado aún
         const count = this.getPumpPendingSalesCount(pump);
-        if (count === 0 && (pump.status === "ready" || pump.amount > 0)) {
-            const fuelProd = (pump.product_id && this.pos.db.product_by_id[pump.product_id]) || this.findFuelProduct(pump.fuel || "GA");
-            const pendingSale = {
-                id: "sale_" + pump.id + "_" + Date.now(),
-                pumpId: pump.id,
-                timestamp: Date.now(),
-                timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                fuel: {
-                    name: (fuelProd && fuelProd.display_name) || pump.fuel || "Combustible",
-                    liters: pump.liters || 0,
-                    price: pump.price || (pump.liters > 0 ? (pump.amount / pump.liters) : 1.45),
-                    amount: pump.amount || 0,
+        if (count === 0 && (pump.status === "ready" || pump.amount > 0 || (pump.statusText || "").includes("SOBRANTE"))) {
+            if ((pump.statusText || "").includes("SOBRANTE") || (pump.has_prepay && pump.preset_amount > pump.amount)) {
+                // Registrar como sobrante de prepago
+                let diff = (pump.preset_amount > pump.amount && pump.amount > 0) ? (pump.preset_amount - pump.amount) : 0;
+                if (!diff && (pump.statusText || "").includes("SOBRANTE")) {
+                    const m = pump.statusText.match(/SOBRANTE\s*([\d\.,]+)/i);
+                    if (m) diff = parseFloat(m[1].replace(',', '.'));
+                }
+                const presetVal = pump.preset_amount > 0 ? pump.preset_amount : (pump.amount + diff);
+                const fuelProd = (pump.product_id && this.pos.db && this.pos.db.product_by_id && this.pos.db.product_by_id[pump.product_id]) || this.findFuelProduct(pump.fuel || "95");
+                const uPrice = pump.price || (pump.liters > 0 ? (pump.amount / pump.liters) : 1.55);
+                const preset = {
+                    amount: presetVal,
+                    liters: uPrice > 0 ? Math.round((presetVal / uPrice) * 1000) / 1000 : (pump.liters || 0),
+                    isMoney: true,
+                    hasPrepay: true,
+                    fuel: (fuelProd && fuelProd.display_name) || pump.fuel || "Sin Plomo 95",
+                    code: this.getPumpFuelCode(pump) || "95",
+                    unitPrice: uPrice,
                     productId: fuelProd ? fuelProd.id : null,
-                    code: this.getPumpFuelCode(pump)
-                },
-                storeLines: [],
-                totalAmount: pump.amount || 0,
-                vehiclePlate: pump.vehiclePlate || ""
-            };
-            if (!this.pos.pendingSales) this.pos.pendingSales = {};
-            if (!this.pos.pendingSales[pump.id]) this.pos.pendingSales[pump.id] = [];
-            this.pos.pendingSales[pump.id].push(pendingSale);
-            this.savePendingSales();
+                    hasStartedDispensing: true,
+                    maxDispensedAmount: pump.amount,
+                    maxDispensedLiters: pump.liters
+                };
+                this.registerPrepayRefund(pump, preset, pump.amount, pump.liters);
+            } else {
+                const fuelProd = (pump.product_id && this.pos.db.product_by_id[pump.product_id]) || this.findFuelProduct(pump.fuel || "GA");
+                const pendingSale = {
+                    id: "sale_" + pump.id + "_" + Date.now(),
+                    pumpId: pump.id,
+                    timestamp: Date.now(),
+                    timeStr: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    fuel: {
+                        name: (fuelProd && fuelProd.display_name) || pump.fuel || "Combustible",
+                        liters: pump.liters || 0,
+                        price: pump.price || (pump.liters > 0 ? (pump.amount / pump.liters) : 1.45),
+                        amount: pump.amount || 0,
+                        productId: fuelProd ? fuelProd.id : null,
+                        code: this.getPumpFuelCode(pump)
+                    },
+                    storeLines: [],
+                    totalAmount: pump.amount || 0,
+                    vehiclePlate: pump.vehiclePlate || ""
+                };
+                if (!this.pos.pendingSales) this.pos.pendingSales = {};
+                if (!this.pos.pendingSales[pump.id]) this.pos.pendingSales[pump.id] = [];
+                this.pos.pendingSales[pump.id].push(pendingSale);
+                this.savePendingSales();
+            }
         }
 
         // REGLA CRÍTICA DE OPERATIVA:
@@ -4387,6 +4469,85 @@ export class UtrecarMainScreen extends Component {
             }
         }
         this.closePendingSalesModal();
+    }
+
+    async anularYDescontarDeCaja(sale) {
+        const refundAmt = Math.abs(sale.refundAmount || sale.totalAmount || 0);
+        if (!confirm(`¿Desea anular este sobrante de ${refundAmt.toFixed(2)} € y descontarlo directamente de la caja registradora como salida de efectivo?`)) {
+            return;
+        }
+
+        const pid = sale.pumpId;
+        const reason = `Devolución sobrante prepago Calle ${pid} (Prefijado: ${(sale.presetAmount || 0).toFixed(2)}€ - Repostado: ${(sale.dispensedAmount || 0).toFixed(2)}€)`;
+        const formattedAmount = `${refundAmt.toFixed(2)} €`;
+
+        try {
+            let recorded = false;
+            try {
+                const res = await this.env.services.rpc("/pos_gas_station/cash_move", {
+                    session_id: this.pos.pos_session?.id,
+                    amount: refundAmt,
+                    reason: reason,
+                    translated_type: "Salida",
+                    partner_id: sale.partner ? sale.partner.id : null,
+                });
+                if (res && res.status === "success") {
+                    recorded = true;
+                }
+            } catch (rpcErr) {
+                console.warn("Aviso en /pos_gas_station/cash_move para sobrante:", rpcErr);
+            }
+
+            if (!recorded && this.pos.pos_session?.id && this.orm) {
+                await this.orm.call("pos.session", "try_cash_in_out", [
+                    [this.pos.pos_session.id],
+                    "out",
+                    refundAmt,
+                    reason,
+                    {
+                        formattedAmount: formattedAmount,
+                        translatedType: "Salida",
+                    },
+                ]);
+            }
+        } catch (e) {
+            console.error("Error al registrar salida de caja para sobrante:", e);
+            alert(`⚠️ Error al descontar de caja: ${e.message || e}`);
+            return;
+        }
+
+        // Eliminar el sobrante de pendingSales
+        if (this.pos.pendingSales && this.pos.pendingSales[pid]) {
+            this.pos.pendingSales[pid] = this.pos.pendingSales[pid].filter(s => s.id !== sale.id);
+            if (this.pos.pendingSales[pid].length === 0) {
+                delete this.pos.pendingSales[pid];
+            }
+            this.savePendingSales();
+        }
+
+        const remaining = (this.pos.pendingSales && this.pos.pendingSales[pid] && this.pos.pendingSales[pid].length) || 0;
+        const targetPump = this.state && this.state.pumps && this.state.pumps.find(p => String(p.id) === String(pid));
+        if (targetPump && targetPump.status !== "dispensing") {
+            if (remaining === 0) {
+                targetPump.status = "blocked";
+                targetPump.statusText = "PREPAGO";
+                targetPump.amount = 0;
+                targetPump.liters = 0;
+            } else {
+                targetPump.status = "ready";
+                targetPump.statusText = remaining === 1 ? "COBRAR" : `COBROS (${remaining})`;
+            }
+        }
+
+        try {
+            jsonrpc("/pos_gas_station/clear_pump", {
+                config_id: this.configId,
+                pump_id: pid
+            }).catch(e => console.debug("Liberar bomba tras anular sobrante:", e));
+        } catch (e) {}
+
+        this.closePendingSalesModal();
+        alert(`✅ Sobrante de ${formattedAmount} anulado correctamente y descontado de la caja.`);
     }
 
     onAuthorizeNewSaleFromModal(pump) {

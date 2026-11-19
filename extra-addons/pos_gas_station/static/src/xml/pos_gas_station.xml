@@ -421,11 +421,19 @@
                                                 AUTORIZADO (LLENO)
                                             </t>
                                         </t>
+                                        <t t-elif="(pump.statusText || '').includes('SOBRANTE')">
+                                            <t t-esc="pump.statusText"/>
+                                        </t>
                                         <t t-elif="getPumpPendingSalesCount(pump) > 1">
                                             COBROS PENDIENTES (<t t-esc="getPumpPendingSalesCount(pump)"/>)
                                         </t>
                                         <t t-elif="getPumpPendingSalesCount(pump) === 1">
-                                            COBRO PENDIENTE
+                                            <t t-if="hasPumpPendingRefund(pump)">
+                                                SOBRANTE PENDIENTE
+                                            </t>
+                                            <t t-else="">
+                                                COBRO PENDIENTE
+                                            </t>
                                         </t>
                                         <t t-elif="pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
                                             FIN REPOSTAJE
@@ -450,8 +458,8 @@
                                             <strong>SUMINISTRO</strong>
                                         </div>
                                     </t>
-                                    <t t-elif="shouldShowPrepayCoin(pump) || pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing')">
-                                        <div class="dispenser-padlock-panel ready-orange" title="Repostaje completado (Haga clic en la calle para cobrar o autorizar nueva venta)">
+                                    <t t-elif="shouldShowPrepayCoin(pump) || pump.status === 'ready' || (pump.amount > 0 &amp;&amp; pump.status !== 'dispensing') || (pump.statusText || '').includes('SOBRANTE')">
+                                        <div class="dispenser-padlock-panel ready-orange" title="Repostaje completado o sobrante pendiente de devolución">
                                             <img src="/pos_gas_station/static/src/img/lock_virtus_combination.svg" class="virtus-dial-lock" alt="🔒" />
                                         </div>
                                     </t>
@@ -1727,17 +1735,17 @@
 
                                                 <!-- Botonera de resolución de sobrante -->
                                                 <div class="sale-card-footer refund-actions-footer">
-                                                    <button type="button" class="btn btn-primary fw-bold btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'ticket')" title="Emitir ticket simplificado con el sobrante en negativo">
-                                                        <i class="fa fa-print me-1"/> Hacer Ticket
+                                                    <button type="button" class="btn btn-primary fw-bold btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'ticket')" title="Emitir ticket simplificado de devolución con el sobrante en negativo y descontar de caja">
+                                                        <i class="fa fa-print me-1"/> Hacer Ticket Devolución
+                                                    </button>
+                                                    <button type="button" class="btn btn-danger fw-bold text-white btn-refund-btn" t-on-click="() => this.anularYDescontarDeCaja(sale)" title="Anular el sobrante y descontar directamente de la caja registradora">
+                                                        <i class="fa fa-money me-1"/> Anular y Descontar de Caja
                                                     </button>
                                                     <button type="button" class="btn btn-warning fw-bold text-dark btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'albaran')" title="Generar albarán de crédito si es cliente de cuenta">
                                                         <i class="fa fa-file-text-o me-1"/> Hacer Albarán
                                                     </button>
                                                     <button type="button" class="btn btn-info fw-bold text-white btn-refund-btn" t-on-click="() => this.processRefundAction(sale, 'factura')" title="Emitir factura a cliente con CIF/NIF">
                                                         <i class="fa fa-file-invoice me-1"/> Hacer Factura
-                                                    </button>
-                                                    <button type="button" class="btn btn-danger fw-bold text-white btn-refund-btn" t-on-click="() => this.dismissRefund(sale)" title="Anular y descartar el sobrante restante de la monedita">
-                                                        <i class="fa fa-trash me-1"/> Anular Sobrante
                                                     </button>
                                                     <button type="button" class="btn btn-secondary fw-bold btn-refund-btn" t-on-click="() => this.closePendingSalesModal()" title="Mantener aparcado en la monedita sin emitir documento">
                                                         <i class="fa fa-bookmark-o me-1"/> Guardar sin cobrar
