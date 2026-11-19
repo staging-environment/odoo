@@ -4501,8 +4501,9 @@ export class UtrecarMainScreen extends Component {
         this.closePendingSalesModal();
         let currentOrder = this.pos.get_order();
 
-        // Si la orden actual ya contiene cargado exactamente este cobro pendiente, no duplicar líneas
+        // Si la orden actual ya contiene cargado exactamente este cobro pendiente, no duplicar líneas y abrir la pantalla de cobro
         if (currentOrder && currentOrder.pending_sale_id === sale.id) {
+            this.pos.showScreen("PaymentScreen");
             return;
         }
 
@@ -4587,8 +4588,9 @@ export class UtrecarMainScreen extends Component {
                 currentOrder.remove_paymentline(pl);
             }
         }
-        // Se refleja de inmediato en el ticket del TPV para cobro permaneciendo en la vista principal
         this.state.orderVersion = Date.now();
+        // Abrir la pantalla de cobro / calculadora
+        this.pos.showScreen("PaymentScreen");
     }
 
     async processRefundAction(sale, actionType) {
