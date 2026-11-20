@@ -12,7 +12,6 @@
             </xpath>
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="company_id" options="{'no_create': True}" string="Cliente de la empresa" help="Empresa del grupo (Utrecar / A.R. Trieste) a la que pertenece este cliente. Decide en qué TPV aparece."/>
-                <field name="station_id" domain="[('company_id', '=', company_id)]" options="{'no_create': True}" string="Estación de Servicio"/>
             </xpath>
             <!-- Ocultar campos innecesarios en la ficha de cliente: Sitio web, Idioma y Etiquetas -->
             <xpath expr="//field[@name='website']" position="attributes">
@@ -49,7 +48,6 @@
                        decoration-muted="customer_type == 'ordinary'"
                        string="Tipo Facturación"/>
                 <field name="company_id" string="Empresa"/>
-                <field name="station_id" string="Estación de Servicio"/>
                 <field name="phone" class="o_force_ltr" optional="show"/>
                 <field name="email" optional="show"/>
                 <field name="city" optional="show"/>
@@ -72,13 +70,9 @@
                 <filter name="filter_customer_monthly" string="Facturación Mensual" domain="[('customer_type', '=', 'monthly')]"/>
                 <filter name="filter_customer_ordinary" string="Facturación Ordinaria" domain="[('customer_type', '=', 'ordinary')]"/>
                 <separator/>
-                <filter name="filter_has_station" string="Con Estación Asignada" domain="[('station_id', '!=', False)]"/>
-                <filter name="filter_no_station" string="Sin Estación Asignada" domain="[('station_id', '=', False)]"/>
-                <separator/>
             </xpath>
             <xpath expr="//group" position="inside">
                 <filter name="group_company" string="Empresa" context="{'group_by': 'company_id'}"/>
-                <filter name="group_station" string="Estación de Servicio" context="{'group_by': 'station_id'}"/>
                 <filter name="group_customer_type" string="Tipo de Facturación" context="{'group_by': 'customer_type'}"/>
             </xpath>
         </field>
@@ -93,7 +87,7 @@
         <field name="context">{
             'default_customer_rank': 1,
             'search_default_filter_customer': 1,
-            'search_default_group_station': 1,
+            'search_default_group_company': 1,
         }</field>
         <field name="view_id" ref="view_partner_gas_station_tree"/>
         <field name="search_view_id" ref="view_res_partner_filter_gas_station"/>
