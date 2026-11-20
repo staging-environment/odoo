@@ -1230,6 +1230,11 @@
                             </span>
                         </button>
                         <button class="btn btn-sm company-tab-btn"
+                                t-att-class="state.stationTab === 'products' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
+                                t-on-click="() => this.setStationTab('products')">
+                            <i class="fa fa-tags"/> <span>Productos y Precios</span>
+                        </button>
+                        <button class="btn btn-sm company-tab-btn"
                                 t-att-class="state.stationTab === 'sessions' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
                                 t-on-click="() => this.setStationTab('sessions')">
                             <i class="fa fa-clock-o"/> <span>Turnos y Ventas</span>
@@ -1516,6 +1521,84 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </t>
+
+                    <!-- ESTACIÓN: PRODUCTOS Y PRECIOS -->
+                    <t t-if="state.stationTab === 'products'">
+                        <div class="bg-white rounded-3 shadow-sm border p-3">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-1 text-dark">Productos y precios de la estación</h5>
+                                    <small class="text-muted d-block">Marque qué productos del catálogo se venden en esta estación. El TPV solo carga los marcados.</small>
+                                    <small class="text-muted d-block">Precio de la estación: si se deja vacío se usa el PVP base del catálogo. El carburante lo marca el surtidor.</small>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn" t-att-class="state.stationProductsFilter === 'assigned' ? 'btn-primary' : 'btn-outline-secondary'" t-on-click="() => this.setStationProductsFilter('assigned')">Se venden aquí</button>
+                                        <button class="btn" t-att-class="state.stationProductsFilter === 'unassigned' ? 'btn-primary' : 'btn-outline-secondary'" t-on-click="() => this.setStationProductsFilter('unassigned')">No se venden</button>
+                                        <button class="btn" t-att-class="state.stationProductsFilter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" t-on-click="() => this.setStationProductsFilter('all')">Todo el catálogo</button>
+                                    </div>
+                                    <div class="input-group input-group-sm" style="width: 280px;">
+                                        <span class="input-group-text bg-white"><i class="fa fa-search text-muted"/></span>
+                                        <input type="text" class="form-control" placeholder="Buscar por nombre, código o EAN…"
+                                               t-model="state.stationProductsSearch" t-on-keyup="(ev) => this.onStationProductsSearch(ev)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div t-if="!state.stationProducts" class="text-center text-muted py-5"><i class="fa fa-spinner fa-spin me-2"/>Cargando…</div>
+                            <t t-else="">
+                                <div class="small text-muted mb-2">
+                                    <t t-esc="state.stationProducts.total"/> productos
+                                    <t t-if="state.stationProducts.pricelist"> · Tarifa: <strong t-esc="state.stationProducts.pricelist"/></t>
+                                </div>
+                                <div t-if="!state.stationProducts.rows.length" class="text-center text-muted py-4">No hay productos con este filtro.</div>
+                                <div t-else="" class="table-responsive" style="max-height: 520px;">
+                                    <table class="table table-hover table-sm align-middle mb-0 company-detail-table">
+                                        <thead class="bg-light sticky-top">
+                                            <tr>
+                                                <th class="ps-3 text-center" style="width: 90px;">Se vende</th>
+                                                <th style="width: 120px;">Código</th>
+                                                <th>Producto</th>
+                                                <th>Categoría</th>
+                                                <th class="text-end" style="width: 120px;">PVP base</th>
+                                                <th class="text-end pe-3" style="width: 170px;">Precio en la estación</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="state.stationProducts.rows" t-as="row" t-key="row.id">
+                                                <tr t-att-class="row.assigned ? '' : 'text-muted'">
+                                                    <td class="ps-3 text-center">
+                                                        <div class="form-check form-switch d-inline-block m-0">
+                                                            <input class="form-check-input" type="checkbox" t-att-checked="row.assigned"
+                                                                   t-on-change="(ev) => this.toggleStationProduct(row, ev.target.checked)"/>
+                                                        </div>
+                                                    </td>
+                                                    <td class="font-monospace small text-secondary"><t t-esc="row.code || '-'"/></td>
+                                                    <td class="fw-semibold small"><t t-esc="row.name"/></td>
+                                                    <td class="small text-muted"><t t-esc="row.category"/></td>
+                                                    <td class="text-end font-monospace small"><t t-esc="row.base_price.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 3})"/> €</td>
+                                                    <td class="text-end pe-3">
+                                                        <span t-if="row.is_fuel" class="small text-muted">Precio del surtidor</span>
+                                                        <div t-else="" class="input-group input-group-sm justify-content-end">
+                                                            <input type="text" class="form-control text-end font-monospace" style="max-width: 110px;"
+                                                                   t-att-placeholder="row.base_price.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 3})"
+                                                                   t-att-value="row.station_price !== null and row.station_price !== undefined ? row.station_price.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 3}) : ''"
+                                                                   t-on-change="(ev) => this.saveStationProductPrice(row, ev.target.value)"/>
+                                                            <span class="input-group-text">€</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="d-flex justify-content-end align-items-center gap-2 mt-2" t-if="state.stationProducts.total > state.stationProducts.page_size">
+                                    <button class="btn btn-sm btn-outline-secondary" t-att-disabled="state.stationProducts.page &lt;= 1" t-on-click="() => this.changeStationProductsPage(-1)"><i class="fa fa-chevron-left"/></button>
+                                    <span class="small text-muted">Página <t t-esc="state.stationProducts.page"/> de <t t-esc="Math.ceil(state.stationProducts.total / state.stationProducts.page_size)"/></span>
+                                    <button class="btn btn-sm btn-outline-secondary" t-att-disabled="state.stationProducts.page * state.stationProducts.page_size &gt;= state.stationProducts.total" t-on-click="() => this.changeStationProductsPage(1)"><i class="fa fa-chevron-right"/></button>
+                                </div>
+                            </t>
                         </div>
                     </t>
 

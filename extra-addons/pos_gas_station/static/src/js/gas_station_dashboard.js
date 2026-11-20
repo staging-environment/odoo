@@ -46,6 +46,10 @@ export class GasStationDashboard extends Component {
             stationTab: "ficha", // 'ficha' | 'tanks' | 'stock' | 'sessions'
             stationData: null,
             stationStockSearch: "",
+            stationProducts: null,
+            stationProductsSearch: "",
+            stationProductsFilter: "assigned",
+            stationProductsPage: 1,
             detailTab: "stations", // 'stations' | 'customers' | 'inventory'
             companyDetailData: null,
             detailLoading: false,
@@ -562,7 +566,14 @@ export class GasStationDashboard extends Component {
         this.state.stationTab = initialTab || "ficha";
         this.state.stationData = null;
         this.state.stationStockSearch = "";
+        this.state.stationProducts = null;
+        this.state.stationProductsSearch = "";
+        this.state.stationProductsFilter = "assigned";
+        this.state.stationProductsPage = 1;
         this.loadStationDetailData(st.id);
+        if (this.state.stationTab === "products") {
+            this.loadStationProducts();
+        }
         this.state.editStationId = st.id;
         this.state.editStationName = st.name || "";
         this.state.editStationVpnIp = st.vpn_ip || "";
@@ -581,6 +592,98 @@ export class GasStationDashboard extends Component {
     setStationTab(tab) {
         this.state.stationTab = tab;
         this.saveNavState();
+        if (tab === "products" && !this.state.stationProducts) {
+            this.loadStationProducts();
+        }
+    }
+
+    async loadStationProducts() {
+        const st = this.state.selectedDetailStation;
+        if (!st) return;
+        try {
+            const res = await jsonrpc("/pos_gas_station/station_products", {
+                station_id: st.id,
+                search: this.state.stationProductsSearch || "",
+                filter_mode: this.state.stationProductsFilter,
+                page: this.state.stationProductsPage,
+            });
+            if (res && res.status === "success") {
+                if (this.state.selectedDetailStation && this.state.selectedDetailStation.id === st.id) {
+                    this.state.stationProducts = res;
+                }
+            } else {
+                this.notification.add((res && res.message) || "Error al cargar productos", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error loading station products:", e);
+            this.notification.add("Error de conexión al cargar productos de la estación", { type: "danger" });
+        }
+    }
+
+    setStationProductsFilter(mode) {
+        this.state.stationProductsFilter = mode;
+        this.state.stationProductsPage = 1;
+        this.loadStationProducts();
+    }
+
+    onStationProductsSearch(ev) {
+        clearTimeout(this._stationProductsTimer);
+        const delay = ev && ev.key === "Enter" ? 0 : 400;
+        this._stationProductsTimer = setTimeout(() => {
+            this.state.stationProductsPage = 1;
+            this.loadStationProducts();
+        }, delay);
+    }
+
+    changeStationProductsPage(delta) {
+        this.state.stationProductsPage = Math.max(1, (this.state.stationProductsPage || 1) + delta);
+        this.loadStationProducts();
+    }
+
+    async _updateStationProduct(row, payload) {
+        const st = this.state.selectedDetailStation;
+        if (!st) return null;
+        try {
+            const res = await jsonrpc("/pos_gas_station/station_product_update", {
+                station_id: st.id,
+                product_tmpl_id: row.id,
+                ...payload,
+            });
+            if (!res || res.status !== "success") {
+                this.notification.add((res && res.message) || "No se pudo guardar el cambio", { type: "danger" });
+                return null;
+            }
+            return res;
+        } catch (e) {
+            console.error("Error updating station product:", e);
+            this.notification.add("Error de conexión al guardar el cambio", { type: "danger" });
+            return null;
+        }
+    }
+
+    async toggleStationProduct(row, checked) {
+        const res = await this._updateStationProduct(row, { assigned: checked });
+        if (res) {
+            row.assigned = res.assigned;
+            this.notification.add(
+                checked ? `${row.name}: se vende en esta estación` : `${row.name}: ya no se vende en esta estación`,
+                { type: "success" }
+            );
+        } else {
+            row.assigned = !checked;
+        }
+    }
+
+    async saveStationProductPrice(row, rawValue) {
+        const value = String(rawValue || "").trim();
+        const res = await this._updateStationProduct(row, { price: value });
+        if (res) {
+            row.station_price = res.station_price;
+            this.notification.add(
+                value === "" ? `${row.name}: vuelve al PVP base` : `${row.name}: precio guardado en la estación`,
+                { type: "success" }
+            );
+        }
     }
 
     async loadStationDetailData(stationId = null) {

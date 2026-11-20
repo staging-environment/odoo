@@ -108,6 +108,36 @@ class ProductTemplate(models.Model):
         string='Códigos de Barras Adicionales',
     )
 
+    # Estaciones (TPV) en las que se vende el producto. El TPV de cada estación
+    # solo carga los productos que la tienen marcada.
+    station_ids = fields.Many2many(
+        'pos.config',
+        'product_template_station_rel',
+        'product_tmpl_id',
+        'config_id',
+        string='Se vende en',
+        help='Estaciones de servicio en las que se vende este producto. '
+             'El TPV de cada estación solo muestra los productos que la tienen marcada.',
+    )
+
+    @api.model
+    def _utrecar_default_stations(self, company_id=False):
+        domain = [('active', '=', True)]
+        if company_id:
+            domain.append(('company_id', '=', company_id))
+        return self.env['pos.config'].sudo().search(domain)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # Por defecto, un producto nuevo de TPV se vende en todas las estaciones
+        # (de su empresa si es de una empresa concreta); luego se ajusta por estación.
+        for vals in vals_list:
+            if 'station_ids' not in vals and vals.get('available_in_pos', True):
+                stations = self._utrecar_default_stations(vals.get('company_id'))
+                if stations:
+                    vals['station_ids'] = [(6, 0, stations.ids)]
+        return super().create(vals_list)
+
 
 class UtrecarTaxType(models.Model):
     _name = 'utrecar.tax.type'

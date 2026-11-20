@@ -1926,6 +1926,118 @@ class PosGasStationController(http.Controller):
             })
         return data
 
+    # ==================== PRODUCTOS Y PRECIOS POR ESTACIÓN ====================
+    _UTRECAR_FUEL_CODES = ('GAS_A', 'SP95', 'GAS_PLUS', 'GAS_B', '1', '2')
+
+    def _station_for_user(self, env, station_id):
+        config = env['pos.config'].sudo().browse(int(station_id or 0))
+        if not config.exists():
+            return None, {'status': 'error', 'message': 'Estación no encontrada'}
+        if config.company_id and config.company_id not in env.user.company_ids:
+            return None, {'status': 'error', 'message': 'No tiene acceso a la empresa de esta estación.'}
+        return config, None
+
+    @http.route('/pos_gas_station/station_products', type='json', auth='user', methods=['POST'], csrf=False)
+    def station_products(self, station_id=None, search=None, filter_mode='assigned', page=1, page_size=50, **kw):
+        """Catálogo visto desde una estación: si se vende en ella y su precio en la estación."""
+        env = request.env
+        config, err = self._station_for_user(env, station_id)
+        if err:
+            return err
+        Tmpl = env['product.template'].sudo()
+        base = [('available_in_pos', '=', True), ('sale_ok', '=', True),
+                '|', ('company_id', '=', False), ('company_id', '=', config.company_id.id)]
+        term = (search or '').strip()
+        if term:
+            base += ['|', '|', ('name', 'ilike', term), ('default_code', 'ilike', term), ('barcode', 'ilike', term)]
+        assigned_dom = [('station_ids', 'in', config.ids)]
+        if filter_mode == 'assigned':
+            domain = base + assigned_dom
+        elif filter_mode == 'unassigned':
+            domain = base + [('station_ids', 'not in', config.ids)]
+        else:
+            domain = base
+        page = max(1, int(page or 1))
+        size = min(200, max(10, int(page_size or 50)))
+        total = Tmpl.search_count(domain)
+        tmpls = Tmpl.search(domain, order='default_code asc nulls last, name asc, id asc',
+                            limit=size, offset=(page - 1) * size)
+
+        pricelist = config._utrecar_get_station_pricelist(create=False)
+        items = {}
+        if pricelist:
+            for it in env['product.pricelist.item'].sudo().search([
+                    ('pricelist_id', '=', pricelist.id), ('applied_on', '=', '1_product'),
+                    ('compute_price', '=', 'fixed'), ('product_tmpl_id', 'in', tmpls.ids)]):
+                items[it.product_tmpl_id.id] = it.fixed_price
+
+        rows = []
+        for t in tmpls:
+            is_fuel = (t.default_code or '') in self._UTRECAR_FUEL_CODES
+            rows.append({
+                'id': t.id,
+                'code': t.default_code or '',
+                'name': t.name or '',
+                'category': t.categ_id.name or '',
+                'base_price': round(t.list_price or 0.0, 3),
+                'station_price': items.get(t.id),
+                'assigned': config.id in t.station_ids.ids,
+                'is_fuel': is_fuel,
+            })
+        return {
+            'status': 'success',
+            'rows': rows,
+            'total': total,
+            'page': page,
+            'page_size': size,
+            'counts': {
+                'assigned': Tmpl.search_count(base + assigned_dom) if not term else None,
+                'catalog': Tmpl.search_count(base) if not term else None,
+            },
+            'pricelist': pricelist.name if pricelist else '',
+        }
+
+    @http.route('/pos_gas_station/station_product_update', type='json', auth='user', methods=['POST'], csrf=False)
+    def station_product_update(self, station_id=None, product_tmpl_id=None, assigned=None, price=None, **kw):
+        """Marca/desmarca un producto en una estación y/o fija (o quita) su precio en ella.
+        price: número = precio de la estación; '' = volver al PVP base; None = sin cambios."""
+        env = request.env
+        if not env.user.has_group('point_of_sale.group_pos_manager') and not env.user.has_group('base.group_erp_manager'):
+            return {'status': 'error', 'message': 'Solo los responsables pueden cambiar productos y precios de una estación.'}
+        config, err = self._station_for_user(env, station_id)
+        if err:
+            return err
+        tmpl = env['product.template'].sudo().browse(int(product_tmpl_id or 0))
+        if not tmpl.exists():
+            return {'status': 'error', 'message': 'Producto no encontrado'}
+        if assigned is not None:
+            tmpl.write({'station_ids': [(4 if assigned else 3, config.id)]})
+        saved_price = None
+        if price is not None:
+            if (tmpl.default_code or '') in self._UTRECAR_FUEL_CODES:
+                return {'status': 'error', 'message': 'El precio del carburante lo marca el surtidor; no se fija desde aquí.'}
+            pricelist = config._utrecar_get_station_pricelist(create=True)
+            Item = env['product.pricelist.item'].sudo()
+            item = Item.search([('pricelist_id', '=', pricelist.id), ('applied_on', '=', '1_product'),
+                                ('product_tmpl_id', '=', tmpl.id)], limit=1)
+            if str(price).strip() == '':
+                item.unlink()
+            else:
+                try:
+                    value = round(float(str(price).replace(',', '.')), 3)
+                except ValueError:
+                    return {'status': 'error', 'message': f'Precio no válido: {price}'}
+                if value < 0:
+                    return {'status': 'error', 'message': 'El precio no puede ser negativo'}
+                vals = {'pricelist_id': pricelist.id, 'applied_on': '1_product', 'product_tmpl_id': tmpl.id,
+                        'compute_price': 'fixed', 'fixed_price': value, 'min_quantity': 0}
+                if item:
+                    item.write(vals)
+                else:
+                    Item.create(vals)
+                saved_price = value
+        return {'status': 'success', 'assigned': config.id in tmpl.station_ids.ids, 'station_price': saved_price}
+
     def _serialize_company_products(self, products):
         """Serializa registros de product.template para el panel de administración."""
         res = []

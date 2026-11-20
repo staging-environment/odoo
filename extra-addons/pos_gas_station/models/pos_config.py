@@ -8,6 +8,37 @@ import pytz
 class PosConfig(models.Model):
     _inherit = 'pos.config'
 
+    def _get_available_product_domain(self):
+        # Solo los productos marcados para esta estación ("Se vende en")
+        domain = super()._get_available_product_domain()
+        return ['&', ('product_tmpl_id.station_ids', 'in', self.ids)] + domain
+
+    def _utrecar_get_station_pricelist(self, create=True):
+        """Tarifa propia de la estación ("Tarifa <estación>"). Si un producto no tiene
+        precio en ella, el TPV usa el PVP base del catálogo."""
+        self.ensure_one()
+        config = self.sudo()
+        pl = config.pricelist_id
+        if pl and pl.name == f'Tarifa {config.name}':
+            return pl
+        pl = self.env['product.pricelist'].sudo().search([
+            ('name', '=', f'Tarifa {config.name}'),
+            ('company_id', '=', config.company_id.id),
+        ], limit=1)
+        if not pl and create:
+            pl = self.env['product.pricelist'].sudo().create({
+                'name': f'Tarifa {config.name}',
+                'company_id': config.company_id.id,
+                'currency_id': (config.company_id.currency_id or self.env.ref('base.EUR')).id,
+            })
+        if pl and config.pricelist_id != pl:
+            config.write({
+                'use_pricelist': True,
+                'available_pricelist_ids': [(6, 0, pl.ids)],
+                'pricelist_id': pl.id,
+            })
+        return pl
+
     vpn_ip = fields.Char(
         string='IPs VPN de Pista',
         help='Dirección IP o lista de IPs separadas por coma asignadas a esta estación en la VPN WireGuard (ej: 10.8.0.18)'
