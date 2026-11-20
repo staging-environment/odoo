@@ -10,7 +10,18 @@ export class GasStationDashboard extends Component {
     static template = "pos_gas_station.GasStationDashboard";
 
     setup() {
-        this.actionService = useService("action");
+        // Las vistas de Odoo que se abren desde el detalle de una empresa (fichas de
+        // clientes, productos, almacenes...) deben poder leer registros de ESA empresa
+        // aunque en el selector de empresas de Odoo esté activa otra (si no:
+        // "no tiene derecho de acceso 'leer' a Contacto"). Se añade la empresa del
+        // detalle a allowed_company_ids del contexto de la acción.
+        const rawActionService = useService("action");
+        this.companyService = useService("company");
+        this.actionService = {
+            doAction: (action, options) => rawActionService.doAction(
+                this._withDetailCompanyContext(action), options
+            ),
+        };
         this.notification = useService("notification");
         this.dialog = useService("dialog");
         this.state = useState({
@@ -1079,6 +1090,23 @@ export class GasStationDashboard extends Component {
             return [];
         }
         return this.state.companyDetailData.customers;
+    }
+
+    _withDetailCompanyContext(action) {
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        if (!action || typeof action !== "object" || !compId) {
+            return action;
+        }
+        const allowed = (this.companyService && this.companyService.allowedCompanies) || {};
+        if (!allowed[compId]) {
+            return action;
+        }
+        const active = (this.companyService && this.companyService.activeCompanyIds) || [];
+        const companyIds = [compId, ...active.filter((id) => id !== compId)];
+        return {
+            ...action,
+            context: { ...(action.context || {}), allowed_company_ids: companyIds },
+        };
     }
 
     openPartnerForm(partnerId) {
