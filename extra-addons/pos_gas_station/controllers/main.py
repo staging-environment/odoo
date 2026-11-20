@@ -3729,7 +3729,10 @@ class PosGasStationController(http.Controller):
             if 'Sobrante de Prefijado' not in notes:
                 continue
             parent = None
-            m_ref = re.search(r'Rectifica:\s*([A-Z]{2,}[A-Z0-9_]*\d+)', notes)
+            # Enlace explícito (origin_order_id); el texto queda solo como respaldo
+            if o.origin_order_id and o.origin_order_id.id in by_id:
+                parent = by_id[o.origin_order_id.id]
+            m_ref = None if parent else re.search(r'Rectifica:\s*([A-Z]{2,}[A-Z0-9_]*\d+)', notes)
             if m_ref:
                 ref = m_ref.group(1)
                 parent = next((x for x in orders if x.id != o.id and (x.name == ref or dicts.get(x.id, {}).get('name') == ref)), None)
@@ -4299,6 +4302,8 @@ class PosGasStationController(http.Controller):
                         'vehicle_driver': getattr(order, 'vehicle_driver', '') or '',
                         'pump_id': getattr(order, 'pump_id', 0) or 0,
                         'note': f"Albarán de crédito negativo por cancelación de prepago (Ref: {order.name})",
+                        'origin_order_id': order.id,
+                        'origin_kind': 'albaran_annulment',
                     }
                     negative_order = env['pos.order'].sudo().create(neg_vals)
                     for l in order.lines:

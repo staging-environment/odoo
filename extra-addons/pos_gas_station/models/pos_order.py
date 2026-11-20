@@ -90,6 +90,28 @@ class PosOrder(models.Model):
         copy=False
     )
 
+    # Trazabilidad: documento negativo (albarán de anulación, rectificativo de
+    # sobrante de prepago) -> ticket/albarán original. Enlace real e indexado
+    # para informes, en lugar de deducirlo por texto.
+    origin_order_id = fields.Many2one(
+        'pos.order',
+        string="Documento de origen",
+        copy=False,
+        index=True,
+        ondelete='set null',
+        readonly=True,
+        help="Ticket o albarán original al que anula o rectifica este documento.",
+    )
+    origin_kind = fields.Selection([
+        ('albaran_annulment', 'Albarán negativo de anulación'),
+        ('prepay_refund', 'Rectificativo de sobrante de prepago'),
+    ], string="Tipo de documento derivado", copy=False, index=True, readonly=True)
+    derived_order_ids = fields.One2many(
+        'pos.order', 'origin_order_id',
+        string="Documentos derivados",
+        readonly=True,
+    )
+
     def init(self):
         super().init()
         # Índices compuestos para informes por empresa / estación y rango de fechas
@@ -454,6 +476,50 @@ class PosOrder(models.Model):
             vals['vehicle_driver'] = self.vehicle_driver
         return vals
 
+    def _utrecar_find_origin(self):
+        """Busca el documento original de un albarán negativo o rectificativo.
+        Devuelve (pedido_original, tipo) o (vacío, False)."""
+        self.ensure_one()
+        empty = self.browse()
+        same_company = [('company_id', '=', self.company_id.id), ('id', '!=', self.id)]
+        # 1) Albarán negativo de anulación: nota "... (Ref: AVTR2026xxxxx)"
+        if self.is_albaran and self.amount_total < 0:
+            m = re.search(r'Ref:\s*([A-Z0-9_]+)', self.note or '')
+            if m:
+                orig = self.search(same_company + [('name', '=', m.group(1))], limit=1)
+                if orig:
+                    return orig, 'albaran_annulment'
+        # 2) Rectificativo de sobrante de prepago: nota de línea "... | Rectifica: TTTR2026xxxxx"
+        notes = ' '.join((l.customer_note or '') for l in self.lines)
+        if self.amount_total < 0 and 'Sobrante de Prefijado' in notes:
+            m = re.search(r'Rectifica:\s*([A-Z]{2,}[A-Z0-9_]*\d+)', notes)
+            if m:
+                orig = self.search(same_company + [('name', '=', m.group(1))], limit=1)
+                if orig:
+                    return orig, 'prepay_refund'
+            # Rectificativos antiguos sin referencia: prepago de la misma calle e importe en el turno
+            m_pump = re.search(r'Calle\s*(\d+)', notes)
+            m_pre = re.search(r'Prefijado:\s*([\d.,]+)\s*€', notes)
+            if m_pump and m_pre and self.session_id:
+                key = f"Calle {m_pump.group(1)} [Prepago: {float(m_pre.group(1).replace(',', '.')):.2f}"
+                cands = self.search(same_company + [
+                    ('session_id', '=', self.session_id.id), ('amount_total', '>', 0),
+                    ('date_order', '<=', self.date_order),
+                ]).filtered(lambda x: any(key in (l.customer_note or '') for l in x.lines))
+                if cands:
+                    return cands.sorted(lambda x: (x.date_order, x.id))[-1], 'prepay_refund'
+        return empty, False
+
+    def _utrecar_link_origins(self):
+        """Rellena origin_order_id / origin_kind donde falte. Devuelve cuántos enlazó."""
+        linked = 0
+        for order in self.filtered(lambda o: not o.origin_order_id and o.amount_total < 0):
+            orig, kind = order._utrecar_find_origin()
+            if orig:
+                order.sudo().write({'origin_order_id': orig.id, 'origin_kind': kind})
+                linked += 1
+        return linked
+
     @api.model
     def create_from_ui(self, orders, draft=False):
         order_sync_results = super().create_from_ui(orders, draft=draft)
@@ -461,6 +527,10 @@ class PosOrder(models.Model):
             order_ids = [r['id'] for r in order_sync_results if isinstance(r, dict) and 'id' in r]
             if order_ids:
                 orders_records = self.browse(order_ids)
+                try:
+                    orders_records._utrecar_link_origins()
+                except Exception as e:  # nunca bloquear la venta por la trazabilidad
+                    _logger.warning("No se pudo enlazar el documento de origen: %s", e)
                 order_map = {o.id: o for o in orders_records}
                 for r in order_sync_results:
                     if isinstance(r, dict) and r.get('id') in order_map:
