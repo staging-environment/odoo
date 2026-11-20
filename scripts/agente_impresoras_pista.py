@@ -29,6 +29,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import xmlrpc.client
 from ctypes import wintypes
@@ -290,9 +291,12 @@ def imprimir_pdf(nombre, datos, copias):
     try:
         with os.fdopen(fd, "wb") as fh:
             fh.write(datos)
-        proc = subprocess.run([exe, "-print-to", nombre, "-print-settings", f"{int(copias)}x,fit",
-                               "-silent", "-exit-when-done", path],
-                              timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        try:
+            proc = subprocess.run([exe, "-print-to", nombre, "-print-settings", f"{int(copias)}x,fit",
+                                   "-silent", "-exit-when-done", path],
+                                  timeout=90, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("La impresora no responde (su driver no contesta: revise que esté encendida y conectada)")
         if proc.returncode != 0:
             raise RuntimeError(f"SumatraPDF devolvió el código {proc.returncode}")
         _esperar_trabajos(nombre, desde_ids=previos)
@@ -340,31 +344,57 @@ def publicar(odoo, impresoras):
     odoo.set_param(f"pos_gas_station.system_printers_{odoo.cfg['CONFIG_ID']}", json.dumps(payload, ensure_ascii=False))
 
 
+_pdf_en_curso = threading.Event()
+
+
+def _imprimir_trabajo(odoo, t, meta):
+    impresora = meta.get("printer") or ""
+    try:
+        datos = base64.b64decode(t.get("datas") or b"")
+        if t.get("mimetype") == MIME_ESCPOS:
+            imprimir_raw(impresora, datos, t.get("name") or "Ticket")
+        elif t.get("mimetype") == MIME_PDF:
+            imprimir_pdf(impresora, datos, meta.get("copies") or 1)
+        else:
+            raise RuntimeError(f"Tipo de documento no soportado: {t.get('mimetype')}")
+        odoo.call("ir.attachment", "unlink", [[t["id"]]])
+        log(f"Impreso '{t.get('name')}' en {impresora}")
+    except Exception as e:
+        meta.update({"state": "error", "message": str(e)})
+        odoo.call("ir.attachment", "write", [[t["id"]], {"description": json.dumps(meta, ensure_ascii=False)}])
+        log(f"ERROR imprimiendo '{t.get('name')}' en {impresora}: {e}")
+
+
+def _hilo_pdf(cfg, t, meta):
+    # Conexión propia: xmlrpc.client no es seguro entre hilos
+    try:
+        _imprimir_trabajo(Odoo(cfg), t, meta)
+    except Exception as e:
+        log(f"ERROR en hilo PDF: {e}")
+    finally:
+        _pdf_en_curso.clear()
+
+
 def procesar_trabajos(odoo):
+    """Los tickets ESC/POS se imprimen en el momento; los PDF van de uno en uno en un hilo
+    aparte para que un driver lento o colgado (A4) no retrase los tickets de la térmica."""
     cfg_id = odoo.cfg["CONFIG_ID"]
     trabajos = odoo.call("ir.attachment", "search_read",
                          [[("res_model", "=", PRINT_JOB_MODEL), ("res_id", "=", cfg_id),
                            ("description", "like", '"state": "pending"')]],
-                         {"fields": ["id", "name", "mimetype", "description", "datas"], "order": "id asc", "limit": 5})
+                         {"fields": ["id", "name", "mimetype", "description", "datas"], "order": "mimetype desc, id asc", "limit": 5})
     for t in trabajos:
         meta = json.loads(t.get("description") or "{}")
+        es_pdf = t.get("mimetype") == MIME_PDF
+        if es_pdf and _pdf_en_curso.is_set():
+            continue  # se recogerá cuando termine el PDF en curso
         meta["state"] = "printing"
         odoo.call("ir.attachment", "write", [[t["id"]], {"description": json.dumps(meta, ensure_ascii=False)}])
-        impresora = meta.get("printer") or ""
-        try:
-            datos = base64.b64decode(t.get("datas") or b"")
-            if t.get("mimetype") == MIME_ESCPOS:
-                imprimir_raw(impresora, datos, t.get("name") or "Ticket")
-            elif t.get("mimetype") == MIME_PDF:
-                imprimir_pdf(impresora, datos, meta.get("copies") or 1)
-            else:
-                raise RuntimeError(f"Tipo de documento no soportado: {t.get('mimetype')}")
-            odoo.call("ir.attachment", "unlink", [[t["id"]]])
-            log(f"Impreso '{t.get('name')}' en {impresora}")
-        except Exception as e:
-            meta.update({"state": "error", "message": str(e)})
-            odoo.call("ir.attachment", "write", [[t["id"]], {"description": json.dumps(meta, ensure_ascii=False)}])
-            log(f"ERROR imprimiendo '{t.get('name')}' en {impresora}: {e}")
+        if es_pdf:
+            _pdf_en_curso.set()
+            threading.Thread(target=_hilo_pdf, args=(odoo.cfg, t, meta), daemon=True).start()
+        else:
+            _imprimir_trabajo(odoo, t, meta)
 
 
 def log(msg):
