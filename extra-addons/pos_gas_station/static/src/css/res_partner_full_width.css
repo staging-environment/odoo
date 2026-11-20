@@ -92,7 +92,8 @@
     display: none !important;
 }
 
-.o_form_view:has(.o_partner_full_width_marker) .o_utrecar_save_partner {
+.o_form_view:has(.o_partner_full_width_marker) .o_utrecar_save_partner,
+.o_form_view:has(.o_partner_full_width_marker) .o_utrecar_back_partner {
     font-size: 15px !important;
     font-weight: 700 !important;
     padding: 8px 22px !important;

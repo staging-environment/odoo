@@ -49,6 +49,8 @@
                 <header>
                     <button name="action_utrecar_save_partner" type="object" string="Guardar cambios"
                             class="btn-primary o_utrecar_save_partner" icon="fa-floppy-o"/>
+                    <button name="action_utrecar_back" type="object" string="Volver"
+                            class="btn-secondary o_utrecar_back_partner" icon="fa-arrow-left"/>
                 </header>
             </xpath>
             <!-- Ficha sin botón "Nuevo" (los clientes se crean desde Gestión de Gasolineras)

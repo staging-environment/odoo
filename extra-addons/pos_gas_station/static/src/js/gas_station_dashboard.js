@@ -235,7 +235,10 @@ export class GasStationDashboard extends Component {
         //    en la que estaba (empresa, pestaña o ficha de estación).
         //  - "menu": clic en el menú "Gestión de gasolineras" -> detalle de la
         //    empresa en la pestaña Estaciones de Servicio.
-        const restoreMode = (this.props.state && this.props.state.utrecarNavRestore) || !utrecarDashboardLoadedOnce
+        const actionCtx = (this.props.action && this.props.action.context) || {};
+        const restoreMode = (this.props.state && this.props.state.utrecarNavRestore)
+            || actionCtx.utrecar_return
+            || !utrecarDashboardLoadedOnce
             ? "full"
             : "menu";
         utrecarDashboardLoadedOnce = true;

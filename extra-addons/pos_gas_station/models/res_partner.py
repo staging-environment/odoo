@@ -295,7 +295,14 @@ class ResPartner(models.Model):
     # Botón "Guardar cambios" de la ficha: Odoo guarda (y valida) el registro
     # antes de llamar al método; aquí solo se confirma al usuario.
     # ------------------------------------------------------------------
+    def _utrecar_back_to_dashboard_action(self):
+        """Vuelve a Gestión de gasolineras, a la pantalla de la que se venía."""
+        action = self.env['ir.actions.actions']._for_xml_id('pos_gas_station.action_gas_station_dashboard')
+        action['context'] = {'utrecar_return': True}
+        return action
+
     def action_utrecar_save_partner(self):
+        # Odoo ya ha guardado y validado la ficha antes de llegar aquí
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -304,8 +311,12 @@ class ResPartner(models.Model):
                 'message': _('La ficha de %s se ha guardado correctamente.') % (self[:1].display_name or ''),
                 'type': 'success',
                 'sticky': False,
+                'next': self._utrecar_back_to_dashboard_action(),
             },
         }
+
+    def action_utrecar_back(self):
+        return self._utrecar_back_to_dashboard_action()
 
     # Botones superiores de la ficha (Pedidos de TPV, Facturado) en ventana
     # flotante ancha que se cierra sobre la misma pantalla. En una ventana
