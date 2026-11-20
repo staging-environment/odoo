@@ -14,7 +14,7 @@
                 <field name="company_id" widget="selection" options="{'no_create': True, 'no_open': True}" required="not parent_id and customer_rank &gt; 0" string="Cliente de la empresa" help="Empresa del grupo (Utrecar / A.R. Trieste) a la que pertenece este cliente. Decide en qué TPV aparece."/>
             </xpath>
             <!-- Etiqueta "Nombre" (obligatorio) sobre el nombre de la compañía / individuo -->
-            <xpath expr="//div[contains(@class,'oe_title')]/h1" position="before">
+            <xpath expr="//div[hasclass('oe_title')]/h1" position="before">
                 <div class="o_utrecar_name_label">
                     <span class="o_form_label">Nombre</span><span class="text-danger fw-bold"> *</span>
                 </div>
