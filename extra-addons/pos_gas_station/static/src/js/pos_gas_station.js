@@ -3202,7 +3202,7 @@ export class UtrecarMainScreen extends Component {
                 <span>Forma de Pago:</span>
                 <span>A CUENTA (CRÉDITO)</span>
             </div>
-        ` : (order.payments || []).map(p => `
+        ` : (order.payments || []).filter(p => Math.abs(Number(p.amount) || 0) >= 0.005).map(p => `
             <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
                 <span>${p.name}:</span>
                 <span style="font-weight: bold;">${Number(p.amount).toFixed(2)} €</span>
