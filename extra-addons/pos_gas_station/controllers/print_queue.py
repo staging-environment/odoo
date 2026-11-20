@@ -112,15 +112,16 @@ def _html_to_png(html):
             return fh.read()
 
 
-def _html_to_pdf(html):
+def _html_to_pdf(html, page_size='A4'):
     exe = find_in_path('wkhtmltopdf')
     with tempfile.TemporaryDirectory() as tmp:
         src, out = os.path.join(tmp, 'doc.html'), os.path.join(tmp, 'doc.pdf')
         with open(src, 'w', encoding='utf-8') as fh:
             fh.write(_strip_scripts(html))
-        _run([exe, '--quiet', '--disable-javascript', '--encoding', 'utf-8', '--page-size', 'A4',
-              '--margin-top', '10mm', '--margin-bottom', '10mm', '--margin-left', '10mm',
-              '--margin-right', '10mm', src, out])
+        margin = '7mm' if page_size == 'A5' else '10mm'
+        _run([exe, '--quiet', '--disable-javascript', '--encoding', 'utf-8', '--page-size', page_size,
+              '--margin-top', margin, '--margin-bottom', margin, '--margin-left', margin,
+              '--margin-right', margin, src, out])
         with open(out, 'rb') as fh:
             return fh.read()
 
@@ -200,12 +201,13 @@ class PosPrintQueue(http.Controller):
 
     @http.route('/pos_gas_station/print/submit', type='json', auth='user', methods=['POST'], csrf=False)
     def print_submit(self, config_id=None, printer_name=None, format='thermal_80', copies=1,
-                     doc_type='ticket', title=None, html=None, image=None, report_url=None, **kw):
+                     doc_type='ticket', title=None, html=None, image=None, report_url=None, tray=None, **kw):
         cfg = int(config_id or 7)
         if not printer_name:
             return {'status': 'error', 'message': 'No hay impresora asignada a este documento.'}
         copies = max(1, min(int(copies or 1), 5))
-        thermal = format != 'a4'
+        thermal = format not in ('a4', 'a5')
+        page_size = 'A5' if format == 'a5' else 'A4'
         try:
             if report_url:
                 payload, mime = _report_pdf(report_url), MIME_PDF
@@ -222,7 +224,7 @@ class PosPrintQueue(http.Controller):
                 if thermal:
                     payload, mime = _image_to_escpos(_html_to_png(html)), MIME_ESCPOS
                 else:
-                    payload, mime = _html_to_pdf(html), MIME_PDF
+                    payload, mime = _html_to_pdf(html, page_size), MIME_PDF
             else:
                 return {'status': 'error', 'message': 'Documento vacío.'}
         except Exception as e:
@@ -237,6 +239,8 @@ class PosPrintQueue(http.Controller):
             'printer': printer_name,
             'copies': copies,
             'doc_type': doc_type,
+            'tray': (tray or '') if mime == MIME_PDF else '',
+            'paper': page_size if mime == MIME_PDF else '',
             'created': time.time(),
             'user': request.env.user.name,
         }

@@ -3407,6 +3407,7 @@
                                                         t-on-change="(ev) => this.onPrinterAssignmentChange('ticket', 'format', ev.target.value)">
                                                     <option value="thermal_80" t-att-selected="state.printerConfig.assignments.ticket.format === 'thermal_80'">Rollo Térmico 80mm</option>
                                                     <option value="a4" t-att-selected="state.printerConfig.assignments.ticket.format === 'a4'">Hoja A4</option>
+                                                    <option value="a5" t-att-selected="state.printerConfig.assignments.ticket.format === 'a5'">Cuartilla A5</option>
                                                 </select>
                                             </div>
                                             <div class="doc-field-sub">
@@ -3422,6 +3423,18 @@
                                                 <i class="fa fa-print me-1"/> Probar
                                             </button>
                                         </div>
+                                        <t t-if="this.getPrinterBins('ticket').length">
+                                            <div class="doc-field-row">
+                                                <label class="doc-label">Bandeja de papel:</label>
+                                                <select class="doc-select form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('ticket', 'tray', ev.target.value)">
+                                                    <option value="" t-att-selected="!state.printerConfig.assignments.ticket.tray">Automática (la que tenga papel)</option>
+                                                    <t t-foreach="this.getPrinterBins('ticket')" t-as="b" t-key="b">
+                                                        <option t-att-value="b" t-att-selected="state.printerConfig.assignments.ticket.tray === b"><t t-esc="b"/></option>
+                                                    </t>
+                                                </select>
+                                            </div>
+                                        </t>
                                     </div>
                                 </div>
 
@@ -3454,6 +3467,7 @@
                                                 <select class="doc-select-sm form-select"
                                                         t-on-change="(ev) => this.onPrinterAssignmentChange('albaran', 'format', ev.target.value)">
                                                     <option value="a4" t-att-selected="state.printerConfig.assignments.albaran.format === 'a4'">Hoja A4 (Láser/Tinta)</option>
+                                                    <option value="a5" t-att-selected="state.printerConfig.assignments.albaran.format === 'a5'">Cuartilla A5</option>
                                                     <option value="thermal_80" t-att-selected="state.printerConfig.assignments.albaran.format === 'thermal_80'">Rollo Térmico 80mm</option>
                                                 </select>
                                             </div>
@@ -3470,6 +3484,18 @@
                                                 <i class="fa fa-print me-1"/> Probar
                                             </button>
                                         </div>
+                                        <t t-if="this.getPrinterBins('albaran').length">
+                                            <div class="doc-field-row">
+                                                <label class="doc-label">Bandeja de papel:</label>
+                                                <select class="doc-select form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('albaran', 'tray', ev.target.value)">
+                                                    <option value="" t-att-selected="!state.printerConfig.assignments.albaran.tray">Automática (la que tenga papel)</option>
+                                                    <t t-foreach="this.getPrinterBins('albaran')" t-as="b" t-key="b">
+                                                        <option t-att-value="b" t-att-selected="state.printerConfig.assignments.albaran.tray === b"><t t-esc="b"/></option>
+                                                    </t>
+                                                </select>
+                                            </div>
+                                        </t>
                                     </div>
                                 </div>
 
@@ -3502,6 +3528,7 @@
                                                 <select class="doc-select-sm form-select"
                                                         t-on-change="(ev) => this.onPrinterAssignmentChange('invoice', 'format', ev.target.value)">
                                                     <option value="a4" t-att-selected="state.printerConfig.assignments.invoice.format === 'a4'">Hoja A4 Estándar</option>
+                                                    <option value="a5" t-att-selected="state.printerConfig.assignments.invoice.format === 'a5'">Cuartilla A5</option>
                                                     <option value="thermal_80" t-att-selected="state.printerConfig.assignments.invoice.format === 'thermal_80'">Rollo Térmico 80mm</option>
                                                 </select>
                                             </div>
@@ -3517,6 +3544,18 @@
                                                 <i class="fa fa-print me-1"/> Probar
                                             </button>
                                         </div>
+                                        <t t-if="this.getPrinterBins('invoice').length">
+                                            <div class="doc-field-row">
+                                                <label class="doc-label">Bandeja de papel:</label>
+                                                <select class="doc-select form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('invoice', 'tray', ev.target.value)">
+                                                    <option value="" t-att-selected="!state.printerConfig.assignments.invoice.tray">Automática (la que tenga papel)</option>
+                                                    <t t-foreach="this.getPrinterBins('invoice')" t-as="b" t-key="b">
+                                                        <option t-att-value="b" t-att-selected="state.printerConfig.assignments.invoice.tray === b"><t t-esc="b"/></option>
+                                                    </t>
+                                                </select>
+                                            </div>
+                                        </t>
                                     </div>
                                 </div>
 
@@ -3550,6 +3589,7 @@
                                                         t-on-change="(ev) => this.onPrinterAssignmentChange('shift_report', 'format', ev.target.value)">
                                                     <option value="thermal_80" t-att-selected="state.printerConfig.assignments.shift_report.format === 'thermal_80'">Rollo Térmico 80mm</option>
                                                     <option value="a4" t-att-selected="state.printerConfig.assignments.shift_report.format === 'a4'">Hoja A4</option>
+                                                    <option value="a5" t-att-selected="state.printerConfig.assignments.shift_report.format === 'a5'">Cuartilla A5</option>
                                                 </select>
                                             </div>
                                             <div class="doc-field-sub">
@@ -3564,6 +3604,18 @@
                                                 <i class="fa fa-print me-1"/> Probar
                                             </button>
                                         </div>
+                                        <t t-if="this.getPrinterBins('shift_report').length">
+                                            <div class="doc-field-row">
+                                                <label class="doc-label">Bandeja de papel:</label>
+                                                <select class="doc-select form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('shift_report', 'tray', ev.target.value)">
+                                                    <option value="" t-att-selected="!state.printerConfig.assignments.shift_report.tray">Automática (la que tenga papel)</option>
+                                                    <t t-foreach="this.getPrinterBins('shift_report')" t-as="b" t-key="b">
+                                                        <option t-att-value="b" t-att-selected="state.printerConfig.assignments.shift_report.tray === b"><t t-esc="b"/></option>
+                                                    </t>
+                                                </select>
+                                            </div>
+                                        </t>
                                     </div>
                                 </div>
 
@@ -3597,6 +3649,7 @@
                                                         t-on-change="(ev) => this.onPrinterAssignmentChange('extraction', 'format', ev.target.value)">
                                                     <option value="thermal_80" t-att-selected="state.printerConfig.assignments.extraction.format === 'thermal_80'">Rollo Térmico 80mm</option>
                                                     <option value="a4" t-att-selected="state.printerConfig.assignments.extraction.format === 'a4'">Hoja A4</option>
+                                                    <option value="a5" t-att-selected="state.printerConfig.assignments.extraction.format === 'a5'">Cuartilla A5</option>
                                                 </select>
                                             </div>
                                             <div class="doc-field-sub">
@@ -3611,6 +3664,18 @@
                                                 <i class="fa fa-print me-1"/> Probar
                                             </button>
                                         </div>
+                                        <t t-if="this.getPrinterBins('extraction').length">
+                                            <div class="doc-field-row">
+                                                <label class="doc-label">Bandeja de papel:</label>
+                                                <select class="doc-select form-select"
+                                                        t-on-change="(ev) => this.onPrinterAssignmentChange('extraction', 'tray', ev.target.value)">
+                                                    <option value="" t-att-selected="!state.printerConfig.assignments.extraction.tray">Automática (la que tenga papel)</option>
+                                                    <t t-foreach="this.getPrinterBins('extraction')" t-as="b" t-key="b">
+                                                        <option t-att-value="b" t-att-selected="state.printerConfig.assignments.extraction.tray === b"><t t-esc="b"/></option>
+                                                    </t>
+                                                </select>
+                                            </div>
+                                        </t>
                                     </div>
                                 </div>
                             </div>

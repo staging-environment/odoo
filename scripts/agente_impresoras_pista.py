@@ -128,6 +128,31 @@ def clasificar(nombre):
     return "laser_ink"
 
 
+def _bandejas(nombre, puerto, timeout=10):
+    """Bandejas que declara el driver (DC_BINNAMES). En un hilo con límite de tiempo:
+    un driver colgado (p. ej. la Brother con el driver IPP genérico) no debe bloquear al agente."""
+    resultado = []
+
+    def consultar():
+        try:
+            ws = ctypes.WinDLL("winspool.drv")
+            n = ws.DeviceCapabilitiesW(nombre, puerto, 12, None, None)  # DC_BINNAMES
+            if n and n > 0:
+                buf = ctypes.create_unicode_buffer(n * 24)
+                ws.DeviceCapabilitiesW(nombre, puerto, 12, buf, None)
+                for i in range(n):
+                    b = ctypes.wstring_at(ctypes.addressof(buf) + i * 48, 24).split("\x00")[0].strip()
+                    if b:
+                        resultado.append(b)
+        except Exception:
+            pass
+
+    hilo = threading.Thread(target=consultar, daemon=True)
+    hilo.start()
+    hilo.join(timeout)
+    return list(resultado)
+
+
 def detectar_impresoras():
     if winreg is None:
         raise RuntimeError("Este script solo funciona en Windows")
@@ -142,12 +167,15 @@ def detectar_impresoras():
                 break
             i += 1
             with winreg.OpenKey(root, nombre) as k:
+                puerto = _reg_value(k, "Port")
+                tipo = clasificar(nombre)
                 impresoras.append({
                     "name": nombre,
-                    "port": _reg_value(k, "Port"),
+                    "port": puerto,
                     "driver": _reg_value(k, "Printer Driver"),
-                    "type": clasificar(nombre),
+                    "type": tipo,
                     "is_default": nombre == default,
+                    "bins": _bandejas(nombre, puerto) if tipo == "laser_ink" else [],
                 })
     impresoras.sort(key=lambda p: (not p["is_default"], p["type"] == "pdf", p["name"].lower()))
     return impresoras
@@ -284,7 +312,7 @@ def _sumatra():
     raise RuntimeError("Falta SumatraPDF en el PC de pista (necesario para imprimir A4/PDF)")
 
 
-def imprimir_pdf(nombre, datos, copias):
+def imprimir_pdf(nombre, datos, copias, bandeja="", papel=""):
     exe = _sumatra()
     previos = {jid for jid, *_ in _trabajos(nombre)}
     fd, path = tempfile.mkstemp(suffix=".pdf", prefix="utrecar_")
@@ -292,7 +320,12 @@ def imprimir_pdf(nombre, datos, copias):
         with os.fdopen(fd, "wb") as fh:
             fh.write(datos)
         try:
-            proc = subprocess.run([exe, "-print-to", nombre, "-print-settings", f"{int(copias)}x,fit",
+            ajustes = f"{int(copias)}x,fit"
+            if bandeja:
+                ajustes += f",bin={bandeja}"
+            if papel:
+                ajustes += f",paper={papel}"
+            proc = subprocess.run([exe, "-print-to", nombre, "-print-settings", ajustes,
                                    "-silent", "-exit-when-done", path],
                                   timeout=90, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         except subprocess.TimeoutExpired:
@@ -354,7 +387,7 @@ def _imprimir_trabajo(odoo, t, meta):
         if t.get("mimetype") == MIME_ESCPOS:
             imprimir_raw(impresora, datos, t.get("name") or "Ticket")
         elif t.get("mimetype") == MIME_PDF:
-            imprimir_pdf(impresora, datos, meta.get("copies") or 1)
+            imprimir_pdf(impresora, datos, meta.get("copies") or 1, meta.get("tray") or "", meta.get("paper") or "")
         else:
             raise RuntimeError(f"Tipo de documento no soportado: {t.get('mimetype')}")
         odoo.call("ir.attachment", "unlink", [[t["id"]]])

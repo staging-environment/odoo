@@ -63,13 +63,14 @@ export const UtrecarDirectPrint = {
             name: printer && printer.id !== "windows_default" ? printer.name : "",
             format: assign.format || "thermal_80",
             copies: assign.copies || 1,
+            tray: assign.format === "thermal_80" ? "" : (assign.tray || ""),
         };
     },
 
     canPrint(configId, docType, { pdf = false } = {}) {
         const a = this.assigned(configId, docType);
         // Los A4/PDF necesitan SumatraPDF en el PC; la térmica no.
-        const needsPdf = pdf || a.format === "a4";
+        const needsPdf = pdf || a.format === "a4" || a.format === "a5";
         return Boolean(configId && this.agentAlive[configId] && a.directPrint && a.name
             && (!needsPdf || this.pdfReady[configId]));
     },
@@ -102,6 +103,7 @@ export const UtrecarDirectPrint = {
                 printer_name: a.name,
                 format: a.format,
                 copies: a.copies,
+                tray: a.tray,
                 title, html, image, report_url,
             });
         } catch (e) {
@@ -1071,6 +1073,7 @@ export class UtrecarMainScreen extends Component {
             name: p.name,
             type: p.type || "laser_ink",
             port: p.port || "",
+            bins: (p.bins || []).filter((b) => !/autom/i.test(b)),
             is_default: Boolean(p.is_default),
             is_detected: true,
         }));
@@ -1198,7 +1201,21 @@ export class UtrecarMainScreen extends Component {
             this.state.printerConfig.assignments[docType] = {};
         }
         this.state.printerConfig.assignments[docType][field] = value;
+        if (field === "printerId" || (field === "format" && value === "thermal_80")) {
+            this.state.printerConfig.assignments[docType].tray = "";
+        }
         this.savePrinterConfig();
+    }
+
+    /** Bandejas de la impresora asignada (solo documentos en A4/A5; la térmica no tiene). */
+    getPrinterBins(docType) {
+        const cfg = this.state.printerConfig || {};
+        const assign = (cfg.assignments || {})[docType] || {};
+        if (!assign.format || assign.format === "thermal_80") {
+            return [];
+        }
+        const printer = (cfg.systemPrinters || []).find((p) => p.id === assign.printerId);
+        return (printer && printer.bins) || [];
     }
 
     addNewSystemPrinter() {
