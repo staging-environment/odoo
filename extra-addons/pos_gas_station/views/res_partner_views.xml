@@ -19,6 +19,19 @@
                     <span class="o_form_label">Nombre</span><span class="text-danger fw-bold"> *</span>
                 </div>
             </xpath>
+            <!-- Persona de contacto: aviso de que dirección y NIF vienen de su empresa -->
+            <xpath expr="//div[hasclass('oe_title')]" position="after">
+                <div class="alert alert-info d-flex align-items-center justify-content-between gap-2 py-2 mb-3" role="status"
+                     invisible="not parent_id or type != 'contact'">
+                    <span>
+                        <i class="fa fa-info-circle me-1"/>
+                        La <strong>dirección</strong> y el <strong>NIF</strong> de esta persona de contacto se heredan de su empresa
+                        y se modifican en la ficha de la empresa.
+                    </span>
+                    <button name="action_utrecar_open_parent" type="object" string="Abrir ficha de la empresa"
+                            class="btn btn-sm btn-primary" icon="fa-building"/>
+                </div>
+            </xpath>
             <!-- DIRECCIÓN: un campo por fila con su propia etiqueta (en lugar del bloque sin etiquetas de Odoo) -->
             <xpath expr="(//div[hasclass('o_address_format')])[1]" position="replace"/>
             <xpath expr="//span[@name='address_name']" position="replace">

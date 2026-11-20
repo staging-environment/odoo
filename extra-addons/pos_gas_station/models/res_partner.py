@@ -334,3 +334,19 @@ class ResPartner(models.Model):
 
     def action_view_partner_invoices(self):
         return self._utrecar_as_dialog(super().action_view_partner_invoices())
+
+    def action_utrecar_open_parent(self):
+        """Abre la ficha de la empresa de una persona de contacto."""
+        self.ensure_one()
+        parent = self.parent_id
+        if not parent:
+            return False
+        return {
+            'type': 'ir.actions.act_window',
+            'name': parent.display_name,
+            'res_model': 'res.partner',
+            'res_id': parent.id,
+            'view_mode': 'form',
+            'views': [(False, 'form')],
+            'target': 'current',
+        }
