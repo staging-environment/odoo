@@ -1907,16 +1907,16 @@
                                         <thead>
                                             <tr>
                                                 <th style="width: 32px; text-align: center;"></th>
-                                                <th class="th-sortable" style="width: 130px;" t-on-click="() => this.sortShiftOrders('date')" title="Ordenar por Fecha y Hora">
+                                                <th class="th-sortable" style="width: 125px;" t-on-click="() => this.sortShiftOrders('date')" title="Ordenar por Fecha y Hora">
                                                     FECHA / HORA <i t-attf-class="fa #{getSortIcon('date')}"/>
                                                 </th>
-                                                <th class="th-sortable" style="width: 120px;" t-on-click="() => this.sortShiftOrders('ticket')" title="Ordenar por Serie">
+                                                <th class="th-sortable" style="width: 175px;" t-on-click="() => this.sortShiftOrders('ticket')" title="Ordenar por Serie">
                                                     SERIE <i t-attf-class="fa #{getSortIcon('ticket')}"/>
                                                 </th>
                                                 <th class="th-sortable" style="width: 70px; text-align: center;" t-on-click="() => this.sortShiftOrders('pump')" title="Ordenar por Calle de Suministro">
                                                     CALLE <i t-attf-class="fa #{getSortIcon('pump')}"/>
                                                 </th>
-                                                <th class="th-sortable" style="width: 150px;" t-on-click="() => this.sortShiftOrders('receipt')" title="Ordenar por Nº de Recibo">
+                                                <th class="th-sortable" style="width: 135px;" t-on-click="() => this.sortShiftOrders('receipt')" title="Ordenar por Nº de Recibo">
                                                     RECIBO <i t-attf-class="fa #{getSortIcon('receipt')}"/>
                                                 </th>
                                                 <th class="th-sortable" t-on-click="() => this.sortShiftOrders('partner')" title="Ordenar por Cliente">
