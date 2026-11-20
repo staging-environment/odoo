@@ -4006,8 +4006,10 @@ class PosGasStationController(http.Controller):
                     'vehicle_driver': order.vehicle_driver or False,
                 })
 
-            digits = ''.join(c for c in (order.name or '') if c.isdigit()) or str(order.id)
-            annul_ref = getattr(order, 'annulment_ref', '') or f"TTTR_{digits[-4:].zfill(4)}"
+            # Estado real del ticket tras facturar (facturar no lo anula); sin
+            # referencias inventadas con formato distinto a TTTR_2026xxxxx.
+            is_annulled = bool(getattr(order, 'is_ticket_annulled', False))
+            annul_ref = (getattr(order, 'annulment_ref', '') or '') if is_annulled else ''
             
             email_result = None
             if delivery_method in ('email', 'both'):
@@ -4020,8 +4022,8 @@ class PosGasStationController(http.Controller):
                 'status': 'success',
                 'account_move_id': order.account_move.id,
                 'account_move_name': clean_inv_ret or order.account_move.name,
-                'is_ticket_annulled': True,
-                'annulment_ref': annul_ref,
+                'is_ticket_annulled': is_annulled,
+                'annulment_ref': annul_ref or False,
                 'invoice_url': f'/report/pdf/account.report_invoice_with_payments/{order.account_move.id}',
                 'email_sent': email_result.get('status') == 'success' if email_result else False,
                 'email_to': email_result.get('email_to') if email_result else False,

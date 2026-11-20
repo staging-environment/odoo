@@ -3523,9 +3523,11 @@ export class UtrecarMainScreen extends Component {
             if (res && res.status === "success") {
                 order.is_invoiced = true;
                 order.state = 'invoiced';
-                order.is_ticket_annulled = true;
-                order.annulment_ref = res.annulment_ref;
-                order.annulment_reason = `Sustituido por Factura ${res.account_move_name}`;
+                order.is_ticket_annulled = Boolean(res.is_ticket_annulled);
+                order.annulment_ref = res.annulment_ref || false;
+                if (res.is_ticket_annulled) {
+                    order.annulment_reason = `Sustituido por Factura ${res.account_move_name}`;
+                }
                 order.account_move_id = res.account_move_id;
                 order.account_move_name = res.account_move_name;
                 order.invoice_url = res.invoice_url;
@@ -3539,7 +3541,10 @@ export class UtrecarMainScreen extends Component {
                 }
                 this.closeInvoiceModal();
                 
-                let msg = `✅ Factura ${res.account_move_name} generada con éxito.\nEl ticket ${order.name} ha sido anulado con Ref: ${order.annulment_ref}.`;
+                let msg = `✅ Factura ${res.account_move_name} generada con éxito.\nTicket ${order.name} facturado.`;
+                if (res.is_ticket_annulled && res.annulment_ref) {
+                    msg += `\nTicket anulado con Ref: ${res.annulment_ref}.`;
+                }
                 if (res.email_sent) {
                     msg += `\n\n📧 Enviada por correo a: ${res.email_to}`;
                 } else if (res.email_error) {
