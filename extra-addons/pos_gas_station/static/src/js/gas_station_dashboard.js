@@ -43,6 +43,9 @@ export class GasStationDashboard extends Component {
             // Vista Detalle de Empresa
             viewMode: "dashboard", // 'dashboard' | 'company_detail'
             selectedDetailCompany: null,
+            stationTab: "ficha", // 'ficha' | 'tanks' | 'stock' | 'sessions'
+            stationData: null,
+            stationStockSearch: "",
             detailTab: "stations", // 'stations' | 'customers' | 'inventory'
             companyDetailData: null,
             detailLoading: false,
@@ -246,6 +249,7 @@ export class GasStationDashboard extends Component {
                 stationId: this.state.selectedDetailStation ? this.state.selectedDetailStation.id : null,
                 detailTab: this.state.detailTab || "stations",
                 adminParamSection: this.state.adminParamSection || "menu",
+                stationTab: this.state.stationTab || "ficha",
             };
             window.sessionStorage.setItem("utrecar_dashboard_nav_state", JSON.stringify(navState));
         } catch (e) {
@@ -290,7 +294,7 @@ export class GasStationDashboard extends Component {
                         if (matchedComp) {
                             await this.openCompanyDetail(
                                 matchedComp,
-                                saved.detailTab || "stations",
+                                (saved.detailTab === "stock" ? "stations" : saved.detailTab) || "stations",
                                 saved.adminParamSection || "menu"
                             );
                         }
@@ -315,7 +319,7 @@ export class GasStationDashboard extends Component {
                                 this.state.adminParamSection = saved.adminParamSection || "menu";
                                 this.loadCompanyDetailData(matchedComp.id);
                             }
-                            this.openStationDetail(matchedStation);
+                            this.openStationDetail(matchedStation, saved.stationTab || "ficha");
                         }
                     }
                 }
@@ -553,8 +557,12 @@ export class GasStationDashboard extends Component {
         this.state.showEditStationModal = true;
     }
 
-    openStationDetail(st) {
+    openStationDetail(st, initialTab = "ficha") {
         this.state.selectedDetailStation = Object.assign({}, st);
+        this.state.stationTab = initialTab || "ficha";
+        this.state.stationData = null;
+        this.state.stationStockSearch = "";
+        this.loadStationDetailData(st.id);
         this.state.editStationId = st.id;
         this.state.editStationName = st.name || "";
         this.state.editStationVpnIp = st.vpn_ip || "";
@@ -570,8 +578,41 @@ export class GasStationDashboard extends Component {
         this.saveNavState();
     }
 
+    setStationTab(tab) {
+        this.state.stationTab = tab;
+        this.saveNavState();
+    }
+
+    async loadStationDetailData(stationId = null) {
+        const sid = stationId || (this.state.selectedDetailStation && this.state.selectedDetailStation.id);
+        if (!sid) return;
+        try {
+            const res = await jsonrpc("/pos_gas_station/station_detail_data", {
+                station_id: sid,
+                stock_search: this.state.stationStockSearch || "",
+            });
+            if (res && res.status === "success") {
+                if (this.state.selectedDetailStation && this.state.selectedDetailStation.id === sid) {
+                    this.state.stationData = res;
+                }
+            } else {
+                this.notification.add((res && res.message) || "Error al cargar la estación", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error loading station detail:", e);
+            this.notification.add("Error de conexión al cargar los datos de la estación", { type: "danger" });
+        }
+    }
+
+    onStationStockSearch(ev) {
+        clearTimeout(this._stationStockTimer);
+        const delay = ev && ev.key === "Enter" ? 0 : 400;
+        this._stationStockTimer = setTimeout(() => this.loadStationDetailData(), delay);
+    }
+
     backFromStationDetail() {
         this.state.selectedDetailStation = null;
+        this.state.stationData = null;
         if (this.state.selectedDetailCompany) {
             this.state.viewMode = "company_detail";
         } else {
@@ -868,7 +909,7 @@ export class GasStationDashboard extends Component {
     }
 
     setDetailTab(tab) {
-        this.state.detailTab = tab;
+        this.state.detailTab = tab === "stock" ? "stations" : tab;
         this.state.isAdminMenuOpen = false;
         this.saveNavState();
     }
@@ -2042,7 +2083,8 @@ export class GasStationDashboard extends Component {
         this.state.newTankFuelCode = "GA";
         this.state.newTankCapacity = 30000;
         this.state.newTankInitialLiters = 0;
-        this.state.newTankWarehouseId = whs.length ? whs[0].id : null;
+        const stationWh = this.state.selectedDetailStation && this.state.stationData && this.state.stationData.warehouse;
+        this.state.newTankWarehouseId = stationWh ? stationWh.id : (whs.length ? whs[0].id : null);
         this.state.isNewTankModalOpen = true;
     }
 
@@ -2056,7 +2098,8 @@ export class GasStationDashboard extends Component {
             this.notification.add("Debe introducir un nombre para el tanque.", { type: "warning" });
             return;
         }
-        const companyId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        const companyId = (this.state.stationData && this.state.stationData.station.company_id)
+            || (this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null);
         if (!companyId) return;
 
         this.state.isSavingNewTank = true;
@@ -2072,7 +2115,11 @@ export class GasStationDashboard extends Component {
             if (res && res.status === "success") {
                 this.notification.add(res.message, { type: "success" });
                 this.closeNewTankModal();
-                await this.loadCompanyDetailData(companyId);
+                if (this.state.selectedDetailStation) {
+                    await this.loadStationDetailData();
+                } else {
+                    await this.loadCompanyDetailData(companyId);
+                }
             } else {
                 this.notification.add((res && res.message) || "Error al crear tanque", { type: "danger" });
             }
@@ -2096,7 +2143,9 @@ export class GasStationDashboard extends Component {
             });
             if (res && res.status === "success") {
                 this.notification.add(res.message, { type: "success" });
-                if (companyId) {
+                if (this.state.selectedDetailStation) {
+                    await this.loadStationDetailData();
+                } else if (companyId) {
                     await this.loadCompanyDetailData(companyId);
                 }
             } else {

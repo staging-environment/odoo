@@ -316,13 +316,6 @@
                                             <span class="mini-stat-lbl">Clientes</span>
                                         </div>
                                     </button>
-                                    <button type="button" class="company-mini-stat" t-on-click="() => this.setDetailTab('stock')" title="Ver Inventario y Almacenes">
-                                        <i class="fa fa-cubes text-warning"/>
-                                        <div>
-                                            <span class="mini-stat-val"><t t-esc="(state.companyDetailData and state.companyDetailData.inventory) ? state.companyDetailData.inventory.warehouses.length : 0"/></span>
-                                            <span class="mini-stat-lbl">Almacenes</span>
-                                        </div>
-                                    </button>
                                 </div>
 
                                 <div class="company-header-actions">
@@ -364,19 +357,9 @@
                                     t-att-class="state.detailTab === 'products' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
                                     t-on-click="() => this.setDetailTab('products')">
                                 <i class="fa fa-tags"/>
-                                <span>Productos y Precios</span>
+                                <span>Catálogo de Productos</span>
                                 <span class="badge rounded-pill company-tab-badge" t-att-class="state.detailTab === 'products' ? 'bg-white text-primary' : 'bg-light text-dark border'">
                                     <t t-esc="state.productTotalCount || (state.companyDetailData and state.companyDetailData.product_stats ? state.companyDetailData.product_stats.total : 0)"/>
-                                </span>
-                            </button>
-
-                            <button class="btn btn-sm company-tab-btn"
-                                    t-att-class="state.detailTab === 'stock' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
-                                    t-on-click="() => this.setDetailTab('stock')">
-                                <i class="fa fa-cubes"/>
-                                <span>Tanques y Stock</span>
-                                <span class="badge rounded-pill company-tab-badge" t-att-class="state.detailTab === 'stock' ? 'bg-white text-primary' : 'bg-light text-dark border'">
-                                    <t t-esc="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.tanks ? state.companyDetailData.inventory.tanks.length : 0"/>
                                 </span>
                             </button>
 
@@ -887,146 +870,6 @@
                             </div>
                         </div>
 
-                        <!-- PESTAÑA 4: TANQUES Y STOCK -->
-                        <div t-if="state.detailTab === 'stock'">
-                            <!-- BOTONES DE ACCIÓN RÁPIDA -->
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-                                <div>
-                                    <h5 class="fw-bold mb-1 text-dark">Control de Stock y Depósitos</h5>
-                                    <small class="text-muted">Nivel de llenado en tiempo real, capacidad nominal y aforos físicos de tanques de carburante.</small>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <button class="btn btn-sm btn-primary fw-bold shadow-sm" t-on-click="() => this.openNewTankModal()">
-                                        <i class="fa fa-plus me-1"/> Nuevo Tanque
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.openOdooInventoryView()">
-                                        <i class="fa fa-cubes me-1"/> Existencias y Mermas (Odoo)
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary fw-bold" t-on-click="() => this.openOdooStockPickingView()">
-                                        <i class="fa fa-truck me-1"/> Recepciones y Cisternas
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- PARRILLA DE TANQUES DE CARBURANTE -->
-                            <div class="mb-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                                        <i class="fa fa-tint text-danger"/> Tanques de Combustible en Pista
-                                    </h6>
-                                    <button class="btn btn-sm btn-outline-primary fw-semibold" t-on-click="() => this.openNewTankModal()">
-                                        <i class="fa fa-plus me-1"/> Añadir Tanque
-                                    </button>
-                                </div>
-                                <t t-if="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.tanks and state.companyDetailData.inventory.tanks.length">
-                                    <div class="row g-3">
-                                        <t t-foreach="state.companyDetailData.inventory.tanks" t-as="tank" t-key="tank.id">
-                                            <div class="col-md-6 col-lg-4">
-                                                <div class="bg-white rounded-3 shadow-sm border p-3 h-100 d-flex flex-column justify-content-between">
-                                                    <div>
-                                                        <!-- Cabecera del Tanque -->
-                                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                                            <div class="d-flex align-items-center gap-2">
-                                                                <span t-attf-class="badge rounded-circle p-2 fw-bold #{tank.badge_class}" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 11px;">
-                                                                    <t t-esc="tank.fuel_code"/>
-                                                                </span>
-                                                                <div>
-                                                                    <strong class="d-block text-dark" style="font-size: 13px;"><t t-esc="tank.name"/></strong>
-                                                                    <small class="text-muted"><t t-esc="tank.fuel_name"/></small>
-                                                                </div>
-                                                            </div>
-                                                            <span t-attf-class="badge #{tank.fill_pct &lt; 15 ? 'bg-danger' : (tank.fill_pct &lt; 30 ? 'bg-warning text-dark' : 'bg-success-subtle text-success border border-success-subtle')}">
-                                                                <t t-esc="tank.status"/>
-                                                            </span>
-                                                        </div>
-
-                                                        <!-- Barra de Llenado / Nivel -->
-                                                        <div class="mb-3 mt-3">
-                                                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                                                <span class="text-muted small">Nivel de Llenado</span>
-                                                                <strong class="text-dark"><t t-esc="tank.fill_pct"/>%</strong>
-                                                            </div>
-                                                            <div class="progress" style="height: 10px; border-radius: 5px;">
-                                                                <div t-attf-class="progress-bar #{tank.fill_pct &lt; 15 ? 'bg-danger' : (tank.fill_pct &lt; 30 ? 'bg-warning' : 'bg-success')}"
-                                                                     role="progressbar"
-                                                                     t-att-style="'width: ' + tank.fill_pct + '%'"
-                                                                     t-att-aria-valuenow="tank.fill_pct"
-                                                                     aria-valuemin="0"
-                                                                     aria-valuemax="100">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- Métricas numéricas -->
-                                                        <div class="bg-light rounded p-2 mb-3" style="font-size: 12px;">
-                                                            <div class="d-flex justify-content-between py-1 border-bottom">
-                                                                <span class="text-muted">Litros Actuales:</span>
-                                                                <strong class="text-dark font-monospace"><t t-esc="tank.current_liters.toLocaleString('es-ES')"/> L</strong>
-                                                            </div>
-                                                            <div class="d-flex justify-content-between py-1 border-bottom">
-                                                                <span class="text-muted">Capacidad Nominal:</span>
-                                                                <span class="font-monospace"><t t-esc="tank.capacity_liters.toLocaleString('es-ES')"/> L</span>
-                                                            </div>
-                                                            <div class="d-flex justify-content-between py-1">
-                                                                <span class="text-muted">Hueco para Descarga:</span>
-                                                                <span class="text-primary fw-bold font-monospace"><t t-esc="(tank.capacity_liters - tank.current_liters).toLocaleString('es-ES')"/> L</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <button class="btn btn-sm btn-outline-primary flex-grow-1 fw-bold"
-                                                                t-on-click="() => this.openAdjustTankModal(tank)">
-                                                            <i class="fa fa-sliders me-1"/> Registrar Aforo
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-danger"
-                                                                title="Eliminar este tanque"
-                                                                t-on-click="() => this.deleteTank(tank)">
-                                                            <i class="fa fa-trash"/>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </t>
-                                    </div>
-                                </t>
-                                <t t-else="">
-                                    <div class="bg-white rounded-3 shadow-sm border p-4 text-center">
-                                        <i class="fa fa-info-circle fa-2x text-muted mb-2"/>
-                                        <p class="text-muted mb-2">No se detectaron tanques específicos configurados en los almacenes de esta empresa.</p>
-                                        <button class="btn btn-sm btn-primary fw-bold" t-on-click="() => this.openNewTankModal()">
-                                            <i class="fa fa-plus me-1"/> Registrar Primer Tanque
-                                        </button>
-                                    </div>
-                                </t>
-                            </div>
-
-                            <!-- ALMACENES DE LA EMPRESA -->
-                            <div class="bg-white rounded-3 shadow-sm border p-4">
-                                <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                                    <i class="fa fa-building text-primary"/> Almacenes Registrados en Odoo
-                                </h6>
-                                <t t-if="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.warehouses.length">
-                                    <div class="row g-3">
-                                        <t t-foreach="state.companyDetailData.inventory.warehouses" t-as="wh" t-key="wh.id">
-                                            <div class="col-md-6">
-                                                <div class="border rounded p-3 d-flex justify-content-between align-items-center bg-light">
-                                                    <div>
-                                                        <strong class="d-block text-dark"><t t-esc="wh.name"/></strong>
-                                                        <span class="badge bg-white text-muted border font-monospace mt-1">Cód: <t t-esc="wh.code"/></span>
-                                                    </div>
-                                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Operativo</span>
-                                                </div>
-                                            </div>
-                                        </t>
-                                    </div>
-                                </t>
-                                <t t-else="">
-                                    <p class="text-muted small mb-0">No hay almacenes específicos registrados para esta empresa.</p>
-                                </t>
-                            </div>
-                        </div>
-
                         <!-- PESTAÑA 5: ADMINISTRACIÓN -> CONFIGURACIÓN DE PARÁMETROS -->
                         <div t-if="state.detailTab === 'admin_params'">
 
@@ -1363,6 +1206,42 @@
                         </div>
                     </div>
 
+                    <!-- MENÚ PROPIO DE LA ESTACIÓN -->
+                    <div class="bg-white px-4 py-2 rounded-3 shadow-sm border mb-4 d-flex align-items-center gap-2 flex-wrap">
+                        <button class="btn btn-sm company-tab-btn"
+                                t-att-class="state.stationTab === 'ficha' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
+                                t-on-click="() => this.setStationTab('ficha')">
+                            <i class="fa fa-id-card-o"/> <span>Ficha</span>
+                        </button>
+                        <button class="btn btn-sm company-tab-btn"
+                                t-att-class="state.stationTab === 'tanks' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
+                                t-on-click="() => this.setStationTab('tanks')">
+                            <i class="fa fa-tint"/> <span>Tanques</span>
+                            <span class="badge rounded-pill company-tab-badge" t-att-class="state.stationTab === 'tanks' ? 'bg-white text-primary' : 'bg-light text-dark border'">
+                                <t t-esc="state.stationData ? state.stationData.tanks.length : '…'"/>
+                            </span>
+                        </button>
+                        <button class="btn btn-sm company-tab-btn"
+                                t-att-class="state.stationTab === 'stock' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
+                                t-on-click="() => this.setStationTab('stock')">
+                            <i class="fa fa-cubes"/> <span>Stock de Tienda</span>
+                            <span class="badge rounded-pill company-tab-badge" t-att-class="state.stationTab === 'stock' ? 'bg-white text-primary' : 'bg-light text-dark border'">
+                                <t t-esc="state.stationData ? state.stationData.stock_stats.products : '…'"/>
+                            </span>
+                        </button>
+                        <button class="btn btn-sm company-tab-btn"
+                                t-att-class="state.stationTab === 'sessions' ? 'btn-primary shadow-sm' : 'btn-outline-secondary border-0'"
+                                t-on-click="() => this.setStationTab('sessions')">
+                            <i class="fa fa-clock-o"/> <span>Turnos y Ventas</span>
+                        </button>
+                        <span class="ms-auto small text-muted" t-if="state.stationData and state.stationData.warehouse">
+                            <i class="fa fa-building-o me-1"/> Almacén: <strong t-esc="state.stationData.warehouse.name"/>
+                            <span class="badge bg-light text-muted border font-monospace ms-1" t-esc="state.stationData.warehouse.code"/>
+                            · Empresa: <strong t-esc="state.stationData.station.company_name"/>
+                        </span>
+                    </div>
+
+                    <t t-if="state.stationTab === 'ficha'">
                     <!-- CUERPO DE LA FICHA: TARJETAS DE DATOS EDITABLES -->
                     <div class="row g-4">
                         
@@ -1492,6 +1371,193 @@
                             <i class="fa fa-check" t-att-class="state.actionLoading ? 'fa-spin fa-spinner' : ''"/> Guardar Cambios
                         </button>
                     </div>
+                    </t>
+
+                    <!-- ESTACIÓN: TANQUES -->
+                    <t t-if="state.stationTab === 'tanks'">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+                            <div>
+                                <h5 class="fw-bold mb-1 text-dark">Tanques de la estación</h5>
+                                <small class="text-muted">Nivel, capacidad y aforos de los depósitos de carburante de esta estación.</small>
+                            </div>
+                            <button class="btn btn-sm btn-primary fw-bold shadow-sm" t-on-click="() => this.openNewTankModal()">
+                                <i class="fa fa-plus me-1"/> Nuevo Tanque
+                            </button>
+                        </div>
+                        <div t-if="!state.stationData" class="text-center text-muted py-5"><i class="fa fa-spinner fa-spin me-2"/>Cargando…</div>
+                        <t t-else="">
+                                <t t-if="state.stationData and state.stationData.tanks.length">
+                                    <div class="row g-3">
+                                        <t t-foreach="state.stationData.tanks" t-as="tank" t-key="tank.id">
+                                            <div class="col-md-6 col-lg-4">
+                                                <div class="bg-white rounded-3 shadow-sm border p-3 h-100 d-flex flex-column justify-content-between">
+                                                    <div>
+                                                        <!-- Cabecera del Tanque -->
+                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <span t-attf-class="badge rounded-circle p-2 fw-bold #{tank.badge_class}" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 11px;">
+                                                                    <t t-esc="tank.fuel_code"/>
+                                                                </span>
+                                                                <div>
+                                                                    <strong class="d-block text-dark" style="font-size: 13px;"><t t-esc="tank.name"/></strong>
+                                                                    <small class="text-muted"><t t-esc="tank.fuel_name"/></small>
+                                                                </div>
+                                                            </div>
+                                                            <span t-attf-class="badge #{tank.fill_pct &lt; 15 ? 'bg-danger' : (tank.fill_pct &lt; 30 ? 'bg-warning text-dark' : 'bg-success-subtle text-success border border-success-subtle')}">
+                                                                <t t-esc="tank.status"/>
+                                                            </span>
+                                                        </div>
+
+                                                        <!-- Barra de Llenado / Nivel -->
+                                                        <div class="mb-3 mt-3">
+                                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                                <span class="text-muted small">Nivel de Llenado</span>
+                                                                <strong class="text-dark"><t t-esc="tank.fill_pct"/>%</strong>
+                                                            </div>
+                                                            <div class="progress" style="height: 10px; border-radius: 5px;">
+                                                                <div t-attf-class="progress-bar #{tank.fill_pct &lt; 15 ? 'bg-danger' : (tank.fill_pct &lt; 30 ? 'bg-warning' : 'bg-success')}"
+                                                                     role="progressbar"
+                                                                     t-att-style="'width: ' + tank.fill_pct + '%'"
+                                                                     t-att-aria-valuenow="tank.fill_pct"
+                                                                     aria-valuemin="0"
+                                                                     aria-valuemax="100">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Métricas numéricas -->
+                                                        <div class="bg-light rounded p-2 mb-3" style="font-size: 12px;">
+                                                            <div class="d-flex justify-content-between py-1 border-bottom">
+                                                                <span class="text-muted">Litros Actuales:</span>
+                                                                <strong class="text-dark font-monospace"><t t-esc="tank.current_liters.toLocaleString('es-ES')"/> L</strong>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between py-1 border-bottom">
+                                                                <span class="text-muted">Capacidad Nominal:</span>
+                                                                <span class="font-monospace"><t t-esc="tank.capacity_liters.toLocaleString('es-ES')"/> L</span>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between py-1">
+                                                                <span class="text-muted">Hueco para Descarga:</span>
+                                                                <span class="text-primary fw-bold font-monospace"><t t-esc="(tank.capacity_liters - tank.current_liters).toLocaleString('es-ES')"/> L</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <button class="btn btn-sm btn-outline-primary flex-grow-1 fw-bold"
+                                                                t-on-click="() => this.openAdjustTankModal(tank)">
+                                                            <i class="fa fa-sliders me-1"/> Registrar Aforo
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger"
+                                                                title="Eliminar este tanque"
+                                                                t-on-click="() => this.deleteTank(tank)">
+                                                            <i class="fa fa-trash"/>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="bg-white rounded-3 shadow-sm border p-4 text-center">
+                                        <i class="fa fa-info-circle fa-2x text-muted mb-2"/>
+                                        <p class="text-muted mb-2">Esta estación no tiene tanques configurados en su almacén.</p>
+                                        <button class="btn btn-sm btn-primary fw-bold" t-on-click="() => this.openNewTankModal()">
+                                            <i class="fa fa-plus me-1"/> Registrar Primer Tanque
+                                        </button>
+                                    </div>
+                                </t>
+                        </t>
+                    </t>
+
+                    <!-- ESTACIÓN: STOCK DE TIENDA -->
+                    <t t-if="state.stationTab === 'stock'">
+                        <div class="bg-white rounded-3 shadow-sm border p-3">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-1 text-dark">Stock de tienda</h5>
+                                    <small class="text-muted">Existencias de productos en el almacén de esta estación (sin los tanques de carburante).</small>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span t-if="state.stationData" class="badge bg-light text-dark border"><t t-esc="state.stationData.stock_stats.products"/> productos</span>
+                                    <span t-if="state.stationData and state.stationData.stock_stats.negative" class="badge bg-danger-subtle text-danger border border-danger-subtle"><t t-esc="state.stationData.stock_stats.negative"/> en negativo</span>
+                                    <div class="input-group input-group-sm" style="width: 280px;">
+                                        <span class="input-group-text bg-white"><i class="fa fa-search text-muted"/></span>
+                                        <input type="text" class="form-control" placeholder="Buscar por nombre o código…"
+                                               t-model="state.stationStockSearch" t-on-keyup="(ev) => this.onStationStockSearch(ev)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div t-if="!state.stationData" class="text-center text-muted py-5"><i class="fa fa-spinner fa-spin me-2"/>Cargando…</div>
+                            <div t-elif="!state.stationData.stock.length" class="text-center text-muted py-4">No hay existencias registradas en esta estación.</div>
+                            <div t-else="" class="table-responsive" style="max-height: 520px;">
+                                <table class="table table-hover table-sm align-middle mb-0 company-detail-table">
+                                    <thead class="bg-light sticky-top">
+                                        <tr>
+                                            <th class="ps-3" style="width: 130px;">Código</th>
+                                            <th>Producto</th>
+                                            <th>Categoría</th>
+                                            <th class="text-end" style="width: 140px;">Existencias</th>
+                                            <th class="text-end pe-3" style="width: 120px;">PVP</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="state.stationData.stock" t-as="row" t-key="row.product_id">
+                                            <tr>
+                                                <td class="ps-3 font-monospace small text-secondary"><t t-esc="row.code || '-'"/></td>
+                                                <td class="fw-semibold small"><t t-esc="row.name"/></td>
+                                                <td class="small text-muted"><t t-esc="row.category"/></td>
+                                                <td class="text-end font-monospace small" t-att-class="row.quantity &lt; 0 ? 'text-danger fw-bold' : ''">
+                                                    <t t-esc="row.quantity.toLocaleString('es-ES')"/> <span class="text-muted" t-esc="row.uom"/>
+                                                </td>
+                                                <td class="text-end pe-3 font-monospace small"><t t-esc="row.price.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 3})"/> €</td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- ESTACIÓN: TURNOS Y VENTAS -->
+                    <t t-if="state.stationTab === 'sessions'">
+                        <div class="bg-white rounded-3 shadow-sm border p-3">
+                            <h5 class="fw-bold mb-1 text-dark">Turnos y ventas</h5>
+                            <small class="text-muted d-block mb-3">Últimos 20 turnos del TPV de esta estación.</small>
+                            <div t-if="!state.stationData" class="text-center text-muted py-5"><i class="fa fa-spinner fa-spin me-2"/>Cargando…</div>
+                            <div t-elif="!state.stationData.sessions.length" class="text-center text-muted py-4">Esta estación todavía no tiene turnos.</div>
+                            <div t-else="" class="table-responsive">
+                                <table class="table table-hover table-sm align-middle mb-0 company-detail-table">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th class="ps-3">Turno</th>
+                                            <th>Expendedor</th>
+                                            <th>Apertura</th>
+                                            <th>Cierre</th>
+                                            <th class="text-center">Estado</th>
+                                            <th class="text-end">Ventas</th>
+                                            <th class="text-end pe-3">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="state.stationData.sessions" t-as="ses" t-key="ses.id">
+                                            <tr>
+                                                <td class="ps-3 font-monospace small fw-bold"><t t-esc="ses.name"/></td>
+                                                <td class="small"><t t-esc="ses.user"/></td>
+                                                <td class="small"><t t-esc="ses.start"/></td>
+                                                <td class="small"><t t-esc="ses.stop || '-'"/></td>
+                                                <td class="text-center">
+                                                    <span t-attf-class="badge #{ses.state === 'closed' ? 'bg-secondary-subtle text-secondary' : 'bg-success'}"><t t-esc="ses.state_label"/></span>
+                                                </td>
+                                                <td class="text-end small"><t t-esc="ses.orders"/></td>
+                                                <td class="text-end pe-3 font-monospace small fw-bold"><t t-esc="ses.total.toLocaleString('es-ES', {minimumFractionDigits: 2})"/> €</td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </t>
                 </div>
             </t>
 
@@ -1898,7 +1964,7 @@
                                     </div>
                                 </div>
 
-                                <div class="mb-3" t-if="state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.warehouses and state.companyDetailData.inventory.warehouses.length > 1">
+                                <div class="mb-3" t-if="!state.selectedDetailStation and state.companyDetailData and state.companyDetailData.inventory and state.companyDetailData.inventory.warehouses and state.companyDetailData.inventory.warehouses.length > 1">
                                     <label class="form-label small fw-bold text-dark">Almacén de Pista</label>
                                     <select class="form-select" t-model="state.newTankWarehouseId">
                                         <t t-foreach="state.companyDetailData.inventory.warehouses" t-as="wh" t-key="wh.id">
