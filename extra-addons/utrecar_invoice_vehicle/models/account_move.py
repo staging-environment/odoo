@@ -7,6 +7,9 @@ _logger = logging.getLogger(__name__)
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
+    # Índice: referencia usada para enlazar anulaciones / rectificativas y en informes
+    ref = fields.Char(index=True)
+
     def _get_starting_sequence(self):
         self.ensure_one()
         if self.journal_id and self.journal_id.code and self.journal_id.code.startswith('FT'):

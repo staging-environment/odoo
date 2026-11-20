@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 import logging
-from odoo import models, fields, api, _
+from odoo import models, fields, api, tools, _
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -9,15 +9,21 @@ _logger = logging.getLogger(__name__)
 class PosOrder(models.Model):
     _inherit = 'pos.order'
 
+    # Índices: estos campos filtran informes masivos de operaciones (ver AGENTS.md)
+    name = fields.Char(index=True)
+    config_id = fields.Many2one(index=True)
+
     is_ticket_annulled = fields.Boolean(
         string="Ticket Anulado",
         default=False,
         copy=False,
+        index=True,
         help="Indica si este ticket ha sido anulado (por factura o manualmente)"
     )
     annulment_ref = fields.Char(
         string="Ref. Anulación",
         copy=False,
+        index=True,
         help="Referencia oficial de la anulación con serie TTTR_"
     )
     annulment_reason = fields.Char(
@@ -26,12 +32,14 @@ class PosOrder(models.Model):
     )
     annulment_date = fields.Datetime(
         string="Fecha Anulación",
-        copy=False
+        copy=False,
+        index=True,
     )
     is_extraction = fields.Boolean(
         string="Es Extracción / Calibración",
         default=False,
         copy=False,
+        index=True,
         help="Indica si este ticket corresponde a una extracción o retorno a depósito (no resta existencias ni suma cobro a caja)"
     )
     extraction_reason = fields.Char(
@@ -56,12 +64,14 @@ class PosOrder(models.Model):
         string="Surtidor / Calle",
         default=0,
         copy=False,
+        index=True,
         help="Número de la calle o surtidor del suministro"
     )
     is_albaran = fields.Boolean(
         string="Es Albarán de Crédito",
         default=False,
         copy=False,
+        index=True,
         help="Indica si este ticket es un Albarán de suministro a crédito para facturación periódica"
     )
     vehicle_id = fields.Many2one(
@@ -72,7 +82,8 @@ class PosOrder(models.Model):
     )
     vehicle_plate = fields.Char(
         string="Matrícula",
-        copy=False
+        copy=False,
+        index=True,
     )
     vehicle_driver = fields.Char(
         string="Conductor / DNI",
@@ -81,6 +92,10 @@ class PosOrder(models.Model):
 
     def init(self):
         super().init()
+        # Índices compuestos para informes por empresa / estación y rango de fechas
+        tools.create_index(self.env.cr, 'pos_order_company_date_idx', 'pos_order', ['company_id', 'date_order'])
+        tools.create_index(self.env.cr, 'pos_order_config_date_idx', 'pos_order', ['config_id', 'date_order'])
+        tools.create_index(self.env.cr, 'pos_order_partner_date_idx', 'pos_order', ['partner_id', 'date_order'])
         # Asegurar impuestos con IVA incluido para ventas TPV y 5 decimales de precisión para combustible
         self.env.cr.execute("""
             UPDATE account_tax
@@ -470,3 +485,11 @@ class PosOrder(models.Model):
                         r['vehicle_driver'] = o.vehicle_driver
                         r['pump_id'] = o.pump_id
         return order_sync_results
+
+
+class PosOrderLine(models.Model):
+    _inherit = 'pos.order.line'
+
+    # Índices para informes de ventas por producto / carburante y empresa
+    product_id = fields.Many2one(index=True)
+    company_id = fields.Many2one(index=True)

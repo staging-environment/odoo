@@ -16,7 +16,7 @@ class ResPartner(models.Model):
         ('credit', 'Crédito'),
         ('monthly', 'Mensual'),
         ('ordinary', 'Ordinaria'),
-    ], string='Tipo de Facturación / Cliente', default='ordinary', tracking=True,
+    ], string='Tipo de Facturación / Cliente', default='ordinary', tracking=True, index=True,
        help='Configuración del cliente: Crédito (genera albarán en cobro), Mensual (facturación agrupada mensual), u Ordinaria (contado/ticket).')
 
     customer_payment_mode = fields.Selection([
