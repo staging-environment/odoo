@@ -40,6 +40,59 @@ const printerSlug = (name) => "sys_" + String(name || "").toLowerCase().replace(
  * Si el agente no está activo o la impresora asignada es la "predeterminada del sistema",
  * se sigue imprimiendo con el navegador como antes.
  */
+/**
+ * Valida un NIF (DNI), NIE o CIF español con su dígito/letra de control.
+ * Devuelve { valid, value (normalizado), message }.
+ */
+export function utrecarValidateNifCif(rawVat) {
+    if (!rawVat || !String(rawVat).trim()) {
+        return { valid: false, value: "", message: "El NIF / CIF es obligatorio." };
+    }
+    let v = String(rawVat).toUpperCase().replace(/[\s\-.]/g, "");
+    if (v.startsWith("ES") && v.length === 11) {
+        v = v.slice(2);
+    }
+    if (v.length !== 9) {
+        return { valid: false, value: v, message: `El NIF / CIF "${rawVat}" debe tener 9 caracteres (ej: 12345678Z o B41000000).` };
+    }
+    const letrasDni = "TRWAGMYFPDXBNJZSQVHLCKE";
+    if (/^\d{8}[A-Z]$/.test(v)) {
+        const ok = v[8] === letrasDni[parseInt(v.slice(0, 8), 10) % 23];
+        return { valid: ok, value: v, message: ok ? "" : `El NIF "${v}" no es válido (letra de control incorrecta).` };
+    }
+    if (/^[XYZ]\d{7}[A-Z]$/.test(v)) {
+        const num = parseInt({ X: "0", Y: "1", Z: "2" }[v[0]] + v.slice(1, 8), 10);
+        const ok = v[8] === letrasDni[num % 23];
+        return { valid: ok, value: v, message: ok ? "" : `El NIE "${v}" no es válido (letra de control incorrecta).` };
+    }
+    if (/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(v)) {
+        const digits = v.slice(1, 8);
+        let total = 0;
+        for (const i of [1, 3, 5]) {
+            total += parseInt(digits[i], 10);
+        }
+        for (const i of [0, 2, 4, 6]) {
+            const d = parseInt(digits[i], 10) * 2;
+            total += Math.floor(d / 10) + (d % 10);
+        }
+        const ctrlDigit = (10 - (total % 10)) % 10;
+        const ctrlLetter = "JABCDEFGHI"[ctrlDigit];
+        const ctrl = v[8];
+        let ok;
+        if ("ABEH".includes(v[0])) {
+            ok = ctrl === String(ctrlDigit);
+        } else if ("KPQS".includes(v[0])) {
+            ok = ctrl === ctrlLetter;
+        } else {
+            ok = ctrl === String(ctrlDigit) || ctrl === ctrlLetter;
+        }
+        return { valid: ok, value: v, message: ok ? "" : `El CIF "${v}" no es válido (dígito/letra de control incorrecto).` };
+    }
+    return { valid: false, value: v, message: `El formato de NIF / CIF "${rawVat}" no es válido.` };
+}
+
+const UTRECAR_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 export const UtrecarDirectPrint = {
     agentAlive: {},
     pdfReady: {},
@@ -3488,15 +3541,26 @@ export class UtrecarMainScreen extends Component {
 
         if (!partnerId) {
             const p = this.state.invoiceNewPartner;
-            if (!p.vat || !p.vat.trim()) {
-                alert("⚠️ Debe indicar el NIF/CIF del cliente para facturar.");
+            const vatCheck = utrecarValidateNifCif(p.vat);
+            if (!vatCheck.valid) {
+                alert("⚠️ " + vatCheck.message);
                 return;
             }
             if (!p.name || !p.name.trim()) {
                 alert("⚠️ Debe indicar el nombre o razón social del cliente.");
                 return;
             }
-            partnerData = { ...p, email: (this.state.invoiceEmail || p.email || '').trim() };
+            const manualEmail = (this.state.invoiceEmail || p.email || '').trim();
+            if (!manualEmail) {
+                alert("⚠️ Debe indicar el email del cliente.");
+                return;
+            }
+            if (!UTRECAR_EMAIL_RE.test(manualEmail)) {
+                alert(`⚠️ El email "${manualEmail}" no es válido.`);
+                return;
+            }
+            p.vat = vatCheck.value;
+            partnerData = { ...p, vat: vatCheck.value, email: manualEmail };
         }
 
         let targetEmail = (this.state.invoiceEmail || (partnerData ? partnerData.email : '')).trim();

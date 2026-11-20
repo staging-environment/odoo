@@ -3963,12 +3963,19 @@ class PosGasStationController(http.Controller):
                     if p.company_id and order.company_id and p.company_id.id != order.company_id.id:
                         return {'status': 'error', 'message': f'El cliente {p.name} pertenece a otra empresa ({p.company_id.name}). No se puede utilizar en pedidos de {order.company_id.name}.'}
                     partner = p
-            elif partner_data and partner_data.get('vat'):
-                vat = str(partner_data['vat']).strip().upper()
-                name = str(partner_data.get('name') or vat).strip()
+            elif partner_data:
+                vat_ok, vat, vat_msg = self._validate_spanish_nif_cif(partner_data.get('vat'))
+                if not vat_ok:
+                    return {'status': 'error', 'message': vat_msg}
+                name = str(partner_data.get('name') or '').strip()
+                if not name:
+                    return {'status': 'error', 'message': 'Debe indicar el nombre o razón social del cliente.'}
+                manual_email = str(partner_data.get('email') or '').strip()
+                if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$', manual_email):
+                    return {'status': 'error', 'message': 'Debe indicar un email válido del cliente.'}
                 # Buscar cliente por VAT dentro de la MISMA empresa del pedido exclusivamente:
                 partner = env['res.partner'].sudo().search([
-                    ('vat', '=', vat),
+                    ('vat', 'in', [vat, 'ES' + vat]),
                     ('company_id', '=', order.company_id.id)
                 ], limit=1)
                 if not partner:

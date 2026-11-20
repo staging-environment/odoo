@@ -2717,11 +2717,11 @@
                             <!-- FORMULARIO DIRECTO DE DATOS FISCALES -->
                             <div class="partner-form-grid">
                                 <div class="form-group mb-2">
-                                    <label class="form-label fw-bold">CIF / NIF (*):</label>
+                                    <label class="form-label fw-bold">CIF / NIF <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" placeholder="Ej: B12345678" t-model="state.invoiceNewPartner.vat"/>
                                 </div>
                                 <div class="form-group mb-2">
-                                    <label class="form-label fw-bold">Nombre o Razón Social (*):</label>
+                                    <label class="form-label fw-bold">Nombre o Razón Social <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" placeholder="Ej: Transportes García S.L." t-model="state.invoiceNewPartner.name"/>
                                 </div>
                                 <div class="form-group mb-2">
@@ -2737,7 +2737,7 @@
                                     <input type="text" class="form-control" placeholder="C.P." t-model="state.invoiceNewPartner.zip"/>
                                 </div>
                                 <div class="form-group mb-2">
-                                    <label class="form-label">Email (opcional):</label>
+                                    <label class="form-label fw-bold">Email <span class="text-danger">*</span></label>
                                     <input type="email" class="form-control" placeholder="correo@empresa.com" t-model="state.invoiceEmail"/>
                                 </div>
                             </div>
