@@ -26,6 +26,11 @@ class ResPartner(models.Model):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
+        # España por defecto en clientes nuevos
+        if 'country_id' in fields_list and not res.get('country_id') and not self.env.context.get('default_parent_id'):
+            spain = self.env.ref('base.es', raise_if_not_found=False)
+            if spain:
+                res['country_id'] = spain.id
         if self.env.context.get('default_company_id'):
             res['company_id'] = self.env.context.get('default_company_id')
             return res
@@ -218,3 +223,51 @@ class ResPartner(models.Model):
                     "Ya existe un cliente con el número %(ref)s en %(company)s: %(dup)s. "
                     "No puede haber dos clientes con el mismo número en la misma empresa.",
                     ref=ref, company=company_name, dup=dup_label))
+
+    # ------------------------------------------------------------------
+    # Validación de formato de NIF/CIF (España) y email. Solo salta al dar
+    # de alta o cambiar esos campos (o el país), para no bloquear clientes
+    # antiguos de Aseproda con datos incompletos.
+    # ------------------------------------------------------------------
+    @api.model
+    def _utrecar_check_spanish_vat(self, raw_vat):
+        """Devuelve (ok, valor_normalizado, mensaje) para NIF, NIE o CIF español."""
+        v = self._utrecar_normalize_vat(raw_vat)
+        if len(v) != 9:
+            return False, v, _('El NIF / CIF "%s" debe tener 9 caracteres (ej: 12345678Z o B41000001).') % raw_vat
+        letras = 'TRWAGMYFPDXBNJZSQVHLCKE'
+        if re.match(r'^\d{8}[A-Z]$', v):
+            ok = v[8] == letras[int(v[:8]) % 23]
+            return ok, v, '' if ok else _('El NIF "%s" no es válido (letra de control incorrecta).') % v
+        if re.match(r'^[XYZ]\d{7}[A-Z]$', v):
+            ok = v[8] == letras[int({'X': '0', 'Y': '1', 'Z': '2'}[v[0]] + v[1:8]) % 23]
+            return ok, v, '' if ok else _('El NIE "%s" no es válido (letra de control incorrecta).') % v
+        if re.match(r'^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$', v):
+            d = v[1:8]
+            total = sum(int(d[i]) for i in (1, 3, 5))
+            for i in (0, 2, 4, 6):
+                x = int(d[i]) * 2
+                total += x // 10 + x % 10
+            ctrl_digit = (10 - total % 10) % 10
+            ctrl_letter = 'JABCDEFGHI'[ctrl_digit]
+            if v[0] in 'ABEH':
+                ok = v[8] == str(ctrl_digit)
+            elif v[0] in 'KPQS':
+                ok = v[8] == ctrl_letter
+            else:
+                ok = v[8] in (str(ctrl_digit), ctrl_letter)
+            return ok, v, '' if ok else _('El CIF "%s" no es válido (dígito/letra de control incorrecto).') % v
+        return False, v, _('El formato de NIF / CIF "%s" no es válido.') % raw_vat
+
+    @api.constrains('vat', 'email', 'country_id')
+    def _check_utrecar_vat_email_format(self):
+        spain = self.env.ref('base.es', raise_if_not_found=False)
+        for partner in self:
+            if partner.vat and (not partner.country_id or partner.country_id == spain):
+                ok, _v, msg = self._utrecar_check_spanish_vat(partner.vat)
+                if not ok:
+                    raise ValidationError(_("%(name)s: %(msg)s", name=partner.display_name or '', msg=msg))
+            email = (partner.email or '').strip()
+            if email and not re.match(r'^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$', email):
+                raise ValidationError(_('%(name)s: el email "%(email)s" no es válido.',
+                                        name=partner.display_name or '', email=email))
