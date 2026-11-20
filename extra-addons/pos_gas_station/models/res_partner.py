@@ -184,6 +184,10 @@ class ResPartner(models.Model):
         for partner in self:
             if not partner._utrecar_is_unique_scope(internal_ids):
                 continue
+            if partner.customer_rank and not partner.company_id:
+                raise ValidationError(_(
+                    "El cliente %s debe pertenecer a una empresa (Utrecar o A.R. Trieste).",
+                    partner.display_name or ''))
             vat = self._utrecar_normalize_vat(partner.vat)
             ref = (partner.ref or '').strip()
             if not vat and not ref:

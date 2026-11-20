@@ -71,3 +71,14 @@
 .o_form_view:has([name="station_id"]) .o-mail-ChatterContainer {
     display: none !important;
 }
+
+/* ==========================================================================
+   ASTERISCO ROJO EN LAS ETIQUETAS DE CAMPOS OBLIGATORIOS (todas las fichas)
+   Odoo 17 no lo pinta: solo añade .o_required_modifier al campo.
+   En la dirección del cliente, el asterisco sale en la etiqueta "Dirección".
+   ========================================================================== */
+.o_form_view .o_wrap_field:has(.o_required_modifier:not(.o_readonly_modifier)) > .o_wrap_label .o_form_label::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: 700;
+}

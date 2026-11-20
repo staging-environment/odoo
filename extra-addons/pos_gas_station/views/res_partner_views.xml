@@ -11,7 +11,7 @@
                 <field name="ref" string="Código de Cliente" placeholder="Automático (correlativo)"/>
             </xpath>
             <xpath expr="//field[@name='vat']" position="after">
-                <field name="company_id" widget="selection" options="{'no_create': True, 'no_open': True}" string="Cliente de la empresa" help="Empresa del grupo (Utrecar / A.R. Trieste) a la que pertenece este cliente. Decide en qué TPV aparece."/>
+                <field name="company_id" widget="selection" options="{'no_create': True, 'no_open': True}" required="not parent_id and customer_rank &gt; 0" string="Cliente de la empresa" help="Empresa del grupo (Utrecar / A.R. Trieste) a la que pertenece este cliente. Decide en qué TPV aparece."/>
             </xpath>
             <!-- Ficha sin botón "Nuevo" (los clientes se crean desde Gestión de Gasolineras)
                  y sin botones inteligentes mientras el cliente no esté guardado -->
