@@ -19,6 +19,18 @@
                     <span class="o_form_label">Nombre</span><span class="text-danger fw-bold"> *</span>
                 </div>
             </xpath>
+            <!-- DIRECCIÓN: un campo por fila con su propia etiqueta (en lugar del bloque sin etiquetas de Odoo) -->
+            <xpath expr="(//div[hasclass('o_address_format')])[1]" position="replace"/>
+            <xpath expr="//span[@name='address_name']" position="replace">
+                <field name="type" string="Tipo de dirección" invisible="is_company" readonly="user_ids" required="not is_company"/>
+                <field name="street" string="Dirección" placeholder="Calle, número, piso..." readonly="type == 'contact' and parent_id" required="not parent_id and customer_rank &gt; 0"/>
+                <field name="street2" string="Dirección (línea 2)" placeholder="Polígono, urbanización... (opcional)" readonly="type == 'contact' and parent_id"/>
+                <field name="zip" string="Código Postal" placeholder="Ej: 41710" readonly="type == 'contact' and parent_id" required="not parent_id and customer_rank &gt; 0"/>
+                <field name="city" string="Población" placeholder="Ej: Utrera" readonly="type == 'contact' and parent_id" required="not parent_id and customer_rank &gt; 0"/>
+                <field name="state_id" string="Provincia" placeholder="Provincia" options="{'no_open': True, 'no_quick_create': True}"
+                       context="{'country_id': country_id, 'default_country_id': country_id, 'zip': zip}" readonly="type == 'contact' and parent_id" required="not parent_id and customer_rank &gt; 0"/>
+                <field name="country_id" string="País" placeholder="País" options="{'no_open': True, 'no_create': True}" readonly="type == 'contact' and parent_id" required="not parent_id and customer_rank &gt; 0"/>
+            </xpath>
             <!-- Botón visible "Guardar": guarda la ficha (con validaciones y avisos) -->
             <xpath expr="//sheet" position="before">
                 <header>
