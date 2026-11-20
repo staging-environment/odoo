@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+import re
+
+from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
@@ -144,3 +147,74 @@ class ResPartner(models.Model):
             if not partner.ref and partner.customer_rank > 0:
                 partner.ref = self._get_next_customer_code()
         return True
+
+    # ------------------------------------------------------------------
+    # Unicidad de clientes POR EMPRESA: nunca dos clientes de la misma
+    # empresa con el mismo CIF/NIF ni con el mismo número de cliente (ref).
+    # No cuentan: contactos hijos, fichas internas de empresas/usuarios,
+    # proveedores puros (sin rango de cliente) ni fichas archivadas.
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _utrecar_normalize_vat(vat):
+        v = (vat or '').strip().upper()
+        v = re.sub(r'^ES', '', v)
+        return re.sub(r'[^A-Z0-9]', '', v)
+
+    def _utrecar_is_unique_scope(self, internal_partner_ids):
+        self.ensure_one()
+        if not self.active or self.parent_id or self.id in internal_partner_ids:
+            return False
+        if self.supplier_rank and not self.customer_rank:
+            return False
+        return True
+
+    @api.constrains('vat', 'ref', 'company_id', 'parent_id', 'active')
+    def _check_utrecar_unique_customer(self):
+        self.flush_model(['vat', 'ref', 'company_id', 'parent_id', 'active',
+                          'customer_rank', 'supplier_rank'])
+        internal_ids = set(self.env['res.company'].sudo().with_context(active_test=False)
+                           .search([]).mapped('partner_id').ids)
+        internal_ids |= set(self.env['res.users'].sudo().with_context(active_test=False)
+                            .search([]).mapped('partner_id').ids)
+        for partner in self:
+            if not partner._utrecar_is_unique_scope(internal_ids):
+                continue
+            vat = self._utrecar_normalize_vat(partner.vat)
+            ref = (partner.ref or '').strip()
+            if not vat and not ref:
+                continue
+            self.env.cr.execute("""
+                SELECT id, name, ref, vat
+                  FROM res_partner
+                 WHERE id != %(id)s
+                   AND active
+                   AND parent_id IS NULL
+                   AND company_id IS NOT DISTINCT FROM %(company)s
+                   AND NOT (COALESCE(supplier_rank, 0) > 0 AND COALESCE(customer_rank, 0) = 0)
+                   AND NOT (id = ANY(%(internal)s))
+                   AND (
+                        (%(vat)s <> '' AND regexp_replace(regexp_replace(upper(COALESCE(vat, '')), '^ES', ''), '[^A-Z0-9]', '', 'g') = %(vat)s)
+                     OR (%(ref)s <> '' AND trim(COALESCE(ref, '')) = %(ref)s)
+                   )
+                 LIMIT 1
+            """, {
+                'id': partner.id,
+                'company': partner.company_id.id or None,
+                'internal': list(internal_ids) or [0],
+                'vat': vat,
+                'ref': ref,
+            })
+            row = self.env.cr.fetchone()
+            if row:
+                dup_id, dup_name, dup_ref, dup_vat = row
+                dup_label = f"{dup_ref} - {dup_name}" if dup_ref else dup_name
+                company_name = partner.company_id.name or _('sin empresa')
+                if vat and self._utrecar_normalize_vat(dup_vat) == vat:
+                    raise ValidationError(_(
+                        "Ya existe un cliente con el CIF/NIF %(vat)s en %(company)s: %(dup)s. "
+                        "No puede haber dos clientes con el mismo CIF/NIF en la misma empresa.",
+                        vat=vat, company=company_name, dup=dup_label))
+                raise ValidationError(_(
+                    "Ya existe un cliente con el número %(ref)s en %(company)s: %(dup)s. "
+                    "No puede haber dos clientes con el mismo número en la misma empresa.",
+                    ref=ref, company=company_name, dup=dup_label))
