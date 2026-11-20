@@ -1986,6 +1986,9 @@
                                                     </td>
                                                     <td class="cell-actions" t-on-click.stop="">
                                                         <t t-if="ord.doc_type === 'invoice' || ord.is_invoiced">
+                                                            <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderInvoice(ord, false)" title="Visualizar Factura oficial en pantalla (PDF)">
+                                                                👁
+                                                            </button>
                                                             <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => this.printShiftOrderInvoice(ord, true)" title="Imprimir Factura PDF oficial">
                                                                 <i class="fa fa-print me-1"/> Imprimir
                                                             </button>
