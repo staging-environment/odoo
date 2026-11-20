@@ -32,6 +32,8 @@ const PRINTER_DEFAULT_ASSIGNMENTS = {
     annulment: { printerId: "windows_default", format: "thermal_80", copies: 1 },
 };
 
+const printerSlug = (name) => "sys_" + String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+
 /**
  * Impresión directa: el TPV deja cada documento en la cola de Odoo con la impresora
  * asignada y el agente del PC de pista (scripts/agente_impresoras_pista.py) lo imprime.
@@ -41,6 +43,8 @@ const PRINTER_DEFAULT_ASSIGNMENTS = {
 export const UtrecarDirectPrint = {
     agentAlive: {},
     pdfReady: {},
+    serverConfig: {},   // configuración guardada en el servidor (manda sobre la del navegador)
+    printers: {},       // impresoras publicadas por el agente del PC
     _timers: {},
 
     readConfig(configId) {
@@ -53,10 +57,13 @@ export const UtrecarDirectPrint = {
     },
 
     assigned(configId, docType) {
-        const cfg = this.readConfig(configId);
+        const local = this.readConfig(configId);
+        const server = this.serverConfig[configId];
+        const cfg = server && server.assignments ? server : local;
         const assign = Object.assign({}, PRINTER_DEFAULT_ASSIGNMENTS[docType] || PRINTER_DEFAULT_ASSIGNMENTS.ticket,
             (cfg.assignments || {})[docType] || {});
-        const printer = (cfg.systemPrinters || []).find((p) => p.id === assign.printerId);
+        const printer = (local.systemPrinters || []).find((p) => p.id === assign.printerId)
+            || (this.printers[configId] || []).find((p) => printerSlug(p.name) === assign.printerId);
         return {
             directPrint: cfg.directPrint !== false,
             printerId: assign.printerId,
@@ -86,6 +93,20 @@ export const UtrecarDirectPrint = {
                 this.pdfReady[configId] = Boolean(res && res.pdf_ready);
             } catch {
                 this.agentAlive[configId] = false;
+            }
+            try {
+                const [conf, prs] = await Promise.all([
+                    jsonrpc("/pos_gas_station/printer_config/get", { config_id: configId }),
+                    jsonrpc("/pos_gas_station/system_printers", { config_id: configId }),
+                ]);
+                if (conf && conf.exists) {
+                    this.serverConfig[configId] = conf;
+                }
+                if (prs && prs.exists) {
+                    this.printers[configId] = prs.printers || [];
+                }
+            } catch {
+                // se mantiene lo último conocido
             }
         };
         refresh();
@@ -1035,13 +1056,31 @@ export class UtrecarMainScreen extends Component {
         this.state.isConfigDropdownOpen = false;
     }
 
-    openPrinterConfigModal() {
+    async openPrinterConfigModal() {
         this.state.isConfigDropdownOpen = false;
         this.state.printerConfig = this.getPrinterConfig();
         this.state.printerActiveTab = 'assignments';
         this.state.printerSaveSuccessMessage = "";
         this.state.isPrinterConfigModalOpen = true;
-        this.syncRealPrinters(false);
+        await this.loadServerPrinterConfig();
+        await this.syncRealPrinters(false);
+    }
+
+    /** La configuración guardada en el servidor manda sobre la del navegador. */
+    async loadServerPrinterConfig() {
+        try {
+            const conf = await jsonrpc("/pos_gas_station/printer_config/get", { config_id: this.configId });
+            if (conf && conf.exists) {
+                const cfg = this.state.printerConfig || this.getPrinterConfig();
+                cfg.assignments = Object.assign(JSON.parse(JSON.stringify(PRINTER_DEFAULT_ASSIGNMENTS)), conf.assignments);
+                cfg.directPrint = conf.directPrint !== false;
+                cfg.realPrintersSynced = true;  // no reasignar automáticamente lo que ya está decidido
+                this.state.printerConfig = cfg;
+                UtrecarDirectPrint.serverConfig[this.configId] = conf;
+            }
+        } catch (e) {
+            console.warn("No se pudo leer la configuración de impresoras del servidor:", e);
+        }
     }
 
     /**
@@ -1067,7 +1106,7 @@ export class UtrecarMainScreen extends Component {
             return false;
         }
         const cfg = this.state.printerConfig || this.getPrinterConfig();
-        const slug = (name) => "sys_" + name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+        const slug = printerSlug;
         const real = res.printers.map((p) => ({
             id: slug(p.name),
             name: p.name,
@@ -1152,6 +1191,13 @@ export class UtrecarMainScreen extends Component {
         try {
             const storageKey = `pos_gas_station_printer_config_${this.configId}`;
             localStorage.setItem(storageKey, JSON.stringify(this.state.printerConfig));
+            const shared = {
+                assignments: this.state.printerConfig.assignments || {},
+                directPrint: this.state.printerConfig.directPrint !== false,
+            };
+            UtrecarDirectPrint.serverConfig[this.configId] = shared;
+            jsonrpc("/pos_gas_station/printer_config/set", { config_id: this.configId, ...shared })
+                .catch((e) => console.warn("No se pudo guardar la configuración de impresoras en el servidor:", e));
             this.state.printerSaveSuccessMessage = "Configuración de impresoras guardada y aplicada con éxito.";
             setTimeout(() => {
                 if (this.state) {

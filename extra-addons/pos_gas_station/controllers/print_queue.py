@@ -199,6 +199,42 @@ class PosPrintQueue(http.Controller):
             'last_seen': last_seen,
         }
 
+    @http.route('/pos_gas_station/printer_config/get', type='json', auth='user', methods=['POST'], csrf=False)
+    def printer_config_get(self, config_id=None, **kw):
+        """Configuración de impresoras de la estación (asignaciones por documento), compartida
+        por todos los navegadores. Si no existe, el TPV usa la de su navegador."""
+        cfg = int(config_id or 7)
+        try:
+            data = json.loads(self._param(f'pos_gas_station.printer_config_{cfg}') or '{}')
+        except Exception:
+            data = {}
+        return {'exists': bool(data.get('assignments')), **data}
+
+    @http.route('/pos_gas_station/printer_config/set', type='json', auth='user', methods=['POST'], csrf=False)
+    def printer_config_set(self, config_id=None, assignments=None, directPrint=True, **kw):
+        cfg = int(config_id or 7)
+        if not isinstance(assignments, dict):
+            return {'status': 'error', 'message': 'Asignaciones no válidas'}
+        clean = {}
+        for doc, a in assignments.items():
+            if not isinstance(a, dict):
+                continue
+            clean[str(doc)[:40]] = {
+                'printerId': str(a.get('printerId') or 'windows_default')[:120],
+                'format': a.get('format') if a.get('format') in ('thermal_80', 'a4', 'a5') else 'thermal_80',
+                'copies': max(1, min(int(a.get('copies') or 1), 5)),
+                'tray': str(a.get('tray') or '')[:60],
+            }
+        payload = {
+            'assignments': clean,
+            'directPrint': bool(directPrint),
+            'saved_at': int(time.time() * 1000),
+            'saved_by': request.env.user.name,
+        }
+        request.env['ir.config_parameter'].sudo().set_param(
+            f'pos_gas_station.printer_config_{cfg}', json.dumps(payload, ensure_ascii=False))
+        return {'status': 'success', 'saved_at': payload['saved_at']}
+
     @http.route('/pos_gas_station/print/submit', type='json', auth='user', methods=['POST'], csrf=False)
     def print_submit(self, config_id=None, printer_name=None, format='thermal_80', copies=1,
                      doc_type='ticket', title=None, html=None, image=None, report_url=None, tray=None, **kw):
