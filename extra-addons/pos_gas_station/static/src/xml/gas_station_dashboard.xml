@@ -1476,51 +1476,225 @@
                         </t>
                     </t>
 
-                    <!-- ESTACIÓN: STOCK DE TIENDA -->
+                    <!-- ESTACIÓN: STOCK DE TIENDA (control completo) -->
                     <t t-if="state.stationTab === 'stock'">
                         <div class="bg-white rounded-3 shadow-sm border p-3">
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                                 <div>
                                     <h5 class="fw-bold mb-1 text-dark">Stock de tienda</h5>
-                                    <small class="text-muted">Existencias de productos en el almacén de esta estación (sin los tanques de carburante).</small>
+                                    <small class="text-muted d-block">Productos de la estación (sin carburantes, que van por tanques).
+                                        <t t-if="state.stationStock and state.stationStock.shop_location"> Ubicación: <strong t-esc="state.stationStock.shop_location"/>.</t></small>
+                                    <small class="text-muted d-block">Las ventas del turno abierto se descuentan al cerrar el turno.</small>
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span t-if="state.stationData" class="badge bg-light text-dark border"><t t-esc="state.stationData.stock_stats.products"/> productos</span>
-                                    <span t-if="state.stationData and state.stationData.stock_stats.negative" class="badge bg-danger-subtle text-danger border border-danger-subtle"><t t-esc="state.stationData.stock_stats.negative"/> en negativo</span>
-                                    <div class="input-group input-group-sm" style="width: 280px;">
-                                        <span class="input-group-text bg-white"><i class="fa fa-search text-muted"/></span>
-                                        <input type="text" class="form-control" placeholder="Buscar por nombre o código…"
-                                               t-model="state.stationStockSearch" t-on-keyup="(ev) => this.onStationStockSearch(ev)"/>
-                                    </div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <t t-if="state.stationStock">
+                                        <span class="badge bg-light text-dark border"><t t-esc="state.stationStock.stats.products"/> productos</span>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle"><t t-esc="state.stationStock.stats.with_stock"/> con existencias</span>
+                                        <span t-if="state.stationStock.stats.negative" class="badge bg-danger-subtle text-danger border border-danger-subtle"><t t-esc="state.stationStock.stats.negative"/> en negativo</span>
+                                    </t>
+                                    <button t-if="state.stationStock and state.stationStock.can_edit" class="btn btn-sm btn-primary fw-bold" t-on-click="() => this.openReceiveModal()">
+                                        <i class="fa fa-truck me-1"/> Entrada de mercancía
+                                    </button>
                                 </div>
                             </div>
-                            <div t-if="!state.stationData" class="text-center text-muted py-5"><i class="fa fa-spinner fa-spin me-2"/>Cargando…</div>
-                            <div t-elif="!state.stationData.stock.length" class="text-center text-muted py-4">No hay existencias registradas en esta estación.</div>
-                            <div t-else="" class="table-responsive" style="max-height: 520px;">
+
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                                <div class="input-group input-group-sm" style="width: 300px;">
+                                    <span class="input-group-text bg-white"><i class="fa fa-search text-muted"/></span>
+                                    <input type="text" class="form-control" placeholder="Buscar por nombre, código o EAN…"
+                                           t-model="state.stationStockSearch" t-on-keyup="(ev) => this.onStationStockSearch(ev)"/>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" id="utrecar_only_stock" t-att-checked="state.stationStockOnlyWithStock"
+                                           t-on-change="(ev) => this.toggleStationStockOnlyWithStock(ev.target.checked)"/>
+                                    <label class="form-check-label small" for="utrecar_only_stock">Solo con existencias</label>
+                                </div>
+                                <t t-if="state.stationStock and state.stationStock.can_edit">
+                                    <div class="ms-auto d-flex align-items-center gap-2 flex-wrap p-2 rounded border bg-light">
+                                        <span class="small fw-bold text-dark"><i class="fa fa-list-ol me-1"/>Recuento:</span>
+                                        <select class="form-select form-select-sm" style="width: 200px;" t-model="state.stockCountReason">
+                                            <option value="Recuento periódico">Recuento periódico</option>
+                                            <option value="Inventario inicial">Inventario inicial</option>
+                                            <option value="Rotura / merma">Rotura / merma</option>
+                                            <option value="Producto caducado">Producto caducado</option>
+                                            <option value="Robo / pérdida">Robo / pérdida</option>
+                                            <option value="Corrección de error">Corrección de error</option>
+                                        </select>
+                                        <button class="btn btn-sm btn-success fw-bold" t-att-disabled="!stockCountPendingCount or state.stockCountSaving"
+                                                t-on-click="() => this.applyStockCount()">
+                                            <i class="fa fa-check me-1"/> Aplicar recuento (<t t-esc="stockCountPendingCount"/>)
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" t-att-disabled="!stockCountPendingCount" t-on-click="() => this.clearStockCount()">Limpiar</button>
+                                    </div>
+                                </t>
+                            </div>
+
+                            <div t-if="!state.stationStock" class="text-center text-muted py-5"><i class="fa fa-spinner fa-spin me-2"/>Cargando…</div>
+                            <div t-elif="!state.stationStock.rows.length" class="text-center text-muted py-4">No hay productos con este filtro.</div>
+                            <div t-else="" class="table-responsive" style="max-height: 560px;">
                                 <table class="table table-hover table-sm align-middle mb-0 company-detail-table">
                                     <thead class="bg-light sticky-top">
                                         <tr>
-                                            <th class="ps-3" style="width: 130px;">Código</th>
+                                            <th class="ps-3" style="width: 110px;">Código</th>
                                             <th>Producto</th>
                                             <th>Categoría</th>
-                                            <th class="text-end" style="width: 140px;">Existencias</th>
-                                            <th class="text-end pe-3" style="width: 120px;">PVP</th>
+                                            <th class="text-end" style="width: 130px;">Existencias</th>
+                                            <th t-if="state.stationStock.can_edit" class="text-end" style="width: 130px;">Contado</th>
+                                            <th t-if="state.stationStock.can_edit" class="text-end" style="width: 100px;">Diferencia</th>
+                                            <th class="text-end" style="width: 90px;">PVP</th>
+                                            <th class="text-end pe-3" style="width: 90px;"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <t t-foreach="state.stationData.stock" t-as="row" t-key="row.product_id">
+                                        <t t-foreach="state.stationStock.rows" t-as="row" t-key="row.product_id">
                                             <tr>
                                                 <td class="ps-3 font-monospace small text-secondary"><t t-esc="row.code || '-'"/></td>
-                                                <td class="fw-semibold small"><t t-esc="row.name"/></td>
+                                                <td class="small">
+                                                    <a href="#" class="fw-semibold text-dark text-decoration-none" title="Ver movimientos" t-on-click.prevent="() => this.openProductMoves(row)"><t t-esc="row.name"/></a>
+                                                    <span t-if="!row.sold_here" class="badge bg-warning-subtle text-warning-emphasis border ms-1" title="Tiene existencias pero no está marcado para venderse en esta estación">No se vende aquí</span>
+                                                </td>
                                                 <td class="small text-muted"><t t-esc="row.category"/></td>
-                                                <td class="text-end font-monospace small" t-att-class="row.quantity &lt; 0 ? 'text-danger fw-bold' : ''">
+                                                <td class="text-end font-monospace small" t-att-class="row.quantity &lt; 0 ? 'text-danger fw-bold' : (row.quantity === 0 ? 'text-muted' : '')">
                                                     <t t-esc="row.quantity.toLocaleString('es-ES')"/> <span class="text-muted" t-esc="row.uom"/>
                                                 </td>
-                                                <td class="text-end pe-3 font-monospace small"><t t-esc="row.price.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 3})"/> €</td>
+                                                <td t-if="state.stationStock.can_edit" class="text-end">
+                                                    <input type="text" inputmode="decimal" class="form-control form-control-sm text-end font-monospace d-inline-block" style="max-width: 100px;"
+                                                           placeholder="—" t-att-value="state.stockCounts[row.product_id] || ''"
+                                                           t-on-input="(ev) => this.setStockCount(row, ev.target.value)"/>
+                                                </td>
+                                                <td t-if="state.stationStock.can_edit" class="text-end font-monospace small">
+                                                    <t t-set="diff" t-value="this.stockCountDiff(row)"/>
+                                                    <span t-if="diff !== null" t-att-class="diff &gt; 0 ? 'text-success fw-bold' : (diff &lt; 0 ? 'text-danger fw-bold' : 'text-muted')">
+                                                        <t t-esc="(diff &gt; 0 ? '+' : '') + diff.toLocaleString('es-ES')"/>
+                                                    </span>
+                                                </td>
+                                                <td class="text-end font-monospace small"><t t-esc="row.price.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 3})"/> €</td>
+                                                <td class="text-end pe-3 text-nowrap">
+                                                    <button t-if="state.stationStock.can_edit and this.stockCountDiff(row) !== null" class="btn btn-sm btn-outline-success py-0 px-2 me-1"
+                                                            title="Aplicar el recuento de este producto" t-on-click="() => this.applyStockCount(row)"><i class="fa fa-check"/></button>
+                                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="Ver movimientos" t-on-click="() => this.openProductMoves(row)"><i class="fa fa-history"/></button>
+                                                </td>
                                             </tr>
                                         </t>
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- VENTANA: ENTRADA DE MERCANCÍA -->
+                    <t t-if="state.receive.open">
+                        <div class="modal d-block" tabindex="-1" style="background: rgba(15,23,42,0.45); z-index: 1060;">
+                            <div class="modal-dialog modal-xl modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title fw-bold"><i class="fa fa-truck me-2 text-primary"/>Entrada de mercancía · <t t-esc="state.selectedDetailStation.name"/></h5>
+                                        <button type="button" class="btn-close" t-on-click="() => this.closeReceiveModal()"/>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-md-7">
+                                                <label class="form-label small fw-bold mb-1">Proveedor</label>
+                                                <div t-if="state.receive.supplier" class="d-flex align-items-center gap-2">
+                                                    <span class="badge bg-primary-subtle text-primary border px-3 py-2"><t t-esc="state.receive.supplier.name"/> <span class="text-muted" t-if="state.receive.supplier.vat">· <t t-esc="state.receive.supplier.vat"/></span></span>
+                                                    <button class="btn btn-sm btn-outline-danger" t-on-click="() => this.setReceiveSupplier(null)">Cambiar</button>
+                                                </div>
+                                                <t t-else="">
+                                                    <input type="text" class="form-control form-control-sm" placeholder="Buscar proveedor por nombre, CIF o código…"
+                                                           t-model="state.receive.supplierSearch" t-on-keyup="() => this.searchReceiveSuppliers()"/>
+                                                    <div t-if="state.receive.supplierResults.length" class="list-group mt-1" style="max-height: 180px; overflow-y: auto;">
+                                                        <t t-foreach="state.receive.supplierResults" t-as="sup" t-key="sup.id">
+                                                            <button type="button" class="list-group-item list-group-item-action small py-1" t-on-click="() => this.setReceiveSupplier(sup)">
+                                                                <strong t-esc="sup.name"/> <span class="text-muted"><t t-esc="sup.vat"/> <t t-if="sup.ref">· <t t-esc="sup.ref"/></t></span>
+                                                            </button>
+                                                        </t>
+                                                    </div>
+                                                </t>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <label class="form-label small fw-bold mb-1">Nº de albarán del proveedor</label>
+                                                <input type="text" class="form-control form-control-sm" placeholder="Ej: ALB-2026-00123" t-model="state.receive.supplierRef"/>
+                                            </div>
+                                        </div>
+                                        <label class="form-label small fw-bold mb-1">Añadir producto</label>
+                                        <input type="text" class="form-control form-control-sm" placeholder="Buscar producto de la estación por nombre, código o EAN…"
+                                               t-model="state.receive.productSearch"/>
+                                        <div t-if="receiveProductResults.length" class="list-group mt-1 mb-2" style="max-height: 180px; overflow-y: auto;">
+                                            <t t-foreach="receiveProductResults" t-as="pr" t-key="pr.product_id">
+                                                <button type="button" class="list-group-item list-group-item-action small py-1" t-on-click="() => this.addReceiveLine(pr)">
+                                                    <span class="font-monospace text-secondary me-2" t-esc="pr.code"/> <t t-esc="pr.name"/>
+                                                    <span class="text-muted ms-2">(existencias: <t t-esc="pr.quantity"/>)</span>
+                                                </button>
+                                            </t>
+                                        </div>
+                                        <table class="table table-sm align-middle mt-2 mb-0" t-if="state.receive.lines.length">
+                                            <thead class="bg-light"><tr><th>Producto</th><th class="text-end" style="width: 160px;">Unidades recibidas</th><th style="width: 50px;"></th></tr></thead>
+                                            <tbody>
+                                                <t t-foreach="state.receive.lines" t-as="ln" t-key="ln.product_id">
+                                                    <tr>
+                                                        <td class="small"><span class="font-monospace text-secondary me-2" t-esc="ln.code"/><t t-esc="ln.name"/></td>
+                                                        <td class="text-end"><input type="text" inputmode="decimal" class="form-control form-control-sm text-end font-monospace" t-model="ln.qty"/></td>
+                                                        <td class="text-end"><button class="btn btn-sm btn-outline-danger py-0 px-2" t-on-click="() => this.removeReceiveLine(ln)"><i class="fa fa-trash"/></button></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                        <div t-else="" class="text-muted small text-center py-3">Todavía no hay productos en la entrada.</div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button class="btn btn-outline-secondary" t-on-click="() => this.closeReceiveModal()">Cancelar</button>
+                                        <button class="btn btn-primary fw-bold" t-att-disabled="!state.receive.lines.length or state.receive.saving" t-on-click="() => this.saveReceive()">
+                                            <i class="fa fa-check me-1" t-att-class="state.receive.saving ? 'fa-spin fa-spinner' : ''"/> Registrar entrada
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- VENTANA: MOVIMIENTOS DE UN PRODUCTO -->
+                    <t t-if="state.moves.open">
+                        <div class="modal d-block" tabindex="-1" style="background: rgba(15,23,42,0.45); z-index: 1060;">
+                            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title fw-bold"><i class="fa fa-history me-2 text-primary"/>Movimientos · <t t-esc="state.moves.product || ''"/></h5>
+                                        <button type="button" class="btn-close" t-on-click="() => this.closeProductMoves()"/>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="small text-muted mb-2">
+                                            Estación: <strong t-esc="state.selectedDetailStation.name"/>
+                                            <t t-if="state.moves.current !== null"> · Existencias actuales: <strong t-esc="state.moves.current"/></t>
+                                            · Últimos 100 movimientos. Las ventas del turno abierto aparecerán al cerrarlo.
+                                        </div>
+                                        <div t-if="state.moves.loading" class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin me-2"/>Cargando…</div>
+                                        <div t-elif="!state.moves.rows.length" class="text-center text-muted py-4">Este producto no tiene movimientos en la estación.</div>
+                                        <table t-else="" class="table table-sm table-hover align-middle mb-0">
+                                            <thead class="bg-light">
+                                                <tr><th>Fecha</th><th>Tipo</th><th>Documento</th><th>Origen</th><th>Proveedor / Cliente</th><th>Detalle</th><th>Usuario</th><th class="text-end">Unidades</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="state.moves.rows" t-as="mv" t-key="mv.id">
+                                                    <tr>
+                                                        <td class="small text-nowrap"><t t-esc="mv.date"/></td>
+                                                        <td class="small"><span class="badge bg-light text-dark border" t-esc="mv.kind"/></td>
+                                                        <td class="small font-monospace"><t t-esc="mv.reference"/></td>
+                                                        <td class="small font-monospace"><t t-esc="mv.origin"/></td>
+                                                        <td class="small"><t t-esc="mv.partner"/></td>
+                                                        <td class="small text-muted"><t t-esc="mv.detail"/></td>
+                                                        <td class="small"><t t-esc="mv.user"/></td>
+                                                        <td class="text-end font-monospace small fw-bold" t-att-class="mv.qty &lt; 0 ? 'text-danger' : 'text-success'">
+                                                            <t t-esc="(mv.qty &gt; 0 ? '+' : '') + mv.qty.toLocaleString('es-ES')"/>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button class="btn btn-outline-secondary" t-on-click="() => this.closeProductMoves()">Cerrar</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </t>

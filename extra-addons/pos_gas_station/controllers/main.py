@@ -2039,6 +2039,232 @@ class PosGasStationController(http.Controller):
                 saved_price = value
         return {'status': 'success', 'assigned': config.id in tmpl.station_ids.ids, 'station_price': saved_price}
 
+    # ==================== CONTROL DE STOCK DE TIENDA POR ESTACIÓN ====================
+    def _station_stock_context(self, env, config):
+        """Almacén de la estación, ubicaciones de tienda (sin tanques) y ubicación donde
+        se registran recuentos y entradas (sububicación 'Tienda' si existe)."""
+        wh = config.warehouse_id or config.picking_type_id.warehouse_id
+        if not wh:
+            return None, None, None
+        Location = env['stock.location'].sudo()
+        internal = Location.search([('warehouse_id', '=', wh.id), ('usage', '=', 'internal')])
+        shop_locs = internal.filtered(lambda l: not l.utrecar_tank_number and 'tanque' not in (l.name or '').lower())
+        shop = shop_locs.filtered(lambda l: (l.name or '').strip().lower() == 'tienda')[:1] or wh.lot_stock_id
+        return wh, shop_locs, shop
+
+    def _station_is_manager(self, env):
+        return env.user.has_group('point_of_sale.group_pos_manager') or env.user.has_group('base.group_erp_manager')
+
+    def _station_qty(self, env, product, shop_locs):
+        quants = env['stock.quant'].sudo().search([('product_id', '=', product.id), ('location_id', 'in', shop_locs.ids)])
+        return sum(quants.mapped('quantity'))
+
+    @http.route('/pos_gas_station/station_stock', type='json', auth='user', methods=['POST'], csrf=False)
+    def station_stock(self, station_id=None, search=None, only_with_stock=False, **kw):
+        """Stock de tienda de la estación: productos que se venden en ella (aunque estén a 0)
+        más los que tienen existencias en su almacén. Sin carburantes (van por tanques)."""
+        env = request.env
+        config, err = self._station_for_user(env, station_id)
+        if err:
+            return err
+        wh, shop_locs, shop = self._station_stock_context(env, config)
+        if not wh:
+            return {'status': 'error', 'message': 'La estación no tiene almacén asignado.'}
+        groups = env['stock.quant'].sudo().read_group(
+            [('location_id', 'in', shop_locs.ids)], ['product_id', 'quantity:sum'], ['product_id'], lazy=False)
+        qty_by_product = {g['product_id'][0]: g['quantity'] for g in groups if g['product_id']}
+
+        Product = env['product.product'].sudo()
+        domain = [('detailed_type', '=', 'product'), '|',
+                  ('product_tmpl_id.station_ids', 'in', config.ids), ('id', 'in', list(qty_by_product))]
+        term = (search or '').strip()
+        if term:
+            domain += ['|', '|', ('name', 'ilike', term), ('default_code', 'ilike', term), ('barcode', 'ilike', term)]
+        fuel_ids = set(env['stock.location'].sudo().search([('utrecar_tank_product_id', '!=', False)]).mapped('utrecar_tank_product_id').ids)
+        rows = []
+        for prod in Product.search(domain, order='name, id'):
+            if prod.id in fuel_ids or (prod.default_code or '') in self._UTRECAR_FUEL_CODES:
+                continue
+            qty = round(qty_by_product.get(prod.id, 0.0), 3)
+            if only_with_stock and not qty:
+                continue
+            rows.append({
+                'product_id': prod.id,
+                'code': prod.default_code or '',
+                'name': prod.name or '',
+                'category': prod.categ_id.name or '',
+                'quantity': qty,
+                'uom': prod.uom_id.name or '',
+                'price': prod.lst_price,
+                'sold_here': config.id in prod.product_tmpl_id.station_ids.ids,
+            })
+        return {
+            'status': 'success',
+            'rows': rows,
+            'stats': {
+                'products': len(rows),
+                'with_stock': len([r for r in rows if r['quantity'] > 0]),
+                'negative': len([r for r in rows if r['quantity'] < 0]),
+                'units': round(sum(r['quantity'] for r in rows), 2),
+            },
+            'shop_location': shop.complete_name if shop else '',
+            'can_edit': self._station_is_manager(env),
+        }
+
+    def _station_apply_count(self, env, config, product, counted, reason):
+        """Deja las existencias de tienda de la estación en 'counted' (recuento) y
+        registra el movimiento de ajuste con el motivo. Devuelve (antes, después)."""
+        wh, shop_locs, shop = self._station_stock_context(env, config)
+        before = self._station_qty(env, product, shop_locs)
+        diff = counted - before
+        if abs(diff) > 1e-6:
+            Quant = env['stock.quant'].sudo().with_context(inventory_mode=True)
+            quant = Quant.search([('product_id', '=', product.id), ('location_id', '=', shop.id)], limit=1)
+            if not quant:
+                quant = Quant.create({'product_id': product.id, 'location_id': shop.id})
+            quant.inventory_quantity = quant.quantity + diff
+            label = f"Recuento {config.name}: {reason or 'recuento'} ({env.user.name})"
+            quant.with_context(inventory_name=label).action_apply_inventory()
+        return before, self._station_qty(env, product, shop_locs)
+
+    @http.route('/pos_gas_station/station_stock_count', type='json', auth='user', methods=['POST'], csrf=False)
+    def station_stock_count(self, station_id=None, lines=None, reason=None, **kw):
+        """Aplica un recuento: lines = [{product_id, counted}]. Sirve para un producto
+        suelto (ajuste) o para el recuento completo de la tienda."""
+        env = request.env
+        if not self._station_is_manager(env):
+            return {'status': 'error', 'message': 'Solo los responsables pueden ajustar existencias.'}
+        config, err = self._station_for_user(env, station_id)
+        if err:
+            return err
+        if not (reason or '').strip():
+            return {'status': 'error', 'message': 'Indique el motivo del ajuste.'}
+        results = []
+        try:
+            for item in (lines or []):
+                product = env['product.product'].sudo().browse(int(item.get('product_id') or 0))
+                if not product.exists() or product.detailed_type != 'product':
+                    continue
+                counted = float(str(item.get('counted')).replace(',', '.'))
+                if counted < 0:
+                    return {'status': 'error', 'message': f'Cantidad negativa en {product.name}.'}
+                before, after = self._station_apply_count(env, config, product, counted, reason.strip())
+                results.append({'product_id': product.id, 'name': product.name, 'before': before, 'after': after})
+        except ValueError:
+            return {'status': 'error', 'message': 'Hay alguna cantidad no válida.'}
+        changed = [r for r in results if abs(r['after'] - r['before']) > 1e-6]
+        return {'status': 'success', 'results': results,
+                'message': f'Recuento aplicado: {len(changed)} producto(s) ajustado(s) de {len(results)}.'}
+
+    @http.route('/pos_gas_station/station_suppliers', type='json', auth='user', methods=['POST'], csrf=False)
+    def station_suppliers(self, station_id=None, search=None, **kw):
+        env = request.env
+        config, err = self._station_for_user(env, station_id)
+        if err:
+            return err
+        domain = [('supplier_rank', '>', 0), ('parent_id', '=', False),
+                  '|', ('company_id', '=', False), ('company_id', '=', config.company_id.id)]
+        term = (search or '').strip()
+        if term:
+            domain += ['|', '|', ('name', 'ilike', term), ('vat', 'ilike', term), ('ref', 'ilike', term)]
+        sups = env['res.partner'].sudo().search(domain, order='name', limit=20)
+        return {'status': 'success', 'rows': [{'id': p.id, 'name': p.name, 'vat': p.vat or '', 'ref': p.ref or ''} for p in sups]}
+
+    @http.route('/pos_gas_station/station_stock_receive', type='json', auth='user', methods=['POST'], csrf=False)
+    def station_stock_receive(self, station_id=None, supplier_id=None, supplier_ref=None, lines=None, **kw):
+        """Entrada de mercancía en la tienda de la estación: recepción de Odoo validada,
+        con proveedor y nº de albarán del proveedor como origen."""
+        env = request.env
+        if not self._station_is_manager(env):
+            return {'status': 'error', 'message': 'Solo los responsables pueden registrar entradas de mercancía.'}
+        config, err = self._station_for_user(env, station_id)
+        if err:
+            return err
+        wh, shop_locs, shop = self._station_stock_context(env, config)
+        if not wh or not wh.in_type_id:
+            return {'status': 'error', 'message': 'La estación no tiene tipo de recepción configurado.'}
+        items = []
+        for item in (lines or []):
+            product = env['product.product'].sudo().browse(int(item.get('product_id') or 0))
+            try:
+                qty = float(str(item.get('qty')).replace(',', '.'))
+            except ValueError:
+                return {'status': 'error', 'message': 'Hay alguna cantidad no válida.'}
+            if product.exists() and qty > 0:
+                items.append((product, qty))
+        if not items:
+            return {'status': 'error', 'message': 'Añada al menos un producto con cantidad.'}
+        supplier = env['res.partner'].sudo().browse(int(supplier_id)) if supplier_id else env['res.partner']
+        src = env.ref('stock.stock_location_suppliers')
+        Picking = env['stock.picking'].sudo().with_company(config.company_id)
+        picking = Picking.create({
+            'picking_type_id': wh.in_type_id.id,
+            'location_id': src.id,
+            'location_dest_id': shop.id,
+            'partner_id': supplier.id or False,
+            'origin': (supplier_ref or '').strip() or False,
+            'company_id': config.company_id.id,
+            'move_ids': [(0, 0, {
+                'name': product.display_name,
+                'product_id': product.id,
+                'product_uom_qty': qty,
+                'product_uom': product.uom_id.id,
+                'location_id': src.id,
+                'location_dest_id': shop.id,
+                'company_id': config.company_id.id,
+            }) for product, qty in items],
+        })
+        picking.action_confirm()
+        for move in picking.move_ids:
+            move.quantity = move.product_uom_qty
+            move.picked = True
+        picking.with_context(skip_backorder=True, skip_sms=True, skip_immediate=True)._action_done()
+        return {'status': 'success', 'picking': picking.name,
+                'message': f'Entrada {picking.name} registrada: {len(items)} producto(s).'}
+
+    @http.route('/pos_gas_station/station_product_moves', type='json', auth='user', methods=['POST'], csrf=False)
+    def station_product_moves(self, station_id=None, product_id=None, limit=100, **kw):
+        """Historial de movimientos de un producto en la estación (trazabilidad)."""
+        env = request.env
+        config, err = self._station_for_user(env, station_id)
+        if err:
+            return err
+        wh, shop_locs, shop = self._station_stock_context(env, config)
+        product = env['product.product'].sudo().browse(int(product_id or 0))
+        if not wh or not product.exists():
+            return {'status': 'error', 'message': 'Producto o almacén no encontrado.'}
+        locs = shop_locs.ids
+        mls = env['stock.move.line'].sudo().search([
+            ('product_id', '=', product.id), ('state', '=', 'done'),
+            '|', ('location_id', 'in', locs), ('location_dest_id', 'in', locs),
+        ], order='date desc, id desc', limit=min(int(limit or 100), 500))
+        rows = []
+        for ml in mls:
+            incoming = ml.location_dest_id.id in locs
+            move = ml.move_id
+            pos_order = move.picking_id.pos_order_id if move.picking_id and 'pos_order_id' in move.picking_id._fields else env['pos.order']
+            if move.is_inventory:
+                kind = 'Ajuste / recuento'
+            elif pos_order or (move.picking_id and move.picking_id.pos_session_id):
+                kind = 'Devolución TPV' if incoming else 'Venta TPV'
+            elif move.picking_type_id.code == 'incoming':
+                kind = 'Entrada de mercancía'
+            else:
+                kind = 'Otro'
+            rows.append({
+                'id': ml.id,
+                'date': fields.Datetime.context_timestamp(env.user, ml.date).strftime('%d/%m/%Y %H:%M') if ml.date else '',
+                'kind': kind,
+                'qty': round(ml.quantity if incoming else -ml.quantity, 3),
+                'reference': move.picking_id.name or move.reference or '',
+                'origin': (pos_order.name if pos_order else '') or move.picking_id.origin or '',
+                'partner': move.picking_id.partner_id.name or '',
+                'detail': move.name if move.is_inventory else '',
+                'user': ml.create_uid.name or '',
+            })
+        return {'status': 'success', 'product': product.display_name, 'rows': rows,
+                'current': round(self._station_qty(env, product, shop_locs), 3)}
+
     def _serialize_company_products(self, products):
         """Serializa registros de product.template para el panel de administración."""
         res = []

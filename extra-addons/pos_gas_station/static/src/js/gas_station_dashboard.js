@@ -64,6 +64,13 @@ export class GasStationDashboard extends Component {
             stationData: null,
             stationStockSearch: "",
             stationProducts: null,
+            stationStock: null,
+            stationStockOnlyWithStock: false,
+            stockCounts: {},
+            stockCountReason: "Recuento periódico",
+            stockCountSaving: false,
+            receive: { open: false, supplier: null, supplierSearch: "", supplierResults: [], supplierRef: "", productSearch: "", lines: [], saving: false },
+            moves: { open: false, product: "", rows: [], current: null, loading: false },
             stationProductsSearch: "",
             stationProductsFilter: "assigned",
             stationProductsPage: 1,
@@ -582,12 +589,17 @@ export class GasStationDashboard extends Component {
         this.state.stationData = null;
         this.state.stationStockSearch = "";
         this.state.stationProducts = null;
+        this.state.stationStock = null;
+        this.state.stockCounts = {};
         this.state.stationProductsSearch = "";
         this.state.stationProductsFilter = "assigned";
         this.state.stationProductsPage = 1;
         this.loadStationDetailData(st.id);
         if (this.state.stationTab === "products") {
             this.loadStationProducts();
+        }
+        if (this.state.stationTab === "stock") {
+            this.loadStationStock();
         }
         this.state.editStationId = st.id;
         this.state.editStationName = st.name || "";
@@ -607,6 +619,9 @@ export class GasStationDashboard extends Component {
     setStationTab(tab) {
         this.state.stationTab = tab;
         this.saveNavState();
+        if (tab === "stock" && !this.state.stationStock) {
+            this.loadStationStock();
+        }
         if (tab === "products" && !this.state.stationProducts) {
             this.loadStationProducts();
         }
@@ -725,7 +740,217 @@ export class GasStationDashboard extends Component {
     onStationStockSearch(ev) {
         clearTimeout(this._stationStockTimer);
         const delay = ev && ev.key === "Enter" ? 0 : 400;
-        this._stationStockTimer = setTimeout(() => this.loadStationDetailData(), delay);
+        this._stationStockTimer = setTimeout(() => this.loadStationStock(), delay);
+    }
+
+    // ==================== CONTROL DE STOCK DE TIENDA ====================
+    async loadStationStock() {
+        const st = this.state.selectedDetailStation;
+        if (!st) return;
+        try {
+            const res = await jsonrpc("/pos_gas_station/station_stock", {
+                station_id: st.id,
+                search: this.state.stationStockSearch || "",
+                only_with_stock: this.state.stationStockOnlyWithStock,
+            });
+            if (res && res.status === "success") {
+                if (this.state.selectedDetailStation && this.state.selectedDetailStation.id === st.id) {
+                    this.state.stationStock = res;
+                }
+            } else {
+                this.notification.add((res && res.message) || "Error al cargar el stock", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error loading station stock:", e);
+            this.notification.add("Error de conexión al cargar el stock de la estación", { type: "danger" });
+        }
+    }
+
+    toggleStationStockOnlyWithStock(checked) {
+        this.state.stationStockOnlyWithStock = checked;
+        this.loadStationStock();
+    }
+
+    _parseQty(value) {
+        const txt = String(value === undefined || value === null ? "" : value).trim().replace(/\s/g, "").replace(",", ".");
+        if (txt === "") return null;
+        const n = Number(txt);
+        return Number.isFinite(n) ? n : NaN;
+    }
+
+    setStockCount(row, value) {
+        const counts = { ...this.state.stockCounts };
+        if (String(value).trim() === "") {
+            delete counts[row.product_id];
+        } else {
+            counts[row.product_id] = value;
+        }
+        this.state.stockCounts = counts;
+    }
+
+    stockCountDiff(row) {
+        const n = this._parseQty(this.state.stockCounts[row.product_id]);
+        if (n === null || Number.isNaN(n)) return null;
+        return Math.round((n - row.quantity) * 1000) / 1000;
+    }
+
+    get stockCountPendingCount() {
+        return Object.keys(this.state.stockCounts || {}).length;
+    }
+
+    clearStockCount() {
+        this.state.stockCounts = {};
+    }
+
+    async applyStockCount(row = null) {
+        const st = this.state.selectedDetailStation;
+        if (!st) return;
+        const entries = row ? [[String(row.product_id), this.state.stockCounts[row.product_id]]] : Object.entries(this.state.stockCounts);
+        const lines = [];
+        for (const [pid, value] of entries) {
+            const n = this._parseQty(value);
+            if (n === null) continue;
+            if (Number.isNaN(n) || n < 0) {
+                this.notification.add(`Cantidad no válida: "${value}"`, { type: "warning" });
+                return;
+            }
+            lines.push({ product_id: parseInt(pid), counted: n });
+        }
+        if (!lines.length) return;
+        const msg = row
+            ? `¿Ajustar "${row.name}" a ${lines[0].counted} (motivo: ${this.state.stockCountReason})?`
+            : `¿Aplicar el recuento de ${lines.length} producto(s) (motivo: ${this.state.stockCountReason})?`;
+        if (!window.confirm(msg)) return;
+        this.state.stockCountSaving = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/station_stock_count", {
+                station_id: st.id, lines, reason: this.state.stockCountReason,
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                const counts = { ...this.state.stockCounts };
+                for (const l of lines) delete counts[l.product_id];
+                this.state.stockCounts = counts;
+                await this.loadStationStock();
+                this.loadStationDetailData();
+            } else {
+                this.notification.add((res && res.message) || "No se pudo aplicar el recuento", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error applying stock count:", e);
+            this.notification.add("Error de conexión al aplicar el recuento", { type: "danger" });
+        } finally {
+            this.state.stockCountSaving = false;
+        }
+    }
+
+    // ---- Entrada de mercancía ----
+    openReceiveModal() {
+        this.state.receive = { open: true, supplier: null, supplierSearch: "", supplierResults: [], supplierRef: "", productSearch: "", lines: [], saving: false };
+    }
+
+    closeReceiveModal() {
+        this.state.receive.open = false;
+    }
+
+    searchReceiveSuppliers() {
+        clearTimeout(this._receiveSupTimer);
+        this._receiveSupTimer = setTimeout(async () => {
+            const term = (this.state.receive.supplierSearch || "").trim();
+            if (term.length < 2) {
+                this.state.receive.supplierResults = [];
+                return;
+            }
+            const res = await jsonrpc("/pos_gas_station/station_suppliers", {
+                station_id: this.state.selectedDetailStation.id, search: term,
+            });
+            this.state.receive.supplierResults = (res && res.rows) || [];
+        }, 300);
+    }
+
+    setReceiveSupplier(sup) {
+        this.state.receive.supplier = sup;
+        this.state.receive.supplierResults = [];
+        this.state.receive.supplierSearch = "";
+    }
+
+    get receiveProductResults() {
+        const term = (this.state.receive.productSearch || "").trim().toLowerCase();
+        if (term.length < 2 || !this.state.stationStock) return [];
+        const chosen = new Set(this.state.receive.lines.map((l) => l.product_id));
+        return this.state.stationStock.rows
+            .filter((r) => !chosen.has(r.product_id) && ((r.name || "").toLowerCase().includes(term) || (r.code || "").toLowerCase().includes(term)))
+            .slice(0, 15);
+    }
+
+    addReceiveLine(pr) {
+        this.state.receive.lines.push({ product_id: pr.product_id, code: pr.code, name: pr.name, qty: "" });
+        this.state.receive.productSearch = "";
+    }
+
+    removeReceiveLine(ln) {
+        this.state.receive.lines = this.state.receive.lines.filter((l) => l.product_id !== ln.product_id);
+    }
+
+    async saveReceive() {
+        const rc = this.state.receive;
+        const lines = [];
+        for (const l of rc.lines) {
+            const n = this._parseQty(l.qty);
+            if (n === null || Number.isNaN(n) || n <= 0) {
+                this.notification.add(`Indique las unidades recibidas de "${l.name}".`, { type: "warning" });
+                return;
+            }
+            lines.push({ product_id: l.product_id, qty: n });
+        }
+        if (!rc.supplier && !window.confirm("No ha indicado proveedor. ¿Registrar la entrada igualmente?")) return;
+        rc.saving = true;
+        try {
+            const res = await jsonrpc("/pos_gas_station/station_stock_receive", {
+                station_id: this.state.selectedDetailStation.id,
+                supplier_id: rc.supplier ? rc.supplier.id : false,
+                supplier_ref: rc.supplierRef || "",
+                lines,
+            });
+            if (res && res.status === "success") {
+                this.notification.add(res.message, { type: "success" });
+                rc.open = false;
+                await this.loadStationStock();
+                this.loadStationDetailData();
+            } else {
+                this.notification.add((res && res.message) || "No se pudo registrar la entrada", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error saving receipt:", e);
+            this.notification.add("Error de conexión al registrar la entrada", { type: "danger" });
+        } finally {
+            rc.saving = false;
+        }
+    }
+
+    // ---- Movimientos de un producto ----
+    async openProductMoves(row) {
+        this.state.moves = { open: true, product: row.name, rows: [], current: null, loading: true };
+        try {
+            const res = await jsonrpc("/pos_gas_station/station_product_moves", {
+                station_id: this.state.selectedDetailStation.id, product_id: row.product_id,
+            });
+            if (res && res.status === "success") {
+                this.state.moves.rows = res.rows;
+                this.state.moves.current = res.current;
+                this.state.moves.product = res.product || row.name;
+            } else {
+                this.notification.add((res && res.message) || "No se pudieron cargar los movimientos", { type: "danger" });
+            }
+        } catch (e) {
+            console.error("Error loading moves:", e);
+        } finally {
+            this.state.moves.loading = false;
+        }
+    }
+
+    closeProductMoves() {
+        this.state.moves.open = false;
     }
 
     backFromStationDetail() {
