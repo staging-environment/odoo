@@ -114,3 +114,8 @@
     max-width: 95vw !important;
     width: 95vw !important;
 }
+
+/* Barra superior: ocultar de momento el menú de aplicaciones (icono de cuadritos) */
+.o_main_navbar .o_navbar_apps_menu {
+    display: none !important;
+}
