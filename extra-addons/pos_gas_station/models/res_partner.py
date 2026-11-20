@@ -275,3 +275,31 @@ class ResPartner(models.Model):
             if email and not re.match(r'^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$', email):
                 raise ValidationError(_('%(name)s: el email "%(email)s" no es válido.',
                                         name=partner.display_name or '', email=email))
+
+    # ------------------------------------------------------------------
+    # Botón "Guardar cambios" de la ficha: Odoo guarda (y valida) el registro
+    # antes de llamar al método; aquí solo se confirma al usuario.
+    # ------------------------------------------------------------------
+    def action_utrecar_save_partner(self):
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Cambios guardados'),
+                'message': _('La ficha de %s se ha guardado correctamente.') % (self[:1].display_name or ''),
+                'type': 'success',
+                'sticky': False,
+            },
+        }
+
+    # Botones superiores de la ficha (Pedidos de TPV, Facturado) en ventana
+    # flotante que se cierra sobre la misma pantalla.
+    def action_view_pos_order(self):
+        action = super().action_view_pos_order()
+        action['target'] = 'new'
+        return action
+
+    def action_view_partner_invoices(self):
+        action = super().action_view_partner_invoices()
+        action['target'] = 'new'
+        return action

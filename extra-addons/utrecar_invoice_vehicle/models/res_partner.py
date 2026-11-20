@@ -120,4 +120,5 @@ class ResPartner(models.Model):
             'view_mode': 'tree,form',
             'domain': [('partner_id', '=', self.id)],
             'context': {'default_partner_id': self.id},
+            'target': 'new',
         }

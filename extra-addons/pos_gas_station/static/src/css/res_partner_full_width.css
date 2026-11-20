@@ -82,3 +82,28 @@
     color: #dc3545;
     font-weight: 700;
 }
+
+/* ==========================================================================
+   FICHA DE CLIENTE: sin menú de engranaje (Archivar, Eliminar, SMS, vCard...)
+   ni icono de nube; se guarda con el botón "Guardar cambios" de la cabecera.
+   ========================================================================== */
+.o_form_view:has(.o_partner_full_width_marker) .o_control_panel .o_cp_action_menus,
+.o_form_view:has(.o_partner_full_width_marker) .o_control_panel .o_form_status_indicator .o_form_button_save {
+    display: none !important;
+}
+
+.o_form_view:has(.o_partner_full_width_marker) .o_utrecar_save_partner {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    padding: 8px 22px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 6px rgba(113, 75, 103, 0.35) !important;
+}
+
+.o_utrecar_name_label {
+    margin-top: 6px;
+    margin-bottom: -2px;
+}
+.o_utrecar_name_label .o_form_label {
+    font-weight: 700;
+}
