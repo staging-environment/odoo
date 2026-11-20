@@ -296,10 +296,8 @@ class ResPartner(models.Model):
     # antes de llamar al método; aquí solo se confirma al usuario.
     # ------------------------------------------------------------------
     def _utrecar_back_to_dashboard_action(self):
-        """Vuelve a Gestión de gasolineras, a la pantalla de la que se venía."""
-        action = self.env['ir.actions.actions']._for_xml_id('pos_gas_station.action_gas_station_dashboard')
-        action['context'] = {'utrecar_return': True}
-        return action
+        """Vuelve a la pantalla de la que se venía (retrocede en el historial)."""
+        return {'type': 'ir.actions.client', 'tag': 'utrecar_history_back'}
 
     def action_utrecar_save_partner(self):
         # Odoo ya ha guardado y validado la ficha antes de llegar aquí

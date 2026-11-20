@@ -7,8 +7,25 @@ import { useService } from "@web/core/utils/hooks";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { useSetupAction } from "@web/webclient/actions/action_hook";
 
-// true tras la primera carga del panel en esta pestaña del navegador
-let utrecarDashboardLoadedOnce = false;
+// Momento del último clic en el menú superior (p. ej. "Gestión de gasolineras").
+// Solo ese clic lleva a la pestaña Estaciones; cualquier otra vuelta al panel
+// (atrás del navegador, "Volver", guardar una ficha, recargar) restaura donde estaba.
+let utrecarMenuClickAt = 0;
+document.addEventListener("click", (ev) => {
+    if (ev.target && ev.target.closest && ev.target.closest(".o_main_navbar .o_menu_sections, .o_main_navbar .o_menu_brand")) {
+        utrecarMenuClickAt = Date.now();
+    }
+}, true);
+
+// Acción "volver atrás" (botones Volver / Guardar cambios de las fichas): retrocede en
+// el historial en lugar de abrir el panel otra vez (no se apilan pantallas en las migas).
+registry.category("actions").add("utrecar_history_back", (env) => {
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        env.services.action.doAction("pos_gas_station.action_gas_station_dashboard");
+    }
+});
 
 export class GasStationDashboard extends Component {
     static template = "pos_gas_station.GasStationDashboard";
@@ -235,13 +252,8 @@ export class GasStationDashboard extends Component {
         //    en la que estaba (empresa, pestaña o ficha de estación).
         //  - "menu": clic en el menú "Gestión de gasolineras" -> detalle de la
         //    empresa en la pestaña Estaciones de Servicio.
-        const actionCtx = (this.props.action && this.props.action.context) || {};
-        const restoreMode = (this.props.state && this.props.state.utrecarNavRestore)
-            || actionCtx.utrecar_return
-            || !utrecarDashboardLoadedOnce
-            ? "full"
-            : "menu";
-        utrecarDashboardLoadedOnce = true;
+        const restoreMode = (Date.now() - utrecarMenuClickAt) < 3000 ? "menu" : "full";
+        utrecarMenuClickAt = 0;
 
         onMounted(() => {
             this.loadDashboardData(restoreMode);
