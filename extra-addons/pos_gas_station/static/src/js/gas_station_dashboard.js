@@ -1118,7 +1118,9 @@ export class GasStationDashboard extends Component {
         const active = (this.companyService && this.companyService.activeCompanyIds) || [];
         if (compId && allowed[compId] && !active.includes(compId)) {
             const cids = [compId, ...active.filter((id) => id !== compId)].join("-");
-            window.location.href = `/web#id=${partnerId}&model=res.partner&view_type=form&cids=${cids}`;
+            // /web sin ?admin=1 redirige al selector de empleados del TPV (login.py)
+            const search = window.location.search.includes("admin=1") ? window.location.search : "?admin=1";
+            window.location.href = `/web${search}#id=${partnerId}&model=res.partner&view_type=form&cids=${cids}`;
             return;
         }
         this.actionService.doAction({
