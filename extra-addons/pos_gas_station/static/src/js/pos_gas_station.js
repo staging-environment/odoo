@@ -443,6 +443,8 @@ export class UtrecarMainScreen extends Component {
         const urlParams = new URLSearchParams(window.location.search);
         this.configId = parseInt(urlParams.get("config_id")) || (this.pos.config ? this.pos.config.id : 2);
         UtrecarDirectPrint.watch(this.configId);
+        // La calculadora (PaymentScreen) imprime el ticket con el mismo formato del historial
+        UtrecarDirectPrint.mainScreen = this;
         
         // Cargar cobros pendientes por calle desde almacenamiento persistente
         if (!this.pos.pendingSales) {
@@ -7112,10 +7114,10 @@ patch(PaymentScreen.prototype, {
             try {
                 const receiptData = this.currentOrder.export_for_printing();
                 this.currentOrder._printed = true;
-                this.printer.print(
-                    OrderReceipt,
-                    { data: receiptData, formatCurrency: this.env.utils.formatCurrency },
-                    { webPrintFallback: true }
+                this._utrecarPrintLikeHistory(
+                    this.currentOrder.server_id,
+                    Boolean(this.currentOrder.is_albaran),
+                    receiptData
                 ).catch((e) => console.debug("Error imprimiendo ticket:", e));
             } catch (e) {
                 console.debug("Error preparando ticket:", e);
@@ -7222,6 +7224,39 @@ patch(PaymentScreen.prototype, {
 
     get nextScreen() {
         return "ProductScreen";
+    },
+
+    /**
+     * Imprime el ticket/albarán recién cobrado con el MISMO formato que la
+     * reimpresión desde el Historial de Pedidos del Turno (datos del servidor).
+     * Si no es posible (sin impresión directa, sin conexión...), usa el recibo
+     * estándar de Odoo como antes para no dejar al cliente sin ticket.
+     */
+    async _utrecarPrintLikeHistory(serverId, isAlbaran, receiptData) {
+        const screen = UtrecarDirectPrint.mainScreen;
+        const docType = isAlbaran ? "albaran" : "ticket";
+        try {
+            if (serverId && screen && UtrecarDirectPrint.canPrint(screen.configId, docType)) {
+                const res = await this.env.services.rpc("/pos_gas_station/get_shift_orders", {
+                    session_id: this.pos.pos_session ? this.pos.pos_session.id : null,
+                    config_id: screen.configId,
+                });
+                const ord = res && res.status === "success"
+                    ? (res.orders || []).find((o) => o.id === serverId)
+                    : null;
+                if (ord) {
+                    screen.printShiftOrderTicket(ord, false, true);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.debug("Ticket con formato de historial no disponible, se usa el estándar:", e);
+        }
+        await this.printer.print(
+            OrderReceipt,
+            { data: receiptData, formatCurrency: this.env.utils.formatCurrency },
+            { webPrintFallback: true }
+        );
     },
 
     async validateVirtusNoPrint() {
