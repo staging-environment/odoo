@@ -107,3 +107,10 @@
 .o_utrecar_name_label .o_form_label {
     font-weight: 700;
 }
+
+/* Ventanas flotantes de listados (Pedidos de TPV, Facturado, Vehículos...):
+   tamaño extra grande al 95 % del ancho de la pantalla. */
+.modal-dialog.modal-xl:has(.modal-body.o_act_window) {
+    max-width: 95vw !important;
+    width: 95vw !important;
+}

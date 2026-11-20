@@ -3,6 +3,7 @@ import re
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
+from odoo.tools.safe_eval import safe_eval
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
@@ -293,13 +294,32 @@ class ResPartner(models.Model):
         }
 
     # Botones superiores de la ficha (Pedidos de TPV, Facturado) en ventana
-    # flotante que se cierra sobre la misma pantalla.
-    def action_view_pos_order(self):
-        action = super().action_view_pos_order()
-        action['target'] = 'new'
+    # flotante ancha que se cierra sobre la misma pantalla. En una ventana
+    # flotante Odoo no permite cambiar a kanban/pivot/actividad: solo lista y
+    # detalle.
+    @api.model
+    def _utrecar_as_dialog(self, action):
+        views = [v for v in (action.get('views') or []) if v[1] in ('tree', 'form')]
+        if not any(v[1] == 'tree' for v in views):
+            views.insert(0, (False, 'tree'))
+        if not any(v[1] == 'form' for v in views):
+            views.append((False, 'form'))
+        ctx = action.get('context') or {}
+        if isinstance(ctx, str):
+            try:
+                ctx = safe_eval(ctx, {'uid': self.env.uid, 'context': dict(self.env.context)})
+            except Exception:
+                ctx = {}
+        action.update({
+            'target': 'new',
+            'views': views,
+            'view_mode': ','.join(v[1] for v in views),
+            'context': dict(ctx, dialog_size='extra-large'),
+        })
         return action
 
+    def action_view_pos_order(self):
+        return self._utrecar_as_dialog(super().action_view_pos_order())
+
     def action_view_partner_invoices(self):
-        action = super().action_view_partner_invoices()
-        action['target'] = 'new'
-        return action
+        return self._utrecar_as_dialog(super().action_view_partner_invoices())

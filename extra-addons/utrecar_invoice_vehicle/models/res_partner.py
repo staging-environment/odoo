@@ -119,6 +119,6 @@ class ResPartner(models.Model):
             'res_model': 'res.partner.vehicle',
             'view_mode': 'tree,form',
             'domain': [('partner_id', '=', self.id)],
-            'context': {'default_partner_id': self.id},
+            'context': {'default_partner_id': self.id, 'dialog_size': 'extra-large'},
             'target': 'new',
         }
