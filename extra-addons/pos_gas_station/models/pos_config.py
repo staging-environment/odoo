@@ -189,47 +189,22 @@ class PosConfig(models.Model):
                 connect_timeout=3
             )
             with conn.cursor() as cur:
-                # Comprobar si existe el permiso 'acceso_odoo' en la matriz de permisos de admin-platform
-                cur.execute("SELECT id FROM permissions WHERE name = 'acceso_odoo' LIMIT 1")
-                has_odoo_perm_def = cur.fetchone()
-
-                if has_odoo_perm_def:
-                    sql = """
-                        SELECT DISTINCT e.id, e.virtus_codigo, e.nombre, e.apellidos, e.dni, e.email, e.puesto, e.gasolinera_codigo, e.gasolineras_codigos, e.foto
-                        FROM empleados e
-                        JOIN users u ON LOWER(TRIM(e.email)) = LOWER(TRIM(u.email))
-                        WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
-                          AND (
-                              EXISTS (
-                                  SELECT 1 FROM model_has_permissions mhp
-                                  JOIN permissions p ON mhp.permission_id = p.id
-                                  WHERE mhp.model_id = u.id AND mhp.model_type LIKE '%User' AND p.name = 'acceso_odoo'
-                              )
-                              OR EXISTS (
-                                  SELECT 1 FROM model_has_roles mhr
-                                  JOIN role_has_permissions rhp ON rhp.role_id = mhr.role_id
-                                  JOIN permissions p ON rhp.permission_id = p.id
-                                  WHERE mhr.model_id = u.id AND mhr.model_type LIKE '%User' AND p.name = 'acceso_odoo'
-                              )
-                          )
-                        ORDER BY e.nombre, e.apellidos
-                    """
-                else:
-                    sql = """
-                        SELECT DISTINCT e.id, e.virtus_codigo, e.nombre, e.apellidos, e.dni, e.email, e.puesto, e.gasolinera_codigo, e.gasolineras_codigos, e.foto
-                        FROM empleados e
-                        JOIN users u ON LOWER(TRIM(e.email)) = LOWER(TRIM(u.email))
-                        WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
-                        ORDER BY e.nombre, e.apellidos
-                    """
+                # Consultar todos los empleados en Alta de admin-platform
+                sql = """
+                    SELECT DISTINCT e.id, e.virtus_codigo, e.nombre, e.apellidos, e.dni, e.email, e.puesto, e.gasolinera_codigo, e.gasolineras_codigos, e.foto
+                    FROM empleados e
+                    WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
+                    ORDER BY e.nombre, e.apellidos
+                """
                 cur.execute(sql)
                 rows = cur.fetchall()
 
                 # Filtrar empleados estrictamente por EMPRESA de la estación:
-                # - Estación de A.R. Trieste (id 4): solo empleados asignados a A.R. Trieste
-                # - Estación de Utrecar (id 1): solo empleados asignados a Utrecar
+                # - Estación de A.R. Trieste (id 4): empleados autorizados para A.R. Trieste en Odoo
+                # - Estación de Utrecar (id 1): empleados autorizados para Utrecar en Odoo
                 Users = self.env['res.users'].sudo()
                 matched_rows = []
+                already_matched_user_ids = set()
                 skipped_no_user = 0
                 skipped_no_company = 0
                 for r in rows:
@@ -248,22 +223,22 @@ class PosConfig(models.Model):
                     if odoo_u.id in [1, 2] or odoo_u.login in ['__system__', 'jarodriguezbonilla@gmail.com']:
                         continue
 
+                    # Auto-vincular admin_platform_emp_id si no estaba seteado
+                    if not odoo_u.admin_platform_emp_id:
+                        try:
+                            odoo_u.write({'admin_platform_emp_id': r['id']})
+                        except Exception:
+                            pass
+
                     # Verificación multi-empresa y multi-rol:
-                    # El empleado debe estar autorizado para la empresa de esta estación
+                    # El empleado debe estar autorizado para la empresa de esta estación en Odoo
                     if odoo_u.is_employee_for_company(self.company_id.id):
-                        matched_rows.append(r)
+                        matched_rows.append((r, odoo_u))
+                        already_matched_user_ids.add(odoo_u.id)
                     else:
                         skipped_no_company += 1
 
-                if not matched_rows:
-                    _logger.warning(
-                        "get_admin_platform_employees(%s, company_id=%s): 0 empleados autorizados "
-                        "(has_odoo_perm_def=%s, maria_rows=%s, skipped_no_user=%s, skipped_no_company=%s)",
-                        self.name, self.company_id.id, bool(has_odoo_perm_def),
-                        len(rows), skipped_no_user, skipped_no_company
-                    )
-
-                for idx, r in enumerate(matched_rows):
+                for idx, (r, odoo_u) in enumerate(matched_rows):
                     nombre = (r.get('nombre') or '').strip()
                     apellidos = (r.get('apellidos') or '').strip()
                     full_name = f"{nombre} {apellidos}".strip() or f"Empleado #{r['id']}"
@@ -280,6 +255,7 @@ class PosConfig(models.Model):
 
                     employees.append({
                         'id': r['id'],
+                        'odoo_user_id': odoo_u.id,
                         'full_name': full_name,
                         'first_name': nombre,
                         'last_name': apellidos,
@@ -294,6 +270,42 @@ class PosConfig(models.Model):
                         'photo': r.get('foto') or False,
                         'gasolinera_codigo': r.get('gasolinera_codigo'),
                     })
+
+                # Salvaguarda: cualquier usuario en res.users activo para esta empresa que no esté ya en la lista
+                all_active_users = Users.search([('active', '=', True)])
+                for u in all_active_users:
+                    if u.id in [1, 2] or u.login in ['__system__', 'jarodriguezbonilla@gmail.com']:
+                        continue
+                    if u.id not in already_matched_user_ids and u.is_employee_for_company(self.company_id.id):
+                        parts = u.name.split()
+                        initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else '')) if parts else 'EM'
+                        u_code = getattr(u, 'barcode', '') or str(getattr(u, 'admin_platform_emp_id', '') or u.id)
+                        employees.append({
+                            'id': getattr(u, 'admin_platform_emp_id', False) or u.id,
+                            'odoo_user_id': u.id,
+                            'full_name': u.name,
+                            'first_name': parts[0] if parts else u.name,
+                            'last_name': " ".join(parts[1:]) if len(parts) > 1 else '',
+                            'dni': getattr(u, 'dni', '') or '',
+                            'code': u_code,
+                            'virtus_codigo': u_code,
+                            'email': u.email or '',
+                            'login': u.login,
+                            'puesto': 'Expendedor de Pista',
+                            'initials': initials.upper(),
+                            'avatar_gradient': color_palette[len(employees) % len(color_palette)],
+                            'photo': False,
+                            'gasolinera_codigo': None,
+                        })
+                        already_matched_user_ids.add(u.id)
+
+                if not employees:
+                    _logger.warning(
+                        "get_admin_platform_employees(%s, company_id=%s): 0 empleados autorizados "
+                        "(maria_rows=%s, skipped_no_user=%s, skipped_no_company=%s)",
+                        self.name, self.company_id.id,
+                        len(rows), skipped_no_user, skipped_no_company
+                    )
             conn.close()
         except Exception as e:
             _logger.exception("Error consultando empleados para estacion %s: %s", self.name, e)
@@ -328,12 +340,21 @@ class PosConfig(models.Model):
         """Garantiza la existencia y vinculación de un usuario en res.users para el empleado de admin-platform."""
         self.ensure_one()
         User = self.env['res.users'].sudo()
+        user = None
+        if emp_data.get('odoo_user_id'):
+            u = User.browse(int(emp_data['odoo_user_id']))
+            if u.exists():
+                user = u
+
         login = emp_data.get('login') or emp_data.get('email') or emp_data.get('dni')
         email = emp_data.get('email') or login
 
-        user = User.search(['|', ('login', '=', login), ('email', '=', email)], limit=1)
-        if not user and emp_data.get('dni'):
-            user = User.search([('login', '=', emp_data['dni'])], limit=1)
+        if not user:
+            user = User.search(['|', ('login', '=', login), ('email', '=', email)], limit=1)
+            if not user and emp_data.get('dni'):
+                user = User.search([('login', '=', emp_data['dni'])], limit=1)
+            if not user and emp_data.get('id'):
+                user = User.search([('admin_platform_emp_id', '=', emp_data['id'])], limit=1)
 
         role_employee = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
         group_pos_manager = self.env.ref('point_of_sale.group_pos_manager', raise_if_not_found=False)

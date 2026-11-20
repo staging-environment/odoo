@@ -432,7 +432,7 @@ class UtrecarLogin(Home):
             employees = station.get_admin_platform_employees()
             target_emp = None
             for e in employees:
-                if str(e['id']) == str(employee_id):
+                if str(e['id']) == str(employee_id) or str(e.get('odoo_user_id')) == str(employee_id):
                     target_emp = e
                     break
 
