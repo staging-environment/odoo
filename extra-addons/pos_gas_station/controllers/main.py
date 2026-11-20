@@ -1125,6 +1125,23 @@ class PosGasStationController(http.Controller):
             f'pos_gas_station.pending_sales_{cfg}', json.dumps(payload, ensure_ascii=False))
         return {'status': 'success', 'saved_at': payload['saved_at']}
 
+    @http.route('/pos_gas_station/system_printers', type='json', auth='user', methods=['POST'], csrf=False)
+    def system_printers(self, config_id=None, **kw):
+        """Impresoras reales instaladas en el PC de pista (publicadas por scripts/agente_impresoras_pista.py)."""
+        cfg = int(config_id or 7)
+        raw = request.env['ir.config_parameter'].sudo().get_param(f'pos_gas_station.system_printers_{cfg}')
+        try:
+            data = json.loads(raw) if raw else {}
+        except Exception:
+            data = {}
+        printers = data.get('printers') or []
+        return {
+            'exists': bool(printers),
+            'printers': printers,
+            'hostname': data.get('hostname') or '',
+            'updated_at': data.get('updated_at') or 0,
+        }
+
     @http.route('/pos_gas_station/clear_pump', type='json', auth='public', methods=['POST'], csrf=False, cors='*')
     def clear_pump(self, config_id=None, pump_id=None, **kw):
         cfg = int(config_id or 7)

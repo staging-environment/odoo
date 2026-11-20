@@ -3622,10 +3622,13 @@
                                 <div class="printer-list-header d-flex align-items-center justify-content-between mb-3">
                                     <div>
                                         <h5 class="mb-0 fw-bold">Impresoras Registradas en este Puesto</h5>
-                                        <small class="text-muted">Añade o gestiona los nombres de las impresoras instaladas en el sistema operativo Windows</small>
+                                        <small class="text-muted">
+                                            <t t-if="state.printerConfig.detectedHost">Detectadas automáticamente en <strong t-esc="state.printerConfig.detectedHost"/></t>
+                                            <t t-else="">Impresoras instaladas en Windows en este puesto</t>
+                                        </small>
                                     </div>
                                     <button type="button" class="btn btn-sm btn-outline-primary fw-bold" t-on-click="() => this.detectSystemPrinters()">
-                                        <i class="fa fa-search me-1"/> Detectar del Sistema
+                                        <i class="fa fa-refresh me-1"/> Actualizar del Sistema
                                     </button>
                                 </div>
 
@@ -3663,7 +3666,7 @@
                                                 </div>
                                             </div>
                                             <div class="printer-item-actions">
-                                                <t t-if="p.id !== 'windows_default' and p.id !== 'epson_tm_t20' and p.id !== 'epson_wf_m5299'">
+                                                <t t-if="p.id !== 'windows_default' and !p.is_detected">
                                                     <button type="button" class="btn-remove-printer" t-on-click="() => this.removeSystemPrinter(p.id)" title="Eliminar impresora">
                                                         <i class="fa fa-trash-o text-danger"/>
                                                     </button>

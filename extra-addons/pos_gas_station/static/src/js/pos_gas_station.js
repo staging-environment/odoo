@@ -865,6 +865,73 @@ export class UtrecarMainScreen extends Component {
         this.state.printerActiveTab = 'assignments';
         this.state.printerSaveSuccessMessage = "";
         this.state.isPrinterConfigModalOpen = true;
+        this.syncRealPrinters(false);
+    }
+
+    /**
+     * Sustituye la lista de impresoras por las realmente instaladas en el PC de pista
+     * (publicadas en Odoo por scripts/agente_impresoras_pista.py) y reasigna los
+     * documentos que apuntaban a impresoras que ya no existen.
+     */
+    async syncRealPrinters(showAlert = false) {
+        let res;
+        try {
+            res = await jsonrpc("/pos_gas_station/system_printers", { config_id: this.configId });
+        } catch (e) {
+            console.warn("No se pudieron cargar las impresoras del sistema:", e);
+            if (showAlert) {
+                alert("No se pudo consultar la lista de impresoras en el servidor.");
+            }
+            return false;
+        }
+        if (!res || !res.exists) {
+            if (showAlert) {
+                alert("Este puesto todavía no ha publicado sus impresoras. Hay que instalar el agente de impresoras en el PC de pista (scripts/agente_impresoras_pista.py).");
+            }
+            return false;
+        }
+        const cfg = this.state.printerConfig || this.getPrinterConfig();
+        const slug = (name) => "sys_" + name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+        const real = res.printers.map((p) => ({
+            id: slug(p.name),
+            name: p.name,
+            type: p.type || "laser_ink",
+            port: p.port || "",
+            is_default: Boolean(p.is_default),
+            is_detected: true,
+        }));
+        const printers = [
+            { id: "windows_default", name: "Impresora Predeterminada del Sistema", type: "system" },
+            ...real,
+        ];
+        const oldPrinters = cfg.systemPrinters || [];
+        const ids = new Set(printers.map((p) => p.id));
+        const firstOfType = (type) => real.find((p) => p.type === type);
+        // La primera vez que se sincroniza se asignan todos los documentos a impresoras reales.
+        const reassignAll = !cfg.realPrintersSynced;
+        for (const assign of Object.values(cfg.assignments || {})) {
+            if (!reassignAll && ids.has(assign.printerId)) {
+                continue;
+            }
+            const old = oldPrinters.find((p) => p.id === assign.printerId);
+            const firstWord = old ? old.name.toLowerCase().split(/\s+/)[0] : "";
+            const byName = firstWord ? real.find((p) => p.name.toLowerCase().startsWith(firstWord)) : null;
+            const byType = assign.format === "a4" ? firstOfType("laser_ink") : firstOfType("thermal");
+            assign.printerId = (byName || byType || { id: "windows_default" }).id;
+        }
+        cfg.systemPrinters = printers;
+        cfg.realPrintersSynced = true;
+        cfg.detectedHost = res.hostname;
+        cfg.detectedAt = res.updated_at;
+        this.state.printerConfig = cfg;
+        this.savePrinterConfig();
+        if (!showAlert) {
+            this.state.printerSaveSuccessMessage = "";
+        }
+        if (showAlert) {
+            alert(`Impresoras instaladas en ${res.hostname || "el PC de pista"}:\n\n` + real.map((p) => "• " + p.name + (p.is_default ? " (predeterminada Windows)" : "")).join("\n"));
+        }
+        return true;
     }
 
     closePrinterConfigModal() {
@@ -873,30 +940,32 @@ export class UtrecarMainScreen extends Component {
 
     getPrinterConfig() {
         const storageKey = `pos_gas_station_printer_config_${this.configId}`;
+        // Las impresoras reales se cargan desde el servidor (syncRealPrinters); aquí solo queda la del sistema.
         const defaultPrinters = [
-            { id: "epson_tm_t20", name: "EPSON TM-T20III (Térmica Tickets 80mm)", type: "thermal" },
-            { id: "epson_wf_m5299", name: "EPSON WF-M5299 (A4 / Documentos)", type: "laser_ink" },
-            { id: "windows_default", name: "Impresora Predeterminada del Sistema", type: "system", is_default: true },
-            { id: "pdf_print", name: "Microsoft Print to PDF", type: "pdf" },
+            { id: "windows_default", name: "Impresora Predeterminada del Sistema", type: "system" },
         ];
+        // Nombres de ejemplo de versiones anteriores que no existen en ningún PC: se descartan.
+        const legacyFakeIds = ["epson_tm_t20", "epson_wf_m5299", "pdf_print"];
         const defaultAssignments = {
-            ticket: { printerId: "epson_tm_t20", format: "thermal_80", copies: 1 },
-            albaran: { printerId: "epson_wf_m5299", format: "a4", copies: 2 },
-            invoice: { printerId: "epson_wf_m5299", format: "a4", copies: 1 },
-            shift_report: { printerId: "epson_tm_t20", format: "thermal_80", copies: 1 },
-            extraction: { printerId: "epson_tm_t20", format: "thermal_80", copies: 1 },
-            annulment: { printerId: "epson_tm_t20", format: "thermal_80", copies: 1 },
+            ticket: { printerId: "windows_default", format: "thermal_80", copies: 1 },
+            albaran: { printerId: "windows_default", format: "a4", copies: 2 },
+            invoice: { printerId: "windows_default", format: "a4", copies: 1 },
+            shift_report: { printerId: "windows_default", format: "thermal_80", copies: 1 },
+            extraction: { printerId: "windows_default", format: "thermal_80", copies: 1 },
+            annulment: { printerId: "windows_default", format: "thermal_80", copies: 1 },
         };
         try {
             const raw = localStorage.getItem(storageKey);
             if (raw) {
                 const parsed = JSON.parse(raw);
+                const stored = (parsed.systemPrinters || []).filter((p) => !legacyFakeIds.includes(p.id));
                 return {
-                    systemPrinters: (parsed.systemPrinters && parsed.systemPrinters.length > 0)
-                        ? parsed.systemPrinters
-                        : defaultPrinters,
+                    systemPrinters: stored.length > 0 ? stored : defaultPrinters,
                     assignments: Object.assign({}, defaultAssignments, parsed.assignments || {}),
                     directPrint: parsed.directPrint !== undefined ? parsed.directPrint : true,
+                    realPrintersSynced: Boolean(parsed.realPrintersSynced),
+                    detectedHost: parsed.detectedHost || "",
+                    detectedAt: parsed.detectedAt || 0,
                 };
             }
         } catch (e) {
@@ -942,6 +1011,7 @@ export class UtrecarMainScreen extends Component {
             localStorage.removeItem(storageKey);
         } catch (e) {}
         this.state.printerConfig = this.getPrinterConfig();
+        this.syncRealPrinters(false);
         this.state.printerSaveSuccessMessage = "Valores predeterminados restablecidos.";
         setTimeout(() => {
             if (this.state) {
@@ -1003,53 +1073,7 @@ export class UtrecarMainScreen extends Component {
     }
 
     async detectSystemPrinters() {
-        try {
-            if (window.queryLocalPrinters) {
-                const detected = await window.queryLocalPrinters();
-                if (detected && detected.length > 0) {
-                    let addedCount = 0;
-                    for (const pr of detected) {
-                        const prName = pr.name;
-                        if (!this.state.printerConfig.systemPrinters.some(p => p.name.toLowerCase() === prName.toLowerCase())) {
-                            this.state.printerConfig.systemPrinters.push({
-                                id: 'sys_' + Math.random().toString(36).substr(2, 9),
-                                name: prName,
-                                type: prName.toLowerCase().includes('tm-') || prName.toLowerCase().includes('thermal') || prName.toLowerCase().includes('ticket') ? 'thermal' : 'laser_ink',
-                                is_detected: true,
-                            });
-                            addedCount++;
-                        }
-                    }
-                    this.savePrinterConfig();
-                    alert(`Se han detectado y añadido ${addedCount} impresoras del sistema.`);
-                    return;
-                }
-            } else if (navigator.printers && navigator.printers.query) {
-                const query = await navigator.printers.query();
-                if (query && query.length > 0) {
-                    let addedCount = 0;
-                    for (const pr of query) {
-                        const prName = pr.name || pr.printerId;
-                        if (!this.state.printerConfig.systemPrinters.some(p => p.name.toLowerCase() === prName.toLowerCase())) {
-                            this.state.printerConfig.systemPrinters.push({
-                                id: 'sys_' + Math.random().toString(36).substr(2, 9),
-                                name: prName,
-                                type: prName.toLowerCase().includes('tm-') ? 'thermal' : 'laser_ink',
-                                is_detected: true,
-                            });
-                            addedCount++;
-                        }
-                    }
-                    this.savePrinterConfig();
-                    alert(`Se han detectado y añadido ${addedCount} impresoras del sistema.`);
-                    return;
-                }
-            }
-            alert("Para añadir impresoras instaladas en este equipo Windows (ej: EPSON TM-T20III, EPSON WF-M5299, etc.), puede escribir su nombre directamente en el apartado 'Añadir Impresora del Sistema' que tiene debajo.");
-        } catch (e) {
-            console.debug("Detección de impresoras:", e);
-            alert("Puede añadir las impresoras instaladas en Windows escribiendo su nombre en 'Añadir Impresora del Sistema'.");
-        }
+        await this.syncRealPrinters(true);
     }
 
     getAssignedPrinter(docType = 'ticket') {
