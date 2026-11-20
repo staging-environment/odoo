@@ -264,7 +264,10 @@ class ResPartner(models.Model):
             return ok, v, '' if ok else _('El CIF "%s" no es válido (dígito/letra de control incorrecto).') % v
         return False, v, _('El formato de NIF / CIF "%s" no es válido.') % raw_vat
 
-    @api.constrains('vat', 'email', 'country_id')
+    # Se comprueba en cada guardado de la ficha (no solo al cambiar el NIF o el email),
+    # para que un NIF/email incorrecto antiguo no pueda quedarse sin corregir.
+    @api.constrains('vat', 'email', 'country_id', 'name', 'street', 'street2', 'zip', 'city',
+                    'state_id', 'phone', 'mobile', 'is_company', 'ref', 'company_id')
     def _check_utrecar_vat_email_format(self):
         spain = self.env.ref('base.es', raise_if_not_found=False)
         for partner in self:
