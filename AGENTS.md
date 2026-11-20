@@ -550,3 +550,13 @@ Las bases de datos operativas de Aseproda se encuentran en `/home/developer/Proj
 - Scripts reutilizables en `scripts/simulaciones_pista/` (copiar a `C:\Utrecar\` del PC de pista y ejecutar con `python`):
   - `simular_suministro_lento.py <calle> <importe> [cod_producto] [precio] [paso]`
   - `simular_descolgar_manguera.py <calle> [segundos]`
+
+### 15. Impresión Directa en la Impresora Asignada (20/11/2026)
+- **Problema:** el navegador no puede listar ni elegir impresoras de Windows. La pantalla "Configuración de Impresoras" mostraba EPSON de ejemplo inexistentes y todo se imprimía con `window.print()` en la impresora que eligiera Edge.
+- **Impresoras reales E.S. Repsol:** `appPOS80AMUSE` (térmica 80 mm, USB, monitor "USB Printer Monitor"), `Brother HL-L5210DN series` (A4, USB) y `OneNote (Desktop)`. Ojo: en el usuario Windows `usuario` la predeterminada es OneNote.
+- **Agente de impresoras (`scripts/agente_impresoras_pista.py`)** en `C:\Utrecar\`, tarea programada `AgenteImpresorasOdoo` (arranque, SYSTEM, `iniciar_agente_impresoras.bat`, log `C:\Utrecar\agente_impresoras.log`). Independiente del agente de pista (no reiniciarlo para esto). Python puro (ctypes/winreg); credenciales leídas del agente de pista.
+  - Publica impresoras en `pos_gas_station.system_printers_<config>` (incluye `pdf_ready`) y latido en `pos_gas_station.print_agent_seen_<config>`.
+  - Imprime la cola: `ir.attachment` con `res_model='pos_gas_station.print_job'`, `res_id=config_id`, estado JSON en `description`. ESC/POS → RAW por winspool; PDF → SumatraPDF (`C:\Utrecar\SumatraPDF\SumatraPDF.exe`). Si el trabajo da error en Windows lo borra de la cola y devuelve el motivo al TPV (aviso rojo).
+- **Odoo (`controllers/print_queue.py`):** `/pos_gas_station/print/status`, `/print/submit`, `/print/job_status`. Térmica: HTML → `wkhtmltoimage` (576 px, zoom 1.5, flexbox convertido a floats) o imagen del recibo → ESC/POS raster con corte. A4: `wkhtmltopdf`; facturas: informe PDF oficial (`/report/pdf/...`).
+- **TPV:** `UtrecarDirectPrint` + patch de `PosPrinterService.printHtml` (recibo estándar). Solo se usa si: impresión directa activada, impresora asignada real (no "Predeterminada del Sistema") y agente vivo; A4/PDF además exige `pdf_ready`. En otro caso, impresión por navegador como antes.
+- **Pendiente:** instalar SumatraPDF portable en el PC de Repsol (A4/facturas) y probar la térmica con papel (el driver de appPOS80 no informa de falta de papel). El cierre de turno (`/shift_report_print`) sigue imprimiéndose por navegador.
