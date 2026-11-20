@@ -14,6 +14,16 @@ class AccountMove(models.Model):
             return f"{self.journal_id.code}{year}00000"
         return super()._get_starting_sequence()
 
+    def _get_last_sequence(self, relaxed=False, with_prefix=None):
+        # Odoo toma el prefijo del ÚLTIMO asiento creado en el diario. Si ese
+        # asiento es una anulación (FTTR_2026...), la siguiente factura normal
+        # saldría como FTTR_2026<n+1> -> FTTR2026<n+1> (duplicada). Las facturas
+        # normales de los diarios FT siguen siempre su propia serie sin guion.
+        if (with_prefix is None and self.move_type == 'out_invoice'
+                and self.journal_id.code and self.journal_id.code.startswith('FT')):
+            with_prefix = self.journal_id.code
+        return super()._get_last_sequence(relaxed=relaxed, with_prefix=with_prefix)
+
     def _set_next_sequence(self):
         super()._set_next_sequence()
         for move in self:
