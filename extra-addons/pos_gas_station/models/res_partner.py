@@ -272,6 +272,17 @@ class ResPartner(models.Model):
                 ok, _v, msg = self._utrecar_check_spanish_vat(partner.vat)
                 if not ok:
                     raise ValidationError(_("%(name)s: %(msg)s", name=partner.display_name or '', msg=msg))
+            elif partner.vat:
+                # NIF/VAT extranjero: debe empezar por el código del país y tener
+                # una longitud razonable (p. ej. US12345673, PT123456789, FR12345678901).
+                code = (partner.country_id.code or '').upper()
+                v = re.sub(r'[^A-Z0-9]', '', partner.vat.upper())
+                if not (code and v.startswith(code) and 6 <= len(v) <= 16 and any(c.isdigit() for c in v[len(code):])):
+                    raise ValidationError(_(
+                        '%(name)s: el NIF/VAT "%(vat)s" no es válido para %(country)s. '
+                        'Debe empezar por el código del país (%(code)s) seguido del número, p. ej. %(code)s12345678.',
+                        name=partner.display_name or '', vat=partner.vat,
+                        country=partner.country_id.name or '', code=code or 'XX'))
             email = (partner.email or '').strip()
             if email and not re.match(r'^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$', email):
                 raise ValidationError(_('%(name)s: el email "%(email)s" no es válido.',
