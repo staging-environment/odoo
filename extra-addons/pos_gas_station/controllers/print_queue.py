@@ -149,7 +149,9 @@ def _image_to_escpos(image_bytes):
     raw = ImageOps.invert(img.convert('L')).convert('1').tobytes()
 
     out = bytearray(b'\x1b@')  # reset
-    band = 256
+    # Bloques de 24 filas: algunas térmicas (Rongta/appPOS80) leen mal alturas >= 256
+    # (solo el byte bajo) y toman la imagen como comandos, quedándose bloqueadas.
+    band = 24
     for top in range(0, img.height, band):
         rows = min(band, img.height - top)
         chunk = raw[top * width_bytes:(top + rows) * width_bytes]
