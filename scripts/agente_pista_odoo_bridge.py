@@ -232,7 +232,8 @@ class PurePythonSdesClient:
                                 rest = payload[20:]
                                 calle, manguera, prod, precio, tanque = struct.unpack_from(">HHHHH", rest, 0)
                                 lts, imp, imp_pref = struct.unpack_from(">III", rest, 10)
-                                self.on_operacion_cb(calle, lts / 100.0, imp / 100.0, precio / 1000.0, prod, op_ts)
+                                self.on_operacion_cb(calle, lts / 100.0, imp / 100.0, precio / 1000.0, prod, op_ts,
+                                                     tanque=tanque, manguera=manguera)
                         except Exception as e:
                             logging.error(f"Error decodificando MSG_NUEVA_OP: {e}")
 
@@ -339,7 +340,7 @@ class AgentePistaRepsol:
         self.sdes_client = None
         self.sdes_api = None
         self.last_sdes_check = 0
-        self.last_command_ts = 0.0
+        self.last_command_ts = None  # None = aún no se ha leído ninguna orden desde el arranque
         if SDES_DLL_DISPONIBLE:
             try:
                 self.sdes_api = ClienteSDES2(None)
@@ -425,7 +426,7 @@ class AgentePistaRepsol:
         if hubo_cambio:
             self.enviar_estado_a_odoo(forzar=True)
 
-    def _on_nueva_operacion_socket(self, calle, litros, importe, precio, cod_producto, op_ts=None):
+    def _on_nueva_operacion_socket(self, calle, litros, importe, precio, cod_producto, op_ts=None, tanque=0, manguera=0):
         """Procesa evento instantáneo de nueva operación finalizada recibido por el socket"""
         now = time.time()
         # Si la operación tiene una fecha/hora antigua (más de 60s antes de ahora o anterior al arranque del agente),
@@ -433,7 +434,7 @@ class AgentePistaRepsol:
         if op_ts and (now - op_ts > 60.0):
             logging.info(f"⏭️ [OP HISTÓRICA SDES DESCARTADA] Calle {calle}: {litros:.2f}L | {importe:.2f}€ con antigüedad de {now - op_ts:.0f}s. ACK confirmado a SDES, no se aplica a pantalla en vivo.")
             return
-        self.marcar_calle_completada(calle, litros, importe, precio, cod_producto)
+        self.marcar_calle_completada(calle, litros, importe, precio, cod_producto, tanque=tanque, manguera=manguera)
 
     def conectar_odoo(self):
         try:
@@ -581,6 +582,14 @@ class AgentePistaRepsol:
             if cmd_raw:
                 cmd = json.loads(cmd_raw)
                 ts = cmd.get("timestamp", 0)
+                if self.last_command_ts is None:
+                    # Primera lectura tras arrancar: una orden antigua ya se ejecutó antes del
+                    # reinicio y NO debe repetirse (p. ej. volver a prefijar una calle).
+                    self.last_command_ts = ts
+                    if ts and (time.time() - float(ts)) > 15.0:
+                        logging.info(f"⏭️ [ORDEN ANTIGUA IGNORADA AL ARRANCAR] {cmd.get('action')} calle {cmd.get('pump_id')} (hace {time.time() - float(ts):.0f}s)")
+                        return
+                    self.last_command_ts = 0.0
                 if ts != self.last_command_ts and ts > 0:
                     self.last_command_ts = ts
                     action = cmd.get("action")
@@ -797,10 +806,13 @@ class AgentePistaRepsol:
             except Exception as e:
                 logging.debug(f"Aviso sync SDES API: {e}")
 
-    def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto):
+    def marcar_calle_completada(self, calle, litros, importe, precio, cod_producto, tanque=0, manguera=0):
         if 1 <= calle <= TOTAL_CALLES:
             p = self.pumps[calle - 1]
             prod = MAPA_COMBUSTIBLES.get(str(cod_producto), MAPA_COMBUSTIBLES["default"])
+            # Tanque y manguera del suministro (los informa SDES); Odoo descuenta el carburante de ese tanque
+            p["tank"] = int(tanque or 0)
+            p["hose"] = int(manguera or 0)
             
             p["fuel"] = prod["name"]
             p["amount"] = round(importe, 2)
@@ -810,7 +822,7 @@ class AgentePistaRepsol:
             p["is_descolgada"] = False
             p["updated_at"] = time.time()
 
-            logging.info(f"🎉 [VENTA LISTA] Calle {calle} completó {litros:.2f}L de {prod['name']} por {importe:.2f}€")
+            logging.info(f"🎉 [VENTA LISTA] Calle {calle} completó {litros:.2f}L de {prod['name']} por {importe:.2f}€ (manguera {manguera}, tanque {tanque})")
 
             # Solo es prepago si fue cobrado previamente en caja (has_prepay == True)
             is_prepay = bool(p.get("has_prepay", False))

@@ -2244,7 +2244,8 @@ export class UtrecarMainScreen extends Component {
                                     price: p.price || (p.liters > 0 ? (p.amount / p.liters) : 1.45),
                                     amount: p.amount || 0,
                                     productId: fuelProd ? fuelProd.id : null,
-                                    code: this.getPumpFuelCode(p)
+                                    code: this.getPumpFuelCode(p),
+                                    tank: parseInt(p.tank) || 0
                                 };
                                 const storeTotal = storeItems.reduce((acc, it) => acc + (it.amount || (it.price * it.qty)), 0);
                                 const pendingPlate = (this.pos && this.pos.pumpPendingPlates && this.pos.pumpPendingPlates[p.id]) || p.vehiclePlate || this.state.vehiclePlate || "";
@@ -4882,7 +4883,8 @@ export class UtrecarMainScreen extends Component {
                         price: pump.price || (pump.liters > 0 ? (pump.amount / pump.liters) : 1.45),
                         amount: pump.amount || 0,
                         productId: fuelProd ? fuelProd.id : null,
-                        code: this.getPumpFuelCode(pump)
+                        code: this.getPumpFuelCode(pump),
+                        tank: parseInt(pump.tank) || 0
                     },
                     storeLines: [],
                     totalAmount: pump.amount || 0,
@@ -5254,6 +5256,8 @@ export class UtrecarMainScreen extends Component {
                     activeLine.pump_id = sale.pumpId;
                     activeLine.fuel_display_price = sale.fuel.price;
                     activeLine.target_total = targetTotal;
+                    // Tanque del que salió el carburante (lo informa el surtidor)
+                    activeLine.tank_number = parseInt(sale.fuel.tank) || 0;
                     activeLine.price_type = "manual";
                     if (activeLine.set_customer_note) {
                         activeLine.set_customer_note(`Calle ${sale.pumpId} - ${sale.fuel.name} (${sale.fuel.liters.toFixed(2)}L)`);
@@ -7519,6 +7523,15 @@ patch(PosStore.prototype, {
 // En líneas de surtidor se lee siempre el punto como separador decimal.
 // ----------------------------------------------------------------------------
 patch(Orderline.prototype, {
+    export_as_JSON() {
+        const json = super.export_as_JSON(...arguments);
+        json.tank_number = parseInt(this.tank_number) || 0;
+        return json;
+    },
+    init_from_JSON(json) {
+        super.init_from_JSON(...arguments);
+        this.tank_number = parseInt(json.tank_number) || 0;
+    },
     set_quantity(quantity, keep_price) {
         if (typeof quantity === "string" && (this.pump_id || this.fuel_display_price || this.target_total)) {
             const txt = quantity.trim();

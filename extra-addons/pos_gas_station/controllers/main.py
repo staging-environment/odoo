@@ -1837,6 +1837,7 @@ class PosGasStationController(http.Controller):
             'id': loc.id,
             'name': loc.name,
             'complete_name': loc.complete_name,
+            'tank_number': loc.utrecar_tank_number or 0,
             'warehouse_id': warehouse.id if warehouse else False,
             'warehouse_name': warehouse.name if warehouse else (company.name if company else ''),
             'fuel_code': fuel_code,

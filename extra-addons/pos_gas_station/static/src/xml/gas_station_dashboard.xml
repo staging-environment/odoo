@@ -1406,6 +1406,7 @@
                                                                 <div>
                                                                     <strong class="d-block text-dark" style="font-size: 13px;"><t t-esc="tank.name"/></strong>
                                                                     <small class="text-muted"><t t-esc="tank.fuel_name"/></small>
+                                                                    <small t-if="tank.tank_number" class="badge bg-light text-dark border ms-1" title="Número del tanque en el concentrador de pista">Tanque nº <t t-esc="tank.tank_number"/></small>
                                                                 </div>
                                                             </div>
                                                             <span t-attf-class="badge #{tank.fill_pct &lt; 15 ? 'bg-danger' : (tank.fill_pct &lt; 30 ? 'bg-warning text-dark' : 'bg-success-subtle text-success border border-success-subtle')}">
