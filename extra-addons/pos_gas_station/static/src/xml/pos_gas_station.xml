@@ -1907,25 +1907,25 @@
                                         <thead>
                                             <tr>
                                                 <th style="width: 32px; text-align: center;"></th>
-                                                <th class="th-sortable" style="width: 135px;" t-on-click="() => this.sortShiftOrders('date')" title="Ordenar por Fecha y Hora">
+                                                <th class="th-sortable" style="width: 130px;" t-on-click="() => this.sortShiftOrders('date')" title="Ordenar por Fecha y Hora">
                                                     FECHA / HORA <i t-attf-class="fa #{getSortIcon('date')}"/>
                                                 </th>
-                                                <th class="th-sortable" style="width: 140px;" t-on-click="() => this.sortShiftOrders('ticket')" title="Ordenar por Serie">
+                                                <th class="th-sortable" style="width: 120px;" t-on-click="() => this.sortShiftOrders('ticket')" title="Ordenar por Serie">
                                                     SERIE <i t-attf-class="fa #{getSortIcon('ticket')}"/>
                                                 </th>
-                                                <th class="th-sortable" style="width: 80px; text-align: center;" t-on-click="() => this.sortShiftOrders('pump')" title="Ordenar por Calle de Suministro">
+                                                <th class="th-sortable" style="width: 70px; text-align: center;" t-on-click="() => this.sortShiftOrders('pump')" title="Ordenar por Calle de Suministro">
                                                     CALLE <i t-attf-class="fa #{getSortIcon('pump')}"/>
                                                 </th>
-                                                <th class="th-sortable" style="width: 160px;" t-on-click="() => this.sortShiftOrders('receipt')" title="Ordenar por Nº de Recibo">
+                                                <th class="th-sortable" style="width: 150px;" t-on-click="() => this.sortShiftOrders('receipt')" title="Ordenar por Nº de Recibo">
                                                     RECIBO <i t-attf-class="fa #{getSortIcon('receipt')}"/>
                                                 </th>
-                                                <th class="th-sortable" style="width: 210px;" t-on-click="() => this.sortShiftOrders('partner')" title="Ordenar por Cliente">
+                                                <th class="th-sortable" t-on-click="() => this.sortShiftOrders('partner')" title="Ordenar por Cliente">
                                                     CLIENTE <i t-attf-class="fa #{getSortIcon('partner')}"/>
                                                 </th>
                                                 <th class="th-sortable" style="width: 80px; text-align: right;" t-on-click="() => this.sortShiftOrders('total')" title="Ordenar por Importe Total">
                                                     TOTAL <i t-attf-class="fa #{getSortIcon('total')}"/>
                                                 </th>
-                                                <th style="width: 290px; text-align: center;">ACCIONES</th>
+                                                <th style="width: 300px; text-align: left; padding-left: 10px;">ACCIONES</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1984,7 +1984,7 @@
                                                     <td class="cell-total" style="text-align: right;">
                                                         <strong><t t-esc="ord.amount_total_str || ord.amount_total"/> €</strong>
                                                     </td>
-                                                    <td class="cell-actions" style="text-align: center;" t-on-click.stop="">
+                                                    <td class="cell-actions" t-on-click.stop="">
                                                         <t t-if="ord.doc_type === 'invoice' || ord.is_invoiced">
                                                             <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => this.printShiftOrderInvoice(ord, true)" title="Imprimir Factura PDF oficial">
                                                                 <i class="fa fa-print me-1"/> Imprimir
@@ -2055,7 +2055,7 @@
                                                                                         <t t-esc="item.amount"/> €
                                                                                     </strong>
                                                                                 </td>
-                                                                                <td style="width: 200px; text-align: center;" t-on-click.stop="">
+                                                                                <td class="cell-actions" style="width: 300px;" t-on-click.stop="">
                                                                                     <t t-if="item.type === 'rectificativa' &amp;&amp; item.child_order">
                                                                                         <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderTicket(item.child_order, false, false)" title="Visualizar ticket rectificativo en pantalla">
                                                                                             👁

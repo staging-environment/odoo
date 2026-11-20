@@ -5358,7 +5358,7 @@
 }
 
 .shift-orders-modal-window {
-    width: 1040px !important;
+    width: 1120px !important;
     max-width: 96vw !important;
     height: 82vh !important;
     max-height: 750px !important;
@@ -5785,10 +5785,11 @@
     white-space: nowrap !important;
 }
 
-.shift-order-row .cell-actions {
-    width: 200px !important;
+.shift-order-row .cell-actions,
+.order-history-panel .cell-actions {
     white-space: nowrap !important;
-    text-align: center !important;
+    text-align: left !important;
+    padding-left: 10px !important;
 }
 
 .badge-state {
