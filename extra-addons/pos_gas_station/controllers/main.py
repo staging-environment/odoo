@@ -92,6 +92,9 @@ def _send_invoice_email(env, move, target_email=None):
             'reply_to': f'"{company_name}" <{smtp_sender}>',
             'mail_server_id': mail_server.id if mail_server else False,
             'auto_delete': False,
+            # Solo al email indicado: la plantilla añade además el contacto de la
+            # factura (partner_to) y si su email es inválido falla el envío entero.
+            'recipient_ids': [],
         }
 
         mail_id = template.sudo().send_mail(move.id, force_send=True, email_values=email_values)
@@ -3989,8 +3992,10 @@ class PosGasStationController(http.Controller):
             if not order.partner_id:
                 return {'status': 'error', 'message': 'Se requiere un cliente con NIF/CIF para emitir la factura.'}
 
-            # Generate invoice
-            order.action_pos_order_invoice()
+            # Generate invoice. generate_pdf=False: Odoo estándar enviaría la factura
+            # al email de la ficha del cliente aunque en el TPV se elija solo
+            # "Imprimir"; el envío lo hace abajo _send_invoice_email al email indicado.
+            order.with_context(generate_pdf=False).action_pos_order_invoice()
 
             if not order.account_move:
                 return {'status': 'error', 'message': 'No se pudo generar el asiento contable de factura.'}

@@ -246,6 +246,7 @@ class AccountMove(models.Model):
                     'email_from': f'"{company_name}" <{smtp_sender}>',
                     'reply_to': f'"{company_name}" <{smtp_sender}>',
                     'auto_delete': False,
+                    'recipient_ids': [],  # solo a target_email, sin duplicar al contacto
                 }
                 mail_id = template.send_mail(self.id, force_send=True, email_values=email_values)
                 self.invoice_email_sent = True
