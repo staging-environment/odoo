@@ -21,7 +21,7 @@ import { parseFloat } from "@web/views/fields/parsers";
 import { NumberPopup } from "@point_of_sale/app/utils/input_popups/number_popup";
 import { SelectionPopup } from "@point_of_sale/app/utils/input_popups/selection_popup";
 import { PosPrinterService } from "@point_of_sale/app/printer/pos_printer_service";
-import { htmlToCanvas } from "@point_of_sale/app/printer/render_service";
+import { toCanvas } from "@point_of_sale/app/utils/html-to-image";
 
 const PRINTER_DEFAULT_ASSIGNMENTS = {
     ticket: { printerId: "windows_default", format: "thermal_80", copies: 1 },
@@ -150,6 +150,30 @@ export const UtrecarDirectPrint = {
     },
 };
 
+/**
+ * Como htmlToCanvas de Odoo pero sin incrustar fuentes web (skipFonts): la primera vez
+ * descargaba todas las fuentes de Odoo y tardaba ~30 s. Doble resolución para la térmica.
+ */
+async function receiptToCanvas(el) {
+    const container = document.querySelector(".render-container");
+    el.classList.add("pos-receipt-print");
+    const clone = el.cloneNode(true);
+    container.querySelectorAll(".pos-receipt-print").forEach((e) => e.remove());
+    container.appendChild(clone);
+    try {
+        return await toCanvas(clone, {
+            backgroundColor: "#ffffff",
+            height: Math.ceil(clone.clientHeight),
+            width: Math.ceil(clone.clientWidth),
+            pixelRatio: 2,
+            includeQueryParams: true,
+            skipFonts: true,
+        });
+    } finally {
+        clone.remove();
+    }
+}
+
 // Recibo estándar de Odoo (OrderReceipt): se renderiza a imagen como hace la IoT Box
 // y se manda a la cola en lugar de abrir el diálogo de impresión del navegador.
 patch(PosPrinterService.prototype, {
@@ -157,7 +181,7 @@ patch(PosPrinterService.prototype, {
         const configId = this.pos && this.pos.config ? this.pos.config.id : null;
         if (el && UtrecarDirectPrint.canPrint(configId, "ticket")) {
             try {
-                const canvas = await htmlToCanvas(el, { addClass: "pos-receipt-print" });
+                const canvas = await receiptToCanvas(el);
                 const image = canvas.toDataURL("image/jpeg").replace("data:image/jpeg;base64,", "");
                 if (await UtrecarDirectPrint.submit(configId, "ticket", { image, title: "Ticket de venta" })) {
                     return true;
@@ -6888,6 +6912,9 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusAlbaran() {
+        if (!this.currentOrder || this.currentOrder.finalized) {
+            return; // pedido ya cobrado (doble pulsación)
+        }
         if (!this.currentOrder.get_partner()) {
             await this.selectPartner();
             if (!this.currentOrder.get_partner()) {
@@ -7009,20 +7036,21 @@ patch(PaymentScreen.prototype, {
         }
 
         // 3. Si se pulsó TICKET (imprimir), imprimir ahora con la serie TTTR oficial ya asignada
+        // Se lanza sin esperar: el pedido ya está guardado y la pantalla debe pasar al
+        // siguiente cliente aunque la impresora tarde (antes la pantalla de cobro quedaba
+        // visible y se podía pulsar otro botón sobre un pedido ya cerrado).
         if (this._virtusPrintTicket) {
             this._virtusPrintTicket = false;
             try {
-                await this.printer.print(
-                    OrderReceipt,
-                    {
-                        data: this.currentOrder.export_for_printing(),
-                        formatCurrency: this.env.utils.formatCurrency,
-                    },
-                    { webPrintFallback: true }
-                );
+                const receiptData = this.currentOrder.export_for_printing();
                 this.currentOrder._printed = true;
+                this.printer.print(
+                    OrderReceipt,
+                    { data: receiptData, formatCurrency: this.env.utils.formatCurrency },
+                    { webPrintFallback: true }
+                ).catch((e) => console.debug("Error imprimiendo ticket:", e));
             } catch (e) {
-                console.debug("Error imprimiendo ticket:", e);
+                console.debug("Error preparando ticket:", e);
             }
         }
 
@@ -7039,6 +7067,9 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusTicket() {
+        if (!this.currentOrder || this.currentOrder.finalized) {
+            return; // pedido ya cobrado (doble pulsación)
+        }
         // Si es cliente mensual con cuenta de crédito y no se seleccionó pago manual, asignar cuenta de cliente
         if (this.isMonthlyCustomer && this.currentPartner && (this.currentPartner.customer_payment_mode === 'credit' || this.currentPartner.customer_type === 'monthly')) {
             const currentLines = this.currentOrder.get_paymentlines();
@@ -7068,6 +7099,9 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusInvoice() {
+        if (!this.currentOrder || this.currentOrder.finalized) {
+            return; // pedido ya cobrado (doble pulsación)
+        }
         this.ensureOrderPaid();
         if (!this.currentOrder.get_partner()) {
             await this.selectPartner();
@@ -7123,6 +7157,9 @@ patch(PaymentScreen.prototype, {
     },
 
     async validateVirtusNoPrint() {
+        if (!this.currentOrder || this.currentOrder.finalized) {
+            return; // pedido ya cobrado (doble pulsación)
+        }
         this.ensureOrderPaid();
         this.currentOrder.is_albaran = false;
         this.currentOrder.set_to_invoice(false);
