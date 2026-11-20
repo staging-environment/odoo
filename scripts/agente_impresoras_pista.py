@@ -326,11 +326,16 @@ class Odoo:
         self.call("ir.config_parameter", "set_param", [key, value])
 
 
+def pdf_disponible():
+    return any(os.path.isfile(p) for p in SUMATRA_CANDIDATOS)
+
+
 def publicar(odoo, impresoras):
     payload = {
         "hostname": socket.gethostname(),
         "updated_at": int(time.time()),
         "printers": impresoras,
+        "pdf_ready": pdf_disponible(),
     }
     odoo.set_param(f"pos_gas_station.system_printers_{odoo.cfg['CONFIG_ID']}", json.dumps(payload, ensure_ascii=False))
 
@@ -388,7 +393,7 @@ def main():
                 ultimo_latido = ahora
             if ahora - ultimo_publicado >= INTERVALO_SEG:
                 impresoras = detectar_impresoras()
-                firma = json.dumps(impresoras, sort_keys=True)
+                firma = json.dumps([impresoras, pdf_disponible()], sort_keys=True)
                 # Republica si cambia la lista o cada hora (por si se borró el parámetro)
                 if firma != firma_publicada or int(ahora) % 3600 < INTERVALO_SEG:
                     publicar(odoo, impresoras)

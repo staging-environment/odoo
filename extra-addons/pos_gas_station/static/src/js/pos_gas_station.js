@@ -40,6 +40,7 @@ const PRINTER_DEFAULT_ASSIGNMENTS = {
  */
 export const UtrecarDirectPrint = {
     agentAlive: {},
+    pdfReady: {},
     _timers: {},
 
     readConfig(configId) {
@@ -65,9 +66,12 @@ export const UtrecarDirectPrint = {
         };
     },
 
-    canPrint(configId, docType) {
+    canPrint(configId, docType, { pdf = false } = {}) {
         const a = this.assigned(configId, docType);
-        return Boolean(configId && this.agentAlive[configId] && a.directPrint && a.name);
+        // Los A4/PDF necesitan SumatraPDF en el PC; la térmica no.
+        const needsPdf = pdf || a.format === "a4";
+        return Boolean(configId && this.agentAlive[configId] && a.directPrint && a.name
+            && (!needsPdf || this.pdfReady[configId]));
     },
 
     watch(configId) {
@@ -78,6 +82,7 @@ export const UtrecarDirectPrint = {
             try {
                 const res = await jsonrpc("/pos_gas_station/print/status", { config_id: configId });
                 this.agentAlive[configId] = Boolean(res && res.agent_alive);
+                this.pdfReady[configId] = Boolean(res && res.pdf_ready);
             } catch {
                 this.agentAlive[configId] = false;
             }
@@ -3801,7 +3806,7 @@ export class UtrecarMainScreen extends Component {
     }
 
     _utrecarOutputPdf(url, title, sendToPrinter) {
-        if (sendToPrinter && UtrecarDirectPrint.canPrint(this.configId, "invoice")) {
+        if (sendToPrinter && UtrecarDirectPrint.canPrint(this.configId, "invoice", { pdf: true })) {
             UtrecarDirectPrint.submit(this.configId, "invoice", { report_url: url.split("?")[0], title }).then((ok) => {
                 if (!ok) {
                     window.open(url, "_blank");

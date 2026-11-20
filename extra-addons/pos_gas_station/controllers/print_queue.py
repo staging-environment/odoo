@@ -186,7 +186,15 @@ class PosPrintQueue(http.Controller):
     def print_status(self, config_id=None, **kw):
         cfg = int(config_id or 7)
         last_seen = float(self._param(f'pos_gas_station.print_agent_seen_{cfg}') or 0)
-        return {'agent_alive': (time.time() - last_seen) < AGENT_ALIVE_SECONDS, 'last_seen': last_seen}
+        try:
+            printers = json.loads(self._param(f'pos_gas_station.system_printers_{cfg}') or '{}')
+        except Exception:
+            printers = {}
+        return {
+            'agent_alive': (time.time() - last_seen) < AGENT_ALIVE_SECONDS,
+            'pdf_ready': bool(printers.get('pdf_ready')),
+            'last_seen': last_seen,
+        }
 
     @http.route('/pos_gas_station/print/submit', type='json', auth='user', methods=['POST'], csrf=False)
     def print_submit(self, config_id=None, printer_name=None, format='thermal_80', copies=1,
