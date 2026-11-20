@@ -11,7 +11,7 @@
                 <field name="ref" string="Código de Cliente" placeholder="Automático (correlativo)"/>
             </xpath>
             <xpath expr="//field[@name='vat']" position="after">
-                <field name="company_id" options="{'no_create': True}" string="Empresa / Compañía"/>
+                <field name="company_id" options="{'no_create': True}" string="Cliente de la empresa" help="Empresa del grupo (Utrecar / A.R. Trieste) a la que pertenece este cliente. Decide en qué TPV aparece."/>
                 <field name="station_id" domain="[('company_id', '=', company_id)]" options="{'no_create': True}" string="Estación de Servicio"/>
             </xpath>
             <!-- Ocultar campos innecesarios en la ficha de cliente: Sitio web, Idioma y Etiquetas -->
