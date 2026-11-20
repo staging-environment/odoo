@@ -607,12 +607,11 @@
                                                         <i t-if="state.customerSortField === 'city'" t-attf-class="fa ms-1 text-primary #{state.customerSortDir === 'asc' ? 'fa-sort-asc' : 'fa-sort-desc'}"/>
                                                         <i t-else="" class="fa fa-sort ms-1 text-muted opacity-50"/>
                                                     </th>
-                                                    <th class="text-center pe-3 py-1.5" style="width: 85px;">Acción</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <t t-foreach="filteredCompanyCustomers" t-as="cust" t-key="cust.id">
-                                                    <tr>
+                                                    <tr style="cursor: pointer;" title="Abrir ficha del cliente" t-on-click="() => this.openPartnerForm(cust.id)">
                                                         <td class="ps-3 py-1 font-monospace fw-bold text-secondary" style="font-size: 11.5px;">
                                                             <t t-esc="cust.ref || '-'"/>
                                                         </td>
@@ -645,11 +644,6 @@
                                                         </td>
                                                         <td class="py-1 small text-muted" style="font-size: 11.5px;">
                                                             <t t-esc="cust.city || '-'"/>
-                                                        </td>
-                                                        <td class="text-center pe-3 py-1">
-                                                            <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" t-on-click="() => this.openPartnerForm(cust.id)">
-                                                                <i class="fa fa-pencil me-1"/> Ficha
-                                                            </button>
                                                         </td>
                                                     </tr>
                                                 </t>

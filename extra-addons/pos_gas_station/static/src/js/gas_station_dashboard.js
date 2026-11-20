@@ -1110,6 +1110,17 @@ export class GasStationDashboard extends Component {
     }
 
     openPartnerForm(partnerId) {
+        // Si la empresa del detalle no está activa en Odoo, se abre la ficha con
+        // esa empresa activada en la URL (igual que el selector de empresas de
+        // Odoo); si no, el formulario no puede leer el cliente (AccessError).
+        const compId = this.state.selectedDetailCompany ? this.state.selectedDetailCompany.id : null;
+        const allowed = (this.companyService && this.companyService.allowedCompanies) || {};
+        const active = (this.companyService && this.companyService.activeCompanyIds) || [];
+        if (compId && allowed[compId] && !active.includes(compId)) {
+            const cids = [compId, ...active.filter((id) => id !== compId)].join("-");
+            window.location.href = `/web#id=${partnerId}&model=res.partner&view_type=form&cids=${cids}`;
+            return;
+        }
         this.actionService.doAction({
             type: "ir.actions.act_window",
             res_model: "res.partner",
