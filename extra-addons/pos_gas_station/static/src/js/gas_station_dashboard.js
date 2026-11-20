@@ -5,6 +5,10 @@ import { registry } from "@web/core/registry";
 import { jsonrpc } from "@web/core/network/rpc_service";
 import { useService } from "@web/core/utils/hooks";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { useSetupAction } from "@web/webclient/actions/action_hook";
+
+// true tras la primera carga del panel en esta pestaña del navegador
+let utrecarDashboardLoadedOnce = false;
 
 export class GasStationDashboard extends Component {
     static template = "pos_gas_station.GasStationDashboard";
@@ -216,8 +220,21 @@ export class GasStationDashboard extends Component {
             modalLoading: false,
         });
 
+        // Al volver al panel con "atrás" (migas de pan) Odoo le devuelve este estado
+        useSetupAction({ getLocalState: () => ({ utrecarNavRestore: true }) });
+
+        // Restauración de la navegación:
+        //  - "full": recarga de página (F5 / URL) o volver atrás -> misma pantalla
+        //    en la que estaba (empresa, pestaña o ficha de estación).
+        //  - "menu": clic en el menú "Gestión de gasolineras" -> detalle de la
+        //    empresa en la pestaña Estaciones de Servicio.
+        const restoreMode = (this.props.state && this.props.state.utrecarNavRestore) || !utrecarDashboardLoadedOnce
+            ? "full"
+            : "menu";
+        utrecarDashboardLoadedOnce = true;
+
         onMounted(() => {
-            this.loadDashboardData(true);
+            this.loadDashboardData(restoreMode);
         });
     }
 
@@ -260,7 +277,13 @@ export class GasStationDashboard extends Component {
                 this.state.allAuthorizedCompanies = data.all_authorized_companies || [];
                 this.state.selectedCompanyId = data.selected_company_id;
 
-                if (restoreNav) {
+                const savedNav = restoreNav === "menu" ? this.getSavedNavState() : null;
+                if (savedNav && savedNav.companyId && ["company_detail", "station_detail"].includes(savedNav.viewMode)) {
+                    const menuComp = (this.state.companies || []).find(c => c.id === savedNav.companyId);
+                    if (menuComp) {
+                        await this.openCompanyDetail(menuComp, "stations", "menu");
+                    }
+                } else if (restoreNav && restoreNav !== "menu") {
                     const saved = this.getSavedNavState();
                     if (saved && saved.viewMode === "company_detail" && saved.companyId) {
                         const matchedComp = (this.state.companies || []).find(c => c.id === saved.companyId);
