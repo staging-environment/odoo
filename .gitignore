@@ -1,3 +1,4 @@
 ClienteSDESNet.dll
 __pycache__/
 scratch/
+.claude/settings.local.json

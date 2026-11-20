@@ -1986,7 +1986,7 @@
                                                     </td>
                                                     <td class="cell-actions" style="text-align: center;" t-on-click.stop="">
                                                         <t t-if="ord.doc_type === 'invoice' || ord.is_invoiced">
-                                                            <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Imprimir Factura PDF oficial">
+                                                            <button class="btn-tbl-action btn-tbl-invoice" t-on-click="() => this.printShiftOrderInvoice(ord, true)" title="Imprimir Factura PDF oficial">
                                                                 <i class="fa fa-print me-1"/> Imprimir
                                                             </button>
                                                             <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
@@ -2068,7 +2068,7 @@
                                                                                         <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderRefundInvoice(ord, item)" title="Visualizar Factura Rectificativa oficial en pantalla (PDF)">
                                                                                             👁
                                                                                         </button>
-                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderRefundInvoice(ord, item)" title="Descargar o imprimir Factura Rectificativa oficial">
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderRefundInvoice(ord, item, true)" title="Imprimir Factura Rectificativa oficial">
                                                                                             📄 Imprimir
                                                                                         </button>
                                                                                         <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderRefundInvoice(ord, item)" title="Enviar Factura Rectificativa PDF por correo" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
@@ -2087,7 +2087,7 @@
                                                                                         <button class="btn-tbl-action btn-tbl-view" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Visualizar Factura oficial en pantalla (PDF)">
                                                                                             👁
                                                                                         </button>
-                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderInvoice(ord)" title="Descargar o imprimir Factura oficial">
+                                                                                        <button class="btn-tbl-action btn-tbl-ticket" t-on-click="() => this.printShiftOrderInvoice(ord, true)" title="Imprimir Factura oficial">
                                                                                             🖨️ Imprimir
                                                                                         </button>
                                                                                         <button class="btn-tbl-action btn-tbl-email" t-on-click="() => this.emailShiftOrderInvoice(ord)" title="Enviar factura PDF por correo" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
@@ -2154,7 +2154,7 @@
                             <!-- BARRA DE ACCIONES SUPERIORES (TICKET, COPIA, FACTURA, ALBARÁN, ANULAR) -->
                             <div class="shift-detail-actions-bar">
                                 <t t-if="state.selectedShiftOrder.is_invoiced || state.selectedShiftOrder.doc_type === 'invoice'">
-                                    <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder)">
+                                    <button class="btn-action-primary btn-action-invoice" t-on-click="() => this.printShiftOrderInvoice(state.selectedShiftOrder, true)">
                                         <i class="fa fa-file-pdf-o me-1"/> 🖨️ Imprimir Factura PDF (<t t-esc="state.selectedShiftOrder.account_move_name || state.selectedShiftOrder.serie_code || state.selectedShiftOrder.name"/>)
                                     </button>
                                     <button class="btn-action-primary" t-on-click="() => this.emailShiftOrderInvoice(state.selectedShiftOrder)" style="background: #059669; border-color: #047857;">

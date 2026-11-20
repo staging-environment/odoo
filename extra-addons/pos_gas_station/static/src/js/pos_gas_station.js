@@ -20,6 +20,150 @@ import { _t } from "@web/core/l10n/translation";
 import { parseFloat } from "@web/views/fields/parsers";
 import { NumberPopup } from "@point_of_sale/app/utils/input_popups/number_popup";
 import { SelectionPopup } from "@point_of_sale/app/utils/input_popups/selection_popup";
+import { PosPrinterService } from "@point_of_sale/app/printer/pos_printer_service";
+import { htmlToCanvas } from "@point_of_sale/app/printer/render_service";
+
+const PRINTER_DEFAULT_ASSIGNMENTS = {
+    ticket: { printerId: "windows_default", format: "thermal_80", copies: 1 },
+    albaran: { printerId: "windows_default", format: "a4", copies: 2 },
+    invoice: { printerId: "windows_default", format: "a4", copies: 1 },
+    shift_report: { printerId: "windows_default", format: "thermal_80", copies: 1 },
+    extraction: { printerId: "windows_default", format: "thermal_80", copies: 1 },
+    annulment: { printerId: "windows_default", format: "thermal_80", copies: 1 },
+};
+
+/**
+ * Impresión directa: el TPV deja cada documento en la cola de Odoo con la impresora
+ * asignada y el agente del PC de pista (scripts/agente_impresoras_pista.py) lo imprime.
+ * Si el agente no está activo o la impresora asignada es la "predeterminada del sistema",
+ * se sigue imprimiendo con el navegador como antes.
+ */
+export const UtrecarDirectPrint = {
+    agentAlive: {},
+    _timers: {},
+
+    readConfig(configId) {
+        try {
+            const raw = localStorage.getItem(`pos_gas_station_printer_config_${configId}`);
+            return raw ? JSON.parse(raw) : {};
+        } catch {
+            return {};
+        }
+    },
+
+    assigned(configId, docType) {
+        const cfg = this.readConfig(configId);
+        const assign = Object.assign({}, PRINTER_DEFAULT_ASSIGNMENTS[docType] || PRINTER_DEFAULT_ASSIGNMENTS.ticket,
+            (cfg.assignments || {})[docType] || {});
+        const printer = (cfg.systemPrinters || []).find((p) => p.id === assign.printerId);
+        return {
+            directPrint: cfg.directPrint !== false,
+            printerId: assign.printerId,
+            name: printer && printer.id !== "windows_default" ? printer.name : "",
+            format: assign.format || "thermal_80",
+            copies: assign.copies || 1,
+        };
+    },
+
+    canPrint(configId, docType) {
+        const a = this.assigned(configId, docType);
+        return Boolean(configId && this.agentAlive[configId] && a.directPrint && a.name);
+    },
+
+    watch(configId) {
+        if (!configId || this._timers[configId]) {
+            return;
+        }
+        const refresh = async () => {
+            try {
+                const res = await jsonrpc("/pos_gas_station/print/status", { config_id: configId });
+                this.agentAlive[configId] = Boolean(res && res.agent_alive);
+            } catch {
+                this.agentAlive[configId] = false;
+            }
+        };
+        refresh();
+        this._timers[configId] = setInterval(refresh, 60000);
+    },
+
+    /** Envía el documento a la cola. Devuelve true si quedó en cola. */
+    async submit(configId, docType, { html, image, report_url, title }) {
+        const a = this.assigned(configId, docType);
+        let res;
+        try {
+            res = await jsonrpc("/pos_gas_station/print/submit", {
+                config_id: configId,
+                doc_type: docType,
+                printer_name: a.name,
+                format: a.format,
+                copies: a.copies,
+                title, html, image, report_url,
+            });
+        } catch (e) {
+            console.warn("Impresión directa no disponible:", e);
+            return false;
+        }
+        if (!res || res.status !== "queued") {
+            this.toast((res && res.message) || "No se pudo enviar el documento a la impresora.", true);
+            return false;
+        }
+        this.toast(`🖨️ Imprimiendo en ${a.name}…`);
+        this._follow(res.job_id, a.name);
+        return true;
+    },
+
+    async _follow(jobId, printerName) {
+        const until = Date.now() + 90000;
+        while (Date.now() < until) {
+            await new Promise((r) => setTimeout(r, 1500));
+            let st;
+            try {
+                st = await jsonrpc("/pos_gas_station/print/job_status", { job_id: jobId });
+            } catch {
+                continue;
+            }
+            if (st.state === "done") {
+                return;
+            }
+            if (st.state === "error") {
+                this.toast(`⚠️ ${printerName}: ${st.message || "error de impresión"}`, true);
+                return;
+            }
+        }
+        this.toast(`⚠️ ${printerName}: el agente de impresión no ha respondido.`, true);
+    },
+
+    toast(message, isError = false) {
+        const el = document.createElement("div");
+        el.textContent = message;
+        el.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:20000;" +
+            "padding:12px 20px;border-radius:10px;font:600 15px system-ui,sans-serif;color:#fff;" +
+            "box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:90vw;text-align:center;" +
+            `background:${isError ? "#b91c1c" : "#0f172a"};`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), isError ? 8000 : 2500);
+    },
+};
+
+// Recibo estándar de Odoo (OrderReceipt): se renderiza a imagen como hace la IoT Box
+// y se manda a la cola en lugar de abrir el diálogo de impresión del navegador.
+patch(PosPrinterService.prototype, {
+    async printHtml(el, options = {}) {
+        const configId = this.pos && this.pos.config ? this.pos.config.id : null;
+        if (el && UtrecarDirectPrint.canPrint(configId, "ticket")) {
+            try {
+                const canvas = await htmlToCanvas(el, { addClass: "pos-receipt-print" });
+                const image = canvas.toDataURL("image/jpeg").replace("data:image/jpeg;base64,", "");
+                if (await UtrecarDirectPrint.submit(configId, "ticket", { image, title: "Ticket de venta" })) {
+                    return true;
+                }
+            } catch (e) {
+                console.warn("Fallo en impresión directa, se usa el navegador:", e);
+            }
+        }
+        return super.printHtml(...arguments);
+    },
+});
 
 export class GasStationClosePosPopup extends ClosePosPopup {
     static template = "pos_gas_station.ClosePosPopup";
@@ -246,6 +390,7 @@ export class UtrecarMainScreen extends Component {
         
         const urlParams = new URLSearchParams(window.location.search);
         this.configId = parseInt(urlParams.get("config_id")) || (this.pos.config ? this.pos.config.id : 2);
+        UtrecarDirectPrint.watch(this.configId);
         
         // Cargar cobros pendientes por calle desde almacenamiento persistente
         if (!this.pos.pendingSales) {
@@ -946,14 +1091,7 @@ export class UtrecarMainScreen extends Component {
         ];
         // Nombres de ejemplo de versiones anteriores que no existen en ningún PC: se descartan.
         const legacyFakeIds = ["epson_tm_t20", "epson_wf_m5299", "pdf_print"];
-        const defaultAssignments = {
-            ticket: { printerId: "windows_default", format: "thermal_80", copies: 1 },
-            albaran: { printerId: "windows_default", format: "a4", copies: 2 },
-            invoice: { printerId: "windows_default", format: "a4", copies: 1 },
-            shift_report: { printerId: "windows_default", format: "thermal_80", copies: 1 },
-            extraction: { printerId: "windows_default", format: "thermal_80", copies: 1 },
-            annulment: { printerId: "windows_default", format: "thermal_80", copies: 1 },
-        };
+        const defaultAssignments = JSON.parse(JSON.stringify(PRINTER_DEFAULT_ASSIGNMENTS));
         try {
             const raw = localStorage.getItem(storageKey);
             if (raw) {
@@ -1076,6 +1214,28 @@ export class UtrecarMainScreen extends Component {
         await this.syncRealPrinters(true);
     }
 
+    /**
+     * Imprime o muestra un documento HTML propio. Con impresión directa activa lo manda
+     * a la impresora asignada a través del agente del PC; si no, abre la ventana del navegador.
+     */
+    _utrecarOutputDocument(html, { docType = "ticket", title = "", autoPrint = true } = {}) {
+        if (autoPrint && UtrecarDirectPrint.canPrint(this.configId, docType)) {
+            UtrecarDirectPrint.submit(this.configId, docType, { html, title }).then((ok) => {
+                if (!ok) {
+                    this._utrecarOutputDocument(html, { docType, title, autoPrint: false });
+                }
+            });
+            return;
+        }
+        const receiptWindow = window.open("", "_blank", "width=420,height=680");
+        if (!receiptWindow) {
+            alert("Por favor permita las ventanas emergentes en su navegador para imprimir o visualizar.");
+            return;
+        }
+        receiptWindow.document.write(html);
+        receiptWindow.document.close();
+    }
+
     getAssignedPrinter(docType = 'ticket') {
         const cfg = (this.state && this.state.printerConfig) ? this.state.printerConfig : this.getPrinterConfig();
         const assignments = cfg.assignments || {};
@@ -1140,11 +1300,6 @@ export class UtrecarMainScreen extends Component {
         const isDirect = (this.state.printerConfig && this.state.printerConfig.directPrint !== undefined)
             ? Boolean(this.state.printerConfig.directPrint)
             : true;
-        const receiptWindow = window.open("", "_blank", "width=420,height=680");
-        if (!receiptWindow) {
-            alert("Por favor permita las ventanas emergentes en su navegador para imprimir.");
-            return;
-        }
 
         const topToolbar = isDirect ? '' : `
             <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100;">
@@ -1164,7 +1319,7 @@ export class UtrecarMainScreen extends Component {
             </script>
         ` : '';
 
-        receiptWindow.document.write(`
+        this._utrecarOutputDocument(`
             <!DOCTYPE html>
             <html>
             <head>
@@ -1201,8 +1356,7 @@ export class UtrecarMainScreen extends Component {
                 ${printScript}
             </body>
             </html>
-        `);
-        receiptWindow.document.close();
+        `, { docType: "shift_report", title: "Prueba cierre de turno", autoPrint: isDirect });
     }
 
     addProductToGrid(prod) {
@@ -2812,12 +2966,6 @@ export class UtrecarMainScreen extends Component {
             </tr>
         `).join("");
 
-        const receiptWindow = window.open("", "_blank", "width=420,height=680");
-        if (!receiptWindow) {
-            alert("Por favor permita las ventanas emergentes en su navegador para imprimir o visualizar.");
-            return;
-        }
-
         const isAlbaran = order.is_albaran || (historyItem && historyItem.type_label && historyItem.type_label.includes('Albarán'));
         const isInvoice = order.is_invoiced || (historyItem && historyItem.type_label && historyItem.type_label.includes('Factura'));
         const docTitle = isAlbaran ? 'ALBARÁN NEGATIVO' : (isInvoice ? 'FACTURA DE ANULACIÓN' : 'JUSTIFICANTE DE ANULACIÓN');
@@ -2844,7 +2992,7 @@ export class UtrecarMainScreen extends Component {
             </script>
         ` : '';
 
-        receiptWindow.document.write(`
+        this._utrecarOutputDocument(`
             <!DOCTYPE html>
             <html>
             <head>
@@ -2924,8 +3072,7 @@ export class UtrecarMainScreen extends Component {
                 ${printScript}
             </body>
             </html>
-        `);
-        receiptWindow.document.close();
+        `, { docType: "annulment", title: `${docTitle} ${refAnnul}`, autoPrint: Boolean(autoPrint) });
     }
 
     selectShiftOrder(order) {
@@ -2944,7 +3091,7 @@ export class UtrecarMainScreen extends Component {
     printShiftOrderTicket(order, isCopy = false, autoPrint = null) {
         if (!order) return;
         if (order.doc_type === 'invoice' || order.is_invoiced) {
-            return this.printShiftOrderInvoice(order);
+            return this.printShiftOrderInvoice(order, autoPrint === true);
         }
         const comp = order.company || {};
         const linesHtml = (order.lines || []).map(l => `
@@ -3031,12 +3178,6 @@ export class UtrecarMainScreen extends Component {
                 ? Boolean(this.state.printerConfig.directPrint)
                 : Boolean(assignedPrinter.autoPrint));
 
-        const receiptWindow = window.open("", "_blank", "width=420,height=680");
-        if (!receiptWindow) {
-            alert("Por favor permita las ventanas emergentes en su navegador para imprimir o visualizar.");
-            return;
-        }
-
         const topToolbar = shouldAutoPrint ? '' : `
             <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
                 <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${order.is_albaran ? 'Albarán de Crédito' : 'Ticket de Venta'} &nbsp;|&nbsp; 🖨️ <span style="color: #60a5fa;">${assignedPrinter.name}</span> (${assignedPrinter.format === 'a4' ? 'A4' : '80mm'})</span>
@@ -3055,7 +3196,7 @@ export class UtrecarMainScreen extends Component {
             </script>
         ` : '';
 
-        receiptWindow.document.write(`
+        this._utrecarOutputDocument(`
             <!DOCTYPE html>
             <html>
             <head>
@@ -3139,8 +3280,7 @@ export class UtrecarMainScreen extends Component {
                 ${printScript}
             </body>
             </html>
-        `);
-        receiptWindow.document.close();
+        `, { docType, title: `${order.is_albaran ? "Albarán" : "Ticket"} ${order.name}`, autoPrint: shouldAutoPrint });
     }
 
     openInvoiceModal(order) {
@@ -3660,21 +3800,33 @@ export class UtrecarMainScreen extends Component {
         alert("El informe de cierre de turno solo se puede imprimir una vez que el turno haya sido formalmente cerrado.");
     }
 
-    printShiftOrderInvoice(order) {
+    _utrecarOutputPdf(url, title, sendToPrinter) {
+        if (sendToPrinter && UtrecarDirectPrint.canPrint(this.configId, "invoice")) {
+            UtrecarDirectPrint.submit(this.configId, "invoice", { report_url: url.split("?")[0], title }).then((ok) => {
+                if (!ok) {
+                    window.open(url, "_blank");
+                }
+            });
+            return;
+        }
+        window.open(url, "_blank");
+    }
+
+    printShiftOrderInvoice(order, sendToPrinter = false) {
         if (!order || !order.invoice_url) {
             alert("Este pedido aún no tiene factura generada.");
             return;
         }
-        window.open(order.invoice_url, "_blank");
+        this._utrecarOutputPdf(order.invoice_url, `Factura ${order.account_move_name || order.name || ""}`, sendToPrinter);
     }
 
-    printShiftOrderRefundInvoice(order, historyItem) {
+    printShiftOrderRefundInvoice(order, historyItem, sendToPrinter = false) {
         const invUrl = (historyItem && historyItem.invoice_url) || (order && order.invoice_url);
         if (!invUrl) {
             alert("No se ha encontrado el documento PDF de la Factura Rectificativa.");
             return;
         }
-        window.open(invUrl, "_blank");
+        this._utrecarOutputPdf(invUrl, "Factura rectificativa", sendToPrinter);
     }
 
     emailShiftOrderInvoice(order) {
