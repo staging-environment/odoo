@@ -197,21 +197,19 @@ class PosConfig(models.Model):
                     sql = """
                         SELECT DISTINCT e.id, e.virtus_codigo, e.nombre, e.apellidos, e.dni, e.email, e.puesto, e.gasolinera_codigo, e.gasolineras_codigos, e.foto
                         FROM empleados e
-                        JOIN users u ON e.email = u.email
-                        JOIN model_has_roles mhr ON mhr.model_id = u.id AND mhr.model_type LIKE '%%User'
-                        JOIN roles r ON mhr.role_id = r.id
+                        JOIN users u ON LOWER(TRIM(e.email)) = LOWER(TRIM(u.email))
                         WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
-                          AND LOWER(TRIM(r.name)) = 'empleado'
                           AND (
                               EXISTS (
                                   SELECT 1 FROM model_has_permissions mhp
                                   JOIN permissions p ON mhp.permission_id = p.id
-                                  WHERE mhp.model_id = u.id AND mhp.model_type LIKE '%%User' AND p.name = 'acceso_odoo'
+                                  WHERE mhp.model_id = u.id AND mhp.model_type LIKE '%User' AND p.name = 'acceso_odoo'
                               )
                               OR EXISTS (
-                                  SELECT 1 FROM role_has_permissions rhp
+                                  SELECT 1 FROM model_has_roles mhr
+                                  JOIN role_has_permissions rhp ON rhp.role_id = mhr.role_id
                                   JOIN permissions p ON rhp.permission_id = p.id
-                                  WHERE rhp.role_id = r.id AND p.name = 'acceso_odoo'
+                                  WHERE mhr.model_id = u.id AND mhr.model_type LIKE '%User' AND p.name = 'acceso_odoo'
                               )
                           )
                         ORDER BY e.nombre, e.apellidos
@@ -220,11 +218,8 @@ class PosConfig(models.Model):
                     sql = """
                         SELECT DISTINCT e.id, e.virtus_codigo, e.nombre, e.apellidos, e.dni, e.email, e.puesto, e.gasolinera_codigo, e.gasolineras_codigos, e.foto
                         FROM empleados e
-                        JOIN users u ON e.email = u.email
-                        JOIN model_has_roles mhr ON mhr.model_id = u.id AND mhr.model_type LIKE '%%User'
-                        JOIN roles r ON mhr.role_id = r.id
+                        JOIN users u ON LOWER(TRIM(e.email)) = LOWER(TRIM(u.email))
                         WHERE e.estado = 'Alta' AND (e.deleted_at IS NULL)
-                          AND LOWER(TRIM(r.name)) = 'empleado'
                         ORDER BY e.nombre, e.apellidos
                     """
                 cur.execute(sql)
@@ -233,12 +228,20 @@ class PosConfig(models.Model):
                 # Filtrar empleados estrictamente por EMPRESA de la estación:
                 # - Estación de A.R. Trieste (id 4): solo empleados asignados a A.R. Trieste
                 # - Estación de Utrecar (id 1): solo empleados asignados a Utrecar
-                role_emp = self.env.ref('pos_gas_station.role_employee', raise_if_not_found=False)
+                Users = self.env['res.users'].sudo()
                 matched_rows = []
+                skipped_no_user = 0
+                skipped_no_company = 0
                 for r in rows:
                     email = (r.get('email') or '').strip().lower()
-                    odoo_u = self.env['res.users'].sudo().search(['|', ('login', '=ilike', email), ('email', '=ilike', email)], limit=1)
+                    dni = (r.get('dni') or '').strip()
+                    odoo_u = Users.search([('admin_platform_emp_id', '=', r['id'])], limit=1)
+                    if not odoo_u and email:
+                        odoo_u = Users.search(['|', ('login', '=ilike', email), ('email', '=ilike', email)], limit=1)
+                    if not odoo_u and dni:
+                        odoo_u = Users.search([('login', '=ilike', dni)], limit=1)
                     if not odoo_u:
+                        skipped_no_user += 1
                         continue
 
                     # NUNCA super administradores del sistema en el TPV de pista
@@ -246,9 +249,19 @@ class PosConfig(models.Model):
                         continue
 
                     # Verificación multi-empresa y multi-rol:
-                    # El empleado debe estar autorizado Y tener rol Empleado para la empresa de esta estación
+                    # El empleado debe estar autorizado para la empresa de esta estación
                     if odoo_u.is_employee_for_company(self.company_id.id):
                         matched_rows.append(r)
+                    else:
+                        skipped_no_company += 1
+
+                if not matched_rows:
+                    _logger.warning(
+                        "get_admin_platform_employees(%s, company_id=%s): 0 empleados autorizados "
+                        "(has_odoo_perm_def=%s, maria_rows=%s, skipped_no_user=%s, skipped_no_company=%s)",
+                        self.name, self.company_id.id, bool(has_odoo_perm_def),
+                        len(rows), skipped_no_user, skipped_no_company
+                    )
 
                 for idx, r in enumerate(matched_rows):
                     nombre = (r.get('nombre') or '').strip()

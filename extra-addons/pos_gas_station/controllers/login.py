@@ -243,6 +243,39 @@ class UtrecarLogin(Home):
         request.session.logout()
         return request.redirect('/pos_gas_station/select_employee')
 
+    def _resume_station_active_session(self, station):
+        """Si la estación ya tiene un turno abierto por un empleado activo, vincula la sesión HTTP a ese cajero y retorna la URL del TPV."""
+        if not station or not station.exists():
+            return False
+        active_session = request.env['pos.session'].sudo().search([
+            ('config_id', '=', station.id),
+            ('state', 'in', ['opened', 'opening_control'])
+        ], limit=1)
+        if not active_session:
+            return False
+        if not request.session.uid:
+            session_user = active_session.user_id
+            if (
+                session_user
+                and session_user.exists()
+                and session_user.active
+                and session_user.id not in (1, 2)
+                and not self._is_admin_user(session_user)
+            ):
+                if station.company_id and station.company_id.id not in session_user.company_ids.ids:
+                    session_user.sudo().write({'company_ids': [(4, station.company_id.id)]})
+                request.session.uid = session_user.id
+                request.session.login = session_user.login
+                request.session.session_token = security.compute_session_token(request.session, request.env)
+                request.session.rotate = True
+                _logger.info(
+                    "Turno activo (%s) reanudado automáticamente en %s para %s (nuevo navegador/sesión).",
+                    active_session.name, station.name, session_user.name
+                )
+            else:
+                return False
+        return f'/pos/ui?config_id={station.id}'
+
     @http.route('/', type='http', auth="none")
     def index(self, s_action=None, db=None, **kw):
         """Pantalla principal de Odoo: la home siempre muestra select_employee salvo TPV activo."""
@@ -261,12 +294,9 @@ class UtrecarLogin(Home):
         # Comprobar si la IP corresponde a una estación de gasolinera en WireGuard:
         station = self._get_station_by_ip(ip)
         if station:
-            active_session = request.env['pos.session'].sudo().search([
-                ('config_id', '=', station.id),
-                ('state', 'in', ['opened', 'opening_control'])
-            ], limit=1)
-            if active_session:
-                return request.redirect(f'/pos/ui?config_id={station.id}')
+            resume_url = self._resume_station_active_session(station)
+            if resume_url:
+                return request.redirect(resume_url)
             return request.redirect(f'/pos_gas_station/select_employee?station_id={station.id}')
 
         station = self._get_default_station(request.params.get('station_id'))
@@ -314,6 +344,10 @@ class UtrecarLogin(Home):
         ip = self._get_client_ip()
         if self._is_station_vpn_ip(ip):
             station = self._get_station_by_ip(ip)
+            if station and (not redirect or '/pos/' in str(redirect)):
+                resume_url = self._resume_station_active_session(station)
+                if resume_url:
+                    return request.redirect(resume_url)
             target = f'/pos_gas_station/select_employee?station_id={station.id}' if station else '/pos_gas_station/select_employee'
             return request.redirect(target)
 

@@ -341,7 +341,7 @@ class ResUsers(models.Model):
         access = self.company_access_ids.filtered(lambda a: a.company_id.id == company_id)
         if access:
             return bool(access[0].active_access)
-        return False
+        return company_id in self.company_ids.ids
 
 
     utrecar_role_ids = fields.Many2many(
