@@ -13,6 +13,14 @@
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="company_id" options="{'no_create': True}" string="Cliente de la empresa" help="Empresa del grupo (Utrecar / A.R. Trieste) a la que pertenece este cliente. Decide en qué TPV aparece."/>
             </xpath>
+            <!-- Ficha sin botón "Nuevo" (los clientes se crean desde Gestión de Gasolineras)
+                 y sin botones inteligentes mientras el cliente no esté guardado -->
+            <xpath expr="/form" position="attributes">
+                <attribute name="create">false</attribute>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="attributes">
+                <attribute name="invisible">not id</attribute>
+            </xpath>
             <!-- CAMPOS OBLIGATORIOS EN CLIENTES PRINCIPALES (no en personas de contacto) -->
             <xpath expr="//sheet" position="inside">
                 <field name="customer_rank" invisible="1"/>
