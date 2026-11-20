@@ -3908,7 +3908,7 @@
                     </t>
                     <t t-elif="isMonthlyCustomer">
                         <span class="badge bg-info text-dark px-3 py-1 fw-bold" style="font-size: 11px;">
-                            <i class="fa fa-calendar me-1"/> Cliente Mensual: Ticket, Factura o Guardar sin cambios
+                            <i class="fa fa-calendar me-1"/> Cliente Mensual: Ticket, Factura o Guardar operación sin imprimir
                         </span>
                     </t>
                 </div>
@@ -3962,12 +3962,11 @@
                                 title="Cobrar e imprimir ticket">
                             <div class="pay-icon">🖨</div>
                             <div class="pay-details">
-                                <strong>TICKET</strong>
-                                <span>Imprimir</span>
+                                <strong>IMPRIMIR TICKET</strong>
                             </div>
                         </button>
 
-                        <button class="btn-virtus-pay btn-pay-invoice" 
+                        <button class="btn-virtus-pay btn-pay-invoice"
                                 t-on-click="() => this.validateVirtusInvoice()"
                                 title="Cobrar y emitir Factura con NIF/CIF">
                             <div class="pay-icon">📄</div>
@@ -3982,8 +3981,7 @@
                                 title="Guardar venta sin imprimir ticket">
                             <div class="pay-icon">💾</div>
                             <div class="pay-details">
-                                <strong>GUARDAR SIN CAMBIOS</strong>
-                                <span>Sin Ticket</span>
+                                <strong>GUARDAR OPERACIÓN SIN IMPRIMIR</strong>
                             </div>
                         </button>
                     </t>
