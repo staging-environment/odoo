@@ -1395,8 +1395,8 @@ export class UtrecarMainScreen extends Component {
 
         const topToolbar = isDirect ? '' : `
             <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100;">
-                <span style="font-weight: bold; font-size: 12px;">👁️ Vista Previa: Informe Z | 🖨️ ${assigned.name}</span>
-                <div>
+                <span title="Impresora asignada" style="font-weight: bold; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px;">🖨️ <span style="color: #60a5fa;">${assigned.name}</span></span>
+                <div style="display: flex; flex-shrink: 0; white-space: nowrap;">
                     <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 6px;">🖨️ Imprimir</button>
                     <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">✖ Cerrar</button>
                 </div>
@@ -3067,8 +3067,8 @@ export class UtrecarMainScreen extends Component {
 
         const topToolbar = autoPrint ? '' : `
             <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -10px -10px 12px -10px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -10px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
-                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${docTitle} &nbsp;|&nbsp; 🖨️ <span style="color: #60a5fa;">${assignedPrinter.name}</span></span>
-                <div>
+                <span title="Impresora asignada" style="font-weight: bold; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px;">🖨️ <span style="color: #60a5fa;">${assignedPrinter.name}</span></span>
+                <div style="display: flex; flex-shrink: 0; white-space: nowrap;">
                     <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; margin-right: 6px;">🖨️ Imprimir</button>
                     <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">✖ Cerrar</button>
                 </div>
@@ -3272,8 +3272,8 @@ export class UtrecarMainScreen extends Component {
 
         const topToolbar = shouldAutoPrint ? '' : `
             <div class="no-print" style="background: #1e293b; color: white; padding: 8px 12px; margin: -16px -16px 14px -16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: -16px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;">
-                <span style="font-weight: bold; font-size: 13px;">👁️ Vista Previa: ${order.is_albaran ? 'Albarán de Crédito' : 'Ticket de Venta'} &nbsp;|&nbsp; 🖨️ <span style="color: #60a5fa;">${assignedPrinter.name}</span> (${assignedPrinter.format === 'a4' ? 'A4' : '80mm'})</span>
-                <div>
+                <span title="Impresora asignada" style="font-weight: bold; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px;">🖨️ <span style="color: #60a5fa;">${assignedPrinter.name}</span> (${assignedPrinter.format === 'a4' ? 'A4' : '80mm'})</span>
+                <div style="display: flex; flex-shrink: 0; white-space: nowrap;">
                     <button onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; margin-right: 6px;">🖨️ Imprimir</button>
                     <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">✖ Cerrar</button>
                 </div>
